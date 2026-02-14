@@ -611,11 +611,14 @@ public class SolarSystemState : GameState
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
         var shipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipSolar);
 
-        // Engine flame when thrusting (draw behind ship)
+        // Engine flame when thrusting (draw behind ship, offset backward)
         if (game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up))
         {
             var flameTex = game.Textures.GetTexture(Rendering.TextureManager.ShipFlame);
-            renderer.DrawTexture(camera, flameTex, shipTransform.Position, 32, 32, shipTransform.Rotation);
+            float shipRad = shipTransform.Rotation * MathF.PI / 180f;
+            // Offset the flame 18px behind the ship's heading
+            var flamePos = shipTransform.Position - new Vector2(MathF.Cos(shipRad), MathF.Sin(shipRad)) * 18f;
+            renderer.DrawTexture(camera, flameTex, flamePos, 40, 40, shipTransform.Rotation);
         }
 
         // Ship sprite (rotated to match heading)

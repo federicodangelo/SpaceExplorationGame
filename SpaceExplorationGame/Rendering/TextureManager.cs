@@ -256,7 +256,8 @@ public class TextureManager : IDisposable
         const int size = 32;
         var pixels = new byte[size * size * 4];
 
-        // Engine flame pointing left (behind ship which points right)
+        // Engine flame centered in texture, pointing LEFT
+        // When drawn offset behind the ship this will trail behind
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
@@ -265,22 +266,27 @@ public class TextureManager : IDisposable
                 int cx = x - 16;
                 int cy = y - 16;
 
-                // Flame cone extending from engine area
-                if (cx >= -16 && cx <= -6)
+                // Main flame cone: wide at right (engine), tapers left (exhaust tip)
+                if (cx >= -14 && cx <= 8)
                 {
-                    float flameLen = (-6f - cx) / 10f; // 0 near ship, 1 at tip
-                    float maxY = 5f * (1f - flameLen * 0.7f); // narrows toward tip
+                    float flameLen = (8f - cx) / 22f; // 0 at engine, 1 at tip
+                    float maxY = 6f * (1f - flameLen * 0.6f); // narrows toward tip
 
                     if (Math.Abs(cy) <= maxY)
                     {
-                        float intensity = 1f - flameLen;
+                        float intensity = 1f - flameLen * 0.7f;
                         float coreT = 1f - Math.Abs(cy) / maxY;
 
-                        // Orange-yellow core, red edges
-                        pixels[idx + 0] = (byte)(255 * intensity);
-                        pixels[idx + 1] = (byte)(180 * intensity * coreT + 50 * intensity);
-                        pixels[idx + 2] = (byte)(50 * intensity * coreT);
-                        pixels[idx + 3] = (byte)(220 * intensity);
+                        // Bright core: white-yellow center, orange-red edges
+                        byte fr = (byte)(255 * intensity);
+                        byte fg = (byte)(220 * intensity * coreT + 80 * intensity * (1 - coreT));
+                        byte fb = (byte)(120 * intensity * coreT * coreT);
+                        byte fa = (byte)(240 * intensity * (0.5f + 0.5f * coreT));
+
+                        pixels[idx + 0] = fr;
+                        pixels[idx + 1] = fg;
+                        pixels[idx + 2] = fb;
+                        pixels[idx + 3] = fa;
                     }
                 }
             }
