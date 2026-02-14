@@ -271,7 +271,9 @@ public class InteriorState : GameState
         switch (_origin)
         {
             case InteriorOrigin.Station:
-                game.ChangeState(new SpaceStationState(_starSystem, _station!));
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
+                game.Player.ReturnStationIndex = _station!.Index;
+                game.ChangeState(new SolarSystemState(_starSystem, _station));
                 break;
             case InteriorOrigin.Settlement:
                 // Return to planet surface at the settlement location

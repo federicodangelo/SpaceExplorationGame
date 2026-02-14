@@ -8,7 +8,6 @@ public enum GameStateType
     MainMenu,
     GalaxyMap,
     SolarSystem,
-    SpaceStation,
     PlanetLanding,
     PlanetSurface,
     Interior

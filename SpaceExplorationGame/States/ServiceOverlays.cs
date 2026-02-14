@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.States;
 
 /// <summary>
 /// Shared overlay UI for Repair and Mission interactions.
-/// Used by both SpaceStationState (menu) and InteriorState (walkable).
+/// Used by both SpaceStationOverlay (docked menu) and InteriorState (walkable).
 /// </summary>
 public class ServiceOverlays
 {

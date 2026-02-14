@@ -127,7 +127,7 @@ public class MainMenuState : GameState
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                 game.Player.ReturnStationIndex = station.Index;
-                game.ChangeState(new SpaceStationState(system, station));
+                game.ChangeState(new SolarSystemState(system, station));
                 break;
             }
 

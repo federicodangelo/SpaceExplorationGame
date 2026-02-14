@@ -6,6 +6,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 
 namespace SpaceExplorationGame.States;
 
@@ -40,6 +41,10 @@ public class SolarSystemState : GameState
     // Background stars
     private List<(float X, float Y, byte Brightness)> _bgStars = [];
 
+    // Station overlay (docked at station)
+    private readonly SpaceStationOverlay _stationOverlay = new();
+    private readonly SpaceStationData? _autoOpenStation;
+
     // ECS Systems
     private OrbitSystem _orbitSystem = null!;
     private VelocitySystem _velocitySystem = null!;
@@ -52,9 +57,10 @@ public class SolarSystemState : GameState
     private List<nint> _planetTextures = [];
     private List<List<nint>> _moonTextures = [];
 
-    public SolarSystemState(StarSystemData starSystem)
+    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null)
     {
         _starSystem = starSystem;
+        _autoOpenStation = autoOpenStation;
     }
 
     public override void Enter(Game game)
@@ -324,6 +330,12 @@ public class SolarSystemState : GameState
         // Camera follows player
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
+
+        // Auto-open station overlay if we were asked to (e.g. returning from interior)
+        if (_autoOpenStation != null)
+        {
+            _stationOverlay.Open(_starSystem, _autoOpenStation, game);
+        }
     }
 
     public override void Exit(Game game)
@@ -356,6 +368,17 @@ public class SolarSystemState : GameState
     {
         var input = game.Input;
         var camera = game.Camera;
+
+        // Station overlay takes priority over all solar system input
+        if (_stationOverlay.IsOpen)
+        {
+            _stationOverlay.Update(game, dt);
+
+            // Still update orbits so the background stays alive
+            _orbitSystem.Update(in dt);
+            _cameraFollowSystem.Update(in dt);
+            return;
+        }
 
         // --- Player ship controls ---
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
@@ -433,9 +456,7 @@ public class SolarSystemState : GameState
         {
             if (_nearbyStationIndex >= 0)
             {
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
-                game.Player.ReturnStationIndex = _nearbyStationIndex;
-                game.ChangeState(new SpaceStationState(_starSystem, _stations[_nearbyStationIndex]));
+                _stationOverlay.Open(_starSystem, _stations[_nearbyStationIndex], game);
             }
             else if (_nearbyPlanetIndex >= 0)
             {
@@ -661,5 +682,8 @@ public class SolarSystemState : GameState
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 70, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 90, "M: GALAXY MAP", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 110, "E: INTERACT", 180, 180, 180, 1.5f);
+
+        // Station overlay drawn on top of everything
+        _stationOverlay.Render(game);
     }
 }

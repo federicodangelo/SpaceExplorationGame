@@ -7,14 +7,15 @@ using SpaceExplorationGame.UI;
 namespace SpaceExplorationGame.States;
 
 /// <summary>
-/// Space station state: Menu-based UI when docked at a space station.
+/// Overlay displayed atop SolarSystemState when the player docks at a space station.
+/// Provides repair, missions, customization, ship dealer, walk-interior, and exit options.
 /// </summary>
-public class SpaceStationState : GameState
+public class SpaceStationOverlay
 {
-    public override GameStateType Type => GameStateType.SpaceStation;
+    public bool IsOpen { get; private set; }
 
-    private readonly StarSystemData _starSystem;
-    private readonly SpaceStationData _station;
+    private StarSystemData _starSystem = null!;
+    private SpaceStationData _station = null!;
     private readonly ServiceOverlays _overlays = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
@@ -44,63 +45,60 @@ public class SpaceStationState : GameState
         HighlightAlpha = 255,
     };
 
-    public SpaceStationState(StarSystemData starSystem, SpaceStationData station)
+    public void Open(StarSystemData starSystem, SpaceStationData station, Game game)
     {
         _starSystem = starSystem;
         _station = station;
-    }
+        _menu.SelectedIndex = 0;
+        IsOpen = true;
 
-    public override void Enter(Game game)
-    {
-        // Refuel when docking at a station
+        // Refuel when docking
         game.Player.Refuel(GameConfig.StationRefuelAmount);
     }
 
-    public override void Exit(Game game)
+    public void Close()
     {
+        IsOpen = false;
     }
 
-    public override void HandleEvent(Game game, SDL.Event e)
+    /// <summary>
+    /// Update overlay logic. Returns true if the overlay consumed input (blocks solar system controls).
+    /// </summary>
+    public bool Update(Game game, float dt)
     {
-    }
+        if (!IsOpen) return false;
 
-    public override void Update(Game game, float dt)
-    {
         var input = game.Input;
 
-        // If an overlay is open, let it consume input first
+        // Sub-overlays take priority
         if (_overlays.Active != ServiceOverlays.OverlayType.None)
         {
             _overlays.Update(game, input);
-            return;
+            return true;
         }
 
-        // Ship customization overlay
         if (_shipCustomization.IsOpen)
         {
             _shipCustomization.Update(game, input, dt);
-            return;
+            return true;
         }
 
-        // Avatar customization overlay
         if (_avatarCustomization.IsOpen)
         {
             _avatarCustomization.Update(game, input, dt);
-            return;
+            return true;
         }
 
-        // Vehicle customization overlay
         if (_vehicleCustomization.IsOpen)
         {
             _vehicleCustomization.Update(game, input, dt);
-            return;
+            return true;
         }
 
-        // Ship dealer overlay
         if (_shipDealer.IsOpen)
         {
             _shipDealer.Update(game, input, dt);
-            return;
+            return true;
         }
 
         int confirmed = _menu.Update(input);
@@ -126,36 +124,37 @@ public class SpaceStationState : GameState
                 case 5: // Vehicle customization
                     _vehicleCustomization.Open();
                     break;
-                case 6: // Walk station
+                case 6: // Walk station (transitions to InteriorState)
+                    game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
+                    game.Player.ReturnStationIndex = _station.Index;
+                    Close();
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
                 case 7: // Exit station
-                    game.ChangeState(new SolarSystemState(_starSystem));
+                    Close();
                     break;
             }
         }
 
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
-            game.ChangeState(new SolarSystemState(_starSystem));
+            Close();
         }
+
+        return true;
     }
 
-    public override void Render(Game game)
+    public void Render(Game game)
     {
+        if (!IsOpen) return;
+
         var renderer = game.SpriteRenderer;
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
 
-        // Dark background with station interior feel
-        renderer.DrawRectScreen(0, 0, w, h, 8, 8, 20);
-
-        // Subtle grid pattern for station floor feel
-        for (int gx = 0; gx < w; gx += 40)
-            renderer.DrawLineScreen(gx, 0, gx, h, 12, 12, 28);
-        for (int gy = 0; gy < h; gy += 40)
-            renderer.DrawLineScreen(0, gy, w, gy, 12, 12, 28);
+        // Semi-transparent dark overlay so the solar system is visible behind
+        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 180);
 
         // Station frame with gradient-like border
         int frameX = w / 2 - 300;
@@ -212,10 +211,8 @@ public class SpaceStationState : GameState
         // Controls
         renderer.DrawTextScreen(frameX + 20, frameY + frameH - 30, "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT", 100, 100, 130, 1.5f);
 
-        // Service overlays (trade, repair, missions) drawn on top
+        // Sub-overlays drawn on top
         _overlays.Render(game, renderer);
-
-        // Customization overlays drawn on top of everything
         _shipCustomization.Render(game, renderer);
         _avatarCustomization.Render(game, renderer);
         _vehicleCustomization.Render(game, renderer);

@@ -52,8 +52,8 @@ SpaceExplorationGame/
 ├── States/
 │   ├── MainMenuState.cs           # Starting point selection menu
 │   ├── GalaxyMapState.cs          # Galaxy overview with star system selection
-│   ├── SolarSystemState.cs        # Space flight within a solar system
-│   ├── SpaceStationState.cs       # Menu-based space station interaction
+│   ├── SolarSystemState.cs        # Space flight within a solar system + station overlay
+│   ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
 │   ├── PlanetLandingState.cs      # Orbital landing site selection
 │   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
 │   ├── InteriorState.cs           # Walkable station/settlement interiors
@@ -105,8 +105,8 @@ The game uses a state machine pattern. Each state (`GameState` subclass) owns it
 States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
-- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
-- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area.
+- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
+- **SpaceStationOverlay** (overlay, not a game state): Semi-transparent menu drawn over SolarSystemState when docked. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
 - **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel. Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards (placeholder), and customization terminals (ship, avatar, vehicle). Station docking bays have four terminals: exit door, ship customization, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
@@ -296,7 +296,7 @@ Both station docking bays and settlement landing pads contain customization term
 
 **Settlement landing pads** — same terminal types plus Ship Dealer: Ship Customization and Ship Dealer near the exit, Avatar and Vehicle Customization at the top of the pad.
 
-All customization types and the ship dealer are also accessible from the **SpaceStationState** menu (without walking to a terminal).
+All customization types and the ship dealer are also accessible from the **SpaceStationOverlay** menu (without walking to a terminal).
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
