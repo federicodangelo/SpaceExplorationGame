@@ -4,6 +4,7 @@ using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 
 namespace SpaceExplorationGame.States;
@@ -38,6 +39,9 @@ public class SolarSystemState : GameState
 
     // Background stars
     private List<(float X, float Y, byte Brightness)> _bgStars = [];
+
+    // ECS Systems
+    private OrbitSystem _orbitSystem = null!;
 
     // Cached textures for this solar system
     private nint _starTexture;
@@ -292,6 +296,15 @@ public class SolarSystemState : GameState
             _moonTextures.Add(moonTexList);
         }
 
+        // Initialize ECS systems
+        float sysW = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
+        float sysH = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        _orbitSystem = new OrbitSystem(
+            game.EcsWorld,
+            () => (float)game.GlobalTime,
+            () => new Vector2(sysW, sysH));
+        _orbitSystem.Initialize();
+
         // Camera follows player
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
@@ -363,31 +376,7 @@ public class SolarSystemState : GameState
         shipTransform.Position += shipVelocity.Value * dt;
 
         // --- Update orbits using global time (deterministic) ---
-        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        Vector2 starCenter = new(starCenterX, starCenterY);
-        float time = (float)game.GlobalTime;
-
-        var orbitQuery = new QueryDescription().WithAll<Transform, Orbit>();
-        game.EcsWorld.Query(in orbitQuery, (Entity entity, ref Transform transform, ref Orbit orbit) =>
-        {
-            orbit.CurrentAngle = orbit.BaseAngle + orbit.OrbitSpeed * time;
-
-            Vector2 parentPos;
-            if (game.EcsWorld.IsAlive(orbit.Parent))
-            {
-                parentPos = game.EcsWorld.Get<Transform>(orbit.Parent).Position;
-            }
-            else
-            {
-                parentPos = starCenter;
-            }
-
-            transform.Position = parentPos + new Vector2(
-                MathF.Cos(orbit.CurrentAngle) * orbit.OrbitRadius,
-                MathF.Sin(orbit.CurrentAngle) * orbit.OrbitRadius
-            );
-        });
+        _orbitSystem.Update(in dt);
 
         // --- Camera follows player ---
         camera.LerpTo(shipTransform.Position, 5f * dt);
