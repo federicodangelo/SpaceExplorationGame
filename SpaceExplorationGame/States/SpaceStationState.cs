@@ -19,12 +19,14 @@ public class SpaceStationState : GameState
     private readonly ShipCustomizationOverlay _shipCustomization = new();
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
+    private readonly ShipDealerOverlay _shipDealer = new();
 
     private static readonly string[] StationMenuLabels =
     [
         "REPAIR",
         "MISSIONS",
         "SHIP CUSTOMIZATION",
+        "SHIP DEALER",
         "AVATAR CUSTOMIZATION",
         "VEHICLE CUSTOMIZATION",
         "EXIT SHIP (WALK STATION)",
@@ -94,6 +96,13 @@ public class SpaceStationState : GameState
             return;
         }
 
+        // Ship dealer overlay
+        if (_shipDealer.IsOpen)
+        {
+            _shipDealer.Update(game, input, dt);
+            return;
+        }
+
         int confirmed = _menu.Update(input);
         if (confirmed >= 0)
         {
@@ -106,19 +115,22 @@ public class SpaceStationState : GameState
                     _overlays.Open(ServiceOverlays.OverlayType.Mission);
                     break;
                 case 2: // Ship customization
-                    _shipCustomization.Open();
+                    _shipCustomization.Open(game.Player);
                     break;
-                case 3: // Avatar customization
+                case 3: // Ship dealer
+                    _shipDealer.Open();
+                    break;
+                case 4: // Avatar customization
                     _avatarCustomization.Open();
                     break;
-                case 4: // Vehicle customization
+                case 5: // Vehicle customization
                     _vehicleCustomization.Open();
                     break;
-                case 5: // Walk station
+                case 6: // Walk station
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
-                case 6: // Exit station
+                case 7: // Exit station
                     game.ChangeState(new SolarSystemState(_starSystem));
                     break;
             }
@@ -182,7 +194,7 @@ public class SpaceStationState : GameState
         // Ship status
         float statusY = frameY + 130 + menuHeight + 20;
         renderer.DrawLineScreen(frameX + 20, statusY, frameX + frameW - 20, statusY, 60, 60, 100);
-        renderer.DrawTextScreen(frameX + 20, statusY + 10, "SHIP STATUS", 150, 150, 200, 2f);
+        renderer.DrawTextScreen(frameX + 20, statusY + 10, $"SHIP: {game.Player.CurrentShipType.Name.ToUpper()}", 150, 150, 200, 2f);
         renderer.DrawTextScreen(frameX + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", 100, 255, 100, 1.5f);
         renderer.DrawTextScreen(frameX + 20, statusY + 60, $"FUEL: {game.Player.ShipFuel:F0}/{game.Player.ShipMaxFuel:F0}", 100, 200, 255, 1.5f);
         renderer.DrawTextScreen(frameX + 20, statusY + 80, $"[REFUELED +{GameConfig.StationRefuelAmount:F0}]", 80, 200, 120, 1.5f);
@@ -207,5 +219,6 @@ public class SpaceStationState : GameState
         _shipCustomization.Render(game, renderer);
         _avatarCustomization.Render(game, renderer);
         _vehicleCustomization.Render(game, renderer);
+        _shipDealer.Render(game, renderer);
     }
 }

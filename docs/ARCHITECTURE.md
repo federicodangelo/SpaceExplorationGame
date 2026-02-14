@@ -23,7 +23,7 @@ SpaceExplorationGame/
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   ├── PlayerData.cs              # Persistent player data across state changes
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
-│   ├── ShipParts.cs               # Ship equipment data model, stats, and part catalog
+│   ├── ShipParts.cs               # Ship types, equipment data model, stats, and part catalog
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   └── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
 ├── ECS/
@@ -59,7 +59,8 @@ SpaceExplorationGame/
 │   ├── InteriorState.cs           # Walkable station/settlement interiors
 │   ├── ServiceOverlays.cs         # Reusable overlays (ServiceMenuOverlay)
 │   ├── CustomizationOverlayBase.cs # Abstract base for all customization overlays
-│   ├── ShipCustomizationOverlay.cs # Ship equipment management UI
+│   ├── ShipCustomizationOverlay.cs # Ship equipment management UI (dynamic slots per ship type)
+│   ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in UI
 │   ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
 │   └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
 └── UI/
@@ -105,7 +106,7 @@ States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
-- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. "Walk Station" option opens walkable interior. "Ship Customization" opens the ShipCustomizationOverlay for equipping/swapping ship parts.
+- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
 - **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel. Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards (placeholder), and customization terminals (ship, avatar, vehicle). Station docking bays have four terminals: exit door, ship customization, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
@@ -174,10 +175,39 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 - **Landed ship**: Oval hull with cockpit and landing struts
 - **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
 
+### Ship Types
+The game has multiple ship types defined in `ShipTypeCatalog`. Each `ShipType` record specifies the hull's available equipment slots, sprite size, weight multiplier, base hull/fuel values, and buy/sell pricing.
+
+| Ship | Slots | Size | Weight | Base Hull | Base Fuel | Cost | Sell |
+|---|---|---|---|---|---|---|---|
+| Scout (starter) | 4 (Engine, Shield, FTL, Utility) | 32px | 1.0x | 80 | 80 | Free | 200 |
+| Fighter | 5 (Engine, Armor, Shield, Weapon×2) | 32px | 1.1x | 120 | 60 | 1500 | 750 |
+| Freighter | 6 (Engine, Armor, FTL, Utility×2, Weapon) | 48px | 1.4x | 200 | 160 | 3000 | 1500 |
+| Explorer | 7 (All slots) | 40px | 1.2x | 150 | 140 | 5000 | 2500 |
+
+**Weight system**: `PlayerData.GetCombinedStats()` divides acceleration and maxSpeed by the ship type's weight factor. Heavier ships are slower.
+
+**Base hull/fuel**: Ship type provides base hull and fuel values. Part bonuses add on top: `MaxHull = BaseHull + PartBonuses`, `MaxFuel = BaseFuel + PartBonuses`.
+
+**Dynamic sprite size**: `SolarSystemState` and `PlanetSurfaceState` read `CurrentShipType.SpriteSize` for rendering. Flame offset and size scale proportionally.
+
+**Switching ships**: `PlayerData.SwitchShipType()` moves incompatible parts to inventory, fills empty slots with tier-1 defaults, and preserves health/fuel as proportional percentages.
+
+### Ship Dealer
+The **ShipDealerOverlay** provides a UI for buying and trading in ship hulls. Available at station/settlement terminals and the station menu.
+
+- Left column: all ship types with quick stats and net pricing
+- Right column: detailed stats for selected ship with comparison to current ship (green = better, red = worse)
+- Slot breakdown shows gained (+) and lost (-) slots
+- Trade-in pricing: net cost = buy price − current ship's sell value
+- Buying triggers `SwitchShipType()` which handles part migration automatically
+
 ### Ship Customization
 Players can equip and swap ship parts at space stations via the **ShipCustomizationOverlay**. The system is defined in `ShipParts.cs` and integrated into `PlayerData`.
 
-**Equipment Slots** (7 total): Engine, Armor, Shield, FTL Drive, Weapon 1, Weapon 2, Utility.
+**Equipment Slots**: Variable per ship type (4–7). Defined by `ShipType.AvailableSlots`. The `ShipCustomizationOverlay` dynamically adjusts its slot list and panel height when opened based on `CurrentShipType`.
+
+**Slot Types** (8 possible): Engine, Armor, Shield, FTL Drive, Weapon 1, Weapon 2, Utility, Utility 2.
 
 **Part Tiers**: Each slot type has 3 tiers of parts (Tier 1 = starter, Tier 3 = best). Parts are defined in `ShipPartCatalog` with buy cost, sell/trade-in value, name, description, and stat bonuses.
 
@@ -196,7 +226,7 @@ Players can equip and swap ship parts at space stations via the **ShipCustomizat
 
 **Ownership model**: Once a part is purchased, the player owns it permanently. Owned parts are stored in `PlayerData.OwnedParts` (inventory). Swapping between owned parts is free — the old part returns to inventory. Players can sell owned (unequipped) parts manually for their sell value.
 
-**How combined stats work**: `PlayerData.GetCombinedStats()` sums the stats of all equipped parts. SolarSystemState reads acceleration/maxSpeed/rotationSpeed each frame. GalaxyMapState reads FTL range for jump distance and range circle. `TrySpendFuel()` applies fuel efficiency.
+**How combined stats work**: `PlayerData.GetCombinedStats()` sums the stats of all equipped parts, then divides acceleration/maxSpeed by the ship type's weight factor. SolarSystemState reads acceleration/maxSpeed/rotationSpeed each frame. GalaxyMapState reads FTL range for jump distance and range circle. `TrySpendFuel()` applies fuel efficiency.
 
 **UI**: Two-column overlay — left column lists equipped slots, right column shows available parts for the selected slot. Parts show status tags: [EQUIPPED], [OWNED] (free to equip), or a credit cost (must buy). Stat comparison shown for selected parts (green = better, red = worse). Press Enter to equip/buy, X to sell owned parts.
 
@@ -259,13 +289,14 @@ Both station docking bays and settlement landing pads contain customization term
 | Terminal | Color (world) | Color (minimap) | InteractableType |
 |---|---|---|---|
 | Exit Door | Green | Green | ExitDoor |
-| Ship Customization | Gold (255,200,0) | Gold | ShipCustomization |
+| Ship Customization | Cyan (100,220,255) | Cyan | ShipCustomization |
+| Ship Dealer | Gold (255,200,80) | Gold | ShipDealer |
 | Avatar Customization | Cyan (0,200,200) | Cyan | AvatarCustomization |
 | Vehicle Customization | Orange (200,120,0) | Orange | VehicleCustomization |
 
-**Settlement landing pads** — same terminal types: Ship Customization near the exit, Avatar and Vehicle Customization at the top of the pad.
+**Settlement landing pads** — same terminal types plus Ship Dealer: Ship Customization and Ship Dealer near the exit, Avatar and Vehicle Customization at the top of the pad.
 
-All three customization types are also accessible from the **SpaceStationState** menu (without walking to a terminal).
+All customization types and the ship dealer are also accessible from the **SpaceStationState** menu (without walking to a terminal).
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
@@ -343,7 +374,8 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Terrain tile variation with detail sprites
 - [x] Walkable interiors for stations and settlements (rooms, NPCs, trade, repair, missions)
 - [x] Player vehicle for planet surface exploration (mount/dismount, 3x speed)
-- [x] Ship customization system (7 equipment slots, 3 tiers, dynamic ship stats)
+- [x] Ship customization system (dynamic equipment slots per ship type, 3 tiers, dynamic ship stats)
+- [x] Multiple ship types (Scout, Fighter, Freighter, Explorer) with ship dealer UI
 - [x] Avatar customization system (3 equipment slots, 3 tiers, dynamic walk speed)
 - [x] Vehicle customization system (3 equipment slots, 3 tiers, dynamic vehicle physics)
 - [x] Customization terminals in station interiors (ship, avatar, vehicle)
@@ -356,4 +388,3 @@ dotnet run -- 12345  # with specific galaxy seed
 - [ ] Save/load game
 - [ ] FTL travel animation
 - [ ] Asteroid mining/collection
-- [ ] Multiple ship types

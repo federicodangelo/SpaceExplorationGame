@@ -91,7 +91,8 @@ public enum InteractableType
     ExitDoor,
     ShipCustomization,
     AvatarCustomization,
-    VehicleCustomization
+    VehicleCustomization,
+    ShipDealer
 }
 
 /// <summary>
@@ -301,6 +302,16 @@ public static class InteriorGenerator
         });
         data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + 1] = InteriorTileType.Console;
 
+        // Ship dealer terminal (left side of docking room)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "SHIP DEALER",
+            Type = InteractableType.ShipDealer,
+            TileX = docking.X + docking.Width / 2 - 2,
+            TileY = docking.Y + docking.Height - 2
+        });
+        data.Tiles[docking.X + docking.Width / 2 - 2, docking.Y + docking.Height - 2] = InteriorTileType.Console;
+
         // Place NPCs
         PlaceStationNpcs(data, rng);
 
@@ -424,6 +435,16 @@ public static class InteriorGenerator
             TileY = landing.Y + 1
         });
         data.Tiles[landing.CenterX + 2, landing.Y + 1] = InteriorTileType.Console;
+
+        // Ship dealer terminal (left side of landing pad)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "SHIP DEALER",
+            Type = InteractableType.ShipDealer,
+            TileX = landing.CenterX - 2,
+            TileY = landing.Y + landing.Height - 2
+        });
+        data.Tiles[landing.CenterX - 2, landing.Y + landing.Height - 2] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);

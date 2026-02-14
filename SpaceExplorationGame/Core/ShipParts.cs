@@ -1,6 +1,65 @@
 namespace SpaceExplorationGame.Core;
 
 /// <summary>
+/// A ship type template that defines the hull's characteristics and available slots.
+/// </summary>
+public record ShipType(
+    string Id,
+    string Name,
+    string Description,
+    ShipSlotType[] AvailableSlots,
+    int SpriteSize,       // pixels (32 = small, 40 = medium, 48 = large)
+    float Weight,         // multiplier on acceleration/maxSpeed (1.0 = baseline)
+    float BaseHull,       // base hull points before armor parts
+    float BaseFuel,       // base fuel capacity before FTL drive parts
+    int BuyCost,          // credits to purchase (0 = starter ship, free)
+    int SellValue         // credits received when trading in
+);
+
+/// <summary>
+/// Catalog of available ship types.
+/// </summary>
+public static class ShipTypeCatalog
+{
+    public static readonly ShipType Scout = new(
+        "scout", "Scout", "Light reconnaissance craft. Fast and nimble but limited.",
+        [ShipSlotType.Engine, ShipSlotType.Shield, ShipSlotType.FtlDrive, ShipSlotType.Utility],
+        SpriteSize: 32, Weight: 1.0f, BaseHull: 80f, BaseFuel: 80f,
+        BuyCost: 0, SellValue: 200
+    );
+
+    public static readonly ShipType Fighter = new(
+        "fighter", "Fighter", "Combat vessel with dual weapon mounts. Tough but short-range.",
+        [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.Weapon1, ShipSlotType.Weapon2],
+        SpriteSize: 32, Weight: 1.1f, BaseHull: 120f, BaseFuel: 60f,
+        BuyCost: 1500, SellValue: 750
+    );
+
+    public static readonly ShipType Freighter = new(
+        "freighter", "Freighter", "Heavy hauler with extra cargo space. Slow but durable.",
+        [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.FtlDrive, ShipSlotType.Utility, ShipSlotType.Utility2, ShipSlotType.Weapon1],
+        SpriteSize: 48, Weight: 1.4f, BaseHull: 200f, BaseFuel: 160f,
+        BuyCost: 3000, SellValue: 1500
+    );
+
+    public static readonly ShipType Explorer = new(
+        "explorer", "Explorer", "Versatile deep-space vessel. All slots, balanced performance.",
+        [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.FtlDrive,
+         ShipSlotType.Weapon1, ShipSlotType.Weapon2, ShipSlotType.Utility],
+        SpriteSize: 40, Weight: 1.2f, BaseHull: 150f, BaseFuel: 140f,
+        BuyCost: 5000, SellValue: 2500
+    );
+
+    public static readonly ShipType[] AllTypes = [Scout, Fighter, Freighter, Explorer];
+
+    public static ShipType? GetById(string id) =>
+        Array.Find(AllTypes, t => t.Id == id);
+
+    /// <summary>The player starts with a Scout.</summary>
+    public static ShipType StarterShip => Scout;
+}
+
+/// <summary>
 /// Ship equipment slot types.
 /// </summary>
 public enum ShipSlotType
@@ -11,7 +70,8 @@ public enum ShipSlotType
     FtlDrive,
     Weapon1,
     Weapon2,
-    Utility
+    Utility,
+    Utility2
 }
 
 /// <summary>
@@ -149,20 +209,31 @@ public static class ShipPartCatalog
             // Weapon slots can use any weapon part
             ShipSlotType.Weapon1 or ShipSlotType.Weapon2 =>
                 Array.FindAll(AllParts, p => p.Slot is ShipSlotType.Weapon1 or ShipSlotType.Weapon2),
+            ShipSlotType.Utility or ShipSlotType.Utility2 =>
+                Array.FindAll(AllParts, p => p.Slot is ShipSlotType.Utility or ShipSlotType.Utility2),
             _ => Array.FindAll(AllParts, p => p.Slot == slot)
         };
 
-    /// <summary>Get the default starter loadout.</summary>
-    public static Dictionary<ShipSlotType, ShipPart> GetStarterLoadout() => new()
+    /// <summary>Get the default starter loadout for a given ship type.</summary>
+    public static Dictionary<ShipSlotType, ShipPart> GetStarterLoadout(ShipType shipType)
     {
-        [ShipSlotType.Engine]   = GetById("engine_basic")!,
-        [ShipSlotType.Armor]    = GetById("armor_basic")!,
-        [ShipSlotType.Shield]   = GetById("shield_basic")!,
-        [ShipSlotType.FtlDrive] = GetById("ftl_basic")!,
-        [ShipSlotType.Weapon1]  = GetById("weapon_laser")!,
-        [ShipSlotType.Weapon2]  = GetById("weapon_none")!,
-        [ShipSlotType.Utility]  = GetById("util_scanner")!,
-    };
+        var loadout = new Dictionary<ShipSlotType, ShipPart>();
+        foreach (var slot in shipType.AvailableSlots)
+        {
+            loadout[slot] = slot switch
+            {
+                ShipSlotType.Engine   => GetById("engine_basic")!,
+                ShipSlotType.Armor    => GetById("armor_basic")!,
+                ShipSlotType.Shield   => GetById("shield_basic")!,
+                ShipSlotType.FtlDrive => GetById("ftl_basic")!,
+                ShipSlotType.Weapon1  => GetById("weapon_laser")!,
+                ShipSlotType.Weapon2  => GetById("weapon_none")!,
+                ShipSlotType.Utility or ShipSlotType.Utility2  => GetById("util_none")!,
+                _ => GetById("util_none")!,
+            };
+        }
+        return loadout;
+    }
 
     /// <summary>Slot display names.</summary>
     public static string GetSlotName(ShipSlotType slot) => slot switch
@@ -174,6 +245,7 @@ public static class ShipPartCatalog
         ShipSlotType.Weapon1  => "WEAPON 1",
         ShipSlotType.Weapon2  => "WEAPON 2",
         ShipSlotType.Utility  => "UTILITY",
+        ShipSlotType.Utility2 => "UTILITY 2",
         _ => slot.ToString().ToUpper()
     };
 }

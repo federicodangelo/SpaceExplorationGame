@@ -254,9 +254,10 @@ public class SolarSystemState : GameState
         game.Player.ReturnMoonIndex = -1;
 
         // Create player ship
+        int shipSize = game.Player.CurrentShipType.SpriteSize;
         _playerShip = game.EcsWorld.Create(
             new Transform(shipStartPos),
-            ECS.Components.Sprite.ColoredRect(32, 32, 100, 255, 100),
+            ECS.Components.Sprite.ColoredRect(shipSize, shipSize, 100, 255, 100),
             new Velocity(GameConfig.ShipMaxSpeed),
             new PlayerControlled()
         );
@@ -576,17 +577,20 @@ public class SolarSystemState : GameState
         var shipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipSolar);
 
         // Engine flame when thrusting (draw behind ship, offset backward)
+        int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
         if (game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up))
         {
             var flameTex = game.Textures.GetTexture(Rendering.TextureManager.ShipFlame);
             float shipRad = shipTransform.Rotation * MathF.PI / 180f;
-            // Offset the flame 18px behind the ship's heading
-            var flamePos = shipTransform.Position - new Vector2(MathF.Cos(shipRad), MathF.Sin(shipRad)) * 18f;
-            renderer.DrawTexture(camera, flameTex, flamePos, 40, 40, shipTransform.Rotation);
+            // Offset the flame behind the ship's heading
+            float flameOffset = shipSpriteSize * 0.56f;
+            var flamePos = shipTransform.Position - new Vector2(MathF.Cos(shipRad), MathF.Sin(shipRad)) * flameOffset;
+            int flameSize = (int)(shipSpriteSize * 1.25f);
+            renderer.DrawTexture(camera, flameTex, flamePos, flameSize, flameSize, shipTransform.Rotation);
         }
 
         // Ship sprite (rotated to match heading)
-        renderer.DrawTexture(camera, shipTex, shipTransform.Position, 32, 32, shipTransform.Rotation);
+        renderer.DrawTexture(camera, shipTex, shipTransform.Position, shipSpriteSize, shipSpriteSize, shipTransform.Rotation);
 
         // --- HUD ---
         renderer.DrawRectScreen(0, 0, 280, 75, 0, 0, 0, 160);

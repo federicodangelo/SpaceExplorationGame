@@ -5,36 +5,35 @@ namespace SpaceExplorationGame.Core;
 /// </summary>
 public class PlayerData
 {
-    // Current ship template
-    public string ShipType { get; set; } = "starter";
-    public float ShipHealth { get; set; } = 100f;
-    public float ShipMaxHealth { get; set; } = 100f;
-    public float ShipFuel { get; set; } = 100f;
-    public float ShipMaxFuel { get; set; } = 100f;
+    // Current ship
+    public ShipType CurrentShipType { get; set; } = ShipTypeCatalog.StarterShip;
+    public float ShipHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
+    public float ShipMaxHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
+    public float ShipFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
+    public float ShipMaxFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
 
     // Ship equipment
-    public Dictionary<ShipSlotType, ShipPart> EquippedParts { get; set; } = ShipPartCatalog.GetStarterLoadout();
+    public Dictionary<ShipSlotType, ShipPart> EquippedParts { get; set; } = ShipPartCatalog.GetStarterLoadout(ShipTypeCatalog.StarterShip);
 
     /// <summary>Parts the player owns but are not currently equipped (inventory).</summary>
     public List<ShipPart> OwnedParts { get; set; } = new();
 
-    /// <summary>Recalculate derived stats from equipped parts. Call after changing parts.</summary>
+    /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>
     public void RecalculateShipStats()
     {
         var stats = GetCombinedStats();
 
-        float oldMaxHealth = ShipMaxHealth;
-        float oldMaxFuel = ShipMaxFuel;
-
-        ShipMaxHealth = stats.MaxHull > 0 ? stats.MaxHull : 100f;
-        ShipMaxFuel = stats.MaxFuel > 0 ? stats.MaxFuel : 100f;
+        // Hull = ship base hull + part bonuses
+        ShipMaxHealth = CurrentShipType.BaseHull + stats.MaxHull;
+        // Fuel = ship base fuel + part bonuses
+        ShipMaxFuel = CurrentShipType.BaseFuel + stats.MaxFuel;
 
         // Clamp current values to new maximums
         ShipHealth = Math.Min(ShipHealth, ShipMaxHealth);
         ShipFuel = Math.Min(ShipFuel, ShipMaxFuel);
     }
 
-    /// <summary>Sum up stats from all equipped parts.</summary>
+    /// <summary>Sum up stats from all equipped parts. Acceleration/MaxSpeed are reduced by ship weight.</summary>
     public ShipPartStats GetCombinedStats()
     {
         float accel = 0, maxSpd = 0, rot = 0, hull = 0, fuel = 0, ftl = 0;
@@ -54,6 +53,11 @@ public class PlayerData
             fuelEff += s.FuelEfficiency;
         }
 
+        // Apply ship weight: heavier ships are slower
+        float weight = CurrentShipType.Weight;
+        accel /= weight;
+        maxSpd /= weight;
+
         return new ShipPartStats(accel, maxSpd, rot, hull, fuel, ftl, shield, dmg, fuelEff);
     }
 
@@ -66,6 +70,50 @@ public class PlayerData
         if (ShipFuel < actual) return false;
         ShipFuel -= actual;
         return true;
+    }
+
+    /// <summary>Switch to a new ship type. Moves incompatible parts to inventory and fills empty slots with defaults.</summary>
+    public void SwitchShipType(ShipType newType)
+    {
+        var oldType = CurrentShipType;
+        CurrentShipType = newType;
+
+        var newSlots = new HashSet<ShipSlotType>(newType.AvailableSlots);
+        var newEquipped = new Dictionary<ShipSlotType, ShipPart>();
+
+        // Keep parts that fit the new ship's slots
+        foreach (var (slot, part) in EquippedParts)
+        {
+            if (newSlots.Contains(slot))
+            {
+                newEquipped[slot] = part;
+            }
+            else
+            {
+                // Part doesn't fit new ship → move to inventory (skip tier-0 empties)
+                if (part.Tier > 0)
+                    OwnedParts.Add(part);
+            }
+        }
+
+        // Fill empty slots with starter parts
+        var starterLoadout = ShipPartCatalog.GetStarterLoadout(newType);
+        foreach (var slot in newType.AvailableSlots)
+        {
+            if (!newEquipped.ContainsKey(slot))
+                newEquipped[slot] = starterLoadout[slot];
+        }
+
+        EquippedParts = newEquipped;
+
+        // Recalculate and restore health/fuel proportionally
+        float healthPct = ShipMaxHealth > 0 ? ShipHealth / ShipMaxHealth : 1f;
+        float fuelPct = ShipMaxFuel > 0 ? ShipFuel / ShipMaxFuel : 1f;
+
+        RecalculateShipStats();
+
+        ShipHealth = ShipMaxHealth * healthPct;
+        ShipFuel = ShipMaxFuel * fuelPct;
     }
 
     /// <summary>Refuel up to max capacity.</summary>
@@ -87,7 +135,7 @@ public class PlayerData
     public int ReturnMoonIndex { get; set; } = -1;        // which moon within that planet
 
     // Credits
-    public int Credits { get; set; } = 1000;
+    public int Credits { get; set; } = 10000;
 
     // Vehicle
     public bool HasVehicle { get; set; } = true;   // player starts with a vehicle

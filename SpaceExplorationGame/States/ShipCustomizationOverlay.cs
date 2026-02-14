@@ -5,33 +5,35 @@ namespace SpaceExplorationGame.States;
 
 /// <summary>
 /// Ship customization overlay — thin subclass of CustomizationOverlayBase.
+/// Slot list is dynamic based on the player's current ship type.
 /// </summary>
 public class ShipCustomizationOverlay : CustomizationOverlayBase
 {
-    private static readonly ShipSlotType[] SlotOrder =
-    [
-        ShipSlotType.Engine,
-        ShipSlotType.Armor,
-        ShipSlotType.Shield,
-        ShipSlotType.FtlDrive,
-        ShipSlotType.Weapon1,
-        ShipSlotType.Weapon2,
-        ShipSlotType.Utility
-    ];
+    private ShipSlotType[] _slots = [];
 
-    protected override string Title => "SHIP CUSTOMIZATION";
+    protected override string Title => _currentShipName;
     protected override (byte R, byte G, byte B) TitleColor => (100, 220, 255);
-    protected override float PanelHeight => 620;
-    protected override int SlotCount => SlotOrder.Length;
+    protected override float PanelHeight => 200 + _slots.Length * 55;
+    protected override int SlotCount => _slots.Length;
+
+    private string _currentShipName = "SHIP CUSTOMIZATION";
+
+    /// <summary>Open overlay, refreshing available slots from the player's current ship type.</summary>
+    public void Open(PlayerData player)
+    {
+        _slots = player.CurrentShipType.AvailableSlots;
+        _currentShipName = $"{player.CurrentShipType.Name.ToUpper()} CUSTOMIZATION";
+        Open();
+    }
 
     protected override string GetSlotName(int slotIndex) =>
-        ShipPartCatalog.GetSlotName(SlotOrder[slotIndex]);
+        ShipPartCatalog.GetSlotName(_slots[slotIndex]);
 
     protected override ICustomizablePart? GetEquippedPart(PlayerData player, int slotIndex) =>
-        player.EquippedParts.TryGetValue(SlotOrder[slotIndex], out var part) ? part : null;
+        player.EquippedParts.TryGetValue(_slots[slotIndex], out var part) ? part : null;
 
     protected override ICustomizablePart[] GetAvailablePartsForSlot(int slotIndex) =>
-        ShipPartCatalog.GetPartsForSlot(SlotOrder[slotIndex]);
+        ShipPartCatalog.GetPartsForSlot(_slots[slotIndex]);
 
     protected override bool IsPartOwned(PlayerData player, ICustomizablePart part)
     {
@@ -45,7 +47,7 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
 
     protected override void PerformEquip(PlayerData player, int slotIndex, ICustomizablePart newPart)
     {
-        var slot = SlotOrder[slotIndex];
+        var slot = _slots[slotIndex];
         player.EquippedParts.TryGetValue(slot, out var current);
 
         // Remove new part from inventory if owned
