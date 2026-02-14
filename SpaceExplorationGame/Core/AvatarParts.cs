@@ -22,7 +22,7 @@ public record AvatarPart(
     int SellValue,
     string Description,
     AvatarPartStats Stats
-);
+) : ICustomizablePart;
 
 /// <summary>
 /// Stat modifiers provided by an avatar part.

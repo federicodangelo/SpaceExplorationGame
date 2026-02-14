@@ -22,6 +22,7 @@ SpaceExplorationGame/
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   ├── PlayerData.cs              # Persistent player data across state changes
+│   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── ShipParts.cs               # Ship equipment data model, stats, and part catalog
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   └── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
@@ -56,12 +57,13 @@ SpaceExplorationGame/
 │   ├── PlanetLandingState.cs      # Orbital landing site selection
 │   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
 │   ├── InteriorState.cs           # Walkable station/settlement interiors
-│   └── ServiceOverlays.cs         # Reusable overlays (ServiceMenuOverlay)
+│   ├── ServiceOverlays.cs         # Reusable overlays (ServiceMenuOverlay)
+│   ├── CustomizationOverlayBase.cs # Abstract base for all customization overlays
+│   ├── ShipCustomizationOverlay.cs # Ship equipment management UI
+│   ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
+│   └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
 └── UI/
-    ├── MenuWidget.cs              # Reusable scrollable menu widget
-    ├── ShipCustomizationOverlay.cs # Ship equipment management UI
-    ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
-    └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
+    └── MenuWidget.cs              # Reusable scrollable menu widget
 ```
 
 ## Command Line Options
@@ -237,21 +239,33 @@ Players can equip and swap vehicle parts at **Vehicle Customization** terminals 
 **Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceState`, the `VehicleMovementSystem` is created with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction). Falls back to `GameConfig` defaults if a stat is zero.
 
 ### Customization UI Pattern
-All three customization overlays (Ship, Avatar, Vehicle) share the same UI pattern:
+All three customization overlays (Ship, Avatar, Vehicle) inherit from `CustomizationOverlayBase`, which provides the full two-column UI layout, input handling, equip/buy/sell logic, and rendering. Each part record (`ShipPart`, `AvatarPart`, `VehiclePart`) implements the `ICustomizablePart` interface. Subclasses only supply:
+- Title, title color, panel height, slot definitions
+- Data access (equipped parts dictionary, inventory list, catalog lookup)
+- Equip/sell operations on the correct PlayerData collections
+- Stat comparison rendering (type-specific stat diffs)
+
+Shared UI features:
 - Two-column layout: equipped slots (left) → available parts for selected slot (right)
 - Status tags: **[EQUIPPED]** (cyan), **[OWNED]** (green, free to equip), **price** (yellow, must buy)
 - Stat comparison panel with color-coded deltas (green = improvement, red = worse)
-- Controls: Tab = switch columns, Enter = equip/buy, X = sell owned unequipped part, Escape = close
-- Each overlay is opened by pressing E near the corresponding terminal in a station interior
+- Controls: Enter = equip/buy, X = sell owned unequipped part, Escape = close, Arrow keys = navigate
+- Each overlay is opened by pressing E near the corresponding terminal in an interior, or from the station menu
 
-### Customization Terminals in Station Interiors
-Station docking bays contain four terminals placed in a row near the landing pad:
+### Customization Terminals in Interiors
+Both station docking bays and settlement landing pads contain customization terminals:
+
+**Station docking bays** — four terminals near the landing pad:
 | Terminal | Color (world) | Color (minimap) | InteractableType |
 |---|---|---|---|
 | Exit Door | Green | Green | ExitDoor |
 | Ship Customization | Gold (255,200,0) | Gold | ShipCustomization |
 | Avatar Customization | Cyan (0,200,200) | Cyan | AvatarCustomization |
 | Vehicle Customization | Orange (200,120,0) | Orange | VehicleCustomization |
+
+**Settlement landing pads** — same terminal types: Ship Customization near the exit, Avatar and Vehicle Customization at the top of the pad.
+
+All three customization types are also accessible from the **SpaceStationState** menu (without walking to a terminal).
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 

@@ -26,7 +26,7 @@ public record ShipPart(
     int SellValue,
     string Description,
     ShipPartStats Stats
-);
+) : ICustomizablePart;
 
 /// <summary>
 /// Stat modifiers provided by a ship part.

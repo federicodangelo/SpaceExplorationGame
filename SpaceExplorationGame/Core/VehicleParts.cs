@@ -22,7 +22,7 @@ public record VehiclePart(
     int SellValue,
     string Description,
     VehiclePartStats Stats
-);
+) : ICustomizablePart;
 
 /// <summary>
 /// Stat modifiers provided by a vehicle part.
