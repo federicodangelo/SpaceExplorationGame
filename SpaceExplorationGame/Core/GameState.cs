@@ -9,6 +9,7 @@ public enum GameStateType
     GalaxyMap,
     SolarSystem,
     SpaceStation,
+    PlanetLanding,
     PlanetSurface
 }
 

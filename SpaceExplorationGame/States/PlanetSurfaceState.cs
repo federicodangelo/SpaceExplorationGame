@@ -24,11 +24,16 @@ public class PlanetSurfaceState : GameState
     private const float AvatarSpeed = 120f;
     private const float BoardShipRadius = 30f;
 
+    // Landing site (tile coordinates, -1 = default center)
+    private readonly int _landingTileX;
+    private readonly int _landingTileY;
 
-    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet)
+    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1)
     {
         _starSystem = starSystem;
         _planet = planet;
+        _landingTileX = landingTileX;
+        _landingTileY = landingTileY;
     }
 
     public override void Enter(Game game)
@@ -37,9 +42,11 @@ public class PlanetSurfaceState : GameState
         var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
         _surfaceData = PlanetSurfaceGenerator.Generate(rng, _planet);
 
-        // Place player avatar at landing zone
-        float lzX = _surfaceData.LandingZone.X * GameConfig.TileSize;
-        float lzY = _surfaceData.LandingZone.Y * GameConfig.TileSize;
+        // Place player avatar at landing zone (use chosen site or default center)
+        int lzTileX = _landingTileX >= 0 ? _landingTileX : _surfaceData.LandingZone.X;
+        int lzTileY = _landingTileY >= 0 ? _landingTileY : _surfaceData.LandingZone.Y;
+        float lzX = lzTileX * GameConfig.TileSize;
+        float lzY = lzTileY * GameConfig.TileSize;
 
         _playerAvatar = game.EcsWorld.Create(
             new Transform(lzX, lzY),

@@ -39,6 +39,7 @@ SpaceExplorationGame/
     ├── GalaxyMapState.cs          # Galaxy overview with star system selection
     ├── SolarSystemState.cs        # Space flight within a solar system
     ├── SpaceStationState.cs       # Menu-based space station interaction
+    ├── PlanetLandingState.cs      # Orbital landing site selection
     └── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
 ```
 
@@ -51,7 +52,8 @@ States:
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Unified nearest-center interaction detection.
 - **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking.
-- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Press E near ship to board.
+- **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
+- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board.
 
 ### Procedural Generation Seed Hierarchy
 ```
@@ -106,8 +108,16 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - A/D or Left/Right: Rotate ship
 - S/Down: Brake
 - Mouse Scroll: Zoom
-- E: Interact (land on planet / dock at station)
+- E: Interact (enter orbit view for planets / dock at station)
 - M: Return to galaxy map
+
+### Planet Landing (Orbital View)
+- Click: Select landing site
+- WASD/Arrows: Nudge cursor
+- Mouse Scroll: Zoom map
+- Left-Drag: Pan map
+- Enter/E: Confirm landing
+- Escape: Cancel (return to solar system)
 
 ### Space Station
 - Up/Down or W/S: Navigate menu
@@ -142,6 +152,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Global time for deterministic orbit positions across state changes
 - [x] Moon landing support (moons are fully explorable surfaces)
 - [x] Unified nearest-center interaction detection
+- [x] Orbital landing site selection (planet overview map with terrain, settlements, cursor)
 - [x] Procedural pixel art textures (ships, planets, stars, stations, avatar, asteroids)
 - [x] HUD backgrounds for readability
 - [x] Terrain tile variation with detail sprites

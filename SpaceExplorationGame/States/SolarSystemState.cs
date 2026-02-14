@@ -472,17 +472,13 @@ public class SolarSystemState : GameState
             }
             else if (_nearbyPlanetIndex >= 0)
             {
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = _nearbyPlanetIndex;
-                game.ChangeState(new PlanetSurfaceState(_starSystem, _planets[_nearbyPlanetIndex]));
+                game.ChangeState(new PlanetLandingState(_starSystem, _planets[_nearbyPlanetIndex]));
             }
             else if (_nearbyMoonIndex >= 0)
             {
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromMoon;
-                game.Player.ReturnMoonPlanetIndex = _nearbyMoonPlanetIndex;
-                game.Player.ReturnMoonIndex = _nearbyMoonIndex;
                 var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
-                game.ChangeState(new PlanetSurfaceState(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex)));
+                game.ChangeState(new PlanetLandingState(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex),
+                    isMoon: true, moonPlanetIndex: _nearbyMoonPlanetIndex, moonIndex: _nearbyMoonIndex));
             }
         }
 
@@ -553,6 +549,15 @@ public class SolarSystemState : GameState
             {
                 renderer.DrawTexture(camera, _planetTextures[i], pTransform.Position,
                     texRenderSize, texRenderSize);
+            }
+
+            // Settlement indicator (small diamond below planet)
+            if (p.HasSettlement)
+            {
+                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
+                float sz = 3f;
+                // Draw a small yellow diamond
+                renderer.DrawFilledCircle(camera, indicatorPos, sz, 255, 210, 80, 220);
             }
 
             // Rings
@@ -632,24 +637,45 @@ public class SolarSystemState : GameState
         ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
         renderer.DrawTextScreen(10, 55, $"SPEED: {vel.Value.Length():F0}", 150, 150, 150, 1.5f);
 
-        // Interaction prompts
+        // Interaction prompts with body info
         if (_nearbyPlanetIndex >= 0)
         {
-            string planetName = _planets[_nearbyPlanetIndex].Name;
-            string text = $"[E] LAND ON {planetName.ToUpper()}";
-            float tw = renderer.MeasureText(text, 2f);
-            float tx = GameConfig.WindowWidth / 2 - tw / 2;
-            renderer.DrawRectScreen(tx - 10, GameConfig.WindowHeight - 70, tw + 20, 30, 0, 0, 0, 160);
-            renderer.DrawTextScreen(tx, GameConfig.WindowHeight - 60, text, 100, 255, 100, 2f);
+            var p = _planets[_nearbyPlanetIndex];
+            string action = $"[E] LAND ON {p.Name.ToUpper()}";
+            float tw = renderer.MeasureText(action, 2f);
+            float panelW = Math.Max(tw + 20, 320);
+            float panelH = 90;
+            float px = GameConfig.WindowWidth / 2f - panelW / 2f;
+            float py = GameConfig.WindowHeight - panelH - 15;
+            renderer.DrawRectScreen(px, py, panelW, panelH, 0, 0, 0, 180);
+
+            renderer.DrawTextScreen(px + 10, py + 6, action, 100, 255, 100, 2f);
+            renderer.DrawTextScreen(px + 10, py + 30, $"TYPE: {p.Type.ToString().ToUpper()}", 180, 180, 180, 1.5f);
+            string details = $"MOONS: {p.MoonCount}";
+            if (p.HasRings) details += "  RINGS: YES";
+            renderer.DrawTextScreen(px + 10, py + 48, details, 150, 150, 150, 1.5f);
+
+            byte sr = p.HasSettlement ? (byte)255 : (byte)120;
+            byte sg = p.HasSettlement ? (byte)220 : (byte)120;
+            byte sb = p.HasSettlement ? (byte)100 : (byte)120;
+            string settText = p.HasSettlement ? "SETTLEMENTS: YES" : "NO SETTLEMENTS";
+            renderer.DrawTextScreen(px + 10, py + 66, settText, sr, sg, sb, 1.5f);
         }
         else if (_nearbyMoonIndex >= 0)
         {
-            string moonName = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex].Name;
-            string text = $"[E] LAND ON {moonName.ToUpper()}";
-            float tw = renderer.MeasureText(text, 2f);
-            float tx = GameConfig.WindowWidth / 2 - tw / 2;
-            renderer.DrawRectScreen(tx - 10, GameConfig.WindowHeight - 70, tw + 20, 30, 0, 0, 0, 160);
-            renderer.DrawTextScreen(tx, GameConfig.WindowHeight - 60, text, 180, 255, 180, 2f);
+            var moon = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
+            var parent = _planets[_nearbyMoonPlanetIndex];
+            string action = $"[E] LAND ON {moon.Name.ToUpper()}";
+            float tw = renderer.MeasureText(action, 2f);
+            float panelW = Math.Max(tw + 20, 320);
+            float panelH = 72;
+            float px = GameConfig.WindowWidth / 2f - panelW / 2f;
+            float py = GameConfig.WindowHeight - panelH - 15;
+            renderer.DrawRectScreen(px, py, panelW, panelH, 0, 0, 0, 180);
+
+            renderer.DrawTextScreen(px + 10, py + 6, action, 180, 255, 180, 2f);
+            renderer.DrawTextScreen(px + 10, py + 30, $"TYPE: {moon.Type.ToString().ToUpper()}", 180, 180, 180, 1.5f);
+            renderer.DrawTextScreen(px + 10, py + 48, $"ORBITS: {parent.Name.ToUpper()}", 150, 150, 150, 1.5f);
         }
         else if (_nearbyStationIndex >= 0)
         {
