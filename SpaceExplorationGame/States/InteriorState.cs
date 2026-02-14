@@ -289,6 +289,9 @@ public class InteriorState : GameState
         var renderer = game.SpriteRenderer;
         var camera = game.Camera;
 
+        // Draw exterior background visible through Void tiles
+        RenderExteriorBackground(game, renderer, camera);
+
         // Draw tiles via shared renderer
         TileMapRenderer.RenderTiles(renderer, camera, _interior.Width, _interior.Height,
             (x, y) =>
@@ -489,6 +492,119 @@ public class InteriorState : GameState
 
         // Minimap
         RenderMinimap(renderer, game, w);
+    }
+
+    /// <summary>
+    /// Draws the exterior background visible through Void tiles.
+    /// Stations show space with stars; settlements show planet terrain.
+    /// </summary>
+    private void RenderExteriorBackground(Game game, SpriteRenderer renderer, Camera camera)
+    {
+        var (topLeft, bottomRight) = camera.GetVisibleBounds();
+
+        // Extend slightly beyond visible area
+        int margin = GameConfig.TileSize * 2;
+        float bgLeft = topLeft.X - margin;
+        float bgTop = topLeft.Y - margin;
+        float bgRight = bottomRight.X + margin;
+        float bgBottom = bottomRight.Y + margin;
+        float bgW = bgRight - bgLeft;
+        float bgH = bgBottom - bgTop;
+        var bgCenter = new Vector2(bgLeft + bgW / 2f, bgTop + bgH / 2f);
+
+        if (_interior.Type == InteriorType.Station)
+        {
+            // Space background: dark blue-black
+            renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, 4, 4, 12);
+
+            // Deterministic stars based on visible area
+            int starGridSize = 60; // a star roughly every 60px
+            int sx0 = (int)MathF.Floor(bgLeft / starGridSize) - 1;
+            int sy0 = (int)MathF.Floor(bgTop / starGridSize) - 1;
+            int sx1 = (int)MathF.Ceiling(bgRight / starGridSize) + 1;
+            int sy1 = (int)MathF.Ceiling(bgBottom / starGridSize) + 1;
+
+            for (int sx = sx0; sx <= sx1; sx++)
+            {
+                for (int sy = sy0; sy <= sy1; sy++)
+                {
+                    // Hash to get deterministic position and brightness
+                    int h = (sx * 374761393 + sy * 668265263) ^ (sx * 17 + sy * 31);
+                    if ((h & 3) != 0) continue; // ~25% density
+
+                    float px = sx * starGridSize + ((h >> 4) & 0x3F) - 32;
+                    float py = sy * starGridSize + ((h >> 10) & 0x3F) - 32;
+
+                    // Star brightness and color variation
+                    int bright = 80 + ((h >> 16) & 0x7F); // 80-207
+                    byte sr = (byte)Math.Min(255, bright + ((h >> 2) & 0x1F));
+                    byte sg = (byte)Math.Min(255, bright + ((h >> 5) & 0x0F));
+                    byte sb = (byte)Math.Min(255, bright + ((h >> 8) & 0x2F));
+
+                    int starSize = ((h >> 20) & 1) == 0 ? 2 : 1; // most stars are 1px, some 2px
+                    renderer.DrawRect(camera, new Vector2(px, py), starSize, starSize, sr, sg, sb);
+                }
+            }
+        }
+        else
+        {
+            // Settlement exterior: planet terrain color
+            byte tr = _planet?.R ?? 80;
+            byte tg = _planet?.G ?? 120;
+            byte tb = _planet?.B ?? 60;
+
+            // Darken slightly (it's ground seen from inside)
+            tr = (byte)(tr * 0.4f);
+            tg = (byte)(tg * 0.4f);
+            tb = (byte)(tb * 0.4f);
+
+            // Base terrain fill
+            renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, tr, tg, tb);
+
+            // Terrain detail: scattered dots for ground texture
+            int detailGridSize = 40;
+            int dx0 = (int)MathF.Floor(bgLeft / detailGridSize) - 1;
+            int dy0 = (int)MathF.Floor(bgTop / detailGridSize) - 1;
+            int dx1 = (int)MathF.Ceiling(bgRight / detailGridSize) + 1;
+            int dy1 = (int)MathF.Ceiling(bgBottom / detailGridSize) + 1;
+
+            for (int dx = dx0; dx <= dx1; dx++)
+            {
+                for (int dy = dy0; dy <= dy1; dy++)
+                {
+                    int h = (dx * 374761393 + dy * 668265263) ^ (dx * 13 + dy * 29);
+                    if ((h & 7) > 2) continue; // ~37% density
+
+                    float px = dx * detailGridSize + ((h >> 4) & 0x1F) - 16;
+                    float py = dy * detailGridSize + ((h >> 10) & 0x1F) - 16;
+
+                    // Slight color variation
+                    int var_ = ((h >> 16) & 0x1F) - 16;
+                    byte dr = (byte)Math.Clamp(tr + var_, 0, 255);
+                    byte dg = (byte)Math.Clamp(tg + var_, 0, 255);
+                    byte db = (byte)Math.Clamp(tb + var_, 0, 255);
+
+                    renderer.DrawRect(camera, new Vector2(px, py), 3, 3, dr, dg, db);
+                }
+            }
+        }
+
+        // Draw interior boundary outline to make the structure edges visible
+        float interiorPixelW = _interior.Width * GameConfig.TileSize;
+        float interiorPixelH = _interior.Height * GameConfig.TileSize;
+        var tl = new Vector2(0, 0);
+        var tr2 = new Vector2(interiorPixelW, 0);
+        var bl = new Vector2(0, interiorPixelH);
+        var br = new Vector2(interiorPixelW, interiorPixelH);
+
+        byte lr = _interior.Type == InteriorType.Station ? (byte)40 : (byte)50;
+        byte lg = _interior.Type == InteriorType.Station ? (byte)50 : (byte)45;
+        byte lb = _interior.Type == InteriorType.Station ? (byte)80 : (byte)35;
+
+        renderer.DrawLine(camera, tl, tr2, lr, lg, lb);
+        renderer.DrawLine(camera, tr2, br, lr, lg, lb);
+        renderer.DrawLine(camera, br, bl, lr, lg, lb);
+        renderer.DrawLine(camera, bl, tl, lr, lg, lb);
     }
 
     private void RenderDialogue(SpriteRenderer renderer, int w, int h)
