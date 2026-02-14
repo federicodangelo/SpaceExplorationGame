@@ -30,6 +30,12 @@ public class PlayerData
     public int CurrentStarSystemIndex { get; set; } = -1;
     public int CurrentPlanetIndex { get; set; } = -1;
 
+    // Return context: where to place the player when re-entering the solar system
+    public enum ReturnContext { Default, FromStation, FromPlanet }
+    public ReturnContext SolarSystemReturnContext { get; set; } = ReturnContext.Default;
+    public int ReturnStationIndex { get; set; } = -1;
+    public int ReturnPlanetIndex { get; set; } = -1;
+
     // Credits
     public int Credits { get; set; } = 1000;
 }

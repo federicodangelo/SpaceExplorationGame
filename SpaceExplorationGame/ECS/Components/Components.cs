@@ -84,13 +84,15 @@ public struct Orbit
     public Arch.Core.Entity Parent;    // entity being orbited
     public float OrbitRadius;          // distance from parent center
     public float OrbitSpeed;           // radians per second
-    public float CurrentAngle;         // current angle in radians
+    public float BaseAngle;            // angle at globalTime=0 (for deterministic position)
+    public float CurrentAngle;         // current computed angle in radians
 
     public Orbit(Arch.Core.Entity parent, float radius, float speed, float startAngle)
     {
         Parent = parent;
         OrbitRadius = radius;
         OrbitSpeed = speed;
+        BaseAngle = startAngle;
         CurrentAngle = startAngle;
     }
 }

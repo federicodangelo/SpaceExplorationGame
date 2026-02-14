@@ -26,8 +26,8 @@ public class SolarSystemState : GameState
     private List<Entity> _stationEntities = [];
     private List<List<Entity>> _moonEntities = [];
 
-    // Asteroid entities (for visual)
-    private List<(float Angle, float Radius, float Speed, float Size)> _asteroids = [];
+    // Asteroid entities (for visual) — stores base angles, positions computed from globalTime
+    private List<(float BaseAngle, float Radius, float Speed, float Size)> _asteroids = [];
 
     // Interaction
     private int _nearbyPlanetIndex = -1;
@@ -53,6 +53,7 @@ public class SolarSystemState : GameState
         float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 center = new(centerX, centerY);
+        float time = (float)game.GlobalTime;
 
         // Create star entity (doubled for solar system view)
         float starDisplayRadius = _starSystem.StarRadius * 2f;
@@ -70,13 +71,13 @@ public class SolarSystemState : GameState
             new Label { Text = _starSystem.Name, OffsetY = (int)(starDisplayRadius + 15) }
         );
 
-        // Create planet entities
+        // Create planet entities — compute positions from global time
         _planetEntities.Clear();
         _moonEntities.Clear();
         for (int i = 0; i < _planets.Count; i++)
         {
             var planet = _planets[i];
-            float angle = planet.StartAngle;
+            float angle = planet.StartAngle + planet.OrbitSpeed * time;
             var pos = center + new Vector2(
                 MathF.Cos(angle) * planet.OrbitRadius,
                 MathF.Sin(angle) * planet.OrbitRadius
@@ -94,7 +95,7 @@ public class SolarSystemState : GameState
                     DataIndex = i,
                     HasSolidSurface = planet.HasSolidSurface
                 },
-                new Orbit(_starEntity, planet.OrbitRadius, planet.OrbitSpeed, angle),
+                new Orbit(_starEntity, planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle),
                 new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 10) }
             );
 
@@ -109,11 +110,11 @@ public class SolarSystemState : GameState
 
             _planetEntities.Add(planetEntity);
 
-            // Moons
+            // Moons — also computed from global time
             var moons = new List<Entity>();
             foreach (var moon in planet.Moons)
             {
-                float moonAngle = moon.StartAngle;
+                float moonAngle = moon.StartAngle + moon.OrbitSpeed * time;
                 var moonPos = pos + new Vector2(
                     MathF.Cos(moonAngle) * moon.OrbitRadius,
                     MathF.Sin(moonAngle) * moon.OrbitRadius
@@ -130,14 +131,14 @@ public class SolarSystemState : GameState
                         Radius = moon.Radius,
                         DataIndex = moon.Index
                     },
-                    new Orbit(planetEntity, moon.OrbitRadius, moon.OrbitSpeed, moonAngle)
+                    new Orbit(planetEntity, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle)
                 );
                 moons.Add(moonEntity);
             }
             _moonEntities.Add(moons);
         }
 
-        // Create space station entities
+        // Create space station entities — positions from global time
         _stationEntities.Clear();
         foreach (var station in _stations)
         {
@@ -152,7 +153,7 @@ public class SolarSystemState : GameState
             }
 
             var parentTransform = game.EcsWorld.Get<Transform>(parent);
-            float stAngle = station.StartAngle;
+            float stAngle = station.StartAngle + station.OrbitSpeed * time;
             var stPos = parentTransform.Position + new Vector2(
                 MathF.Cos(stAngle) * station.OrbitRadius,
                 MathF.Sin(stAngle) * station.OrbitRadius
@@ -168,7 +169,7 @@ public class SolarSystemState : GameState
                     Radius = 12,
                     DataIndex = station.Index
                 },
-                new Orbit(parent, station.OrbitRadius, station.OrbitSpeed, stAngle),
+                new Orbit(parent, station.OrbitRadius, station.OrbitSpeed, station.StartAngle),
                 new Label { Text = station.Name, OffsetY = 28 },
                 new Interactable
                 {
@@ -179,7 +180,7 @@ public class SolarSystemState : GameState
             _stationEntities.Add(stEntity);
         }
 
-        // Generate asteroid positions
+        // Generate asteroid positions (base angles, rendered from globalTime)
         var asteroidRng = new SeededRandom(rng.DeriveChildSeed(999));
         foreach (var belt in _asteroidBelts)
         {
@@ -194,8 +195,34 @@ public class SolarSystemState : GameState
             }
         }
 
+        // --- Determine player ship starting position ---
+        Vector2 shipStartPos;
+        var returnCtx = game.Player.SolarSystemReturnContext;
+
+        if (returnCtx == PlayerData.ReturnContext.FromStation && game.Player.ReturnStationIndex >= 0
+            && game.Player.ReturnStationIndex < _stationEntities.Count)
+        {
+            // Place ship exactly on the station the player just exited
+            shipStartPos = game.EcsWorld.Get<Transform>(_stationEntities[game.Player.ReturnStationIndex]).Position;
+        }
+        else if (returnCtx == PlayerData.ReturnContext.FromPlanet && game.Player.ReturnPlanetIndex >= 0
+            && game.Player.ReturnPlanetIndex < _planetEntities.Count)
+        {
+            // Place ship exactly on the planet the player just launched from
+            shipStartPos = game.EcsWorld.Get<Transform>(_planetEntities[game.Player.ReturnPlanetIndex]).Position;
+        }
+        else
+        {
+            // Default: start near the star
+            shipStartPos = center + new Vector2(400, 0);
+        }
+
+        // Clear return context
+        game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.Default;
+        game.Player.ReturnStationIndex = -1;
+        game.Player.ReturnPlanetIndex = -1;
+
         // Create player ship
-        var shipStartPos = center + new Vector2(400, 0); // Start near the star
         _playerShip = game.EcsWorld.Create(
             new Transform(shipStartPos),
             ECS.Components.Sprite.ColoredRect(32, 32, 100, 255, 100),
@@ -276,16 +303,16 @@ public class SolarSystemState : GameState
         // Move ship
         shipTransform.Position += shipVelocity.Value * dt;
 
-        // --- Update orbits ---
+        // --- Update orbits using global time (deterministic) ---
         float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
+        float time = (float)game.GlobalTime;
 
         var orbitQuery = new QueryDescription().WithAll<Transform, Orbit>();
         game.EcsWorld.Query(in orbitQuery, (Entity entity, ref Transform transform, ref Orbit orbit) =>
         {
-            orbit.CurrentAngle += orbit.OrbitSpeed * dt;
-            if (orbit.CurrentAngle > MathF.PI * 2) orbit.CurrentAngle -= MathF.PI * 2;
+            orbit.CurrentAngle = orbit.BaseAngle + orbit.OrbitSpeed * time;
 
             Vector2 parentPos;
             if (game.EcsWorld.IsAlive(orbit.Parent))
@@ -302,13 +329,6 @@ public class SolarSystemState : GameState
                 MathF.Sin(orbit.CurrentAngle) * orbit.OrbitRadius
             );
         });
-
-        // Update asteroid positions
-        for (int i = 0; i < _asteroids.Count; i++)
-        {
-            var (angle, radius, speed, size) = _asteroids[i];
-            _asteroids[i] = (angle + speed * dt, radius, speed, size);
-        }
 
         // --- Camera follows player ---
         camera.LerpTo(shipTransform.Position, 5f * dt);
@@ -352,10 +372,14 @@ public class SolarSystemState : GameState
         {
             if (_nearbyStationIndex >= 0)
             {
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
+                game.Player.ReturnStationIndex = _nearbyStationIndex;
                 game.ChangeState(new SpaceStationState(_starSystem, _stations[_nearbyStationIndex]));
             }
             else if (_nearbyPlanetIndex >= 0)
             {
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = _nearbyPlanetIndex;
                 game.ChangeState(new PlanetSurfaceState(_starSystem, _planets[_nearbyPlanetIndex]));
             }
         }
@@ -398,9 +422,11 @@ public class SolarSystemState : GameState
             renderer.DrawCircle(camera, starCenter, planet.OrbitRadius, 30, 30, 50, 60, 64);
         }
 
-        // Draw asteroids
-        foreach (var (angle, radius, speed, size) in _asteroids)
+        // Draw asteroids (computed from globalTime)
+        float asteroidTime = (float)game.GlobalTime;
+        foreach (var (baseAngle, radius, speed, size) in _asteroids)
         {
+            float angle = baseAngle + speed * asteroidTime;
             var pos = starCenter + new Vector2(MathF.Cos(angle) * radius, MathF.Sin(angle) * radius);
             renderer.DrawRect(camera, pos, (int)size, (int)size, 140, 120, 100);
         }

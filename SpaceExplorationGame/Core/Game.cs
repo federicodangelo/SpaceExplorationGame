@@ -32,6 +32,9 @@ public class Game : IDisposable
     // Player persistent data
     public PlayerData Player { get; } = new();
 
+    // Global simulation time (never resets, used for deterministic orbit positions)
+    public double GlobalTime { get; private set; }
+
     public bool IsRunning { get; private set; }
 
     public void Initialize(ulong? galaxySeed = null)
@@ -129,6 +132,7 @@ public class Game : IDisposable
             int steps = 0;
             while (accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
             {
+                GlobalTime += GameConfig.FixedTimeStep;
                 _currentState?.Update(this, GameConfig.FixedTimeStep);
                 accumulator -= GameConfig.FixedTimeStep;
                 steps++;
