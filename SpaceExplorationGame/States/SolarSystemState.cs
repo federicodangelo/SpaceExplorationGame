@@ -32,7 +32,7 @@ public class SolarSystemState : GameState
     // Interaction
     private int _nearbyPlanetIndex = -1;
     private int _nearbyStationIndex = -1;
-    private const float InteractionRadius = 40f;
+    private const float InteractionRadius = 80f;
 
     // Background stars
     private List<(float X, float Y, byte Brightness)> _bgStars = [];
@@ -54,19 +54,20 @@ public class SolarSystemState : GameState
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 center = new(centerX, centerY);
 
-        // Create star entity
+        // Create star entity (doubled for solar system view)
+        float starDisplayRadius = _starSystem.StarRadius * 2f;
         _starEntity = game.EcsWorld.Create(
             new Transform(center),
-            ECS.Components.Sprite.ColoredRect((int)(_starSystem.StarRadius * 2), (int)(_starSystem.StarRadius * 2),
+            ECS.Components.Sprite.ColoredRect((int)(starDisplayRadius * 2), (int)(starDisplayRadius * 2),
                 _starSystem.StarR, _starSystem.StarG, _starSystem.StarB),
             new CelestialBody
             {
                 Type = CelestialType.Star,
                 Name = _starSystem.Name,
-                Radius = _starSystem.StarRadius,
+                Radius = starDisplayRadius,
                 DataIndex = _starSystem.Index
             },
-            new Label { Text = _starSystem.Name, OffsetY = (int)(_starSystem.StarRadius + 15) }
+            new Label { Text = _starSystem.Name, OffsetY = (int)(starDisplayRadius + 15) }
         );
 
         // Create planet entities
@@ -159,16 +160,16 @@ public class SolarSystemState : GameState
 
             var stEntity = game.EcsWorld.Create(
                 new Transform(stPos),
-                ECS.Components.Sprite.ColoredRect(12, 12, 200, 200, 255),
+                ECS.Components.Sprite.ColoredRect(24, 24, 200, 200, 255),
                 new CelestialBody
                 {
                     Type = CelestialType.SpaceStation,
                     Name = station.Name,
-                    Radius = 6,
+                    Radius = 12,
                     DataIndex = station.Index
                 },
                 new Orbit(parent, station.OrbitRadius, station.OrbitSpeed, stAngle),
-                new Label { Text = station.Name, OffsetY = 16 },
+                new Label { Text = station.Name, OffsetY = 28 },
                 new Interactable
                 {
                     Type = InteractionType.DockAtStation,
@@ -187,17 +188,17 @@ public class SolarSystemState : GameState
                 _asteroids.Add((
                     asteroidRng.NextFloat(0, MathF.PI * 2),
                     asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
-                    asteroidRng.NextFloat(0.05f, 0.15f),
-                    asteroidRng.NextFloat(2, 5)
+                    asteroidRng.NextFloat(0.002f, 0.008f),
+                    asteroidRng.NextFloat(4, 10)
                 ));
             }
         }
 
         // Create player ship
-        var shipStartPos = center + new Vector2(200, 0); // Start near the star
+        var shipStartPos = center + new Vector2(400, 0); // Start near the star
         _playerShip = game.EcsWorld.Create(
             new Transform(shipStartPos),
-            ECS.Components.Sprite.ColoredRect(16, 16, 100, 255, 100),
+            ECS.Components.Sprite.ColoredRect(32, 32, 100, 255, 100),
             new Velocity(GameConfig.ShipMaxSpeed),
             new PlayerControlled()
         );

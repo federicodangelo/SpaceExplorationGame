@@ -88,13 +88,13 @@ public static class SolarSystemGenerator
         var stations = new List<SpaceStationData>();
 
         int planetCount = starSystem.PlanetCount;
-        float baseOrbitRadius = 150f; // starting orbit distance from center
-        float orbitSpacing = 100f;
+        float baseOrbitRadius = 300f; // starting orbit distance from center
+        float orbitSpacing = 200f;
 
         for (int i = 0; i < planetCount; i++)
         {
-            float orbitRadius = baseOrbitRadius + i * orbitSpacing + rng.NextFloat(-20, 20);
-            float orbitSpeed = 0.3f / (1f + i * 0.5f); // outer planets orbit slower
+            float orbitRadius = baseOrbitRadius + i * orbitSpacing + rng.NextFloat(-40, 40);
+            float orbitSpeed = 0.015f / (1f + i * 0.5f); // outer planets orbit slower
 
             var planetType = GeneratePlanetType(rng, i, planetCount);
             var (r, g, b, radius) = GetPlanetProperties(planetType, rng);
@@ -137,9 +137,9 @@ public static class SolarSystemGenerator
             float beltRadius = baseOrbitRadius + beltPosition * orbitSpacing;
             asteroidBelts.Add(new AsteroidBeltData
             {
-                InnerRadius = beltRadius - 30,
-                OuterRadius = beltRadius + 30,
-                AsteroidCount = rng.NextInt(20, 60)
+                InnerRadius = beltRadius - 60,
+                OuterRadius = beltRadius + 60,
+                AsteroidCount = rng.NextInt(30, 80)
             });
         }
 
@@ -155,13 +155,13 @@ public static class SolarSystemGenerator
 
                 if (parentPlanet >= 0)
                 {
-                    stationOrbitRadius = planets[parentPlanet].Radius + rng.NextFloat(30, 60);
-                    stationOrbitSpeed = 0.8f;
+                    stationOrbitRadius = planets[parentPlanet].Radius + rng.NextFloat(50, 100);
+                    stationOrbitSpeed = 0.04f;
                 }
                 else
                 {
                     stationOrbitRadius = baseOrbitRadius + rng.NextFloat(0, planetCount * orbitSpacing);
-                    stationOrbitSpeed = 0.2f;
+                    stationOrbitSpeed = 0.01f;
                 }
 
                 stations.Add(new SpaceStationData
@@ -229,15 +229,15 @@ public static class SolarSystemGenerator
     {
         return type switch
         {
-            PlanetType.Rocky => ((byte)rng.NextInt(130, 180), (byte)rng.NextInt(110, 150), (byte)rng.NextInt(90, 130), rng.NextFloat(8, 14)),
-            PlanetType.Terrestrial => ((byte)rng.NextInt(40, 100), (byte)rng.NextInt(100, 200), (byte)rng.NextInt(50, 150), rng.NextFloat(12, 18)),
-            PlanetType.Desert => ((byte)rng.NextInt(180, 230), (byte)rng.NextInt(140, 180), (byte)rng.NextInt(60, 100), rng.NextFloat(10, 16)),
-            PlanetType.GasGiant => ((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140), rng.NextFloat(25, 40)),
-            PlanetType.IceGiant => ((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255), rng.NextFloat(20, 32)),
-            PlanetType.Volcanic => ((byte)rng.NextInt(200, 255), (byte)rng.NextInt(60, 100), (byte)rng.NextInt(20, 60), rng.NextFloat(8, 14)),
-            PlanetType.Ocean => ((byte)rng.NextInt(20, 60), (byte)rng.NextInt(80, 140), (byte)rng.NextInt(180, 240), rng.NextFloat(12, 18)),
-            PlanetType.Frozen => ((byte)rng.NextInt(180, 220), (byte)rng.NextInt(200, 240), (byte)rng.NextInt(230, 255), rng.NextFloat(10, 16)),
-            _ => (128, 128, 128, 12)
+            PlanetType.Rocky => ((byte)rng.NextInt(130, 180), (byte)rng.NextInt(110, 150), (byte)rng.NextInt(90, 130), rng.NextFloat(16, 28)),
+            PlanetType.Terrestrial => ((byte)rng.NextInt(40, 100), (byte)rng.NextInt(100, 200), (byte)rng.NextInt(50, 150), rng.NextFloat(24, 36)),
+            PlanetType.Desert => ((byte)rng.NextInt(180, 230), (byte)rng.NextInt(140, 180), (byte)rng.NextInt(60, 100), rng.NextFloat(20, 32)),
+            PlanetType.GasGiant => ((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140), rng.NextFloat(50, 80)),
+            PlanetType.IceGiant => ((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255), rng.NextFloat(40, 64)),
+            PlanetType.Volcanic => ((byte)rng.NextInt(200, 255), (byte)rng.NextInt(60, 100), (byte)rng.NextInt(20, 60), rng.NextFloat(16, 28)),
+            PlanetType.Ocean => ((byte)rng.NextInt(20, 60), (byte)rng.NextInt(80, 140), (byte)rng.NextInt(180, 240), rng.NextFloat(24, 36)),
+            PlanetType.Frozen => ((byte)rng.NextInt(180, 220), (byte)rng.NextInt(200, 240), (byte)rng.NextInt(230, 255), rng.NextFloat(20, 32)),
+            _ => (128, 128, 128, 24)
         };
     }
 
@@ -250,10 +250,10 @@ public static class SolarSystemGenerator
             {
                 Index = i,
                 Name = $"{parentName} {(char)('a' + i)}",
-                OrbitRadius = parentRadius + 20 + i * 15 + rng.NextFloat(-5, 5),
-                OrbitSpeed = 1.5f + rng.NextFloat(-0.3f, 0.3f),
+                OrbitRadius = parentRadius + 40 + i * 30 + rng.NextFloat(-10, 10),
+                OrbitSpeed = 0.075f + rng.NextFloat(-0.015f, 0.015f),
                 StartAngle = rng.NextFloat(0, MathF.PI * 2),
-                Radius = rng.NextFloat(3, 7),
+                Radius = rng.NextFloat(6, 14),
                 R = (byte)rng.NextInt(150, 220),
                 G = (byte)rng.NextInt(150, 220),
                 B = (byte)rng.NextInt(150, 220)
