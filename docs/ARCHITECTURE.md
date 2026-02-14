@@ -7,7 +7,7 @@ A 2D procedural space exploration game built with C# (.NET 10), SDL3 (via SDL3-C
 - **Runtime**: .NET 10
 - **Rendering**: SDL3 via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS) NuGet package
 - **ECS**: [Arch ECS](https://github.com/genaray/Arch) v2.1.0
-- **Graphics**: Currently procedural colored shapes (rectangles, circles, lines) with a minimal bitmap font. Future: pixel art sprites.
+- **Graphics**: Procedural pixel art textures generated at runtime (sphere-shaded planets, glow-gradient stars, pixel-art ship/avatar/station sprites) plus SDL3 draw primitives and a minimal bitmap font.
 
 ## Project Structure
 
@@ -20,7 +20,7 @@ SpaceExplorationGame/
 │   ├── GameConfig.cs              # All tunable constants
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
-│   ├── InputManager.cs            # Input state tracking (keys, mouse)
+│   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   └── PlayerData.cs              # Persistent player data across state changes
 ├── ECS/
 │   └── Components/
@@ -32,7 +32,8 @@ SpaceExplorationGame/
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
 │   └── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
 ├── Rendering/
-│   ├── SpriteRenderer.cs          # SDL3 rendering abstraction
+│   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
+│   ├── TextureManager.cs          # Procedural pixel art texture generation
 │   └── MiniBitmapFont.cs          # Built-in 5x8 pixel font
 └── States/
     ├── GalaxyMapState.cs          # Galaxy overview with star system selection
@@ -47,10 +48,10 @@ SpaceExplorationGame/
 The game uses a state machine pattern. Each state (`GameState` subclass) owns its logic and rendering. When switching states, all ECS entities are destroyed and recreated — this keeps things simple and avoids stale entity issues.
 
 States:
-- **GalaxyMapState**: Bird's-eye view of the galaxy. Click star systems, press Enter to travel.
-- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations. Press E near planets/stations to interact.
-- **SpaceStationState**: Menu-based UI when docked. Ship customization, missions, etc.
-- **PlanetSurfaceState**: Tilemap exploration. Player avatar walks on generated terrain. Press E near ship to board.
+- **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
+- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Unified nearest-center interaction detection.
+- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking.
+- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Press E near ship to board.
 
 ### Procedural Generation Seed Hierarchy
 ```
@@ -77,7 +78,17 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `Interactable` — landing/docking capability
 
 ### Rendering
-Currently all rendering uses SDL3 draw primitives (filled rects, circles made of scanlines, lines). The `SpriteRenderer` class provides world-space (camera-transformed) and screen-space drawing methods. A built-in `MiniBitmapFont` renders text without requiring TTF files.
+The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support. The `TextureManager` generates all game sprites procedurally at startup as SDL textures from pixel arrays:
+- **Ship**: Triangular pixel-art sprite with cockpit highlight and engine pods
+- **Engine flame**: Orange-yellow gradient cone rendered behind the ship when thrusting
+- **Planets/moons**: Sphere-shaded textures with diffuse + specular lighting, surface noise, and edge darkening — unique per body
+- **Stars**: Radial gradient glow from white core to star color
+- **Stations**: Cross-shaped design with central hub, outer ring, solar panels, and docking indicators; slowly rotates
+- **Asteroids**: Irregular rocky blobs with angular distortion
+- **Avatar**: Tiny humanoid in green suit with blue visor
+- **Landed ship**: Oval hull with cockpit and landing struts
+
+A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
 ### Camera
 The `Camera` class handles world-to-screen coordinate conversion with zoom support. Scrollable tilemaps render only visible tiles using `GetVisibleBounds()`.
@@ -85,10 +96,10 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 ## Controls
 
 ### Galaxy Map
-- WASD/Arrows: Pan camera
+- WASD/Arrows/Mouse Drag: Pan camera
 - Mouse Scroll: Zoom
 - Click: Select star system
-- Enter: Travel to selected system
+- Double-Click/Enter: Travel to selected system
 
 ### Solar System
 - W/Up: Thrust forward
@@ -116,26 +127,32 @@ dotnet run
 dotnet run -- 12345  # with specific galaxy seed
 ```
 
-## Current Status (v0.1 - Vertical Slice)
+## Current Status (v0.2 - Graphics & Polish)
 - [x] SDL3 window and game loop (fixed timestep 60fps)
 - [x] Arch ECS integration
 - [x] Camera with zoom and scrolling
 - [x] Deterministic procedural generation (seed system)
-- [x] Galaxy map with 40-80 star systems
+- [x] Galaxy map with 40-80 star systems (mouse panning, double-click travel, nebula clouds)
 - [x] Solar system with orbiting planets, moons, asteroids, stations
 - [x] Player ship flight with physics
-- [x] Space station docking (menu UI)
-- [x] Planet surface landing (generated tilemap terrain)
+- [x] Space station docking (menu UI, auto-refuel)
+- [x] Planet/moon surface landing (generated tilemap terrain with detail variation)
 - [x] Full game loop: Galaxy → Solar System → Station/Planet → back
+- [x] FTL fuel system with range limits and fuel gauge
+- [x] Global time for deterministic orbit positions across state changes
+- [x] Moon landing support (moons are fully explorable surfaces)
+- [x] Unified nearest-center interaction detection
+- [x] Procedural pixel art textures (ships, planets, stars, stations, avatar, asteroids)
+- [x] HUD backgrounds for readability
+- [x] Terrain tile variation with detail sprites
 
 ## TODO / Next Steps
-- [ ] Pixel art sprites (replace colored shapes)
 - [ ] Player vehicle for planet exploration
 - [ ] Ship customization system (parts, weapons, shields)
 - [ ] Ship/vehicle/avatar upgrade shop in stations
 - [ ] Mission system
 - [ ] Combat system
-- [ ] Fuel consumption and management
+- [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
 - [ ] Settlement interior (basic 2D map in stations/settlements)
