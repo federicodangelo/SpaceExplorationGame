@@ -1,7 +1,7 @@
-using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 
 namespace SpaceExplorationGame.States;
 
@@ -15,11 +15,14 @@ public class SpaceStationState : GameState
     private readonly StarSystemData _starSystem;
     private readonly SpaceStationData _station;
     private int _selectedOption = 0;
+    private readonly ServiceOverlays _overlays = new();
 
     private readonly string[] _menuOptions =
     [
-        "SHIP CUSTOMIZATION",
+        "TRADE",
+        "REPAIR",
         "MISSIONS",
+        "SHIP CUSTOMIZATION",
         "EXIT SHIP (WALK STATION)",
         "EXIT SPACE STATION"
     ];
@@ -48,6 +51,13 @@ public class SpaceStationState : GameState
     {
         var input = game.Input;
 
+        // If an overlay is open, let it consume input first
+        if (_overlays.Active != ServiceOverlays.OverlayType.None)
+        {
+            _overlays.Update(game, input);
+            return;
+        }
+
         if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
         {
             _selectedOption--;
@@ -63,15 +73,22 @@ public class SpaceStationState : GameState
         {
             switch (_selectedOption)
             {
-                case 0: // Ship customization - TODO
+                case 0: // Trade
+                    _overlays.Open(ServiceOverlays.OverlayType.Trade);
                     break;
-                case 1: // Missions - TODO
+                case 1: // Repair
+                    _overlays.Open(ServiceOverlays.OverlayType.Repair);
                     break;
-                case 2: // Walk station
+                case 2: // Missions
+                    _overlays.Open(ServiceOverlays.OverlayType.Mission);
+                    break;
+                case 3: // Ship customization - TODO
+                    break;
+                case 4: // Walk station
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
-                case 3: // Exit station
+                case 5: // Exit station
                     game.ChangeState(new SolarSystemState(_starSystem));
                     break;
             }
@@ -102,7 +119,8 @@ public class SpaceStationState : GameState
         int frameX = w / 2 - 300;
         int frameY = 80;
         int frameW = 600;
-        int frameH = 500;
+        int menuHeight = _menuOptions.Length * 50;
+        int frameH = 130 + menuHeight + 20 + 110 + 40; // header + menu + gap + status + controls
         renderer.DrawRectScreen(frameX - 2, frameY - 2, frameW + 4, frameH + 4, 60, 60, 100, 150);
         renderer.DrawRectScreen(frameX, frameY, frameW, frameH, 15, 15, 35, 240);
 
@@ -146,7 +164,7 @@ public class SpaceStationState : GameState
         }
 
         // Ship status
-        float statusY = frameY + 350;
+        float statusY = frameY + 130 + menuHeight + 20;
         renderer.DrawLineScreen(frameX + 20, statusY, frameX + frameW - 20, statusY, 60, 60, 100);
         renderer.DrawTextScreen(frameX + 20, statusY + 10, "SHIP STATUS", 150, 150, 200, 2f);
         renderer.DrawTextScreen(frameX + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", 100, 255, 100, 1.5f);
@@ -165,5 +183,8 @@ public class SpaceStationState : GameState
 
         // Controls
         renderer.DrawTextScreen(frameX + 20, frameY + frameH - 30, "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT", 100, 100, 130, 1.5f);
+
+        // Service overlays (trade, repair, missions) drawn on top
+        _overlays.Render(game, renderer);
     }
 }

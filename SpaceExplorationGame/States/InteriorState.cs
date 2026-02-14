@@ -38,25 +38,8 @@ public class InteriorState : GameState
     private InteriorNpc? _dialogueNpc;
     private int _dialogueLine;
 
-    // Overlay state
-    private OverlayType _activeOverlay = OverlayType.None;
-
-    // Trade
-    private int _tradeSelection;
-    private readonly TradeItem[] _tradeItems =
-    [
-        new("HULL PLATING", 50, "Repairs hull by 25 points"),
-        new("FUEL CELLS", 30, "Restores 30 fuel"),
-        new("SHIELD EMITTER", 120, "Increases max hull by 20"),
-        new("NAV CHARTS", 80, "Reveals nearby systems"),
-        new("RATION PACK", 15, "Standard crew supplies"),
-    ];
-
-    // Repair
-    private const int RepairCostPerPoint = 2;
-
-    // Mission
-    private int _missionSelection;
+    // Shared service overlays (trade, repair, missions)
+    private readonly ServiceOverlays _overlays = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -118,11 +101,8 @@ public class InteriorState : GameState
         var camera = game.Camera;
 
         // Handle overlay interactions first
-        if (_activeOverlay != OverlayType.None)
-        {
-            UpdateOverlay(game, input);
+        if (_overlays.Update(game, input))
             return;
-        }
 
         // Handle dialogue
         if (_showingDialogue)
@@ -250,111 +230,15 @@ public class InteriorState : GameState
                 ExitInterior(game);
                 break;
             case InteractableType.TradeTerminal:
-                _activeOverlay = OverlayType.Trade;
-                _tradeSelection = 0;
+                _overlays.Open(ServiceOverlays.OverlayType.Trade);
                 break;
             case InteractableType.RepairStation:
-                _activeOverlay = OverlayType.Repair;
+                _overlays.Open(ServiceOverlays.OverlayType.Repair);
                 break;
             case InteractableType.MissionBoard:
-                _activeOverlay = OverlayType.Mission;
-                _missionSelection = 0;
+                _overlays.Open(ServiceOverlays.OverlayType.Mission);
                 break;
         }
-    }
-
-    private void UpdateOverlay(Game game, InputManager input)
-    {
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
-        {
-            _activeOverlay = OverlayType.None;
-            return;
-        }
-
-        switch (_activeOverlay)
-        {
-            case OverlayType.Trade:
-                UpdateTradeOverlay(game, input);
-                break;
-            case OverlayType.Repair:
-                UpdateRepairOverlay(game, input);
-                break;
-            case OverlayType.Mission:
-                UpdateMissionOverlay(game, input);
-                break;
-        }
-    }
-
-    private void UpdateTradeOverlay(Game game, InputManager input)
-    {
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-        {
-            _tradeSelection--;
-            if (_tradeSelection < 0) _tradeSelection = _tradeItems.Length - 1;
-        }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _tradeSelection++;
-            if (_tradeSelection >= _tradeItems.Length) _tradeSelection = 0;
-        }
-
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-        {
-            var item = _tradeItems[_tradeSelection];
-            if (game.Player.Credits >= item.Cost)
-            {
-                game.Player.Credits -= item.Cost;
-
-                switch (_tradeSelection)
-                {
-                    case 0: // Hull plating
-                        game.Player.ShipHealth = Math.Min(game.Player.ShipHealth + 25, game.Player.ShipMaxHealth);
-                        break;
-                    case 1: // Fuel cells
-                        game.Player.Refuel(30);
-                        break;
-                    case 2: // Shield emitter
-                        game.Player.ShipMaxHealth += 20;
-                        break;
-                    case 3: // Nav charts
-                        game.Player.Credits += 0; // placeholder
-                        break;
-                    case 4: // Rations
-                        game.Player.Credits += 0; // placeholder
-                        break;
-                }
-            }
-        }
-    }
-
-    private void UpdateRepairOverlay(Game game, InputManager input)
-    {
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-        {
-            // Repair all damage
-            float damage = game.Player.ShipMaxHealth - game.Player.ShipHealth;
-            int cost = (int)(damage * RepairCostPerPoint);
-            if (cost > 0 && game.Player.Credits >= cost)
-            {
-                game.Player.Credits -= cost;
-                game.Player.ShipHealth = game.Player.ShipMaxHealth;
-            }
-        }
-    }
-
-    private void UpdateMissionOverlay(Game game, InputManager input)
-    {
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-        {
-            _missionSelection--;
-            if (_missionSelection < 0) _missionSelection = 2;
-        }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _missionSelection++;
-            if (_missionSelection > 2) _missionSelection = 0;
-        }
-        // Missions are placeholders - just show them, no acceptance yet
     }
 
     private void ExitInterior(Game game)
@@ -538,7 +422,7 @@ public class InteriorState : GameState
         renderer.DrawTextScreen(w - 200, 8, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
 
         // Interaction prompts
-        if (_nearestInteractable != null && !_showingDialogue && _activeOverlay == OverlayType.None)
+        if (_nearestInteractable != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None)
         {
             string prompt = _nearestInteractable.Type switch
             {
@@ -552,7 +436,7 @@ public class InteriorState : GameState
             renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
             renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 100, 255, 200, 2f);
         }
-        else if (_nearestNpc != null && !_showingDialogue && _activeOverlay == OverlayType.None)
+        else if (_nearestNpc != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None)
         {
             string prompt = $"[E] TALK TO {_nearestNpc.Name.ToUpper()}";
             float tw = renderer.MeasureText(prompt, 2f);
@@ -567,13 +451,10 @@ public class InteriorState : GameState
         }
 
         // Overlays
-        if (_activeOverlay != OverlayType.None)
-        {
-            RenderOverlay(game, renderer, w, h);
-        }
+        _overlays.Render(game, renderer);
 
         // Controls help (when no overlay)
-        if (_activeOverlay == OverlayType.None && !_showingDialogue)
+        if (_overlays.Active == ServiceOverlays.OverlayType.None && !_showingDialogue)
         {
             renderer.DrawRectScreen(w - 200, h - 110, 195, 100, 0, 0, 0, 160);
             renderer.DrawTextScreen(w - 190, h - 105, "WASD: MOVE", 160, 160, 160, 1.5f);
@@ -632,152 +513,6 @@ public class InteriorState : GameState
         renderer.DrawTextScreen(boxX + boxW - 200, boxY + boxH - 25, continueText, 100, 200, 100, 1.5f);
     }
 
-    private void RenderOverlay(Game game, SpriteRenderer renderer, int w, int h)
-    {
-        // Semi-transparent background
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 150);
-
-        float panelW = 500;
-        float panelH = 400;
-        float panelX = w / 2f - panelW / 2f;
-        float panelY = h / 2f - panelH / 2f;
-
-        // Panel border
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 15, 15, 35, 245);
-
-        switch (_activeOverlay)
-        {
-            case OverlayType.Trade:
-                RenderTradeOverlay(game, renderer, panelX, panelY, panelW, panelH);
-                break;
-            case OverlayType.Repair:
-                RenderRepairOverlay(game, renderer, panelX, panelY, panelW, panelH);
-                break;
-            case OverlayType.Mission:
-                RenderMissionOverlay(renderer, panelX, panelY, panelW, panelH);
-                break;
-        }
-
-        // Close hint
-        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "ESC: CLOSE", 100, 100, 130, 1.5f);
-    }
-
-    private void RenderTradeOverlay(Game game, SpriteRenderer renderer, float px, float py, float pw, float ph)
-    {
-        renderer.DrawTextScreen(px + 15, py + 10, "TRADE TERMINAL", 255, 220, 80, 2.5f);
-        renderer.DrawTextScreen(px + pw - 200, py + 10, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
-
-        renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, 60, 60, 100);
-
-        for (int i = 0; i < _tradeItems.Length; i++)
-        {
-            float optY = py + 60 + i * 55;
-            bool selected = i == _tradeSelection;
-            var item = _tradeItems[i];
-            bool canAfford = game.Player.Credits >= item.Cost;
-
-            if (selected)
-            {
-                renderer.DrawRectScreen(px + 5, optY - 5, pw - 10, 50, 40, 40, 70);
-            }
-
-            byte nameR = selected ? (byte)255 : (byte)180;
-            byte nameG = selected ? (byte)255 : (byte)180;
-            byte nameB = selected ? (byte)200 : (byte)200;
-
-            renderer.DrawTextScreen(px + 20, optY, selected ? $"> {item.Name}" : $"  {item.Name}", nameR, nameG, nameB, 2f);
-            renderer.DrawTextScreen(px + 20, optY + 22, item.Description, 130, 130, 150, 1.5f);
-
-            byte costR = canAfford ? (byte)100 : (byte)255;
-            byte costG = canAfford ? (byte)255 : (byte)80;
-            byte costB = canAfford ? (byte)100 : (byte)80;
-            renderer.DrawTextScreen(px + pw - 120, optY + 5, $"{item.Cost} CR", costR, costG, costB, 2f);
-        }
-
-        renderer.DrawTextScreen(px + pw - 220, py + ph - 25, "ENTER: BUY", 100, 255, 100, 1.5f);
-    }
-
-    private void RenderRepairOverlay(Game game, SpriteRenderer renderer, float px, float py, float pw, float ph)
-    {
-        renderer.DrawTextScreen(px + 15, py + 10, "REPAIR STATION", 100, 255, 100, 2.5f);
-
-        renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, 60, 60, 100);
-
-        float damage = game.Player.ShipMaxHealth - game.Player.ShipHealth;
-        int cost = (int)(damage * RepairCostPerPoint);
-
-        renderer.DrawTextScreen(px + 20, py + 60, $"SHIP HULL: {game.Player.ShipHealth:F0} / {game.Player.ShipMaxHealth:F0}", 200, 200, 200, 2f);
-
-        // Health bar
-        float barX = px + 20;
-        float barY = py + 90;
-        float barW = pw - 40;
-        renderer.DrawRectScreen(barX, barY, barW, 20, 40, 40, 40);
-        renderer.DrawRectScreen(barX, barY, barW * (game.Player.ShipHealth / game.Player.ShipMaxHealth), 20, 100, 255, 100);
-
-        if (damage > 0)
-        {
-            renderer.DrawTextScreen(px + 20, py + 130, $"DAMAGE: {damage:F0} POINTS", 255, 150, 100, 2f);
-            renderer.DrawTextScreen(px + 20, py + 160, $"REPAIR COST: {cost} CREDITS", 255, 220, 80, 2f);
-
-            bool canAfford = game.Player.Credits >= cost;
-            if (canAfford)
-            {
-                renderer.DrawTextScreen(px + 20, py + 200, "[ENTER] REPAIR ALL", 100, 255, 100, 2f);
-            }
-            else
-            {
-                renderer.DrawTextScreen(px + 20, py + 200, "INSUFFICIENT CREDITS", 255, 80, 80, 2f);
-            }
-        }
-        else
-        {
-            renderer.DrawTextScreen(px + 20, py + 130, "HULL INTEGRITY: 100%", 100, 255, 100, 2.5f);
-            renderer.DrawTextScreen(px + 20, py + 165, "NO REPAIRS NEEDED", 150, 200, 150, 2f);
-        }
-
-        renderer.DrawTextScreen(px + 20, py + 250, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
-    }
-
-    private void RenderMissionOverlay(SpriteRenderer renderer, float px, float py, float pw, float ph)
-    {
-        renderer.DrawTextScreen(px + 15, py + 10, "MISSION BOARD", 100, 180, 255, 2.5f);
-
-        renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, 60, 60, 100);
-
-        string[] missions =
-        [
-            "CARGO DELIVERY - 200 CR",
-            "SURVEY MISSION - 350 CR",
-            "ESCORT DUTY - 500 CR"
-        ];
-        string[] descriptions =
-        [
-            "Transport supplies to a nearby settlement.",
-            "Map an uncharted planetary surface.",
-            "Protect a freighter convoy through the sector."
-        ];
-
-        for (int i = 0; i < missions.Length; i++)
-        {
-            float optY = py + 60 + i * 70;
-            bool selected = i == _missionSelection;
-
-            if (selected)
-                renderer.DrawRectScreen(px + 5, optY - 5, pw - 10, 60, 40, 40, 70);
-
-            renderer.DrawTextScreen(px + 20, optY,
-                selected ? $"> {missions[i]}" : $"  {missions[i]}",
-                selected ? (byte)255 : (byte)180,
-                selected ? (byte)255 : (byte)180,
-                selected ? (byte)200 : (byte)200, 2f);
-
-            renderer.DrawTextScreen(px + 30, optY + 25, descriptions[i], 130, 130, 150, 1.5f);
-            renderer.DrawTextScreen(px + 30, optY + 43, "[COMING SOON]", 100, 100, 120, 1.2f);
-        }
-    }
-
     private void RenderMinimap(SpriteRenderer renderer, Game game, int screenW)
     {
         float mmSize = 120;
@@ -829,16 +564,6 @@ public class InteriorState : GameState
             renderer.DrawRectScreen(ix - 1, iy - 1, 3, 3, ir, ig, ib);
         }
     }
-
-    private enum OverlayType
-    {
-        None,
-        Trade,
-        Repair,
-        Mission
-    }
-
-    private record TradeItem(string Name, int Cost, string Description);
 }
 
 /// <summary>Where the interior was entered from.</summary>
