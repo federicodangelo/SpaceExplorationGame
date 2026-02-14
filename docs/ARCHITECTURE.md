@@ -36,11 +36,42 @@ SpaceExplorationGame/
 │   ├── TextureManager.cs          # Procedural pixel art texture generation
 │   └── MiniBitmapFont.cs          # Built-in 5x8 pixel font
 └── States/
+    ├── MainMenuState.cs           # Starting point selection menu
     ├── GalaxyMapState.cs          # Galaxy overview with star system selection
     ├── SolarSystemState.cs        # Space flight within a solar system
     ├── SpaceStationState.cs       # Menu-based space station interaction
     ├── PlanetLandingState.cs      # Orbital landing site selection
     └── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
+```
+
+## Command Line Options
+
+```
+dotnet run -- [seed] [--start <location>]
+```
+
+| Argument | Description |
+|---|---|
+| `seed` | Optional integer seed for deterministic world generation. If omitted, a random seed is used. |
+| `--start <location>` | Skip the main menu and jump directly to a game state. Useful for testing. |
+
+**Start locations** (name or number):
+
+| Name | # | Description |
+|---|---|---|
+| `galaxy` | `0` | Galaxy Map — bird's-eye view of all star systems |
+| `system` | `1` | Star System — ship flight in a random solar system |
+| `planet` | `2` | Planet Surface — surface exploration on a random planet |
+| `station` | `3` | Space Station — menu interaction at a random station |
+| `settlement` | `4` | Settlement — planet surface spawned at a settlement |
+
+**Examples:**
+```
+dotnet run                              # Random seed, main menu
+dotnet run -- 12345                     # Seed 12345, main menu
+dotnet run -- --start system            # Random seed, jump to star system
+dotnet run -- 42 --start settlement     # Seed 42, jump to settlement
+dotnet run -- --start 3                 # Random seed, jump to station (by number)
 ```
 
 ## Architecture Decisions
@@ -49,6 +80,7 @@ SpaceExplorationGame/
 The game uses a state machine pattern. Each state (`GameState` subclass) owns its logic and rendering. When switching states, all ECS entities are destroyed and recreated — this keeps things simple and avoids stale entity issues.
 
 States:
+- **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Unified nearest-center interaction detection.
 - **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking.
