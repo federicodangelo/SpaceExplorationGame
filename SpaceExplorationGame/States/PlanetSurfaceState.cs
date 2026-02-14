@@ -145,7 +145,7 @@ public class PlanetSurfaceState : GameState
         int endTileX = Math.Min(_surfaceData.Width - 1, (int)(bottomRight.X / GameConfig.TileSize) + 1);
         int endTileY = Math.Min(_surfaceData.Height - 1, (int)(bottomRight.Y / GameConfig.TileSize) + 1);
 
-        // Draw tiles
+        // Draw tiles with variation
         for (int x = startTileX; x <= endTileX; x++)
         {
             for (int y = startTileY; y <= endTileY; y++)
@@ -153,9 +153,45 @@ public class PlanetSurfaceState : GameState
                 var terrain = _surfaceData.Tiles[x, y];
                 var (r, g, b) = PlanetSurfaceGenerator.GetTerrainColor(terrain);
 
+                // Per-tile variation for visual interest (deterministic based on position)
+                int hash = (x * 374761393 + y * 668265263) ^ (x * y);
+                float variation = ((hash & 0xFF) - 128) / 800f; // subtle +/- 16% brightness
+                byte vr = (byte)Math.Clamp(r + r * variation, 0, 255);
+                byte vg = (byte)Math.Clamp(g + g * variation, 0, 255);
+                byte vb = (byte)Math.Clamp(b + b * variation, 0, 255);
+
                 var worldPos = new Vector2(x * GameConfig.TileSize + GameConfig.TileSize / 2f,
                                            y * GameConfig.TileSize + GameConfig.TileSize / 2f);
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, r, g, b);
+                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, vr, vg, vb);
+
+                // Draw small detail sprites on some tiles
+                if (terrain == TerrainType.Grass && (hash & 0x7) == 0)
+                {
+                    // Occasional tree/shrub dot
+                    byte dr = (byte)Math.Clamp(r - 20, 0, 255);
+                    byte dg = (byte)Math.Clamp(g + 30, 0, 255);
+                    byte db = (byte)Math.Clamp(b - 10, 0, 255);
+                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
+                        6, 6, dr, dg, db);
+                }
+                else if (terrain == TerrainType.Rock && (hash & 0xF) == 0)
+                {
+                    // Occasional rock detail
+                    byte dr = (byte)Math.Clamp(r + 20, 0, 255);
+                    byte dg = (byte)Math.Clamp(g + 15, 0, 255);
+                    byte db = (byte)Math.Clamp(b + 10, 0, 255);
+                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
+                        4, 4, dr, dg, db);
+                }
+                else if (terrain == TerrainType.Water && (hash & 0x3) == 0)
+                {
+                    // Water sparkle/wave detail
+                    byte wr = (byte)Math.Clamp(r + 30, 0, 255);
+                    byte wg = (byte)Math.Clamp(g + 30, 0, 255);
+                    byte wb = (byte)Math.Clamp(b + 40, 0, 255);
+                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 4) & 0xF) - 8, ((hash >> 8) & 0x7) - 4),
+                        8, 2, wr, wg, wb, 100);
+                }
             }
         }
 
@@ -180,14 +216,16 @@ public class PlanetSurfaceState : GameState
             renderer.DrawText(camera, labelPos, settlement.Name, 255, 255, 200);
         }
 
-        // Draw ship
+        // Draw ship with texture
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
-        renderer.DrawRect(camera, shipTf.Position, 20, 16, 150, 150, 200);
+        var landedShipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipLanded);
+        renderer.DrawTexture(camera, landedShipTex, shipTf.Position, 24, 24);
         renderer.DrawText(camera, shipTf.Position + new Vector2(-12, 14), "SHIP", 180, 180, 200);
 
-        // Draw player avatar
+        // Draw player avatar with texture
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
-        renderer.DrawRect(camera, avatarTf.Position, 10, 10, 100, 255, 100);
+        var avatarTex = game.Textures.GetTexture(Rendering.TextureManager.AvatarDown);
+        renderer.DrawTexture(camera, avatarTex, avatarTf.Position, 14, 14);
 
         // Board ship prompt
         float distToShip = Vector2.Distance(avatarTf.Position, shipTf.Position);

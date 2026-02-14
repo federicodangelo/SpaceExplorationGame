@@ -31,6 +31,12 @@ public class GalaxyMapState : GameState
     private int _lastClickSystem = -1;
     private const float DoubleClickTime = 0.4f; // seconds
 
+    // Cached star textures for the galaxy map
+    private List<nint> _starTextures = [];
+
+    // Nebula decorations
+    private List<(float X, float Y, float Radius, byte R, byte G, byte B)> _nebulae = [];
+
     public override void Enter(Game game)
     {
         // Generate galaxy
@@ -79,6 +85,31 @@ public class GalaxyMapState : GameState
             ));
         }
 
+        // Generate nebula clouds for visual depth
+        var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
+        for (int i = 0; i < 8; i++)
+        {
+            byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
+            int ci = nebRng.NextInt(0, 3);
+            _nebulae.Add((
+                nebRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
+                nebRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
+                nebRng.NextFloat(200, 600),
+                ci == 0 ? choices[0] : (byte)10,
+                ci == 1 ? choices[1] : (byte)10,
+                ci == 2 ? choices[2] : (byte)15
+            ));
+        }
+
+        // Create star textures for each system
+        _starTextures.Clear();
+        foreach (var system in _starSystems)
+        {
+            int texSize = Math.Max(12, (int)(system.StarRadius * 4));
+            _starTextures.Add(game.Textures.CreateStarTexture(
+                texSize, system.StarR, system.StarG, system.StarB));
+        }
+
         // If player has a current system, select it
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
         {
@@ -106,6 +137,10 @@ public class GalaxyMapState : GameState
 
     public override void Exit(Game game)
     {
+        // Destroy cached textures
+        foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
+        _starTextures.Clear();
+        _nebulae.Clear();
         _starSystems.Clear();
         _backgroundStars.Clear();
     }
@@ -274,6 +309,14 @@ public class GalaxyMapState : GameState
             }
         }
 
+        // Draw nebula clouds
+        foreach (var (nx, ny, nr, nrr, ng, nb) in _nebulae)
+        {
+            renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nrr, ng, nb, 20);
+            renderer.DrawFilledCircle(camera, new Vector2(nx + nr * 0.3f, ny - nr * 0.2f), nr * 0.7f, nrr, ng, nb, 15);
+            renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nrr, ng, nb, 10);
+        }
+
         // Draw FTL range circle around player's current system
         int currentSys = game.Player.CurrentStarSystemIndex;
         if (currentSys >= 0 && currentSys < _starSystems.Count)
@@ -301,28 +344,28 @@ public class GalaxyMapState : GameState
             bool inRange = currentSys >= 0 && (isCurrentSystem || IsInFtlRange(currentSys, i));
             bool reachable = currentSys >= 0 && IsSystemReachable(game, i);
 
-            // Draw star circle (dim if out of range)
             float radius = sys.StarRadius;
-            if (isHovered) radius *= 1.3f;
+            float texSize = radius * 4;
+            if (isHovered) texSize *= 1.3f;
 
-            byte starR = sys.StarR, starG = sys.StarG, starB = sys.StarB;
-            if (!inRange)
+            // Alpha based on reachability
+            byte alpha = 255;
+            if (!inRange) alpha = 80;
+            else if (!reachable && !isCurrentSystem) alpha = 160;
+
+            // Draw star texture
+            if (i < _starTextures.Count)
             {
-                // Dim unreachable stars
-                starR = (byte)(starR / 3);
-                starG = (byte)(starG / 3);
-                starB = (byte)(starB / 3);
-            }
-            else if (!reachable && !isCurrentSystem)
-            {
-                // In FTL range but not enough fuel: show reddish tint
-                starR = (byte)Math.Min(255, starR / 2 + 60);
-                starG = (byte)(starG / 3);
-                starB = (byte)(starB / 3);
+                renderer.DrawTexture(camera, _starTextures[i], sys.GalaxyPosition,
+                    (int)texSize, (int)texSize, 0f, alpha);
             }
 
-            renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius,
-                starR, starG, starB);
+            // Red tint overlay for not-enough-fuel stars
+            if (inRange && !reachable && !isCurrentSystem)
+            {
+                renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f,
+                    255, 40, 40, 60);
+            }
 
             // Selection ring
             if (isSelected)

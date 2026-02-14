@@ -174,6 +174,80 @@ public class SpriteRenderer : IDisposable
         return text.Length * 6f * scale;
     }
 
+    /// <summary>Draw a texture in world space, centered on the position, with rotation.</summary>
+    public void DrawTexture(Camera camera, nint texture, Vector2 worldPos, int width, int height, float rotationDeg = 0f, byte alpha = 255)
+    {
+        if (texture == nint.Zero) return;
+        var screenPos = camera.WorldToScreen(worldPos);
+        float scaledW = width * camera.Zoom;
+        float scaledH = height * camera.Zoom;
+
+        var dstRect = new SDL.FRect
+        {
+            X = screenPos.X - scaledW / 2f,
+            Y = screenPos.Y - scaledH / 2f,
+            W = scaledW,
+            H = scaledH
+        };
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, alpha);
+
+        if (rotationDeg != 0f)
+        {
+            var center = new SDL.FPoint { X = scaledW / 2f, Y = scaledH / 2f };
+            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
+        }
+        else
+        {
+            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
+        }
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, 255);
+    }
+
+    /// <summary>Draw a texture directly in screen space, centered on the position.</summary>
+    public void DrawTextureScreen(nint texture, float x, float y, float w, float h, float rotationDeg = 0f, byte alpha = 255)
+    {
+        if (texture == nint.Zero) return;
+
+        var dstRect = new SDL.FRect
+        {
+            X = x - w / 2f,
+            Y = y - h / 2f,
+            W = w,
+            H = h
+        };
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, alpha);
+
+        if (rotationDeg != 0f)
+        {
+            var center = new SDL.FPoint { X = w / 2f, Y = h / 2f };
+            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
+        }
+        else
+        {
+            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
+        }
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, 255);
+    }
+
+    /// <summary>Draw a filled circle in screen space.</summary>
+    public void DrawFilledCircleScreen(float cx, float cy, float radius, byte r, byte g, byte b, byte a = 255)
+    {
+        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        for (int y = (int)(-radius); y <= (int)radius; y++)
+        {
+            float x = MathF.Sqrt(radius * radius - y * y);
+            SDL.RenderLine(_renderer, cx - x, cy + y, cx + x, cy + y);
+        }
+    }
+
     public void Dispose()
     {
         foreach (var tex in _textures)

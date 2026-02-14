@@ -21,6 +21,7 @@ public class Game : IDisposable
     public Camera Camera { get; private set; } = null!;
     public InputManager Input { get; } = new();
     public SpriteRenderer SpriteRenderer { get; private set; } = null!;
+    public TextureManager Textures { get; private set; } = null!;
 
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
@@ -67,6 +68,9 @@ public class Game : IDisposable
 
         // Sprite renderer
         SpriteRenderer = new SpriteRenderer(Renderer);
+
+        // Texture manager (procedural pixel art)
+        Textures = new TextureManager(Renderer);
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -159,6 +163,7 @@ public class Game : IDisposable
     {
         _currentState?.Exit(this);
         EcsWorld.Dispose();
+        Textures.Dispose();
         SpriteRenderer.Dispose();
         SDL.DestroyRenderer(Renderer);
         SDL.DestroyWindow(Window);

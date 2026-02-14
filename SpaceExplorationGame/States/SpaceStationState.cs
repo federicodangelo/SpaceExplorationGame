@@ -90,18 +90,30 @@ public class SpaceStationState : GameState
         // Dark background with station interior feel
         renderer.DrawRectScreen(0, 0, w, h, 8, 8, 20);
 
-        // Station frame
+        // Subtle grid pattern for station floor feel
+        for (int gx = 0; gx < w; gx += 40)
+            renderer.DrawLineScreen(gx, 0, gx, h, 12, 12, 28);
+        for (int gy = 0; gy < h; gy += 40)
+            renderer.DrawLineScreen(0, gy, w, gy, 12, 12, 28);
+
+        // Station frame with gradient-like border
         int frameX = w / 2 - 300;
         int frameY = 80;
         int frameW = 600;
         int frameH = 500;
+        renderer.DrawRectScreen(frameX - 2, frameY - 2, frameW + 4, frameH + 4, 60, 60, 100, 150);
         renderer.DrawRectScreen(frameX, frameY, frameW, frameH, 15, 15, 35, 240);
 
-        // Border
-        renderer.DrawLineScreen(frameX, frameY, frameX + frameW, frameY, 80, 80, 120);
-        renderer.DrawLineScreen(frameX, frameY + frameH, frameX + frameW, frameY + frameH, 80, 80, 120);
-        renderer.DrawLineScreen(frameX, frameY, frameX, frameY + frameH, 80, 80, 120);
-        renderer.DrawLineScreen(frameX + frameW, frameY, frameX + frameW, frameY + frameH, 80, 80, 120);
+        // Corner accents
+        int accentLen = 30;
+        renderer.DrawLineScreen(frameX, frameY, frameX + accentLen, frameY, 100, 180, 255);
+        renderer.DrawLineScreen(frameX, frameY, frameX, frameY + accentLen, 100, 180, 255);
+        renderer.DrawLineScreen(frameX + frameW, frameY, frameX + frameW - accentLen, frameY, 100, 180, 255);
+        renderer.DrawLineScreen(frameX + frameW, frameY, frameX + frameW, frameY + accentLen, 100, 180, 255);
+        renderer.DrawLineScreen(frameX, frameY + frameH, frameX + accentLen, frameY + frameH, 100, 180, 255);
+        renderer.DrawLineScreen(frameX, frameY + frameH, frameX, frameY + frameH - accentLen, 100, 180, 255);
+        renderer.DrawLineScreen(frameX + frameW, frameY + frameH, frameX + frameW - accentLen, frameY + frameH, 100, 180, 255);
+        renderer.DrawLineScreen(frameX + frameW, frameY + frameH, frameX + frameW, frameY + frameH - accentLen, 100, 180, 255);
 
         // Title
         renderer.DrawTextScreen(frameX + 20, frameY + 20, "SPACE STATION", 100, 200, 255, 3f);
