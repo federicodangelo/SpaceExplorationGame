@@ -31,10 +31,12 @@ public class PlayerData
     public int CurrentPlanetIndex { get; set; } = -1;
 
     // Return context: where to place the player when re-entering the solar system
-    public enum ReturnContext { Default, FromStation, FromPlanet }
+    public enum ReturnContext { Default, FromStation, FromPlanet, FromMoon }
     public ReturnContext SolarSystemReturnContext { get; set; } = ReturnContext.Default;
     public int ReturnStationIndex { get; set; } = -1;
     public int ReturnPlanetIndex { get; set; } = -1;
+    public int ReturnMoonPlanetIndex { get; set; } = -1;  // which planet the moon belongs to
+    public int ReturnMoonIndex { get; set; } = -1;        // which moon within that planet
 
     // Credits
     public int Credits { get; set; } = 1000;

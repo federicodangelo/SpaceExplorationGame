@@ -99,7 +99,7 @@ public static class GalaxyGenerator
                 StarG = g,
                 StarB = b,
                 PlanetCount = planetCount,
-                HasSpaceStation = rng.NextBool(0.4f)  // 40% chance of having a station
+                HasSpaceStation = rng.NextBool(0.75f)  // 75% chance of having a station
             });
         }
 

@@ -32,7 +32,9 @@ public class SolarSystemState : GameState
     // Interaction
     private int _nearbyPlanetIndex = -1;
     private int _nearbyStationIndex = -1;
-    private const float InteractionRadius = 80f;
+    private int _nearbyMoonPlanetIndex = -1;  // planet index of nearby moon
+    private int _nearbyMoonIndex = -1;        // moon index within that planet
+    private const float InteractionRadius = 20f;
 
     // Background stars
     private List<(float X, float Y, byte Brightness)> _bgStars = [];
@@ -129,9 +131,16 @@ public class SolarSystemState : GameState
                         Type = CelestialType.Moon,
                         Name = moon.Name,
                         Radius = moon.Radius,
-                        DataIndex = moon.Index
+                        DataIndex = moon.Index,
+                        HasSolidSurface = true
                     },
-                    new Orbit(planetEntity, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle)
+                    new Orbit(planetEntity, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle),
+                    new Label { Text = moon.Name, OffsetY = (int)(moon.Radius + 8) },
+                    new Interactable
+                    {
+                        Type = InteractionType.LandOnPlanet,
+                        Label = "Land"
+                    }
                 );
                 moons.Add(moonEntity);
             }
@@ -211,6 +220,13 @@ public class SolarSystemState : GameState
             // Place ship exactly on the planet the player just launched from
             shipStartPos = game.EcsWorld.Get<Transform>(_planetEntities[game.Player.ReturnPlanetIndex]).Position;
         }
+        else if (returnCtx == PlayerData.ReturnContext.FromMoon
+            && game.Player.ReturnMoonPlanetIndex >= 0 && game.Player.ReturnMoonPlanetIndex < _moonEntities.Count
+            && game.Player.ReturnMoonIndex >= 0 && game.Player.ReturnMoonIndex < _moonEntities[game.Player.ReturnMoonPlanetIndex].Count)
+        {
+            // Place ship exactly on the moon the player just launched from
+            shipStartPos = game.EcsWorld.Get<Transform>(_moonEntities[game.Player.ReturnMoonPlanetIndex][game.Player.ReturnMoonIndex]).Position;
+        }
         else
         {
             // Default: start near the star
@@ -221,6 +237,8 @@ public class SolarSystemState : GameState
         game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.Default;
         game.Player.ReturnStationIndex = -1;
         game.Player.ReturnPlanetIndex = -1;
+        game.Player.ReturnMoonPlanetIndex = -1;
+        game.Player.ReturnMoonIndex = -1;
 
         // Create player ship
         _playerShip = game.EcsWorld.Create(
@@ -341,29 +359,64 @@ public class SolarSystemState : GameState
         }
 
         // --- Check proximity for interactions ---
+        // Unified: find the single closest interactable object (by distance to center),
+        // among all planets, moons, and stations within interaction range.
         _nearbyPlanetIndex = -1;
         _nearbyStationIndex = -1;
+        _nearbyMoonPlanetIndex = -1;
+        _nearbyMoonIndex = -1;
 
+        float bestDist = float.MaxValue;
+
+        // Check planets
         for (int i = 0; i < _planetEntities.Count; i++)
         {
-            var planetTransform = game.EcsWorld.Get<Transform>(_planetEntities[i]);
             var body = game.EcsWorld.Get<CelestialBody>(_planetEntities[i]);
-            float dist = Vector2.Distance(shipTransform.Position, planetTransform.Position);
-            if (dist < body.Radius + InteractionRadius && body.HasSolidSurface)
+            if (!body.HasSolidSurface) continue;
+            var pos = game.EcsWorld.Get<Transform>(_planetEntities[i]).Position;
+            float dist = Vector2.Distance(shipTransform.Position, pos);
+            if (dist < body.Radius + InteractionRadius && dist < bestDist)
             {
+                bestDist = dist;
                 _nearbyPlanetIndex = i;
-                break;
+                _nearbyStationIndex = -1;
+                _nearbyMoonPlanetIndex = -1;
+                _nearbyMoonIndex = -1;
             }
         }
 
+        // Check moons
+        for (int pi = 0; pi < _moonEntities.Count; pi++)
+        {
+            for (int mi = 0; mi < _moonEntities[pi].Count; mi++)
+            {
+                var moonBody = game.EcsWorld.Get<CelestialBody>(_moonEntities[pi][mi]);
+                var pos = game.EcsWorld.Get<Transform>(_moonEntities[pi][mi]).Position;
+                float dist = Vector2.Distance(shipTransform.Position, pos);
+                if (dist < moonBody.Radius + InteractionRadius && dist < bestDist)
+                {
+                    bestDist = dist;
+                    _nearbyMoonPlanetIndex = pi;
+                    _nearbyMoonIndex = mi;
+                    _nearbyPlanetIndex = -1;
+                    _nearbyStationIndex = -1;
+                }
+            }
+        }
+
+        // Check stations
         for (int i = 0; i < _stationEntities.Count; i++)
         {
-            var stationTransform = game.EcsWorld.Get<Transform>(_stationEntities[i]);
-            float dist = Vector2.Distance(shipTransform.Position, stationTransform.Position);
-            if (dist < InteractionRadius)
+            var stBody = game.EcsWorld.Get<CelestialBody>(_stationEntities[i]);
+            var pos = game.EcsWorld.Get<Transform>(_stationEntities[i]).Position;
+            float dist = Vector2.Distance(shipTransform.Position, pos);
+            if (dist < stBody.Radius + InteractionRadius && dist < bestDist)
             {
+                bestDist = dist;
                 _nearbyStationIndex = i;
-                break;
+                _nearbyPlanetIndex = -1;
+                _nearbyMoonPlanetIndex = -1;
+                _nearbyMoonIndex = -1;
             }
         }
 
@@ -381,6 +434,14 @@ public class SolarSystemState : GameState
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = _nearbyPlanetIndex;
                 game.ChangeState(new PlanetSurfaceState(_starSystem, _planets[_nearbyPlanetIndex]));
+            }
+            else if (_nearbyMoonIndex >= 0)
+            {
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromMoon;
+                game.Player.ReturnMoonPlanetIndex = _nearbyMoonPlanetIndex;
+                game.Player.ReturnMoonIndex = _nearbyMoonIndex;
+                var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
+                game.ChangeState(new PlanetSurfaceState(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex)));
             }
         }
 
@@ -530,6 +591,12 @@ public class SolarSystemState : GameState
             string planetName = _planets[_nearbyPlanetIndex].Name;
             renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
                 $"[E] LAND ON {planetName.ToUpper()}", 100, 255, 100, 2f);
+        }
+        else if (_nearbyMoonIndex >= 0)
+        {
+            string moonName = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex].Name;
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
+                $"[E] LAND ON {moonName.ToUpper()}", 180, 255, 180, 2f);
         }
         else if (_nearbyStationIndex >= 0)
         {

@@ -37,6 +37,28 @@ public class MoonData
     public byte R { get; set; }
     public byte G { get; set; }
     public byte B { get; set; }
+    public PlanetType Type { get; set; } = PlanetType.Rocky;
+
+    /// <summary>Convert moon data to PlanetData for surface generation.</summary>
+    public PlanetData ToPlanetData(int parentPlanetIndex)
+    {
+        return new PlanetData
+        {
+            Index = parentPlanetIndex * 100 + Index, // unique index for seed derivation
+            Name = Name,
+            Type = Type,
+            OrbitRadius = OrbitRadius,
+            OrbitSpeed = OrbitSpeed,
+            StartAngle = StartAngle,
+            Radius = Radius,
+            R = R, G = G, B = B,
+            HasSolidSurface = true,
+            MoonCount = 0,
+            HasRings = false,
+            Moons = [],
+            HasSettlement = false
+        };
+    }
 }
 
 public class AsteroidBeltData
@@ -146,7 +168,7 @@ public static class SolarSystemGenerator
         // Space stations
         if (starSystem.HasSpaceStation)
         {
-            int stationCount = rng.NextInt(1, 3);
+            int stationCount = rng.NextInt(2, 5);
             for (int i = 0; i < stationCount; i++)
             {
                 int parentPlanet = rng.NextInt(-1, planetCount); // -1 = orbit star
@@ -246,6 +268,16 @@ public static class SolarSystemGenerator
         var moons = new List<MoonData>(count);
         for (int i = 0; i < count; i++)
         {
+            // Assign moon type based on parent planet context
+            var moonType = rng.NextFloat() switch
+            {
+                < 0.4f => PlanetType.Rocky,
+                < 0.6f => PlanetType.Frozen,
+                < 0.75f => PlanetType.Volcanic,
+                < 0.9f => PlanetType.Desert,
+                _ => PlanetType.Ocean
+            };
+
             moons.Add(new MoonData
             {
                 Index = i,
@@ -256,7 +288,8 @@ public static class SolarSystemGenerator
                 Radius = rng.NextFloat(6, 14),
                 R = (byte)rng.NextInt(150, 220),
                 G = (byte)rng.NextInt(150, 220),
-                B = (byte)rng.NextInt(150, 220)
+                B = (byte)rng.NextInt(150, 220),
+                Type = moonType
             });
         }
         return moons;
