@@ -28,7 +28,7 @@ public partial class LabelRenderSystem : BaseSystem<World, float>
     public void RenderLabel(ref Transform transform, ref Label label)
     {
         var textPos = transform.Position + new Vector2(0, label.OffsetY);
-        float textScale = Math.Max(0.8f, _camera.Zoom * 0.8f);
+        float textScale = Math.Max(1, _camera.Zoom);
         float textWidth = _renderer.MeasureText(label.Text, textScale);
         _renderer.DrawText(_camera, textPos - new Vector2(textWidth / (2 * _camera.Zoom), 0),
             label.Text, 180, 180, 180, textScale);
