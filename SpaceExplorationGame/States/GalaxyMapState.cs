@@ -373,13 +373,13 @@ public class GalaxyMapState : GameState
             float ftlRange = GetFtlRange(game);
             // Max FTL range circle
             renderer.DrawCircle(camera, playerPos, ftlRange,
-                40, 80, 40, 60, 64);
+                40, 80, 40, 200, 64);
             // Fuel-limited range circle (may be smaller than FTL max)
             float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
             if (fuelRange < ftlRange)
             {
                 renderer.DrawCircle(camera, playerPos, fuelRange,
-                    80, 160, 80, 80, 64);
+                    80, 160, 200, 80);
             }
         }
 

@@ -505,7 +505,7 @@ public class SolarSystemState : GameState
         // Draw orbit lines
         foreach (var planet in _planets)
         {
-            renderer.DrawCircle(camera, starCenter, planet.OrbitRadius, 30, 30, 50, 60, 64);
+            renderer.DrawCircle(camera, starCenter, planet.OrbitRadius, 30, 30, 50, 255, 64);
         }
 
         // Draw asteroids (computed from globalTime) using texture
@@ -545,7 +545,7 @@ public class SolarSystemState : GameState
                 var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
                 float sz = 3f;
                 // Draw a small yellow diamond
-                renderer.DrawFilledCircle(camera, indicatorPos, sz, 255, 210, 80, 220);
+                renderer.DrawFilledCircle(camera, indicatorPos, sz, 255, 210, 200, 220);
             }
 
             // Rings
@@ -560,7 +560,7 @@ public class SolarSystemState : GameState
             // Moon orbit lines
             foreach (var moon in p.Moons)
             {
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, 20, 20, 40, 40, 24);
+                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, 20, 20, 40, 255, 24);
             }
 
             // Moon textures

@@ -15,6 +15,8 @@ public class SpriteRenderer : IDisposable
     public SpriteRenderer(nint renderer)
     {
         _renderer = renderer;
+        // Enable alpha blending so draw calls with a < 255 are translucent
+        SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
     }
 
     /// <summary>Load a texture from file and return its index.</summary>
