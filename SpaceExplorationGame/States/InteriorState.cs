@@ -4,6 +4,7 @@ using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 
@@ -30,6 +31,9 @@ public class InteriorState : GameState
     // Movement
     private const float AvatarSpeed = 200f;
     private const float InteractionRadius = 1.5f; // in tiles
+
+    // ECS Systems
+    private PlayerMovementSystem _movementSystem = null!;
 
     // Interaction state
     private InteriorNpc? _nearestNpc;
@@ -82,6 +86,18 @@ public class InteriorState : GameState
             new PlayerControlled()
         );
 
+        // Initialize ECS systems
+        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, AvatarSpeed);
+        _movementSystem.CanMoveTo = (newPos) =>
+        {
+            int tileX = (int)(newPos.X / GameConfig.TileSize);
+            int tileY = (int)(newPos.Y / GameConfig.TileSize);
+            return tileX >= 0 && tileX < _interior.Width &&
+                   tileY >= 0 && tileY < _interior.Height &&
+                   InteriorGenerator.IsWalkable(_interior.Tiles[tileX, tileY]);
+        };
+        _movementSystem.Initialize();
+
         // Camera setup
         game.Camera.Position = new Vector2(spawnX, spawnY);
         game.Camera.Zoom = 1.5f;
@@ -127,37 +143,11 @@ public class InteriorState : GameState
             return;
         }
 
-        // Player movement
-        ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
-        Vector2 moveDir = Vector2.Zero;
-
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-            moveDir.Y -= 1;
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-            moveDir.Y += 1;
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            moveDir.X -= 1;
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            moveDir.X += 1;
-
-        if (moveDir != Vector2.Zero)
-        {
-            moveDir = Vector2.Normalize(moveDir);
-            var newPos = avatarTf.Position + moveDir * AvatarSpeed * dt;
-
-            // Collision check
-            int tileX = (int)(newPos.X / GameConfig.TileSize);
-            int tileY = (int)(newPos.Y / GameConfig.TileSize);
-
-            if (tileX >= 0 && tileX < _interior.Width &&
-                tileY >= 0 && tileY < _interior.Height &&
-                InteriorGenerator.IsWalkable(_interior.Tiles[tileX, tileY]))
-            {
-                avatarTf.Position = newPos;
-            }
-        }
+        // Player movement (via system with tile collision)
+        _movementSystem.Update(in dt);
 
         // Camera follows avatar
+        ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
         camera.LerpTo(avatarTf.Position, 5f * dt);
 
         // Zoom

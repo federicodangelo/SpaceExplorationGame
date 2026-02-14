@@ -4,6 +4,7 @@ using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 
 namespace SpaceExplorationGame.States;
@@ -23,6 +24,9 @@ public class PlanetSurfaceState : GameState
     private Entity _shipEntity;
     private const float AvatarSpeed = 200f;
     private const float BoardShipRadius = 30f;
+
+    // ECS Systems
+    private PlayerMovementSystem _movementSystem = null!;
 
     // Settlement proximity tracking
     private SettlementData? _nearSettlement;
@@ -65,6 +69,19 @@ public class PlanetSurfaceState : GameState
             new Label { Text = "SHIP", OffsetY = 14 }
         );
 
+        // Initialize ECS systems
+        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, AvatarSpeed);
+        _movementSystem.CanMoveTo = (newPos) =>
+        {
+            int tileX = (int)(newPos.X / GameConfig.TileSize);
+            int tileY = (int)(newPos.Y / GameConfig.TileSize);
+            if (tileX < 0 || tileX >= _surfaceData.Width || tileY < 0 || tileY >= _surfaceData.Height)
+                return false;
+            var terrain = _surfaceData.Tiles[tileX, tileY];
+            return terrain is not (TerrainType.Water or TerrainType.Lava);
+        };
+        _movementSystem.Initialize();
+
         // Camera
         game.Camera.Position = new Vector2(lzX, lzY);
         game.Camera.Zoom = 1.5f;
@@ -83,41 +100,11 @@ public class PlanetSurfaceState : GameState
         var input = game.Input;
         var camera = game.Camera;
 
-        // Player movement (direct 4-way)
-        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
-        Vector2 moveDir = Vector2.Zero;
-
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-            moveDir.Y -= 1;
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-            moveDir.Y += 1;
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            moveDir.X -= 1;
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            moveDir.X += 1;
-
-        if (moveDir != Vector2.Zero)
-        {
-            moveDir = Vector2.Normalize(moveDir);
-            var newPos = avatarTransform.Position + moveDir * AvatarSpeed * dt;
-
-            // Bounds check
-            int tileX = (int)(newPos.X / GameConfig.TileSize);
-            int tileY = (int)(newPos.Y / GameConfig.TileSize);
-
-            if (tileX >= 0 && tileX < _surfaceData.Width &&
-                tileY >= 0 && tileY < _surfaceData.Height)
-            {
-                var terrain = _surfaceData.Tiles[tileX, tileY];
-                // Block movement on water/lava
-                if (terrain is not (TerrainType.Water or TerrainType.Lava))
-                {
-                    avatarTransform.Position = newPos;
-                }
-            }
-        }
+        // Player movement (via system with terrain collision)
+        _movementSystem.Update(in dt);
 
         // Camera follows avatar
+        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
         camera.LerpTo(avatarTransform.Position, 5f * dt);
 
         // Zoom
