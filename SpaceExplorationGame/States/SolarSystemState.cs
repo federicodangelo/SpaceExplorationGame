@@ -42,6 +42,7 @@ public class SolarSystemState : GameState
 
     // ECS Systems
     private OrbitSystem _orbitSystem = null!;
+    private VelocitySystem _velocitySystem = null!;
 
     // Cached textures for this solar system
     private nint _starTexture;
@@ -305,6 +306,9 @@ public class SolarSystemState : GameState
             () => new Vector2(sysW, sysH));
         _orbitSystem.Initialize();
 
+        _velocitySystem = new VelocitySystem(game.EcsWorld);
+        _velocitySystem.Initialize();
+
         // Camera follows player
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
@@ -365,15 +369,11 @@ public class SolarSystemState : GameState
             shipVelocity.Value *= 0.95f;
         }
 
-        // Apply friction and speed limit
+        // Apply friction
         shipVelocity.Value *= GameConfig.ShipFriction;
-        if (shipVelocity.Value.Length() > shipVelocity.MaxSpeed)
-        {
-            shipVelocity.Value = Vector2.Normalize(shipVelocity.Value) * shipVelocity.MaxSpeed;
-        }
 
-        // Move ship
-        shipTransform.Position += shipVelocity.Value * dt;
+        // Apply velocity (speed clamping + position update via system)
+        _velocitySystem.Update(in dt);
 
         // --- Update orbits using global time (deterministic) ---
         _orbitSystem.Update(in dt);
