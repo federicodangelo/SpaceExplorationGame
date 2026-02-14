@@ -12,13 +12,17 @@ public class TextureManager : IDisposable
     private readonly Dictionary<string, nint> _textures = [];
 
     // Commonly used texture keys
-    public const string ShipSolar = "ship_solar";
+    public const string ShipSolar = "ship_solar_scout";
     public const string ShipFlame = "ship_flame";
     public const string AvatarDown = "avatar_down";
-    public const string ShipLanded = "ship_landed";
+    public const string ShipLanded = "ship_landed_scout";
     public const string Station = "station";
     public const string Asteroid = "asteroid";
     public const string Vehicle = "vehicle";
+
+    // Per-ship-type texture keys
+    public static string GetShipSolarKey(string shipTypeId) => $"ship_solar_{shipTypeId}";
+    public static string GetShipLandedKey(string shipTypeId) => $"ship_landed_{shipTypeId}";
 
     public TextureManager(nint renderer)
     {
@@ -165,88 +169,246 @@ public class TextureManager : IDisposable
 
     private void GenerateAllTextures()
     {
-        // Player ship (top-down view, 32x32)
-        _textures[ShipSolar] = GenerateShipTexture();
+        // Ship textures per type
+        _textures[GetShipSolarKey("scout")] = GenerateScoutTexture();
+        _textures[GetShipSolarKey("fighter")] = GenerateFighterTexture();
+        _textures[GetShipSolarKey("freighter")] = GenerateFreighterTexture();
+        _textures[GetShipSolarKey("explorer")] = GenerateExplorerTexture();
+
+        _textures[GetShipLandedKey("scout")] = GenerateLandedShipTexture(24, 80, 200, 80, 10f, 6f);     // green scout
+        _textures[GetShipLandedKey("fighter")] = GenerateLandedShipTexture(24, 200, 80, 80, 8f, 7f);    // red fighter
+        _textures[GetShipLandedKey("freighter")] = GenerateLandedShipTexture(32, 180, 160, 80, 14f, 10f); // yellow freighter
+        _textures[GetShipLandedKey("explorer")] = GenerateLandedShipTexture(28, 80, 140, 220, 12f, 8f); // blue explorer
+
         _textures[ShipFlame] = GenerateFlameTexture();
         _textures[AvatarDown] = GenerateAvatarTexture();
-        _textures[ShipLanded] = GenerateLandedShipTexture();
         _textures[Station] = GenerateStationTexture();
         _textures[Asteroid] = GenerateAsteroidTexture();
         _textures[Vehicle] = GenerateVehicleTexture();
     }
 
-    private nint GenerateShipTexture()
+    // ──── Scout: sleek triangular ship (original design), 32x32 ────
+    private nint GenerateScoutTexture()
     {
         const int size = 32;
         var pixels = new byte[size * size * 4];
 
-        // Ship pointing right (0 degrees = right)
-        // Sleek triangular design
-        int[] shipRows = [
-            // y, xStart, xEnd  (centered at 16,16)
-        ];
-
-        // Build ship shape programmatically - pointed right
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
                 int idx = (y * size + x) * 4;
-                int cx = x - 16; // center
+                int cx = x - 16;
                 int cy = y - 16;
 
                 // Ship body: triangle pointing right
-                // Nose at x=14, tail at x=-12, wingspan +-8 at tail
-                float halfWidth = 8f * (1f - (cx + 12f) / 26f); // wider at tail
+                float halfWidth = 8f * (1f - (cx + 12f) / 26f);
                 if (cx >= -12 && cx <= 14 && Math.Abs(cy) <= halfWidth)
                 {
-                    // Color gradient: nose is brighter
                     float t = (cx + 12f) / 26f; // 0=tail, 1=nose
                     byte sr = (byte)(80 + 100 * t);
                     byte sg = (byte)(200 + 55 * t);
                     byte sb = (byte)(80 + 100 * t);
 
-                    // Cockpit highlight
                     if (cx > 8 && Math.Abs(cy) < 2)
-                    {
-                        sr = 180; sg = 220; sb = 255;
-                    }
-                    // Wing edges
+                    { sr = 180; sg = 220; sb = 255; }
                     else if (Math.Abs(cy) > halfWidth - 1.5f)
-                    {
-                        sr = (byte)(sr * 0.6f);
-                        sg = (byte)(sg * 0.6f);
-                        sb = (byte)(sb * 0.6f);
-                    }
-                    // Center stripe
+                    { sr = (byte)(sr * 0.6f); sg = (byte)(sg * 0.6f); sb = (byte)(sb * 0.6f); }
                     else if (Math.Abs(cy) < 1.5f && cx < 6)
-                    {
-                        sr = (byte)Math.Min(255, sr + 30);
-                        sg = (byte)Math.Min(255, sg + 30);
-                        sb = (byte)Math.Min(255, sb + 30);
-                    }
+                    { sr = (byte)Math.Min(255, sr + 30); sg = (byte)Math.Min(255, sg + 30); sb = (byte)Math.Min(255, sb + 30); }
 
-                    pixels[idx + 0] = sr;
-                    pixels[idx + 1] = sg;
-                    pixels[idx + 2] = sb;
-                    pixels[idx + 3] = 255;
+                    pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
                 }
-                // Engine pods at tail
+                // Engine pods
                 else if (cx >= -14 && cx <= -10 && Math.Abs(cy) >= 4 && Math.Abs(cy) <= 7)
-                {
-                    pixels[idx + 0] = 60;
-                    pixels[idx + 1] = 70;
-                    pixels[idx + 2] = 90;
-                    pixels[idx + 3] = 255;
-                }
+                { pixels[idx + 0] = 60; pixels[idx + 1] = 70; pixels[idx + 2] = 90; pixels[idx + 3] = 255; }
                 // Engine glow
                 else if (cx >= -14 && cx <= -12 && Math.Abs(cy) >= 2 && Math.Abs(cy) <= 4)
+                { pixels[idx + 0] = 100; pixels[idx + 1] = 150; pixels[idx + 2] = 200; pixels[idx + 3] = 180; }
+            }
+        }
+
+        return CreateTextureFromPixels(pixels, size, size);
+    }
+
+    // ──── Fighter: angular twin-engine combat craft, 32x32 ────
+    private nint GenerateFighterTexture()
+    {
+        const int size = 32;
+        var pixels = new byte[size * size * 4];
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int idx = (y * size + x) * 4;
+                int cx = x - 16;
+                int cy = y - 16;
+
+                // Central fuselage: tapers from tail to pointed nose
+                float fuselageHalf = 5f * (1f - (cx + 10f) / 24f); // wide at tail (cx=-10), narrow at nose (cx=14)
+                if (cx >= -10 && cx <= 14 && Math.Abs(cy) <= fuselageHalf && fuselageHalf > 0)
                 {
-                    pixels[idx + 0] = 100;
-                    pixels[idx + 1] = 150;
-                    pixels[idx + 2] = 200;
-                    pixels[idx + 3] = 180;
+                    float t = (cx + 10f) / 23f;
+                    byte sr = (byte)(180 + 60 * t);
+                    byte sg = (byte)(60 + 40 * t);
+                    byte sb = (byte)(60 + 30 * t);
+
+                    // Cockpit canopy
+                    if (cx > 7 && Math.Abs(cy) < 2)
+                    { sr = 200; sg = 220; sb = 255; }
+
+                    pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
                 }
+                // Swept wings (angled back, symmetric)
+                else if (cx >= -8 && cx <= 4)
+                {
+                    float wingFront = -8f + (Math.Abs(cy) - 4f) * 0.8f;
+                    float wingBack = 4f - (Math.Abs(cy) - 4f) * 1.2f;
+                    if (Math.Abs(cy) >= 4 && Math.Abs(cy) <= 12 && cx >= wingFront && cx <= wingBack)
+                    {
+                        byte sr = 160, sg = 50, sb = 50;
+                        // Wing edge highlight
+                        if (Math.Abs(cy) >= 11)
+                        { sr = 200; sg = 60; sb = 60; }
+                        // Weapon hardpoints at wingtips
+                        if (Math.Abs(cy) >= 10 && cx >= -2 && cx <= 1)
+                        { sr = 255; sg = 200; sb = 80; }
+
+                        pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
+                    }
+                }
+
+                // Twin engines at tail
+                if (cx >= -14 && cx <= -10 && Math.Abs(cy) >= 5 && Math.Abs(cy) <= 8)
+                { pixels[idx + 0] = 80; pixels[idx + 1] = 40; pixels[idx + 2] = 40; pixels[idx + 3] = 255; }
+                // Engine glow
+                if (cx >= -14 && cx <= -12 && Math.Abs(cy) >= 3 && Math.Abs(cy) <= 5)
+                { pixels[idx + 0] = 255; pixels[idx + 1] = 120; pixels[idx + 2] = 60; pixels[idx + 3] = 180; }
+            }
+        }
+
+        return CreateTextureFromPixels(pixels, size, size);
+    }
+
+    // ──── Freighter: wide bulky hauler, 48x48 ────
+    private nint GenerateFreighterTexture()
+    {
+        const int size = 48;
+        var pixels = new byte[size * size * 4];
+        int half = size / 2;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int idx = (y * size + x) * 4;
+                int cx = x - half;
+                int cy = y - half;
+
+                // Main hull: rounded rectangle pointing right
+                float hw = 18f; // half-width (along x)
+                float hh = 10f; // half-height
+                float rx = MathF.Abs(cx) / hw;
+                float ry = MathF.Abs(cy) / hh;
+                float rr = rx * rx + ry * ry;
+
+                if (cx >= -18 && cx <= 16 && rr <= 1.1f)
+                {
+                    float t = (cx + 18f) / 34f;
+                    byte sr = (byte)(140 + 40 * t);
+                    byte sg = (byte)(130 + 30 * t);
+                    byte sb = (byte)(60 + 20 * t);
+
+                    // Cockpit window (small, front)
+                    if (cx > 10 && Math.Abs(cy) < 3)
+                    { sr = 150; sg = 200; sb = 240; }
+                    // Cargo bay markings (horizontal stripes)
+                    else if (cx >= -12 && cx <= 6 && (Math.Abs(cy) == 4 || Math.Abs(cy) == 7))
+                    { sr = (byte)(sr * 0.7f); sg = (byte)(sg * 0.7f); sb = (byte)(sb * 0.7f); }
+                    // Hull panels
+                    else if (MathF.Abs(cy) > hh - 2)
+                    { sr = (byte)(sr * 0.75f); sg = (byte)(sg * 0.75f); sb = (byte)(sb * 0.75f); }
+
+                    pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
+                }
+
+                // Side cargo pods
+                if (cx >= -10 && cx <= 5 && Math.Abs(cy) >= 11 && Math.Abs(cy) <= 14)
+                {
+                    pixels[idx + 0] = 120; pixels[idx + 1] = 110; pixels[idx + 2] = 60;
+                    pixels[idx + 3] = 255;
+                }
+
+                // Engine block (wide, back)
+                if (cx >= -22 && cx <= -18 && Math.Abs(cy) <= 12)
+                { pixels[idx + 0] = 100; pixels[idx + 1] = 90; pixels[idx + 2] = 50; pixels[idx + 3] = 255; }
+                // Engine glow
+                if (cx >= -22 && cx <= -20 && Math.Abs(cy) <= 8)
+                { pixels[idx + 0] = 255; pixels[idx + 1] = 180; pixels[idx + 2] = 60; pixels[idx + 3] = 180; }
+            }
+        }
+
+        return CreateTextureFromPixels(pixels, size, size);
+    }
+
+    // ──── Explorer: elongated versatile vessel, 40x40 ────
+    private nint GenerateExplorerTexture()
+    {
+        const int size = 40;
+        var pixels = new byte[size * size * 4];
+        int half = size / 2;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int idx = (y * size + x) * 4;
+                int cx = x - half;
+                int cy = y - half;
+
+                // Main hull: elongated ellipse pointing right
+                float ex = cx / 16f;
+                float ey = cy / 8f;
+                if (ex * ex + ey * ey <= 1f && cx >= -14)
+                {
+                    float t = (cx + 14f) / 30f;
+                    byte sr = (byte)(60 + 60 * t);
+                    byte sg = (byte)(120 + 40 * t);
+                    byte sb = (byte)(180 + 60 * t);
+
+                    // Cockpit (elongated window)
+                    if (cx > 10 && Math.Abs(cy) < 2)
+                    { sr = 180; sg = 230; sb = 255; }
+                    // Sensor array stripe
+                    else if (Math.Abs(cy) < 1.5f && cx >= -8 && cx <= 8)
+                    { sr = (byte)Math.Min(255, sr + 40); sg = (byte)Math.Min(255, sg + 40); sb = (byte)Math.Min(255, sb + 40); }
+                    // Hull plate edges
+                    else if (MathF.Abs(ey) > 0.8f)
+                    { sr = (byte)(sr * 0.7f); sg = (byte)(sg * 0.7f); sb = (byte)(sb * 0.7f); }
+
+                    pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
+                }
+
+                // Solar/sensor fins (angled, top and bottom)
+                if (cx >= -6 && cx <= 6)
+                {
+                    float finCenter = cy > 0 ? 10f : -10f;
+                    float finDist = MathF.Abs(cy - finCenter);
+                    if (finDist <= 3f)
+                    {
+                        float finAlpha = 1f - finDist / 3f;
+                        pixels[idx + 0] = (byte)(80 * finAlpha); pixels[idx + 1] = (byte)(160 * finAlpha);
+                        pixels[idx + 2] = (byte)(220 * finAlpha); pixels[idx + 3] = (byte)(220 * finAlpha);
+                    }
+                }
+
+                // Engine nacelles (two small, at tail)
+                if (cx >= -18 && cx <= -14 && Math.Abs(cy) >= 5 && Math.Abs(cy) <= 8)
+                { pixels[idx + 0] = 50; pixels[idx + 1] = 80; pixels[idx + 2] = 130; pixels[idx + 3] = 255; }
+                // Engine glow
+                if (cx >= -18 && cx <= -16 && Math.Abs(cy) >= 3 && Math.Abs(cy) <= 5)
+                { pixels[idx + 0] = 80; pixels[idx + 1] = 180; pixels[idx + 2] = 255; pixels[idx + 3] = 180; }
             }
         }
 
@@ -319,49 +481,40 @@ public class TextureManager : IDisposable
         return CreateTextureFromPixels(pixels, size, size);
     }
 
-    private nint GenerateLandedShipTexture()
+    private nint GenerateLandedShipTexture(int size, byte hullR, byte hullG, byte hullB, float hullHalfX, float hullHalfY)
     {
-        const int size = 24;
         var pixels = new byte[size * size * 4];
+        int half = size / 2;
 
-        // Top-down landed ship (smaller, resting)
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
                 int idx = (y * size + x) * 4;
-                int cx = x - 12;
-                int cy = y - 12;
+                int cx = x - half;
+                int cy = y - half;
 
                 // Body: oval shape
-                float ex = cx / 10f;
-                float ey = cy / 6f;
+                float ex = cx / hullHalfX;
+                float ey = cy / hullHalfY;
                 if (ex * ex + ey * ey <= 1f)
                 {
-                    // Ship hull
                     float t = MathF.Sqrt(ex * ex + ey * ey);
-                    byte sr = (byte)(120 + 40 * (1 - t));
-                    byte sg = (byte)(130 + 40 * (1 - t));
-                    byte sb = (byte)(160 + 40 * (1 - t));
+                    byte sr = (byte)(hullR + 40 * (1 - t));
+                    byte sg = (byte)(hullG + 40 * (1 - t));
+                    byte sb = (byte)(hullB + 40 * (1 - t));
 
                     // Cockpit
-                    if (cx > 3 && Math.Abs(cy) < 2)
-                    {
-                        sr = 140; sg = 200; sb = 255;
-                    }
+                    if (cx > hullHalfX * 0.4f && Math.Abs(cy) < 2)
+                    { sr = 140; sg = 200; sb = 255; }
 
-                    pixels[idx + 0] = sr;
-                    pixels[idx + 1] = sg;
-                    pixels[idx + 2] = sb;
-                    pixels[idx + 3] = 255;
+                    pixels[idx + 0] = sr; pixels[idx + 1] = sg; pixels[idx + 2] = sb; pixels[idx + 3] = 255;
                 }
                 // Landing struts
-                else if (Math.Abs(cx) < 8 && Math.Abs(cy) >= 6 && Math.Abs(cy) <= 8 && (Math.Abs(cx) == 4 || Math.Abs(cx) == 7))
+                else if (Math.Abs(cx) < hullHalfX * 0.8f && Math.Abs(cy) >= hullHalfY && Math.Abs(cy) <= hullHalfY + 2
+                    && (Math.Abs(cx) == (int)(hullHalfX * 0.4f) || Math.Abs(cx) == (int)(hullHalfX * 0.7f)))
                 {
-                    pixels[idx + 0] = 80;
-                    pixels[idx + 1] = 80;
-                    pixels[idx + 2] = 80;
-                    pixels[idx + 3] = 200;
+                    pixels[idx + 0] = 80; pixels[idx + 1] = 80; pixels[idx + 2] = 80; pixels[idx + 3] = 200;
                 }
             }
         }

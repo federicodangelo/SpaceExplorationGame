@@ -574,7 +574,8 @@ public class SolarSystemState : GameState
 
         // Draw player ship with texture
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
-        var shipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipSolar);
+        var shipTexKey = Rendering.TextureManager.GetShipSolarKey(game.Player.CurrentShipType.Id);
+        var shipTex = game.Textures.GetTexture(shipTexKey);
 
         // Engine flame when thrusting (draw behind ship, offset backward)
         int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;

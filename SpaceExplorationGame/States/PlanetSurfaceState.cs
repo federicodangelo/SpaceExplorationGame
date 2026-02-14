@@ -286,7 +286,8 @@ public class PlanetSurfaceState : GameState
 
         // Draw ship with texture
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
-        var landedShipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipLanded);
+        var landedTexKey = Rendering.TextureManager.GetShipLandedKey(game.Player.CurrentShipType.Id);
+        var landedShipTex = game.Textures.GetTexture(landedTexKey);
         int landedSize = (int)(game.Player.CurrentShipType.SpriteSize * 1.5f);
         renderer.DrawTexture(camera, landedShipTex, shipTf.Position, landedSize, landedSize);
         renderer.DrawText(camera, shipTf.Position + new Vector2(-12, 14), "SHIP", 180, 180, 200);
