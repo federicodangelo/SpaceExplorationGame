@@ -5,6 +5,8 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
@@ -39,8 +41,18 @@ public class GalaxyMapState : GameState
 
     // Pause menu
     private bool _showPauseMenu = false;
-    private int _pauseMenuSelection = 0;
-    private static readonly string[] PauseMenuOptions = ["RESUME", "MAIN MENU"];
+    private static readonly string[] PauseMenuLabels = ["RESUME", "MAIN MENU"];
+    private readonly MenuWidget _pauseMenu = new(PauseMenuLabels)
+    {
+        CenterAlign = true,
+        ItemHeight = 45f,
+        SelectedScale = 2.5f,
+        NormalScale = 2f,
+        SelectedColor = (220, 240, 255),
+        NormalColor = (140, 140, 160),
+        HighlightBg = (50, 70, 140),
+        HighlightAlpha = 180,
+    };
 
     public override void Enter(Game game)
     {
@@ -211,44 +223,23 @@ public class GalaxyMapState : GameState
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
             _showPauseMenu = !_showPauseMenu;
-            _pauseMenuSelection = 0;
+            _pauseMenu.SelectedIndex = 0;
             return;
         }
 
         // Pause menu input
         if (_showPauseMenu)
         {
-            if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-                _pauseMenuSelection = (_pauseMenuSelection - 1 + PauseMenuOptions.Length) % PauseMenuOptions.Length;
-            if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-                _pauseMenuSelection = (_pauseMenuSelection + 1) % PauseMenuOptions.Length;
-
-            if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            {
-                if (_pauseMenuSelection == 0)
-                    _showPauseMenu = false; // Resume
-                else
-                    game.ChangeState(new MainMenuState()); // Main Menu
-            }
-
-            // Mouse hover/click on pause menu
             float menuCenterX = GameConfig.WindowWidth / 2f;
             float menuStartY = GameConfig.WindowHeight / 2f - 30;
-            for (int i = 0; i < PauseMenuOptions.Length; i++)
-            {
-                float optY = menuStartY + i * 45;
-                float optW = 300;
-                if (input.MouseX >= menuCenterX - optW / 2 && input.MouseX <= menuCenterX + optW / 2 &&
-                    input.MouseY >= optY - 5 && input.MouseY <= optY + 30)
-                {
-                    _pauseMenuSelection = i;
-                    if (input.IsMousePressed(1))
-                    {
-                        if (i == 0) _showPauseMenu = false;
-                        else game.ChangeState(new MainMenuState());
-                    }
-                }
-            }
+            float menuW = 300f;
+
+            int confirmed = _pauseMenu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
+            if (confirmed == 0)
+                _showPauseMenu = false; // Resume
+            else if (confirmed == 1)
+                game.ChangeState(new MainMenuState()); // Main Menu
+
             return;
         }
 
@@ -526,24 +517,8 @@ public class GalaxyMapState : GameState
 
             // Options
             float menuStartY = GameConfig.WindowHeight / 2f - 30;
-            for (int i = 0; i < PauseMenuOptions.Length; i++)
-            {
-                float optY = menuStartY + i * 45;
-                bool sel = i == _pauseMenuSelection;
-
-                if (sel)
-                {
-                    renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - 130, optY - 4, 260, 32, 50, 70, 140, 180);
-                    renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - 140, optY + 2, ">", 100, 200, 255, 2.5f);
-                }
-
-                float oScale = sel ? 2.5f : 2f;
-                byte oR = sel ? (byte)220 : (byte)140;
-                byte oG = sel ? (byte)240 : (byte)140;
-                byte oB = sel ? (byte)255 : (byte)160;
-                float oW = renderer.MeasureText(PauseMenuOptions[i], oScale);
-                renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - oW / 2f, optY, PauseMenuOptions[i], oR, oG, oB, oScale);
-            }
+            float menuW = 300f;
+            _pauseMenu.Render(renderer, GameConfig.WindowWidth / 2f - menuW / 2f, menuStartY, menuW);
         }
     }
 }

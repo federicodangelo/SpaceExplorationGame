@@ -2,6 +2,7 @@ using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
@@ -12,13 +13,12 @@ public class MainMenuState : GameState
 {
     public override GameStateType Type => GameStateType.MainMenu;
 
-    private int _selectedOption = 0;
     private float _animTimer = 0f;
 
     // Background stars for visual flair
     private List<(float X, float Y, byte Brightness, float Speed)> _bgStars = [];
 
-    private static readonly string[] MenuOptions =
+    private static readonly string[] MenuOptionLabels =
     [
         "GALAXY MAP",
         "STAR SYSTEM",
@@ -36,6 +36,20 @@ public class MainMenuState : GameState
         "Start at a settlement on an inhabited planet"
     ];
 
+    private readonly MenuWidget _menu = new(MenuOptionLabels, MenuDescriptions)
+    {
+        CenterAlign = true,
+        ItemHeight = 50f,
+        SelectedScale = 2.5f,
+        NormalScale = 2f,
+        SelectedColor = (220, 240, 255),
+        NormalColor = (140, 140, 160),
+        HighlightBg = (40, 60, 120),
+        HighlightAlpha = 180,
+        DescriptionScale = 1.5f,
+        DescriptionColor = (160, 160, 180)
+    };
+
     // Auto-launch: if >= 0, skip menu and launch this option immediately
     private readonly int _autoLaunchOption;
 
@@ -47,7 +61,7 @@ public class MainMenuState : GameState
     public override void Enter(Game game)
     {
         // Auto-launch if requested (from command line)
-        if (_autoLaunchOption >= 0 && _autoLaunchOption < MenuOptions.Length)
+        if (_autoLaunchOption >= 0 && _autoLaunchOption < MenuOptionLabels.Length)
         {
             LaunchOption(game, _autoLaunchOption);
             return;
@@ -74,61 +88,13 @@ public class MainMenuState : GameState
         var input = game.Input;
         _animTimer += dt;
 
-        // Navigate menu
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-            _selectedOption = (_selectedOption - 1 + MenuOptions.Length) % MenuOptions.Length;
+        float menuStartY = GameConfig.WindowHeight / 2f - 40;
+        float centerX = GameConfig.WindowWidth / 2f;
+        float menuW = 420f;
 
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-            _selectedOption = (_selectedOption + 1) % MenuOptions.Length;
-
-        // Confirm selection
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-        {
-            LaunchOption(game, _selectedOption);
-        }
-
-        // Mouse click on options
-        if (input.IsMousePressed(1))
-        {
-            float menuStartY = GameConfig.WindowHeight / 2f - 40;
-            float mouseY = input.MouseY;
-            float mouseX = input.MouseX;
-            float centerX = GameConfig.WindowWidth / 2f;
-
-            for (int i = 0; i < MenuOptions.Length; i++)
-            {
-                float optY = menuStartY + i * 50;
-                float optW = 400;
-                if (mouseX >= centerX - optW / 2 && mouseX <= centerX + optW / 2 &&
-                    mouseY >= optY - 5 && mouseY <= optY + 30)
-                {
-                    _selectedOption = i;
-                    LaunchOption(game, i);
-                    return;
-                }
-            }
-        }
-
-        // Mouse hover
-        if (true)
-        {
-            float menuStartY = GameConfig.WindowHeight / 2f - 40;
-            float mouseY = input.MouseY;
-            float mouseX = input.MouseX;
-            float centerX = GameConfig.WindowWidth / 2f;
-
-            for (int i = 0; i < MenuOptions.Length; i++)
-            {
-                float optY = menuStartY + i * 50;
-                float optW = 400;
-                if (mouseX >= centerX - optW / 2 && mouseX <= centerX + optW / 2 &&
-                    mouseY >= optY - 5 && mouseY <= optY + 30)
-                {
-                    _selectedOption = i;
-                    break;
-                }
-            }
-        }
+        int confirmed = _menu.Update(input, centerX - menuW / 2f, menuStartY, menuW);
+        if (confirmed >= 0)
+            LaunchOption(game, confirmed);
     }
 
     private void LaunchOption(Game game, int option)
@@ -323,42 +289,9 @@ public class MainMenuState : GameState
         // Menu options
         float menuStartY = GameConfig.WindowHeight / 2f - 40;
         float centerX = GameConfig.WindowWidth / 2f;
+        float menuW = 420f;
 
-        for (int i = 0; i < MenuOptions.Length; i++)
-        {
-            float optY = menuStartY + i * 50;
-            bool isSelected = i == _selectedOption;
-
-            // Selection background
-            float bgW = 420;
-            if (isSelected)
-            {
-                float pulse = 0.7f + 0.3f * MathF.Sin(_animTimer * 4f);
-                byte bgAlpha = (byte)(100 * pulse);
-                renderer.DrawRectScreen(centerX - bgW / 2f, optY - 5, bgW, 35, 40, 60, 120, bgAlpha);
-
-                // Selection indicator
-                float arrowX = centerX - bgW / 2f - 20;
-                renderer.DrawTextScreen(arrowX, optY + 2, ">", 100, 200, 255, 2.5f);
-            }
-
-            // Option text
-            float optScale = isSelected ? 2.5f : 2f;
-            byte optR = isSelected ? (byte)220 : (byte)140;
-            byte optG = isSelected ? (byte)240 : (byte)140;
-            byte optB = isSelected ? (byte)255 : (byte)160;
-
-            float optW = renderer.MeasureText(MenuOptions[i], optScale);
-            renderer.DrawTextScreen(centerX - optW / 2f, optY, MenuOptions[i], optR, optG, optB, optScale);
-        }
-
-        // Description for selected option
-        float descY = menuStartY + MenuOptions.Length * 50 + 30;
-        string desc = MenuDescriptions[_selectedOption];
-        float descScale = 1.5f;
-        float descW = renderer.MeasureText(desc, descScale);
-        renderer.DrawRectScreen(centerX - descW / 2f - 8, descY - 4, descW + 16, 22, 0, 0, 0, 160);
-        renderer.DrawTextScreen(centerX - descW / 2f, descY, desc, 160, 160, 180, descScale);
+        _menu.Render(renderer, centerX - menuW / 2f, menuStartY, menuW);
 
         // Bottom info
         string seedInfo = $"SEED: {game.Seeds.GalaxySeed}";

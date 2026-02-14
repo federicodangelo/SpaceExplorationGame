@@ -2,6 +2,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
@@ -14,10 +15,9 @@ public class SpaceStationState : GameState
 
     private readonly StarSystemData _starSystem;
     private readonly SpaceStationData _station;
-    private int _selectedOption = 0;
     private readonly ServiceOverlays _overlays = new();
 
-    private readonly string[] _menuOptions =
+    private static readonly string[] StationMenuLabels =
     [
         "TRADE",
         "REPAIR",
@@ -26,6 +26,17 @@ public class SpaceStationState : GameState
         "EXIT SHIP (WALK STATION)",
         "EXIT SPACE STATION"
     ];
+
+    private readonly MenuWidget _menu = new(StationMenuLabels)
+    {
+        ItemHeight = 50f,
+        SelectedScale = 2.5f,
+        NormalScale = 2f,
+        SelectedColor = (100, 255, 200),
+        NormalColor = (160, 160, 180),
+        HighlightBg = (40, 40, 80),
+        HighlightAlpha = 255,
+    };
 
     public SpaceStationState(StarSystemData starSystem, SpaceStationData station)
     {
@@ -58,20 +69,10 @@ public class SpaceStationState : GameState
             return;
         }
 
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        int confirmed = _menu.Update(input);
+        if (confirmed >= 0)
         {
-            _selectedOption--;
-            if (_selectedOption < 0) _selectedOption = _menuOptions.Length - 1;
-        }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _selectedOption++;
-            if (_selectedOption >= _menuOptions.Length) _selectedOption = 0;
-        }
-
-        if (input.IsKeyPressed(SDL.Scancode.Return))
-        {
-            switch (_selectedOption)
+            switch (confirmed)
             {
                 case 0: // Trade
                     _overlays.Open(ServiceOverlays.OverlayType.Trade);
@@ -119,7 +120,7 @@ public class SpaceStationState : GameState
         int frameX = w / 2 - 300;
         int frameY = 80;
         int frameW = 600;
-        int menuHeight = _menuOptions.Length * 50;
+        int menuHeight = (int)_menu.TotalHeight;
         int frameH = 130 + menuHeight + 20 + 110 + 40; // header + menu + gap + status + controls
         renderer.DrawRectScreen(frameX - 2, frameY - 2, frameW + 4, frameH + 4, 60, 60, 100, 150);
         renderer.DrawRectScreen(frameX, frameY, frameW, frameH, 15, 15, 35, 240);
@@ -147,21 +148,7 @@ public class SpaceStationState : GameState
         renderer.DrawTextScreen(frameX + frameW - 200, frameY + 20, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
 
         // Menu options
-        for (int i = 0; i < _menuOptions.Length; i++)
-        {
-            float optY = frameY + 130 + i * 50;
-            bool selected = i == _selectedOption;
-
-            if (selected)
-            {
-                renderer.DrawRectScreen(frameX + 10, optY - 5, frameW - 20, 40, 40, 40, 80);
-                renderer.DrawTextScreen(frameX + 30, optY, $"> {_menuOptions[i]}", 100, 255, 200, 2.5f);
-            }
-            else
-            {
-                renderer.DrawTextScreen(frameX + 40, optY, _menuOptions[i], 160, 160, 180, 2f);
-            }
-        }
+        _menu.Render(renderer, frameX + 10, frameY + 130, frameW - 20);
 
         // Ship status
         float statusY = frameY + 130 + menuHeight + 20;

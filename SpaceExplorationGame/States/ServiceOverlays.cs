@@ -1,6 +1,7 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
@@ -15,7 +16,6 @@ public class ServiceOverlays
     public OverlayType Active { get; private set; } = OverlayType.None;
 
     // Trade state
-    private int _tradeSelection;
     private static readonly TradeItem[] TradeItems =
     [
         new("HULL PLATING", 50, "Repairs hull by 25 points"),
@@ -25,18 +25,23 @@ public class ServiceOverlays
         new("RATION PACK", 15, "Standard crew supplies"),
     ];
 
+    private static readonly string[] TradeLabels =
+        TradeItems.Select(t => t.Name).ToArray();
+
+    private readonly MenuWidget _tradeMenu = new(TradeLabels) { ItemHeight = 55f, NormalScale = 2f, SelectedScale = 2f };
+
     // Repair state
     private const int RepairCostPerPoint = 2;
 
     // Mission state
-    private int _missionSelection;
-
     private static readonly string[] MissionNames =
     [
         "CARGO DELIVERY - 200 CR",
         "SURVEY MISSION - 350 CR",
         "ESCORT DUTY - 500 CR"
     ];
+
+    private readonly MenuWidget _missionMenu = new(MissionNames) { ItemHeight = 70f, NormalScale = 2f, SelectedScale = 2f };
 
     private static readonly string[] MissionDescriptions =
     [
@@ -49,8 +54,8 @@ public class ServiceOverlays
     public void Open(OverlayType type)
     {
         Active = type;
-        _tradeSelection = 0;
-        _missionSelection = 0;
+        _tradeMenu.SelectedIndex = 0;
+        _missionMenu.SelectedIndex = 0;
     }
 
     /// <summary>Close the current overlay.</summary>
@@ -124,25 +129,15 @@ public class ServiceOverlays
 
     private void UpdateTrade(Game game, InputManager input)
     {
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        int confirmed = _tradeMenu.Update(input);
+        if (confirmed >= 0)
         {
-            _tradeSelection--;
-            if (_tradeSelection < 0) _tradeSelection = TradeItems.Length - 1;
-        }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _tradeSelection++;
-            if (_tradeSelection >= TradeItems.Length) _tradeSelection = 0;
-        }
-
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-        {
-            var item = TradeItems[_tradeSelection];
+            var item = TradeItems[confirmed];
             if (game.Player.Credits >= item.Cost)
             {
                 game.Player.Credits -= item.Cost;
 
-                switch (_tradeSelection)
+                switch (confirmed)
                 {
                     case 0: // Hull plating
                         game.Player.ShipHealth = Math.Min(game.Player.ShipHealth + 25, game.Player.ShipMaxHealth);
@@ -172,7 +167,7 @@ public class ServiceOverlays
         for (int i = 0; i < TradeItems.Length; i++)
         {
             float optY = py + 60 + i * 55;
-            bool selected = i == _tradeSelection;
+            bool selected = _tradeMenu.IsSelected(i);
             var item = TradeItems[i];
             bool canAfford = game.Player.Credits >= item.Cost;
 
@@ -257,16 +252,7 @@ public class ServiceOverlays
 
     private void UpdateMission(InputManager input)
     {
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-        {
-            _missionSelection--;
-            if (_missionSelection < 0) _missionSelection = MissionNames.Length - 1;
-        }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _missionSelection++;
-            if (_missionSelection >= MissionNames.Length) _missionSelection = 0;
-        }
+        _missionMenu.Update(input);
         // Missions are placeholders - just show them, no acceptance yet
     }
 
@@ -279,7 +265,7 @@ public class ServiceOverlays
         for (int i = 0; i < MissionNames.Length; i++)
         {
             float optY = py + 60 + i * 70;
-            bool selected = i == _missionSelection;
+            bool selected = _missionMenu.IsSelected(i);
 
             if (selected)
                 renderer.DrawRectScreen(px + 5, optY - 5, pw - 10, 60, 40, 40, 70);
