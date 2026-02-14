@@ -44,4 +44,9 @@ public static class GameConfig
     public const float ShipMaxSpeed = 400f;          // pixels/sec
     public const float ShipFriction = 0.98f;
     public const float ShipRotationSpeed = 180f;     // degrees/sec
+
+    // FTL Travel
+    public const float FuelPerDistanceUnit = 0.02f;  // fuel cost per world-pixel of distance
+    public const float FtlMaxRange = 2500f;          // max FTL jump range in world-pixels
+    public const float StationRefuelAmount = 50f;    // fuel restored when docking at a station
 }

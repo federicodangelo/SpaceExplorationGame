@@ -32,7 +32,8 @@ public class SpaceStationState : GameState
 
     public override void Enter(Game game)
     {
-        // Nothing to set up for a menu state
+        // Refuel when docking at a station
+        game.Player.Refuel(GameConfig.StationRefuelAmount);
     }
 
     public override void Exit(Game game)
@@ -136,6 +137,7 @@ public class SpaceStationState : GameState
         renderer.DrawTextScreen(frameX + 20, statusY + 10, "SHIP STATUS", 150, 150, 200, 2f);
         renderer.DrawTextScreen(frameX + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", 100, 255, 100, 1.5f);
         renderer.DrawTextScreen(frameX + 20, statusY + 60, $"FUEL: {game.Player.ShipFuel:F0}/{game.Player.ShipMaxFuel:F0}", 100, 200, 255, 1.5f);
+        renderer.DrawTextScreen(frameX + 20, statusY + 80, $"[REFUELED +{GameConfig.StationRefuelAmount:F0}]", 80, 200, 120, 1.5f);
 
         // Health bar
         float barX = frameX + 250;

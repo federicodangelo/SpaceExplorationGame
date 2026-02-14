@@ -105,6 +105,36 @@ public class GalaxyMapState : GameState
     {
     }
 
+    /// <summary>Calculate distance between two star systems in world pixels.</summary>
+    private float GetSystemDistance(int indexA, int indexB)
+    {
+        if (indexA < 0 || indexB < 0 || indexA >= _starSystems.Count || indexB >= _starSystems.Count)
+            return float.MaxValue;
+        return (_starSystems[indexA].GalaxyPosition - _starSystems[indexB].GalaxyPosition).Length();
+    }
+
+    /// <summary>Calculate fuel cost for a jump between two systems.</summary>
+    private float GetFuelCost(int fromIndex, int toIndex)
+    {
+        return GetSystemDistance(fromIndex, toIndex) * GameConfig.FuelPerDistanceUnit;
+    }
+
+    /// <summary>Check if a system is reachable from the player's current system.</summary>
+    private bool IsSystemReachable(Game game, int targetIndex)
+    {
+        int current = game.Player.CurrentStarSystemIndex;
+        if (current == targetIndex) return true;
+        float distance = GetSystemDistance(current, targetIndex);
+        float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
+        return distance <= GameConfig.FtlMaxRange && game.Player.ShipFuel >= fuelCost;
+    }
+
+    /// <summary>Check if a system is within FTL range (ignoring fuel).</summary>
+    private bool IsInFtlRange(int fromIndex, int targetIndex)
+    {
+        return GetSystemDistance(fromIndex, targetIndex) <= GameConfig.FtlMaxRange;
+    }
+
     public override void Update(Game game, float dt)
     {
         var input = game.Input;
@@ -151,11 +181,23 @@ public class GalaxyMapState : GameState
             _selectedSystemIndex = _hoveredSystemIndex;
         }
 
-        // Enter to travel to selected system
+        // Enter to travel to selected system (with fuel cost)
         if (input.IsKeyPressed(SDL.Scancode.Return) && _selectedSystemIndex >= 0)
         {
-            game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
-            game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+            int current = game.Player.CurrentStarSystemIndex;
+            if (_selectedSystemIndex == current)
+            {
+                // Already here, just enter the system
+                game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+            }
+            else if (IsSystemReachable(game, _selectedSystemIndex))
+            {
+                float fuelCost = GetFuelCost(current, _selectedSystemIndex);
+                game.Player.TrySpendFuel(fuelCost);
+                game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
+                game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+            }
+            // If not reachable, do nothing (HUD shows the reason)
         }
     }
 
@@ -177,18 +219,35 @@ public class GalaxyMapState : GameState
             }
         }
 
-        // Draw connections between nearby systems (optional: FTL routes)
+        // Draw FTL range circle around player's current system
+        int currentSys = game.Player.CurrentStarSystemIndex;
+        if (currentSys >= 0 && currentSys < _starSystems.Count)
+        {
+            var playerPos = _starSystems[currentSys].GalaxyPosition;
+            // Max FTL range circle
+            renderer.DrawCircle(camera, playerPos, GameConfig.FtlMaxRange,
+                40, 80, 40, 60, 64);
+            // Fuel-limited range circle (may be smaller than FTL max)
+            float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
+            if (fuelRange < GameConfig.FtlMaxRange)
+            {
+                renderer.DrawCircle(camera, playerPos, fuelRange,
+                    80, 160, 80, 80, 64);
+            }
+        }
+
+        // Draw connections between nearby systems (FTL routes)
         for (int i = 0; i < _starSystems.Count; i++)
         {
             for (int j = i + 1; j < _starSystems.Count; j++)
             {
                 var diff = _starSystems[i].GalaxyPosition - _starSystems[j].GalaxyPosition;
-                if (diff.Length() < 300) // only show nearby connections
+                if (diff.Length() < GameConfig.FtlMaxRange) // only show reachable connections
                 {
                     renderer.DrawLine(camera,
                         _starSystems[i].GalaxyPosition,
                         _starSystems[j].GalaxyPosition,
-                        30, 30, 50, 80);
+                        30, 30, 50, 50);
                 }
             }
         }
@@ -199,24 +258,48 @@ public class GalaxyMapState : GameState
             var sys = _starSystems[i];
             bool isSelected = i == _selectedSystemIndex;
             bool isHovered = i == _hoveredSystemIndex;
+            bool isCurrentSystem = i == currentSys;
+            bool inRange = currentSys >= 0 && (isCurrentSystem || IsInFtlRange(currentSys, i));
+            bool reachable = currentSys >= 0 && IsSystemReachable(game, i);
 
-            // Draw star circle
+            // Draw star circle (dim if out of range)
             float radius = sys.StarRadius;
             if (isHovered) radius *= 1.3f;
+
+            byte starR = sys.StarR, starG = sys.StarG, starB = sys.StarB;
+            if (!inRange)
+            {
+                // Dim unreachable stars
+                starR = (byte)(starR / 3);
+                starG = (byte)(starG / 3);
+                starB = (byte)(starB / 3);
+            }
+            else if (!reachable && !isCurrentSystem)
+            {
+                // In FTL range but not enough fuel: show reddish tint
+                starR = (byte)Math.Min(255, starR / 2 + 60);
+                starG = (byte)(starG / 3);
+                starB = (byte)(starB / 3);
+            }
+
             renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius,
-                sys.StarR, sys.StarG, sys.StarB);
+                starR, starG, starB);
 
             // Selection ring
             if (isSelected)
             {
-                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, 255, 255, 255);
+                byte ringR = reachable || isCurrentSystem ? (byte)255 : (byte)255;
+                byte ringG = reachable || isCurrentSystem ? (byte)255 : (byte)80;
+                byte ringB = reachable || isCurrentSystem ? (byte)255 : (byte)80;
+                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, ringR, ringG, ringB);
             }
 
             // Draw name label
             float textScale = Math.Max(1f, camera.Zoom);
+            byte labelBright = (byte)(inRange ? 200 : 80);
             renderer.DrawText(camera,
                 sys.GalaxyPosition + new Vector2(0, radius + 12),
-                sys.Name, 200, 200, 200, textScale);
+                sys.Name, labelBright, labelBright, labelBright, textScale);
         }
 
         // Draw player location marker
@@ -232,16 +315,48 @@ public class GalaxyMapState : GameState
         renderer.DrawTextScreen(10, 35, $"SEED: {game.Seeds.GalaxySeed}", 150, 150, 150, 1.5f);
         renderer.DrawTextScreen(10, 55, $"SYSTEMS: {_starSystems.Count}", 150, 150, 150, 1.5f);
 
+        // Fuel gauge
+        renderer.DrawTextScreen(10, 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", 100, 200, 255, 1.5f);
+        float fuelBarW = 200;
+        renderer.DrawRectScreen(10, 95, fuelBarW, 10, 40, 40, 40);
+        renderer.DrawRectScreen(10, 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, 100, 200, 255);
+
         if (_selectedSystemIndex >= 0)
         {
             var sys = _starSystems[_selectedSystemIndex];
-            float panelY = GameConfig.WindowHeight - 120;
-            renderer.DrawRectScreen(0, panelY, 400, 120, 10, 10, 30, 200);
+            bool isCurrentSystem = _selectedSystemIndex == game.Player.CurrentStarSystemIndex;
+            float distance = isCurrentSystem ? 0 : GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
+            float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
+            bool inRange = isCurrentSystem || distance <= GameConfig.FtlMaxRange;
+            bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
+
+            float panelY = GameConfig.WindowHeight - 160;
+            renderer.DrawRectScreen(0, panelY, 420, 160, 10, 10, 30, 200);
             renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", 255, 255, 255, 2f);
             renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", 200, 200, 200, 1.5f);
             renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", 200, 200, 200, 1.5f);
             renderer.DrawTextScreen(10, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", 200, 200, 200, 1.5f);
-            renderer.DrawTextScreen(10, panelY + 95, "[ENTER] TRAVEL TO SYSTEM", 100, 255, 100, 1.5f);
+
+            if (isCurrentSystem)
+            {
+                renderer.DrawTextScreen(10, panelY + 95, "YOU ARE HERE", 100, 255, 200, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, "[ENTER] ENTER SYSTEM", 100, 255, 100, 1.5f);
+            }
+            else
+            {
+                renderer.DrawTextScreen(10, panelY + 95, $"DISTANCE: {distance:F0}", 200, 200, 200, 1.5f);
+                byte fuelR = canAfford ? (byte)100 : (byte)255;
+                byte fuelG = canAfford ? (byte)200 : (byte)80;
+                byte fuelB = canAfford ? (byte)255 : (byte)80;
+                renderer.DrawTextScreen(10, panelY + 115, $"FUEL COST: {fuelCost:F1}", fuelR, fuelG, fuelB, 1.5f);
+
+                if (!inRange)
+                    renderer.DrawTextScreen(10, panelY + 135, "OUT OF FTL RANGE", 255, 80, 80, 1.5f);
+                else if (!canAfford)
+                    renderer.DrawTextScreen(10, panelY + 135, "NOT ENOUGH FUEL", 255, 80, 80, 1.5f);
+                else
+                    renderer.DrawTextScreen(10, panelY + 135, "[ENTER] TRAVEL TO SYSTEM", 100, 255, 100, 1.5f);
+            }
         }
 
         // Controls help

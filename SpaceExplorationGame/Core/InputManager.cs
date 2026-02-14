@@ -1,5 +1,4 @@
 using SDL3;
-using SpaceExplorationGame.Rendering;
 
 namespace SpaceExplorationGame.Core;
 
@@ -24,12 +23,25 @@ public class InputManager
     /// <summary>Call at the start of each frame before processing events.</summary>
     public void BeginFrame()
     {
+        // Only poll mouse position here.
+        // Edge-detection sets (pressed/released) are NOT cleared here —
+        // they persist until EndFrame() so that fixed-timestep updates always see them.
+        SDL.GetMouseState(out float mx, out float my);
+        MouseX = mx;
+        MouseY = my;
+    }
+
+    /// <summary>
+    /// Call after the fixed-timestep update loop has run at least once.
+    /// Clears edge-detection state so the next frame starts fresh.
+    /// </summary>
+    public void EndFrame()
+    {
         _keysPressed.Clear();
         _keysReleased.Clear();
         _mousePressed.Clear();
         _mouseReleased.Clear();
         MouseWheelY = 0;
-        QuitRequested = false;
     }
 
     /// <summary>Feed an SDL event into the input manager.</summary>
@@ -60,17 +72,21 @@ public class InputManager
                 break;
 
             case SDL.EventType.MouseButtonDown:
-                _mouseDown.Add((int)e.Button.Button);
-                _mousePressed.Add((int)e.Button.Button);
+                _mouseDown.Add(e.Button.Button);
+                _mousePressed.Add(e.Button.Button);
+                MouseX = e.Button.X;
+                MouseY = e.Button.Y;
                 break;
 
             case SDL.EventType.MouseButtonUp:
-                _mouseDown.Remove((int)e.Button.Button);
-                _mouseReleased.Add((int)e.Button.Button);
+                _mouseDown.Remove(e.Button.Button);
+                _mouseReleased.Add(e.Button.Button);
+                MouseX = e.Button.X;
+                MouseY = e.Button.Y;
                 break;
 
             case SDL.EventType.MouseWheel:
-                MouseWheelY = e.Wheel.Y;
+                MouseWheelY += e.Wheel.Y;  // accumulate across frames
                 break;
         }
     }
@@ -80,7 +96,7 @@ public class InputManager
     public bool IsKeyPressed(SDL.Scancode key) => _keysPressed.Contains(key);
     public bool IsKeyReleased(SDL.Scancode key) => _keysReleased.Contains(key);
 
-    // Mouse queries (1 = left, 2 = middle, 3 = right)
+    // Mouse queries (SDL.ButtonLeft=1, SDL.ButtonMiddle=2, SDL.ButtonRight=3)
     public bool IsMouseDown(int button) => _mouseDown.Contains(button);
     public bool IsMousePressed(int button) => _mousePressed.Contains(button);
     public bool IsMouseReleased(int button) => _mouseReleased.Contains(button);

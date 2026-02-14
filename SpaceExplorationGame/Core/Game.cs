@@ -134,6 +134,13 @@ public class Game : IDisposable
                 steps++;
             }
 
+            // Clear edge-detection input only after Update has consumed it.
+            // If no update ran this frame, events survive until the next frame.
+            if (steps > 0)
+            {
+                Input.EndFrame();
+            }
+
             // Render
             SDL.SetRenderDrawColor(Renderer, 0, 0, 0, 255);
             SDL.RenderClear(Renderer);
