@@ -34,6 +34,7 @@ public class InteriorState : GameState
 
     // ECS Systems
     private PlayerMovementSystem _movementSystem = null!;
+    private CameraFollowSystem _cameraFollowSystem = null!;
 
     // Interaction state
     private InteriorNpc? _nearestNpc;
@@ -98,6 +99,9 @@ public class InteriorState : GameState
         };
         _movementSystem.Initialize();
 
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem.Initialize();
+
         // Camera setup
         game.Camera.Position = new Vector2(spawnX, spawnY);
         game.Camera.Zoom = 1.5f;
@@ -146,16 +150,11 @@ public class InteriorState : GameState
         // Player movement (via system with tile collision)
         _movementSystem.Update(in dt);
 
-        // Camera follows avatar
-        ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
-        camera.LerpTo(avatarTf.Position, 5f * dt);
+        // Camera follows player + handles zoom
+        _cameraFollowSystem.Update(in dt);
 
-        // Zoom
-        if (input.MouseWheelY != 0)
-        {
-            camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            camera.ClampZoom();
-        }
+        // Get player position for proximity checks
+        ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
 
         // Find nearest NPC and interactable
         float playerTileX = avatarTf.Position.X / GameConfig.TileSize;
@@ -254,32 +253,18 @@ public class InteriorState : GameState
         var renderer = game.SpriteRenderer;
         var camera = game.Camera;
 
-        // Draw tiles
-        var (topLeft, bottomRight) = camera.GetVisibleBounds();
-        int startTileX = Math.Max(0, (int)(topLeft.X / GameConfig.TileSize) - 1);
-        int startTileY = Math.Max(0, (int)(topLeft.Y / GameConfig.TileSize) - 1);
-        int endTileX = Math.Min(_interior.Width - 1, (int)(bottomRight.X / GameConfig.TileSize) + 1);
-        int endTileY = Math.Min(_interior.Height - 1, (int)(bottomRight.Y / GameConfig.TileSize) + 1);
-
-        for (int x = startTileX; x <= endTileX; x++)
-        {
-            for (int y = startTileY; y <= endTileY; y++)
+        // Draw tiles via shared renderer
+        TileMapRenderer.RenderTiles(renderer, camera, _interior.Width, _interior.Height,
+            (x, y) =>
             {
                 var tile = _interior.Tiles[x, y];
-                if (tile == InteriorTileType.Void) continue;
-
-                var (r, g, b) = InteriorGenerator.GetTileColor(tile);
-
-                // Subtle per-tile variation
-                int hash = (x * 374761393 + y * 668265263) ^ (x * y);
-                float variation = ((hash & 0xFF) - 128) / 1200f;
-                byte vr = (byte)Math.Clamp(r + r * variation, 0, 255);
-                byte vg = (byte)Math.Clamp(g + g * variation, 0, 255);
-                byte vb = (byte)Math.Clamp(b + b * variation, 0, 255);
-
-                var worldPos = new Vector2(x * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                                           y * GameConfig.TileSize + GameConfig.TileSize / 2f);
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, vr, vg, vb);
+                if (tile == InteriorTileType.Void) return null;
+                return InteriorGenerator.GetTileColor(tile);
+            },
+            1200f,
+            (x, y, worldPos, hash) =>
+            {
+                var tile = _interior.Tiles[x, y];
 
                 // Wall detail: highlight top edge
                 if (tile == InteriorTileType.Wall)
@@ -319,14 +304,12 @@ public class InteriorState : GameState
                 // Landing pad markings
                 if (tile == InteriorTileType.LandingPad)
                 {
-                    // Corner markers
                     if ((x + y) % 2 == 0)
                     {
                         renderer.DrawRect(camera, worldPos, 4, 4, 80, 80, 40);
                     }
                 }
-            }
-        }
+            });
 
         // Draw room labels
         foreach (var room in _interior.Rooms)

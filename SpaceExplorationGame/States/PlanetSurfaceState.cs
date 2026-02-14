@@ -27,6 +27,7 @@ public class PlanetSurfaceState : GameState
 
     // ECS Systems
     private PlayerMovementSystem _movementSystem = null!;
+    private CameraFollowSystem _cameraFollowSystem = null!;
 
     // Settlement proximity tracking
     private SettlementData? _nearSettlement;
@@ -82,6 +83,9 @@ public class PlanetSurfaceState : GameState
         };
         _movementSystem.Initialize();
 
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem.Initialize();
+
         // Camera
         game.Camera.Position = new Vector2(lzX, lzY);
         game.Camera.Zoom = 1.5f;
@@ -103,16 +107,11 @@ public class PlanetSurfaceState : GameState
         // Player movement (via system with terrain collision)
         _movementSystem.Update(in dt);
 
-        // Camera follows avatar
-        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
-        camera.LerpTo(avatarTransform.Position, 5f * dt);
+        // Camera follows player + handles zoom
+        _cameraFollowSystem.Update(in dt);
 
-        // Zoom
-        if (input.MouseWheelY != 0)
-        {
-            camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            camera.ClampZoom();
-        }
+        // Get player position for proximity checks
+        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
 
         // Check settlement proximity
         _nearSettlement = null;
@@ -161,36 +160,17 @@ public class PlanetSurfaceState : GameState
         var renderer = game.SpriteRenderer;
         var camera = game.Camera;
 
-        // Calculate visible tile range
-        var (topLeft, bottomRight) = camera.GetVisibleBounds();
-        int startTileX = Math.Max(0, (int)(topLeft.X / GameConfig.TileSize) - 1);
-        int startTileY = Math.Max(0, (int)(topLeft.Y / GameConfig.TileSize) - 1);
-        int endTileX = Math.Min(_surfaceData.Width - 1, (int)(bottomRight.X / GameConfig.TileSize) + 1);
-        int endTileY = Math.Min(_surfaceData.Height - 1, (int)(bottomRight.Y / GameConfig.TileSize) + 1);
-
-        // Draw tiles with variation
-        for (int x = startTileX; x <= endTileX; x++)
-        {
-            for (int y = startTileY; y <= endTileY; y++)
+        // Draw tiles with variation via shared renderer
+        TileMapRenderer.RenderTiles(renderer, camera, _surfaceData.Width, _surfaceData.Height,
+            (x, y) => PlanetSurfaceGenerator.GetTerrainColor(_surfaceData.Tiles[x, y]),
+            800f,
+            (x, y, worldPos, hash) =>
             {
                 var terrain = _surfaceData.Tiles[x, y];
                 var (r, g, b) = PlanetSurfaceGenerator.GetTerrainColor(terrain);
 
-                // Per-tile variation for visual interest (deterministic based on position)
-                int hash = (x * 374761393 + y * 668265263) ^ (x * y);
-                float variation = ((hash & 0xFF) - 128) / 800f; // subtle +/- 16% brightness
-                byte vr = (byte)Math.Clamp(r + r * variation, 0, 255);
-                byte vg = (byte)Math.Clamp(g + g * variation, 0, 255);
-                byte vb = (byte)Math.Clamp(b + b * variation, 0, 255);
-
-                var worldPos = new Vector2(x * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                                           y * GameConfig.TileSize + GameConfig.TileSize / 2f);
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, vr, vg, vb);
-
-                // Draw small detail sprites on some tiles
                 if (terrain == TerrainType.Grass && (hash & 0x7) == 0)
                 {
-                    // Occasional tree/shrub dot
                     byte dr = (byte)Math.Clamp(r - 20, 0, 255);
                     byte dg = (byte)Math.Clamp(g + 30, 0, 255);
                     byte db = (byte)Math.Clamp(b - 10, 0, 255);
@@ -199,7 +179,6 @@ public class PlanetSurfaceState : GameState
                 }
                 else if (terrain == TerrainType.Rock && (hash & 0xF) == 0)
                 {
-                    // Occasional rock detail
                     byte dr = (byte)Math.Clamp(r + 20, 0, 255);
                     byte dg = (byte)Math.Clamp(g + 15, 0, 255);
                     byte db = (byte)Math.Clamp(b + 10, 0, 255);
@@ -208,15 +187,13 @@ public class PlanetSurfaceState : GameState
                 }
                 else if (terrain == TerrainType.Water && (hash & 0x3) == 0)
                 {
-                    // Water sparkle/wave detail
                     byte wr = (byte)Math.Clamp(r + 30, 0, 255);
                     byte wg = (byte)Math.Clamp(g + 30, 0, 255);
                     byte wb = (byte)Math.Clamp(b + 40, 0, 255);
                     renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 4) & 0xF) - 8, ((hash >> 8) & 0x7) - 4),
                         8, 2, wr, wg, wb, 100);
                 }
-            }
-        }
+            });
 
         // Draw settlements
         foreach (var settlement in _surfaceData.Settlements)

@@ -43,6 +43,9 @@ public class SolarSystemState : GameState
     // ECS Systems
     private OrbitSystem _orbitSystem = null!;
     private VelocitySystem _velocitySystem = null!;
+    private CameraFollowSystem _cameraFollowSystem = null!;
+    private LabelRenderSystem _labelRenderSystem = null!;
+    private InteractionProximitySystem _proximitySystem = null!;
 
     // Cached textures for this solar system
     private nint _starTexture;
@@ -309,6 +312,14 @@ public class SolarSystemState : GameState
         _velocitySystem = new VelocitySystem(game.EcsWorld);
         _velocitySystem.Initialize();
 
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem.Initialize();
+
+        _labelRenderSystem = new LabelRenderSystem(game.EcsWorld, game.SpriteRenderer, game.Camera);
+        _labelRenderSystem.Initialize();
+
+        _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
+
         // Camera follows player
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
@@ -378,75 +389,35 @@ public class SolarSystemState : GameState
         // --- Update orbits using global time (deterministic) ---
         _orbitSystem.Update(in dt);
 
-        // --- Camera follows player ---
-        camera.LerpTo(shipTransform.Position, 5f * dt);
-
-        // Zoom
-        if (input.MouseWheelY != 0)
-        {
-            camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            camera.ClampZoom();
-        }
+        // --- Camera follows player + handles zoom ---
+        _cameraFollowSystem.Update(in dt);
 
         // --- Check proximity for interactions ---
-        // Unified: find the single closest interactable object (by distance to center),
-        // among all planets, moons, and stations within interaction range.
+        ref var shipTransformForProximity = ref game.EcsWorld.Get<Transform>(_playerShip);
+        _proximitySystem.FindNearest(shipTransformForProximity.Position);
         _nearbyPlanetIndex = -1;
         _nearbyStationIndex = -1;
         _nearbyMoonPlanetIndex = -1;
         _nearbyMoonIndex = -1;
 
-        float bestDist = float.MaxValue;
-
-        // Check planets
-        for (int i = 0; i < _planetEntities.Count; i++)
+        if (_proximitySystem.HasNearest)
         {
-            var body = game.EcsWorld.Get<CelestialBody>(_planetEntities[i]);
-            if (!body.HasSolidSurface) continue;
-            var pos = game.EcsWorld.Get<Transform>(_planetEntities[i]).Position;
-            float dist = Vector2.Distance(shipTransform.Position, pos);
-            if (dist < body.Radius + InteractionRadius && dist < bestDist)
+            var nearBody = game.EcsWorld.Get<CelestialBody>(_proximitySystem.NearestEntity);
+            switch (nearBody.Type)
             {
-                bestDist = dist;
-                _nearbyPlanetIndex = i;
-                _nearbyStationIndex = -1;
-                _nearbyMoonPlanetIndex = -1;
-                _nearbyMoonIndex = -1;
-            }
-        }
-
-        // Check moons
-        for (int pi = 0; pi < _moonEntities.Count; pi++)
-        {
-            for (int mi = 0; mi < _moonEntities[pi].Count; mi++)
-            {
-                var moonBody = game.EcsWorld.Get<CelestialBody>(_moonEntities[pi][mi]);
-                var pos = game.EcsWorld.Get<Transform>(_moonEntities[pi][mi]).Position;
-                float dist = Vector2.Distance(shipTransform.Position, pos);
-                if (dist < moonBody.Radius + InteractionRadius && dist < bestDist)
-                {
-                    bestDist = dist;
-                    _nearbyMoonPlanetIndex = pi;
-                    _nearbyMoonIndex = mi;
-                    _nearbyPlanetIndex = -1;
-                    _nearbyStationIndex = -1;
-                }
-            }
-        }
-
-        // Check stations
-        for (int i = 0; i < _stationEntities.Count; i++)
-        {
-            var stBody = game.EcsWorld.Get<CelestialBody>(_stationEntities[i]);
-            var pos = game.EcsWorld.Get<Transform>(_stationEntities[i]).Position;
-            float dist = Vector2.Distance(shipTransform.Position, pos);
-            if (dist < stBody.Radius + InteractionRadius && dist < bestDist)
-            {
-                bestDist = dist;
-                _nearbyStationIndex = i;
-                _nearbyPlanetIndex = -1;
-                _nearbyMoonPlanetIndex = -1;
-                _nearbyMoonIndex = -1;
+                case CelestialType.Planet:
+                    _nearbyPlanetIndex = nearBody.DataIndex;
+                    break;
+                case CelestialType.Moon:
+                    for (int pi = 0; pi < _moonEntities.Count; pi++)
+                    {
+                        int mi = _moonEntities[pi].IndexOf(_proximitySystem.NearestEntity);
+                        if (mi >= 0) { _nearbyMoonPlanetIndex = pi; _nearbyMoonIndex = mi; break; }
+                    }
+                    break;
+                case CelestialType.SpaceStation:
+                    _nearbyStationIndex = _stationEntities.IndexOf(_proximitySystem.NearestEntity);
+                    break;
             }
         }
 
@@ -590,16 +561,9 @@ public class SolarSystemState : GameState
             renderer.DrawTexture(camera, stationTex, stTransform.Position, 28, 28, stRotation);
         }
 
-        // Draw labels
-        var labelQuery = new QueryDescription().WithAll<Transform, Label>();
-        game.EcsWorld.Query(in labelQuery, (Entity entity, ref Transform transform, ref Label label) =>
-        {
-            var textPos = transform.Position + new Vector2(0, label.OffsetY);
-            float textScale = Math.Max(0.8f, camera.Zoom * 0.8f);
-            float textWidth = renderer.MeasureText(label.Text, textScale);
-            renderer.DrawText(camera, textPos - new Vector2(textWidth / (2 * camera.Zoom), 0),
-                label.Text, 180, 180, 180, textScale);
-        });
+        // Draw labels (via ECS system)
+        float unusedDt = 0f;
+        _labelRenderSystem.Update(in unusedDt);
 
         // Draw player ship with texture
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
