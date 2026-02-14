@@ -22,6 +22,15 @@ public class GalaxyMapState : GameState
     // Background stars (cosmetic)
     private List<(float X, float Y, byte Brightness)> _backgroundStars = [];
 
+    // Mouse panning state
+    private bool _isPanning;
+    private Vector2 _lastMouseScreen;
+
+    // Double-click detection
+    private float _lastClickTime;
+    private int _lastClickSystem = -1;
+    private const float DoubleClickTime = 0.4f; // seconds
+
     public override void Enter(Game game)
     {
         // Generate galaxy
@@ -135,6 +144,24 @@ public class GalaxyMapState : GameState
         return GetSystemDistance(fromIndex, targetIndex) <= GameConfig.FtlMaxRange;
     }
 
+    /// <summary>Attempt to travel to the currently selected system.</summary>
+    private void TravelToSelected(Game game)
+    {
+        if (_selectedSystemIndex < 0) return;
+        int current = game.Player.CurrentStarSystemIndex;
+        if (_selectedSystemIndex == current)
+        {
+            game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+        }
+        else if (IsSystemReachable(game, _selectedSystemIndex))
+        {
+            float fuelCost = GetFuelCost(current, _selectedSystemIndex);
+            game.Player.TrySpendFuel(fuelCost);
+            game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
+            game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+        }
+    }
+
     public override void Update(Game game, float dt)
     {
         var input = game.Input;
@@ -158,8 +185,26 @@ public class GalaxyMapState : GameState
             camera.ClampZoom();
         }
 
+        // Mouse panning with left-click drag
+        Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        if (input.IsMousePressed(1))
+        {
+            _lastMouseScreen = currentMouse;
+            _isPanning = false;
+        }
+        if (input.IsMouseDown(1))
+        {
+            Vector2 delta = currentMouse - _lastMouseScreen;
+            if (delta.LengthSquared() > 4f) // moved more than 2px
+            {
+                _isPanning = true;
+                camera.Position -= delta / camera.Zoom;
+                _lastMouseScreen = currentMouse;
+            }
+        }
+
         // Mouse hover check
-        var mouseWorld = camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
+        var mouseWorld = camera.ScreenToWorld(currentMouse);
         _hoveredSystemIndex = -1;
         float bestDist = 30f / camera.Zoom; // 30 pixel hit radius
         bestDist *= bestDist;
@@ -175,29 +220,39 @@ public class GalaxyMapState : GameState
             }
         }
 
-        // Click to select
-        if (input.IsMousePressed(1) && _hoveredSystemIndex >= 0)
+        // Click to select / double-click to travel (on mouse release, only if not panning)
+        if (input.IsMouseReleased(1))
         {
-            _selectedSystemIndex = _hoveredSystemIndex;
+            if (!_isPanning && _hoveredSystemIndex >= 0)
+            {
+                float now = (float)game.GlobalTime;
+                if (_hoveredSystemIndex == _lastClickSystem && (now - _lastClickTime) < DoubleClickTime)
+                {
+                    // Double-click: travel to system
+                    _selectedSystemIndex = _hoveredSystemIndex;
+                    TravelToSelected(game);
+                    _lastClickSystem = -1;
+                }
+                else
+                {
+                    // Single click: select
+                    _selectedSystemIndex = _hoveredSystemIndex;
+                    _lastClickTime = now;
+                    _lastClickSystem = _hoveredSystemIndex;
+                }
+            }
+            else if (!_isPanning)
+            {
+                // Clicked on empty space, reset double-click
+                _lastClickSystem = -1;
+            }
+            _isPanning = false;
         }
 
-        // Enter to travel to selected system (with fuel cost)
+        // Enter to travel to selected system
         if (input.IsKeyPressed(SDL.Scancode.Return) && _selectedSystemIndex >= 0)
         {
-            int current = game.Player.CurrentStarSystemIndex;
-            if (_selectedSystemIndex == current)
-            {
-                // Already here, just enter the system
-                game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
-            }
-            else if (IsSystemReachable(game, _selectedSystemIndex))
-            {
-                float fuelCost = GetFuelCost(current, _selectedSystemIndex);
-                game.Player.TrySpendFuel(fuelCost);
-                game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
-                game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
-            }
-            // If not reachable, do nothing (HUD shows the reason)
+            TravelToSelected(game);
         }
     }
 
@@ -233,22 +288,6 @@ public class GalaxyMapState : GameState
             {
                 renderer.DrawCircle(camera, playerPos, fuelRange,
                     80, 160, 80, 80, 64);
-            }
-        }
-
-        // Draw connections between nearby systems (FTL routes)
-        for (int i = 0; i < _starSystems.Count; i++)
-        {
-            for (int j = i + 1; j < _starSystems.Count; j++)
-            {
-                var diff = _starSystems[i].GalaxyPosition - _starSystems[j].GalaxyPosition;
-                if (diff.Length() < GameConfig.FtlMaxRange) // only show reachable connections
-                {
-                    renderer.DrawLine(camera,
-                        _starSystems[i].GalaxyPosition,
-                        _starSystems[j].GalaxyPosition,
-                        30, 30, 50, 50);
-                }
             }
         }
 
@@ -310,6 +349,9 @@ public class GalaxyMapState : GameState
                 playerSys.StarRadius + 10, 0, 255, 100);
         }
 
+        // HUD background
+        renderer.DrawRectScreen(0, 0, 260, 115, 0, 0, 0, 160);
+
         // HUD
         renderer.DrawTextScreen(10, 10, "GALAXY MAP", 200, 200, 255, 2f);
         renderer.DrawTextScreen(10, 35, $"SEED: {game.Seeds.GalaxySeed}", 150, 150, 150, 1.5f);
@@ -340,7 +382,7 @@ public class GalaxyMapState : GameState
             if (isCurrentSystem)
             {
                 renderer.DrawTextScreen(10, panelY + 95, "YOU ARE HERE", 100, 255, 200, 1.5f);
-                renderer.DrawTextScreen(10, panelY + 115, "[ENTER] ENTER SYSTEM", 100, 255, 100, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, "[ENTER/DBLCLICK] ENTER SYSTEM", 100, 255, 100, 1.5f);
             }
             else
             {
@@ -355,14 +397,17 @@ public class GalaxyMapState : GameState
                 else if (!canAfford)
                     renderer.DrawTextScreen(10, panelY + 135, "NOT ENOUGH FUEL", 255, 80, 80, 1.5f);
                 else
-                    renderer.DrawTextScreen(10, panelY + 135, "[ENTER] TRAVEL TO SYSTEM", 100, 255, 100, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] TRAVEL", 100, 255, 100, 1.5f);
             }
         }
 
+        // Controls help background
+        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, 5, 310, 90, 0, 0, 0, 160);
+
         // Controls help
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 10, "WASD/ARROWS: PAN", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "ENTER: TRAVEL", 120, 120, 120, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 10, "WASD/ARROWS/DRAG: PAN", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", 180, 180, 180, 1.5f);
     }
 }

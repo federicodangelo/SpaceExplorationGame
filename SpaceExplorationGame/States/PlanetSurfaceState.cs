@@ -220,10 +220,13 @@ public class PlanetSurfaceState : GameState
         float smy = mmY + shipTf.Position.Y * mmScaleY;
         renderer.DrawRectScreen(smx - 2, smy - 2, 4, 4, 150, 150, 200);
 
+        // Controls background
+        renderer.DrawRectScreen(GameConfig.WindowWidth - 260, mmY + mmSize + 15, 260, 100, 0, 0, 0, 160);
+
         // Controls
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: BOARD SHIP", 120, 120, 120, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: LEAVE", 120, 120, 120, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: BOARD SHIP", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: LEAVE", 180, 180, 180, 1.5f);
     }
 }
