@@ -10,7 +10,8 @@ public enum GameStateType
     SolarSystem,
     SpaceStation,
     PlanetLanding,
-    PlanetSurface
+    PlanetSurface,
+    Interior
 }
 
 /// <summary>

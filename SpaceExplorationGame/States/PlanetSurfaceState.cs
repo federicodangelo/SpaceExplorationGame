@@ -21,8 +21,11 @@ public class PlanetSurfaceState : GameState
 
     private Entity _playerAvatar;
     private Entity _shipEntity;
-    private const float AvatarSpeed = 120f;
+    private const float AvatarSpeed = 200f;
     private const float BoardShipRadius = 30f;
+
+    // Settlement proximity tracking
+    private SettlementData? _nearSettlement;
 
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
@@ -64,7 +67,7 @@ public class PlanetSurfaceState : GameState
 
         // Camera
         game.Camera.Position = new Vector2(lzX, lzY);
-        game.Camera.Zoom = 2.0f;
+        game.Camera.Zoom = 1.5f;
     }
 
     public override void Exit(Game game)
@@ -124,13 +127,39 @@ public class PlanetSurfaceState : GameState
             camera.ClampZoom();
         }
 
+        // Check settlement proximity
+        _nearSettlement = null;
+        foreach (var settlement in _surfaceData.Settlements)
+        {
+            float sx = (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize;
+            float sy = (settlement.TileY + settlement.Height / 2f) * GameConfig.TileSize;
+            float distToSettlement = Vector2.Distance(avatarTransform.Position, new Vector2(sx, sy));
+            float settlementRadius = Math.Max(settlement.Width, settlement.Height) * GameConfig.TileSize / 2f + 20f;
+            if (distToSettlement < settlementRadius)
+            {
+                _nearSettlement = settlement;
+                break;
+            }
+        }
+
         // Board ship
         var shipTransform = game.EcsWorld.Get<Transform>(_shipEntity);
         float distToShip = Vector2.Distance(avatarTransform.Position, shipTransform.Position);
-        if (distToShip < BoardShipRadius && input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsKeyPressed(SDL.Scancode.E))
         {
-            // Return to solar system
-            game.ChangeState(new SolarSystemState(_starSystem));
+            if (_nearSettlement != null)
+            {
+                // Enter settlement interior
+                game.ChangeState(new InteriorState(
+                    InteriorOrigin.Settlement, _starSystem,
+                    planet: _planet, settlement: _nearSettlement));
+                return;
+            }
+            else if (distToShip < BoardShipRadius)
+            {
+                // Return to solar system
+                game.ChangeState(new SolarSystemState(_starSystem));
+            }
         }
 
         // Quick exit
@@ -226,17 +255,22 @@ public class PlanetSurfaceState : GameState
         // Draw ship with texture
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
         var landedShipTex = game.Textures.GetTexture(Rendering.TextureManager.ShipLanded);
-        renderer.DrawTexture(camera, landedShipTex, shipTf.Position, 24, 24);
+        renderer.DrawTexture(camera, landedShipTex, shipTf.Position, 48, 48);
         renderer.DrawText(camera, shipTf.Position + new Vector2(-12, 14), "SHIP", 180, 180, 200);
 
         // Draw player avatar with texture
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
         var avatarTex = game.Textures.GetTexture(Rendering.TextureManager.AvatarDown);
-        renderer.DrawTexture(camera, avatarTex, avatarTf.Position, 14, 14);
+        renderer.DrawTexture(camera, avatarTex, avatarTf.Position, 28, 28);
 
-        // Board ship prompt
+        // Board ship / settlement entry prompt
         float distToShip = Vector2.Distance(avatarTf.Position, shipTf.Position);
-        if (distToShip < BoardShipRadius)
+        if (_nearSettlement != null)
+        {
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 120, GameConfig.WindowHeight - 60,
+                $"[E] ENTER {_nearSettlement.Name.ToUpper()}", 255, 255, 100, 2f);
+        }
+        else if (distToShip < BoardShipRadius)
         {
             renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
                 "[E] BOARD SHIP", 100, 255, 100, 2f);

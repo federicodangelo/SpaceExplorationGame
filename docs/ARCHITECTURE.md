@@ -30,7 +30,8 @@ SpaceExplorationGame/
 │   ├── SeedManager.cs             # Hierarchical seed derivation
 │   ├── GalaxyGenerator.cs         # Galaxy star system placement & properties
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
-│   └── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
+│   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
+│   └── InteriorGenerator.cs       # Station/settlement interior layouts
 ├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
 │   ├── TextureManager.cs          # Procedural pixel art texture generation
@@ -41,7 +42,8 @@ SpaceExplorationGame/
     ├── SolarSystemState.cs        # Space flight within a solar system
     ├── SpaceStationState.cs       # Menu-based space station interaction
     ├── PlanetLandingState.cs      # Orbital landing site selection
-    └── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
+    ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
+    └── InteriorState.cs           # Walkable station/settlement interiors
 ```
 
 ## Command Line Options
@@ -83,9 +85,10 @@ States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Unified nearest-center interaction detection.
-- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking.
+- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. "Walk Station" option opens walkable interior.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
-- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board.
+- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board, E near settlement to enter interior.
+- **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, trade terminals (buy hull plating, fuel, shield emitters), repair stations, mission boards (placeholder). Minimap shows room layout, NPCs, and interactable objects.
 
 ### Procedural Generation Seed Hierarchy
 ```
@@ -99,6 +102,7 @@ Galaxy Seed (user-provided or random)
 └── ...
 ```
 All RNG uses `SeededRandom` (xorshift64) — fully deterministic. Same galaxy seed = same universe every time.
+Station interiors derive seeds from system seed + 2000 + station index. Settlement interiors derive from surface seed + 3000 + position hash.
 
 ### ECS Usage (Arch)
 Components are plain structs defined in `Components.cs`. The game uses Arch's `World.Query()` with lambda syntax for iteration. Key component types:
@@ -159,8 +163,15 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 ### Planet Surface
 - WASD/Arrows: Move avatar
 - Mouse Scroll: Zoom
-- E: Board ship (when near)
+- E: Board ship (when near) / Enter settlement (when near)
 - Escape: Leave planet (quick exit)
+
+### Interior (Station / Settlement)
+- WASD/Arrows: Move avatar
+- Mouse Scroll: Zoom
+- E: Interact with NPCs / terminals
+- Enter: Advance dialogue / Confirm purchase
+- Escape: Close overlay / Exit interior
 
 ## Build & Run
 ```bash
@@ -188,17 +199,17 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Procedural pixel art textures (ships, planets, stars, stations, avatar, asteroids)
 - [x] HUD backgrounds for readability
 - [x] Terrain tile variation with detail sprites
+- [x] Walkable interiors for stations and settlements (rooms, NPCs, trade, repair, missions)
 
 ## TODO / Next Steps
 - [ ] Player vehicle for planet exploration
 - [ ] Ship customization system (parts, weapons, shields)
 - [ ] Ship/vehicle/avatar upgrade shop in stations
-- [ ] Mission system
+- [ ] Mission system (acceptance, tracking, completion)
 - [ ] Combat system
 - [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
-- [ ] Settlement interior (basic 2D map in stations/settlements)
 - [ ] FTL travel animation
 - [ ] Asteroid mining/collection
 - [ ] Multiple ship types

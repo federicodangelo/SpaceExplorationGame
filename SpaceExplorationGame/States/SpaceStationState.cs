@@ -67,7 +67,9 @@ public class SpaceStationState : GameState
                     break;
                 case 1: // Missions - TODO
                     break;
-                case 2: // Walk station - TODO (basic 2D map)
+                case 2: // Walk station
+                    game.ChangeState(new InteriorState(
+                        InteriorOrigin.Station, _starSystem, station: _station));
                     break;
                 case 3: // Exit station
                     game.ChangeState(new SolarSystemState(_starSystem));
