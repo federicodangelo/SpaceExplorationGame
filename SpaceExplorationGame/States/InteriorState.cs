@@ -43,8 +43,9 @@ public class InteriorState : GameState
     private InteriorNpc? _dialogueNpc;
     private int _dialogueLine;
 
-    // Shared service overlays (trade, repair, missions)
+    // Shared service overlays (repair, missions)
     private readonly ServiceOverlays _overlays = new();
+    private readonly ShipCustomizationOverlay _shipCustomization = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -123,6 +124,11 @@ public class InteriorState : GameState
         // Handle overlay interactions first
         if (_overlays.Update(game, input))
             return;
+        if (_shipCustomization.IsOpen)
+        {
+            _shipCustomization.Update(game, input, dt);
+            return;
+        }
 
         // Handle dialogue
         if (_showingDialogue)
@@ -218,14 +224,14 @@ public class InteriorState : GameState
             case InteractableType.ExitDoor:
                 ExitInterior(game);
                 break;
-            case InteractableType.TradeTerminal:
-                _overlays.Open(ServiceOverlays.OverlayType.Trade);
-                break;
             case InteractableType.RepairStation:
                 _overlays.Open(ServiceOverlays.OverlayType.Repair);
                 break;
             case InteractableType.MissionBoard:
                 _overlays.Open(ServiceOverlays.OverlayType.Mission);
+                break;
+            case InteractableType.ShipCustomization:
+                _shipCustomization.Open();
                 break;
         }
     }
@@ -366,6 +372,7 @@ public class InteriorState : GameState
                 InteractableType.TradeTerminal => ((byte)255, (byte)220, (byte)80),
                 InteractableType.RepairStation => ((byte)100, (byte)255, (byte)100),
                 InteractableType.MissionBoard => ((byte)100, (byte)180, (byte)255),
+                InteractableType.ShipCustomization => ((byte)100, (byte)220, (byte)255),
                 InteractableType.ExitDoor => ((byte)255, (byte)100, (byte)100),
                 _ => ((byte)200, (byte)200, (byte)200)
             };
@@ -395,21 +402,23 @@ public class InteriorState : GameState
         renderer.DrawTextScreen(w - 200, 8, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
 
         // Interaction prompts
-        if (_nearestInteractable != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None)
+        if (_nearestInteractable != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
+            && !_shipCustomization.IsOpen)
         {
             string prompt = _nearestInteractable.Type switch
             {
                 InteractableType.ExitDoor => "[E] EXIT",
-                InteractableType.TradeTerminal => "[E] TRADE",
                 InteractableType.RepairStation => "[E] REPAIR",
                 InteractableType.MissionBoard => "[E] MISSIONS",
+                InteractableType.ShipCustomization => "[E] SHIP CUSTOMIZATION",
                 _ => "[E] INTERACT"
             };
             float tw = renderer.MeasureText(prompt, 2f);
             renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
             renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 100, 255, 200, 2f);
         }
-        else if (_nearestNpc != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None)
+        else if (_nearestNpc != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
+            && !_shipCustomization.IsOpen)
         {
             string prompt = $"[E] TALK TO {_nearestNpc.Name.ToUpper()}";
             float tw = renderer.MeasureText(prompt, 2f);
@@ -425,9 +434,11 @@ public class InteriorState : GameState
 
         // Overlays
         _overlays.Render(game, renderer);
+        _shipCustomization.Render(game, renderer);
 
         // Controls help (when no overlay)
-        if (_overlays.Active == ServiceOverlays.OverlayType.None && !_showingDialogue)
+        if (_overlays.Active == ServiceOverlays.OverlayType.None && !_showingDialogue
+            && !_shipCustomization.IsOpen)
         {
             renderer.DrawRectScreen(w - 200, h - 110, 195, 100, 0, 0, 0, 160);
             renderer.DrawTextScreen(w - 190, h - 105, "WASD: MOVE", 160, 160, 160, 1.5f);
@@ -531,6 +542,7 @@ public class InteriorState : GameState
                 InteractableType.TradeTerminal => ((byte)255, (byte)220, (byte)80),
                 InteractableType.RepairStation => ((byte)100, (byte)255, (byte)100),
                 InteractableType.MissionBoard => ((byte)100, (byte)180, (byte)255),
+                InteractableType.ShipCustomization => ((byte)100, (byte)220, (byte)255),
                 InteractableType.ExitDoor => ((byte)255, (byte)100, (byte)100),
                 _ => ((byte)200, (byte)200, (byte)200)
             };

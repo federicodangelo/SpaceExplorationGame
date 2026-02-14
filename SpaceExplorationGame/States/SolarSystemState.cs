@@ -359,18 +359,24 @@ public class SolarSystemState : GameState
         // --- Player ship controls ---
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
         ref var shipVelocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
+        var shipStats = game.Player.GetCombinedStats();
+
+        // Update max speed from parts
+        shipVelocity.MaxSpeed = shipStats.MaxSpeed > 0 ? shipStats.MaxSpeed : GameConfig.ShipMaxSpeed;
 
         // Rotation
+        float rotSpeed = shipStats.RotationSpeed > 0 ? shipStats.RotationSpeed : GameConfig.ShipRotationSpeed;
         if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            shipTransform.Rotation -= GameConfig.ShipRotationSpeed * dt;
+            shipTransform.Rotation -= rotSpeed * dt;
         if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            shipTransform.Rotation += GameConfig.ShipRotationSpeed * dt;
+            shipTransform.Rotation += rotSpeed * dt;
 
         // Thrust
+        float accel = shipStats.Acceleration > 0 ? shipStats.Acceleration : GameConfig.ShipAcceleration;
         if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
         {
             float rad = shipTransform.Rotation * MathF.PI / 180f;
-            var thrust = new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * GameConfig.ShipAcceleration * dt;
+            var thrust = new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * accel * dt;
             shipVelocity.Value += thrust;
         }
 

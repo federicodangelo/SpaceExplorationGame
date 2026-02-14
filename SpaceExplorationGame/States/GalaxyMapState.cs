@@ -180,6 +180,13 @@ public class GalaxyMapState : GameState
         return GetSystemDistance(fromIndex, toIndex) * GameConfig.FuelPerDistanceUnit;
     }
 
+    /// <summary>Get the effective FTL range from equipped parts.</summary>
+    private float GetFtlRange(Game game)
+    {
+        var stats = game.Player.GetCombinedStats();
+        return stats.FtlRange > 0 ? stats.FtlRange : GameConfig.FtlMaxRange;
+    }
+
     /// <summary>Check if a system is reachable from the player's current system.</summary>
     private bool IsSystemReachable(Game game, int targetIndex)
     {
@@ -187,13 +194,13 @@ public class GalaxyMapState : GameState
         if (current == targetIndex) return true;
         float distance = GetSystemDistance(current, targetIndex);
         float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
-        return distance <= GameConfig.FtlMaxRange && game.Player.ShipFuel >= fuelCost;
+        return distance <= GetFtlRange(game) && game.Player.ShipFuel >= fuelCost;
     }
 
     /// <summary>Check if a system is within FTL range (ignoring fuel).</summary>
-    private bool IsInFtlRange(int fromIndex, int targetIndex)
+    private bool IsInFtlRange(Game game, int fromIndex, int targetIndex)
     {
-        return GetSystemDistance(fromIndex, targetIndex) <= GameConfig.FtlMaxRange;
+        return GetSystemDistance(fromIndex, targetIndex) <= GetFtlRange(game);
     }
 
     /// <summary>Attempt to travel to the currently selected system.</summary>
@@ -363,12 +370,13 @@ public class GalaxyMapState : GameState
         if (currentSys >= 0 && currentSys < _starSystems.Count)
         {
             var playerPos = _starSystems[currentSys].GalaxyPosition;
+            float ftlRange = GetFtlRange(game);
             // Max FTL range circle
-            renderer.DrawCircle(camera, playerPos, GameConfig.FtlMaxRange,
+            renderer.DrawCircle(camera, playerPos, ftlRange,
                 40, 80, 40, 60, 64);
             // Fuel-limited range circle (may be smaller than FTL max)
             float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
-            if (fuelRange < GameConfig.FtlMaxRange)
+            if (fuelRange < ftlRange)
             {
                 renderer.DrawCircle(camera, playerPos, fuelRange,
                     80, 160, 80, 80, 64);
@@ -382,7 +390,7 @@ public class GalaxyMapState : GameState
             bool isSelected = i == _selectedSystemIndex;
             bool isHovered = i == _hoveredSystemIndex;
             bool isCurrentSystem = i == currentSys;
-            bool inRange = currentSys >= 0 && (isCurrentSystem || IsInFtlRange(currentSys, i));
+            bool inRange = currentSys >= 0 && (isCurrentSystem || IsInFtlRange(game, currentSys, i));
             bool reachable = currentSys >= 0 && IsSystemReachable(game, i);
 
             float radius = sys.StarRadius;
@@ -453,7 +461,7 @@ public class GalaxyMapState : GameState
             bool isCurrentSystem = _selectedSystemIndex == game.Player.CurrentStarSystemIndex;
             float distance = isCurrentSystem ? 0 : GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
             float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
-            bool inRange = isCurrentSystem || distance <= GameConfig.FtlMaxRange;
+            bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
             float panelY = GameConfig.WindowHeight - 160;

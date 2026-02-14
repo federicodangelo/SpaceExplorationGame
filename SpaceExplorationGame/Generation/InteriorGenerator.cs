@@ -88,7 +88,8 @@ public enum InteractableType
     TradeTerminal,
     RepairStation,
     MissionBoard,
-    ExitDoor
+    ExitDoor,
+    ShipCustomization
 }
 
 /// <summary>
@@ -267,6 +268,16 @@ public static class InteriorGenerator
             TileX = docking.X + docking.Width / 2,
             TileY = docking.Y + docking.Height - 1
         });
+
+        // Ship customization terminal next to landing pad
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "SHIP CUSTOMIZATION",
+            Type = InteractableType.ShipCustomization,
+            TileX = docking.X + docking.Width / 2 + 2,
+            TileY = docking.Y + docking.Height - 1
+        });
+        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + docking.Height - 1] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceStationNpcs(data, rng);

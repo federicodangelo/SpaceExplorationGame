@@ -16,10 +16,10 @@ public class SpaceStationState : GameState
     private readonly StarSystemData _starSystem;
     private readonly SpaceStationData _station;
     private readonly ServiceOverlays _overlays = new();
+    private readonly ShipCustomizationOverlay _shipCustomization = new();
 
     private static readonly string[] StationMenuLabels =
     [
-        "TRADE",
         "REPAIR",
         "MISSIONS",
         "SHIP CUSTOMIZATION",
@@ -69,27 +69,32 @@ public class SpaceStationState : GameState
             return;
         }
 
+        // Ship customization overlay
+        if (_shipCustomization.IsOpen)
+        {
+            _shipCustomization.Update(game, input, dt);
+            return;
+        }
+
         int confirmed = _menu.Update(input);
         if (confirmed >= 0)
         {
             switch (confirmed)
             {
-                case 0: // Trade
-                    _overlays.Open(ServiceOverlays.OverlayType.Trade);
-                    break;
-                case 1: // Repair
+                case 0: // Repair
                     _overlays.Open(ServiceOverlays.OverlayType.Repair);
                     break;
-                case 2: // Missions
+                case 1: // Missions
                     _overlays.Open(ServiceOverlays.OverlayType.Mission);
                     break;
-                case 3: // Ship customization - TODO
+                case 2: // Ship customization
+                    _shipCustomization.Open();
                     break;
-                case 4: // Walk station
+                case 3: // Walk station
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
-                case 5: // Exit station
+                case 4: // Exit station
                     game.ChangeState(new SolarSystemState(_starSystem));
                     break;
             }
@@ -173,5 +178,8 @@ public class SpaceStationState : GameState
 
         // Service overlays (trade, repair, missions) drawn on top
         _overlays.Render(game, renderer);
+
+        // Ship customization overlay drawn on top of everything
+        _shipCustomization.Render(game, renderer);
     }
 }

@@ -21,7 +21,8 @@ SpaceExplorationGame/
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
-│   └── PlayerData.cs              # Persistent player data across state changes
+│   ├── PlayerData.cs              # Persistent player data across state changes
+│   └── ShipParts.cs               # Ship equipment data model, stats, and part catalog
 ├── ECS/
 │   ├── Components/
 │   │   └── Components.cs          # All ECS component structs
@@ -32,6 +33,7 @@ SpaceExplorationGame/
 │       ├── CameraFollowSystem.cs   # Smooth camera follow + mouse wheel zoom
 │       ├── LabelRenderSystem.cs    # Centered text labels below entities
 │       ├── InteractionProximitySystem.cs  # Nearest interactable entity detection
+│       ├── VehicleMovementSystem.cs # Thrust/rotation physics for planet rover
 │       └── TileMapRenderer.cs      # Shared tilemap rendering utility
 ├── Generation/
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
@@ -44,14 +46,18 @@ SpaceExplorationGame/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
 │   ├── TextureManager.cs          # Procedural pixel art texture generation
 │   └── MiniBitmapFont.cs          # Built-in 5x8 pixel font
-└── States/
-    ├── MainMenuState.cs           # Starting point selection menu
-    ├── GalaxyMapState.cs          # Galaxy overview with star system selection
-    ├── SolarSystemState.cs        # Space flight within a solar system
-    ├── SpaceStationState.cs       # Menu-based space station interaction
-    ├── PlanetLandingState.cs      # Orbital landing site selection
-    ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
-    └── InteriorState.cs           # Walkable station/settlement interiors
+├── States/
+│   ├── MainMenuState.cs           # Starting point selection menu
+│   ├── GalaxyMapState.cs          # Galaxy overview with star system selection
+│   ├── SolarSystemState.cs        # Space flight within a solar system
+│   ├── SpaceStationState.cs       # Menu-based space station interaction
+│   ├── PlanetLandingState.cs      # Orbital landing site selection
+│   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
+│   ├── InteriorState.cs           # Walkable station/settlement interiors
+│   └── ServiceOverlays.cs         # Reusable overlays (ServiceMenuOverlay)
+└── UI/
+    ├── MenuWidget.cs              # Reusable scrollable menu widget
+    └── ShipCustomizationOverlay.cs # Ship equipment management UI
 ```
 
 ## Command Line Options
@@ -93,7 +99,7 @@ States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
 - **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
-- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. "Walk Station" option opens walkable interior.
+- **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. "Walk Station" option opens walkable interior. "Ship Customization" opens the ShipCustomizationOverlay for equipping/swapping ship parts.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
 - **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel (3x speed). Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, trade terminals (buy hull plating, fuel, shield emitters), repair stations, mission boards (placeholder). Minimap shows room layout, NPCs, and interactable objects. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
@@ -138,6 +144,7 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 | **CameraFollowSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | SolarSystemState, PlanetSurfaceState, InteriorState |
 | **LabelRenderSystem** | `BaseSystem` (source gen) | `Transform + Label` | SolarSystemState |
 | **InteractionProximitySystem** | Plain class (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
+| **VehicleMovementSystem** | Plain class (manual) | Single entity | PlanetSurfaceState |
 | **TileMapRenderer** | Static utility | N/A (callback-driven) | PlanetSurfaceState, InteriorState |
 
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
@@ -146,6 +153,7 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 - **CameraFollowSystem**: Lerps camera toward the player entity and handles mouse-wheel zoom.
 - **LabelRenderSystem**: Draws centered text labels below entities using the bitmap font.
 - **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Implemented as a plain class with `FindNearest(Vector2)` because the source generator's `Update()` does not call `BeforeUpdate()`, which prevented per-frame distance reset.
+- **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Plain class with `Update(float dt)`, configurable physics params, and `CanMoveTo` collision delegate.
 - **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
 
 ### Rendering
@@ -159,6 +167,32 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 - **Avatar**: Tiny humanoid in green suit with blue visor
 - **Landed ship**: Oval hull with cockpit and landing struts
 - **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
+
+### Ship Customization
+Players can equip and swap ship parts at space stations via the **ShipCustomizationOverlay**. The system is defined in `ShipParts.cs` and integrated into `PlayerData`.
+
+**Equipment Slots** (7 total): Engine, Armor, Shield, FTL Drive, Weapon 1, Weapon 2, Utility.
+
+**Part Tiers**: Each slot type has 3 tiers of parts (Tier 1 = starter, Tier 3 = best). Parts are defined in `ShipPartCatalog` with buy cost, sell/trade-in value, name, description, and stat bonuses.
+
+**Stats affected by parts** (`ShipPartStats`):
+| Stat | Affected By | Gameplay Effect |
+|---|---|---|
+| Acceleration | Engine | Ship thrust in SolarSystemState |
+| MaxSpeed | Engine | Ship speed cap in SolarSystemState |
+| RotationSpeed | Engine | Ship turning rate in SolarSystemState |
+| MaxHull | Armor | Hull capacity (future combat) |
+| MaxFuel | Utility | Fuel tank size, extends range |
+| FtlRange | FTL Drive | Maximum FTL jump distance in GalaxyMapState |
+| ShieldStrength | Shield | Damage absorption (future combat) |
+| WeaponDamage | Weapon 1/2 | Attack power (future combat) |
+| FuelEfficiency | Utility | Reduces fuel consumption per jump |
+
+**Ownership model**: Once a part is purchased, the player owns it permanently. Owned parts are stored in `PlayerData.OwnedParts` (inventory). Swapping between owned parts is free — the old part returns to inventory. Players can sell owned (unequipped) parts manually for their sell value.
+
+**How combined stats work**: `PlayerData.GetCombinedStats()` sums the stats of all equipped parts. SolarSystemState reads acceleration/maxSpeed/rotationSpeed each frame. GalaxyMapState reads FTL range for jump distance and range circle. `TrySpendFuel()` applies fuel efficiency.
+
+**UI**: Two-column overlay — left column lists equipped slots, right column shows available parts for the selected slot. Parts show status tags: [EQUIPPED], [OWNED] (free to equip), or a credit cost (must buy). Stat comparison shown for selected parts (green = better, red = worse). Press Enter to equip/buy, X to sell owned parts.
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
@@ -236,10 +270,9 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Terrain tile variation with detail sprites
 - [x] Walkable interiors for stations and settlements (rooms, NPCs, trade, repair, missions)
 - [x] Player vehicle for planet surface exploration (mount/dismount, 3x speed)
+- [x] Ship customization system (7 equipment slots, 3 tiers, dynamic ship stats)
 
 ## TODO / Next Steps
-- [ ] Ship customization system (parts, weapons, shields)
-- [ ] Ship customization system (parts, weapons, shields)
 - [ ] Ship/vehicle/avatar upgrade shop in stations
 - [ ] Mission system (acceptance, tracking, completion)
 - [ ] Combat system

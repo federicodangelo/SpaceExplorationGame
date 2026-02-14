@@ -1,0 +1,179 @@
+namespace SpaceExplorationGame.Core;
+
+/// <summary>
+/// Ship equipment slot types.
+/// </summary>
+public enum ShipSlotType
+{
+    Engine,
+    Armor,
+    Shield,
+    FtlDrive,
+    Weapon1,
+    Weapon2,
+    Utility
+}
+
+/// <summary>
+/// A ship part that can be installed in a slot.
+/// </summary>
+public record ShipPart(
+    string Id,
+    string Name,
+    ShipSlotType Slot,
+    int Tier,          // 1 = basic, 2 = improved, 3 = advanced
+    int BuyCost,
+    int SellValue,
+    string Description,
+    ShipPartStats Stats
+);
+
+/// <summary>
+/// Stat modifiers provided by a ship part.
+/// All values are additive to the ship's base stats.
+/// </summary>
+public record ShipPartStats(
+    float Acceleration = 0f,
+    float MaxSpeed = 0f,
+    float RotationSpeed = 0f,
+    float MaxHull = 0f,
+    float MaxFuel = 0f,
+    float FtlRange = 0f,
+    float ShieldStrength = 0f,   // future: damage absorption
+    float WeaponDamage = 0f,     // future: combat DPS
+    float FuelEfficiency = 0f    // multiplier reduction on fuel cost (0.1 = 10% less fuel)
+);
+
+/// <summary>
+/// Catalog of all available ship parts.
+/// </summary>
+public static class ShipPartCatalog
+{
+    public static readonly ShipPart[] AllParts =
+    [
+        // ── Engines ──────────────────────────────────────────────
+        new("engine_basic",    "Basic Thruster",     ShipSlotType.Engine, 1, 0,   25,
+            "Standard issue thruster. Gets the job done.",
+            new ShipPartStats(Acceleration: 200f, MaxSpeed: 400f, RotationSpeed: 180f)),
+
+        new("engine_improved", "Ion Drive",          ShipSlotType.Engine, 2, 300, 150,
+            "Efficient ion propulsion with better thrust.",
+            new ShipPartStats(Acceleration: 280f, MaxSpeed: 500f, RotationSpeed: 200f)),
+
+        new("engine_advanced", "Plasma Thruster",    ShipSlotType.Engine, 3, 800, 400,
+            "High-performance plasma drive. Fast and agile.",
+            new ShipPartStats(Acceleration: 380f, MaxSpeed: 650f, RotationSpeed: 240f)),
+
+        // ── Armor ────────────────────────────────────────────────
+        new("armor_basic",     "Light Plating",      ShipSlotType.Armor,  1, 0,   20,
+            "Thin hull plates. Minimal protection.",
+            new ShipPartStats(MaxHull: 100f)),
+
+        new("armor_improved",  "Composite Armor",    ShipSlotType.Armor,  2, 250, 125,
+            "Layered composite provides solid protection.",
+            new ShipPartStats(MaxHull: 180f)),
+
+        new("armor_advanced",  "Nano-Weave Hull",    ShipSlotType.Armor,  3, 700, 350,
+            "Self-repairing nano-material hull plating.",
+            new ShipPartStats(MaxHull: 300f)),
+
+        // ── Shields ──────────────────────────────────────────────
+        new("shield_basic",    "Deflector Screen",   ShipSlotType.Shield, 1, 0,   30,
+            "Basic energy shield. Absorbs light damage.",
+            new ShipPartStats(ShieldStrength: 30f)),
+
+        new("shield_improved", "Barrier Generator",  ShipSlotType.Shield, 2, 350, 175,
+            "Multi-layer barrier for moderate protection.",
+            new ShipPartStats(ShieldStrength: 70f)),
+
+        new("shield_advanced", "Fortress Shield",    ShipSlotType.Shield, 3, 900, 450,
+            "Military-grade shield generator.",
+            new ShipPartStats(ShieldStrength: 130f)),
+
+        // ── FTL Drives ───────────────────────────────────────────
+        new("ftl_basic",       "Warp Coil Mk I",    ShipSlotType.FtlDrive, 1, 0,   40,
+            "Entry-level FTL drive. Short range jumps.",
+            new ShipPartStats(FtlRange: 2500f, MaxFuel: 100f)),
+
+        new("ftl_improved",    "Warp Coil Mk II",   ShipSlotType.FtlDrive, 2, 400, 200,
+            "Extended range with better fuel capacity.",
+            new ShipPartStats(FtlRange: 4000f, MaxFuel: 160f)),
+
+        new("ftl_advanced",    "Hyperdrive",         ShipSlotType.FtlDrive, 3, 1200, 600,
+            "Top-tier FTL system. Galaxy-spanning range.",
+            new ShipPartStats(FtlRange: 6000f, MaxFuel: 250f)),
+
+        // ── Weapons ──────────────────────────────────────────────
+        new("weapon_none",     "(Empty)",            ShipSlotType.Weapon1, 0, 0, 0,
+            "No weapon installed.",
+            new ShipPartStats()),
+
+        new("weapon_laser",    "Pulse Laser",        ShipSlotType.Weapon1, 1, 0,   35,
+            "Basic energy weapon. Low damage, no ammo.",
+            new ShipPartStats(WeaponDamage: 10f)),
+
+        new("weapon_cannon",   "Kinetic Cannon",     ShipSlotType.Weapon1, 2, 350, 175,
+            "Ballistic rounds with solid punch.",
+            new ShipPartStats(WeaponDamage: 25f)),
+
+        new("weapon_missile",  "Missile Launcher",   ShipSlotType.Weapon1, 3, 750, 375,
+            "Guided missiles. High damage, slow fire rate.",
+            new ShipPartStats(WeaponDamage: 45f)),
+
+        // ── Utility ──────────────────────────────────────────────
+        new("util_none",       "(Empty)",            ShipSlotType.Utility, 0, 0, 0,
+            "No utility module installed.",
+            new ShipPartStats()),
+
+        new("util_scanner",    "Cargo Scanner",      ShipSlotType.Utility, 1, 0,   25,
+            "Basic scanner. Helps find resources.",
+            new ShipPartStats()),
+
+        new("util_efficiency", "Fuel Optimizer",     ShipSlotType.Utility, 2, 300, 150,
+            "Reduces fuel consumption by 20%.",
+            new ShipPartStats(FuelEfficiency: 0.2f)),
+
+        new("util_booster",    "Afterburner",        ShipSlotType.Utility, 3, 600, 300,
+            "Emergency speed boost. +100 max speed.",
+            new ShipPartStats(MaxSpeed: 100f, Acceleration: 50f)),
+    ];
+
+    /// <summary>Find a part by its ID.</summary>
+    public static ShipPart? GetById(string id) =>
+        Array.Find(AllParts, p => p.Id == id);
+
+    /// <summary>Get all parts that fit a given slot type.</summary>
+    public static ShipPart[] GetPartsForSlot(ShipSlotType slot) =>
+        slot switch
+        {
+            // Weapon slots can use any weapon part
+            ShipSlotType.Weapon1 or ShipSlotType.Weapon2 =>
+                Array.FindAll(AllParts, p => p.Slot is ShipSlotType.Weapon1 or ShipSlotType.Weapon2),
+            _ => Array.FindAll(AllParts, p => p.Slot == slot)
+        };
+
+    /// <summary>Get the default starter loadout.</summary>
+    public static Dictionary<ShipSlotType, ShipPart> GetStarterLoadout() => new()
+    {
+        [ShipSlotType.Engine]   = GetById("engine_basic")!,
+        [ShipSlotType.Armor]    = GetById("armor_basic")!,
+        [ShipSlotType.Shield]   = GetById("shield_basic")!,
+        [ShipSlotType.FtlDrive] = GetById("ftl_basic")!,
+        [ShipSlotType.Weapon1]  = GetById("weapon_laser")!,
+        [ShipSlotType.Weapon2]  = GetById("weapon_none")!,
+        [ShipSlotType.Utility]  = GetById("util_scanner")!,
+    };
+
+    /// <summary>Slot display names.</summary>
+    public static string GetSlotName(ShipSlotType slot) => slot switch
+    {
+        ShipSlotType.Engine   => "ENGINE",
+        ShipSlotType.Armor    => "ARMOR",
+        ShipSlotType.Shield   => "SHIELD",
+        ShipSlotType.FtlDrive => "FTL DRIVE",
+        ShipSlotType.Weapon1  => "WEAPON 1",
+        ShipSlotType.Weapon2  => "WEAPON 2",
+        ShipSlotType.Utility  => "UTILITY",
+        _ => slot.ToString().ToUpper()
+    };
+}
