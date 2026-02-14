@@ -92,4 +92,42 @@ public class PlayerData
     // Vehicle
     public bool HasVehicle { get; set; } = true;   // player starts with a vehicle
     public bool InVehicle { get; set; } = false;    // currently driving?
+
+    // Avatar equipment
+    public Dictionary<AvatarSlotType, AvatarPart> EquippedAvatarParts { get; set; } = AvatarPartCatalog.GetStarterLoadout();
+    public List<AvatarPart> OwnedAvatarParts { get; set; } = new();
+
+    /// <summary>Sum up stats from all equipped avatar parts.</summary>
+    public AvatarPartStats GetCombinedAvatarStats()
+    {
+        float walkSpeed = 0f, oxygen = 0f, terrain = 0f;
+        foreach (var part in EquippedAvatarParts.Values)
+        {
+            var s = part.Stats;
+            walkSpeed += s.WalkSpeed;
+            oxygen += s.OxygenCapacity;
+            terrain += s.TerrainPenalty;
+        }
+        return new AvatarPartStats(walkSpeed, oxygen, terrain);
+    }
+
+    // Vehicle equipment
+    public Dictionary<VehicleSlotType, VehiclePart> EquippedVehicleParts { get; set; } = VehiclePartCatalog.GetStarterLoadout();
+    public List<VehiclePart> OwnedVehicleParts { get; set; } = new();
+
+    /// <summary>Sum up stats from all equipped vehicle parts.</summary>
+    public VehiclePartStats GetCombinedVehicleStats()
+    {
+        float accel = 0f, maxSpd = 0f, rot = 0f, friction = 0f, vis = 0f;
+        foreach (var part in EquippedVehicleParts.Values)
+        {
+            var s = part.Stats;
+            accel += s.Acceleration;
+            maxSpd += s.MaxSpeed;
+            rot += s.RotationSpeed;
+            friction += s.Friction;
+            vis += s.Visibility;
+        }
+        return new VehiclePartStats(accel, maxSpd, rot, friction, vis);
+    }
 }

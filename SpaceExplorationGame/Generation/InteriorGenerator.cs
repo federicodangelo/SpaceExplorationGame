@@ -89,7 +89,9 @@ public enum InteractableType
     RepairStation,
     MissionBoard,
     ExitDoor,
-    ShipCustomization
+    ShipCustomization,
+    AvatarCustomization,
+    VehicleCustomization
 }
 
 /// <summary>
@@ -275,9 +277,29 @@ public static class InteriorGenerator
             Name = "SHIP CUSTOMIZATION",
             Type = InteractableType.ShipCustomization,
             TileX = docking.X + docking.Width / 2 + 2,
-            TileY = docking.Y + docking.Height - 1
+            TileY = docking.Y + docking.Height - 2
         });
-        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + docking.Height - 1] = InteriorTileType.Console;
+        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + docking.Height - 2] = InteriorTileType.Console;
+
+        // Avatar customization terminal (top of docking room)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "AVATAR CUSTOMIZATION",
+            Type = InteractableType.AvatarCustomization,
+            TileX = docking.X + docking.Width / 2 - 2,
+            TileY = docking.Y + 1
+        });
+        data.Tiles[docking.X + docking.Width / 2 - 2, docking.Y + 1] = InteriorTileType.Console;
+
+        // Vehicle customization terminal (top of docking room)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "VEHICLE CUSTOMIZATION",
+            Type = InteractableType.VehicleCustomization,
+            TileX = docking.X + docking.Width / 2 + 2,
+            TileY = docking.Y + 1
+        });
+        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + 1] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceStationNpcs(data, rng);
@@ -305,7 +327,7 @@ public static class InteriorGenerator
                 data.Tiles[x, y] = InteriorTileType.Void;
 
         // Generate settlement layout: central street with buildings on either side
-        var landing = new InteriorRoom { Name = "LANDING PAD", Function = RoomFunction.LandingPad, X = SettlementWidth / 2 - 4, Y = SettlementHeight - 9, Width = 8, Height = 7 };
+        var landing = new InteriorRoom { Name = "LANDING PAD", Function = RoomFunction.LandingPad, X = SettlementWidth / 2 - 4, Y = SettlementHeight - 9, Width = 9, Height = 7 };
         var market = new InteriorRoom { Name = "MARKET", Function = RoomFunction.Market, X = 2, Y = 4, Width = 10, Height = 8 };
         var cantina = new InteriorRoom { Name = "CANTINA", Function = RoomFunction.Cantina, X = SettlementWidth - 12, Y = 4, Width = 10, Height = 8 };
         var housing1 = new InteriorRoom { Name = "HOUSING A", Function = RoomFunction.Housing, X = 2, Y = 16, Width = 8, Height = 6 };
@@ -372,6 +394,36 @@ public static class InteriorGenerator
             TileX = landing.CenterX,
             TileY = landing.Y + landing.Height - 1
         });
+
+        // Ship customization terminal next to landing pad
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "SHIP CUSTOMIZATION",
+            Type = InteractableType.ShipCustomization,
+            TileX = landing.CenterX + 2,
+            TileY = landing.Y + landing.Height - 2
+        });
+        data.Tiles[landing.CenterX + 2, landing.Y + landing.Height - 2] = InteriorTileType.Console;
+
+        // Avatar customization terminal (top of landing pad)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "AVATAR CUSTOMIZATION",
+            Type = InteractableType.AvatarCustomization,
+            TileX = landing.CenterX - 2,
+            TileY = landing.Y + 1
+        });
+        data.Tiles[landing.CenterX - 2, landing.Y + 1] = InteriorTileType.Console;
+
+        // Vehicle customization terminal (top of landing pad)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "VEHICLE CUSTOMIZATION",
+            Type = InteractableType.VehicleCustomization,
+            TileX = landing.CenterX + 2,
+            TileY = landing.Y + 1
+        });
+        data.Tiles[landing.CenterX + 2, landing.Y + 1] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);

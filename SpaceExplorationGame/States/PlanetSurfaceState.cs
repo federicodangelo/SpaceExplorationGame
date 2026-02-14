@@ -23,7 +23,7 @@ public class PlanetSurfaceState : GameState
     private Entity _playerAvatar;
     private Entity _shipEntity;
     private Entity _vehicleEntity;
-    private const float AvatarSpeed = 200f;
+    private const float BaseAvatarSpeed = 200f;
     private const float BoardShipRadius = 30f;
 
     // Vehicle state
@@ -62,10 +62,13 @@ public class PlanetSurfaceState : GameState
         float lzX = lzTileX * GameConfig.TileSize;
         float lzY = lzTileY * GameConfig.TileSize;
 
+        // Calculate avatar speed from equipped parts
+        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+
         _playerAvatar = game.EcsWorld.Create(
             new Transform(lzX, lzY),
             ECS.Components.Sprite.ColoredRect(12, 12, 100, 255, 100),
-            new Velocity(AvatarSpeed),
+            new Velocity(avatarSpeed),
             new PlayerControlled()
         );
 
@@ -89,7 +92,7 @@ public class PlanetSurfaceState : GameState
         }
 
         // Initialize ECS systems
-        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, AvatarSpeed);
+        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.CanMoveTo = MakeTerrainCollisionCheck();
         _movementSystem.Initialize();
 
@@ -155,8 +158,13 @@ public class PlanetSurfaceState : GameState
                     ref var vTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
                     avatarTransform.Position = vTf.Position;
                     avatarTransform.Rotation = vTf.Rotation;
+                    var vStats = game.Player.GetCombinedVehicleStats();
                     _vehicleMovementSystem = new VehicleMovementSystem(
-                        game.EcsWorld, game.Input, _playerAvatar);
+                        game.EcsWorld, game.Input, _playerAvatar,
+                        acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
+                        maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
+                        rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
+                        friction: GameConfig.VehicleFriction + vStats.Friction);
                     _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
                     _inVehicle = true;
                     game.Player.InVehicle = true;

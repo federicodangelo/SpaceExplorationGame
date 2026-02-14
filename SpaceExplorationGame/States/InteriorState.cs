@@ -29,7 +29,7 @@ public class InteriorState : GameState
     private readonly SettlementData? _settlement;
 
     // Movement
-    private const float AvatarSpeed = 200f;
+    private const float BaseAvatarSpeed = 200f;
     private const float InteractionRadius = 1.5f; // in tiles
 
     // ECS Systems
@@ -46,6 +46,8 @@ public class InteriorState : GameState
     // Shared service overlays (repair, missions)
     private readonly ServiceOverlays _overlays = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
+    private readonly AvatarCustomizationOverlay _avatarCustomization = new();
+    private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -81,15 +83,18 @@ public class InteriorState : GameState
         float spawnX = _interior.SpawnPoint.X * GameConfig.TileSize;
         float spawnY = _interior.SpawnPoint.Y * GameConfig.TileSize;
 
+        // Calculate avatar speed from equipped parts
+        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+
         _playerAvatar = game.EcsWorld.Create(
             new Transform(spawnX, spawnY),
             ECS.Components.Sprite.ColoredRect(12, 12, 100, 255, 100),
-            new Velocity(AvatarSpeed),
+            new Velocity(avatarSpeed),
             new PlayerControlled()
         );
 
         // Initialize ECS systems
-        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, AvatarSpeed);
+        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.CanMoveTo = (newPos) =>
         {
             int tileX = (int)(newPos.X / GameConfig.TileSize);
@@ -127,6 +132,16 @@ public class InteriorState : GameState
         if (_shipCustomization.IsOpen)
         {
             _shipCustomization.Update(game, input, dt);
+            return;
+        }
+        if (_avatarCustomization.IsOpen)
+        {
+            _avatarCustomization.Update(game, input, dt);
+            return;
+        }
+        if (_vehicleCustomization.IsOpen)
+        {
+            _vehicleCustomization.Update(game, input, dt);
             return;
         }
 
@@ -232,6 +247,12 @@ public class InteriorState : GameState
                 break;
             case InteractableType.ShipCustomization:
                 _shipCustomization.Open();
+                break;
+            case InteractableType.AvatarCustomization:
+                _avatarCustomization.Open();
+                break;
+            case InteractableType.VehicleCustomization:
+                _vehicleCustomization.Open();
                 break;
         }
     }
@@ -403,7 +424,7 @@ public class InteriorState : GameState
 
         // Interaction prompts
         if (_nearestInteractable != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
-            && !_shipCustomization.IsOpen)
+            && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen)
         {
             string prompt = _nearestInteractable.Type switch
             {
@@ -411,6 +432,8 @@ public class InteriorState : GameState
                 InteractableType.RepairStation => "[E] REPAIR",
                 InteractableType.MissionBoard => "[E] MISSIONS",
                 InteractableType.ShipCustomization => "[E] SHIP CUSTOMIZATION",
+                InteractableType.AvatarCustomization => "[E] AVATAR CUSTOMIZATION",
+                InteractableType.VehicleCustomization => "[E] VEHICLE CUSTOMIZATION",
                 _ => "[E] INTERACT"
             };
             float tw = renderer.MeasureText(prompt, 2f);
@@ -418,7 +441,7 @@ public class InteriorState : GameState
             renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 100, 255, 200, 2f);
         }
         else if (_nearestNpc != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
-            && !_shipCustomization.IsOpen)
+            && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen)
         {
             string prompt = $"[E] TALK TO {_nearestNpc.Name.ToUpper()}";
             float tw = renderer.MeasureText(prompt, 2f);
@@ -435,10 +458,12 @@ public class InteriorState : GameState
         // Overlays
         _overlays.Render(game, renderer);
         _shipCustomization.Render(game, renderer);
+        _avatarCustomization.Render(game, renderer);
+        _vehicleCustomization.Render(game, renderer);
 
         // Controls help (when no overlay)
         if (_overlays.Active == ServiceOverlays.OverlayType.None && !_showingDialogue
-            && !_shipCustomization.IsOpen)
+            && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen)
         {
             renderer.DrawRectScreen(w - 200, h - 110, 195, 100, 0, 0, 0, 160);
             renderer.DrawTextScreen(w - 190, h - 105, "WASD: MOVE", 160, 160, 160, 1.5f);
@@ -543,6 +568,8 @@ public class InteriorState : GameState
                 InteractableType.RepairStation => ((byte)100, (byte)255, (byte)100),
                 InteractableType.MissionBoard => ((byte)100, (byte)180, (byte)255),
                 InteractableType.ShipCustomization => ((byte)100, (byte)220, (byte)255),
+                InteractableType.AvatarCustomization => ((byte)100, (byte)255, (byte)180),
+                InteractableType.VehicleCustomization => ((byte)255, (byte)180, (byte)80),
                 InteractableType.ExitDoor => ((byte)255, (byte)100, (byte)100),
                 _ => ((byte)200, (byte)200, (byte)200)
             };

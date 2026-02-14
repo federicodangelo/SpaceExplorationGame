@@ -17,12 +17,16 @@ public class SpaceStationState : GameState
     private readonly SpaceStationData _station;
     private readonly ServiceOverlays _overlays = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
+    private readonly AvatarCustomizationOverlay _avatarCustomization = new();
+    private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
 
     private static readonly string[] StationMenuLabels =
     [
         "REPAIR",
         "MISSIONS",
         "SHIP CUSTOMIZATION",
+        "AVATAR CUSTOMIZATION",
+        "VEHICLE CUSTOMIZATION",
         "EXIT SHIP (WALK STATION)",
         "EXIT SPACE STATION"
     ];
@@ -76,6 +80,20 @@ public class SpaceStationState : GameState
             return;
         }
 
+        // Avatar customization overlay
+        if (_avatarCustomization.IsOpen)
+        {
+            _avatarCustomization.Update(game, input, dt);
+            return;
+        }
+
+        // Vehicle customization overlay
+        if (_vehicleCustomization.IsOpen)
+        {
+            _vehicleCustomization.Update(game, input, dt);
+            return;
+        }
+
         int confirmed = _menu.Update(input);
         if (confirmed >= 0)
         {
@@ -90,11 +108,17 @@ public class SpaceStationState : GameState
                 case 2: // Ship customization
                     _shipCustomization.Open();
                     break;
-                case 3: // Walk station
+                case 3: // Avatar customization
+                    _avatarCustomization.Open();
+                    break;
+                case 4: // Vehicle customization
+                    _vehicleCustomization.Open();
+                    break;
+                case 5: // Walk station
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
-                case 4: // Exit station
+                case 6: // Exit station
                     game.ChangeState(new SolarSystemState(_starSystem));
                     break;
             }
@@ -179,7 +203,9 @@ public class SpaceStationState : GameState
         // Service overlays (trade, repair, missions) drawn on top
         _overlays.Render(game, renderer);
 
-        // Ship customization overlay drawn on top of everything
+        // Customization overlays drawn on top of everything
         _shipCustomization.Render(game, renderer);
+        _avatarCustomization.Render(game, renderer);
+        _vehicleCustomization.Render(game, renderer);
     }
 }
