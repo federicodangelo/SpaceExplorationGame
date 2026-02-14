@@ -95,7 +95,7 @@ States:
 - **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
 - **SpaceStationState**: Menu-based UI when docked. Grid-pattern background, corner-accented frame. Refuels ship on docking. "Walk Station" option opens walkable interior.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
-- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board, E near settlement to enter interior. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
+- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel (3x speed). Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, trade terminals (buy hull plating, fuel, shield emitters), repair stations, mission boards (placeholder). Minimap shows room layout, NPCs, and interactable objects. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
 
 ### Procedural Generation Seed Hierarchy
@@ -158,6 +158,7 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 - **Asteroids**: Irregular rocky blobs with angular distortion
 - **Avatar**: Tiny humanoid in green suit with blue visor
 - **Landed ship**: Oval hull with cockpit and landing struts
+- **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
@@ -194,9 +195,10 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - Escape: Exit station
 
 ### Planet Surface
-- WASD/Arrows: Move avatar
+- WASD/Arrows: Move avatar / drive vehicle
 - Mouse Scroll: Zoom
-- E: Board ship (when near) / Enter settlement (when near)
+- V: Mount/dismount vehicle (when near)
+- E: Board ship (when near, on foot) / Enter settlement (when near, on foot)
 - Escape: Leave planet (quick exit)
 
 ### Interior (Station / Settlement)
@@ -233,9 +235,10 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] HUD backgrounds for readability
 - [x] Terrain tile variation with detail sprites
 - [x] Walkable interiors for stations and settlements (rooms, NPCs, trade, repair, missions)
+- [x] Player vehicle for planet surface exploration (mount/dismount, 3x speed)
 
 ## TODO / Next Steps
-- [ ] Player vehicle for planet exploration
+- [ ] Ship customization system (parts, weapons, shields)
 - [ ] Ship customization system (parts, weapons, shields)
 - [ ] Ship/vehicle/avatar upgrade shop in stations
 - [ ] Mission system (acceptance, tracking, completion)

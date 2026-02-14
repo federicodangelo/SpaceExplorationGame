@@ -40,4 +40,8 @@ public class PlayerData
 
     // Credits
     public int Credits { get; set; } = 1000;
+
+    // Vehicle
+    public bool HasVehicle { get; set; } = true;   // player starts with a vehicle
+    public bool InVehicle { get; set; } = false;    // currently driving?
 }

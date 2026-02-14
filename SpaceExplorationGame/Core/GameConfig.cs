@@ -49,4 +49,12 @@ public static class GameConfig
     public const float FuelPerDistanceUnit = 0.02f;  // fuel cost per world-pixel of distance
     public const float FtlMaxRange = 2500f;          // max FTL jump range in world-pixels
     public const float StationRefuelAmount = 50f;    // fuel restored when docking at a station
+
+    // Planet Vehicle
+    public const float VehicleAcceleration = 300f;    // pixels/sec^2
+    public const float VehicleMaxSpeed = 600f;        // pixels/sec (3x avatar)
+    public const float VehicleRotationSpeed = 150f;   // degrees/sec
+    public const float VehicleFriction = 0.98f;       // per-frame velocity damping
+    public const float VehicleBrakeMultiplier = 0.92f; // brake damping per frame
+    public const float VehicleMountRadius = 35f;      // distance to mount/dismount
 }
