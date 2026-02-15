@@ -7,7 +7,8 @@ public enum AvatarSlotType
 {
     Suit,
     Helmet,
-    Boots
+    Boots,
+    Weapon
 }
 
 /// <summary>
@@ -31,7 +32,9 @@ public record AvatarPart(
 public record AvatarPartStats(
     float WalkSpeed = 0f,          // added to base walk speed
     float OxygenCapacity = 0f,     // future: time before suffocation
-    float TerrainPenalty = 0f      // reduction in terrain slowdown (0.1 = 10% less penalty)
+    float TerrainPenalty = 0f,     // reduction in terrain slowdown (0.1 = 10% less penalty)
+    float WeaponDamage = 0f,       // bonus weapon damage on planet surface
+    float Armor = 0f               // bonus avatar max health
 );
 
 /// <summary>
@@ -79,6 +82,19 @@ public static class AvatarPartCatalog
         new("boots_advanced", "Grav-Boots",        AvatarSlotType.Boots, 3, 400, 200,
             "Anti-grav soles. Glide over any surface.",
             new AvatarPartStats(TerrainPenalty: 0.35f, WalkSpeed: 40f)),
+
+        // ── Weapons ──────────────────────────────────────────────
+        new("weapon_basic",    "Sidearm",           AvatarSlotType.Weapon, 1, 0,   20,
+            "Standard issue pistol. Gets the job done.",
+            new AvatarPartStats(WeaponDamage: 0f)),
+
+        new("weapon_improved", "Pulse Rifle",       AvatarSlotType.Weapon, 2, 300, 150,
+            "Rapid-fire energy weapon. Higher damage.",
+            new AvatarPartStats(WeaponDamage: 8f)),
+
+        new("weapon_advanced", "Plasma Cannon",     AvatarSlotType.Weapon, 3, 700, 350,
+            "Heavy plasma weapon. Devastating firepower.",
+            new AvatarPartStats(WeaponDamage: 20f)),
     ];
 
     /// <summary>Find a part by its ID.</summary>
@@ -95,6 +111,7 @@ public static class AvatarPartCatalog
         [AvatarSlotType.Suit]   = GetById("suit_basic")!,
         [AvatarSlotType.Helmet] = GetById("helmet_basic")!,
         [AvatarSlotType.Boots]  = GetById("boots_basic")!,
+        [AvatarSlotType.Weapon] = GetById("weapon_basic")!,
     };
 
     /// <summary>Slot display names.</summary>
@@ -103,6 +120,7 @@ public static class AvatarPartCatalog
         AvatarSlotType.Suit   => "SUIT",
         AvatarSlotType.Helmet => "HELMET",
         AvatarSlotType.Boots  => "BOOTS",
+        AvatarSlotType.Weapon => "WEAPON",
         _ => slot.ToString().ToUpper()
     };
 }

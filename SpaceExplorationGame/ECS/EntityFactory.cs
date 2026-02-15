@@ -154,14 +154,23 @@ public static class EntityFactory
     }
 
     /// <summary>Create the player avatar entity for planet surface or interior walking.</summary>
-    public static Entity CreatePlayerAvatar(World world, float x, float y, float speed)
+    public static Entity CreatePlayerAvatar(World world, float x, float y, float speed,
+        float maxHealth = 0f, float currentHealth = 0f)
     {
-        return world.Create(
+        var entity = world.Create(
             new Transform(x, y),
             Sprite.ColoredRect(12, 12, 100, 255, 100),
             new Velocity(speed),
             new PlayerControlled()
         );
+
+        // Add Health component only on planet surface (maxHealth > 0)
+        if (maxHealth > 0f)
+        {
+            world.Add(entity, new Health(maxHealth) { Hull = currentHealth > 0 ? currentHealth : maxHealth });
+        }
+
+        return entity;
     }
 
     /// <summary>Create the landed ship marker entity on a planet surface.</summary>
@@ -279,7 +288,8 @@ public static class EntityFactory
 
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Vector2 position, Vector2 direction,
-        float damage, float speed, Faction ownerFaction, byte r, byte g, byte b)
+        float damage, float speed, Faction ownerFaction, byte r, byte g, byte b,
+        float lifetime = GameConfig.ProjectileLifetime)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
         return world.Create(
@@ -289,10 +299,80 @@ public static class EntityFactory
             {
                 Damage = damage,
                 Speed = speed,
-                Lifetime = GameConfig.ProjectileLifetime,
+                Lifetime = lifetime,
                 CollisionRadius = GameConfig.ProjectileRadius,
                 OwnerFaction = ownerFaction,
                 R = r, G = g, B = b
+            }
+        );
+    }
+
+    // ── Surface Enemies ─────────────────────────────────────────
+
+    /// <summary>Create a hostile fauna entity on a planet surface.</summary>
+    public static Entity CreateFauna(World world, Vector2 position, float wanderAngle,
+        float hullMultiplier = 1f, float damageMultiplier = 1f)
+    {
+        return world.Create(
+            new Transform(position),
+            Sprite.ColoredRect(14, 14, 180, 60, 60),
+            new Velocity(GameConfig.FaunaSpeed),
+            new Health(GameConfig.FaunaBaseHull * hullMultiplier),
+            new SurfaceAI
+            {
+                Faction = Faction.Fauna,
+                State = AIState.Idle,
+                MoveSpeed = GameConfig.FaunaSpeed,
+                DetectRange = GameConfig.FaunaDetectRange,
+                AttackRange = GameConfig.FaunaAttackRange,
+                FireRate = GameConfig.FaunaAttackRate,
+                FireCooldown = 0f,
+                WeaponDamage = GameConfig.FaunaBaseDamage * damageMultiplier,
+                ProjectileSpeed = 500f, // fast short-range "bite" projectile
+                WanderAngle = wanderAngle,
+                WanderTimer = 2f
+            },
+            new LootDrop
+            {
+                MinCredits = GameConfig.SurfaceLootCreditsMin,
+                MaxCredits = GameConfig.SurfaceLootCreditsMax,
+                ResourceDropChance = 0.3f,
+                PartDropChance = 0f,
+                DangerLevel = 1
+            }
+        );
+    }
+
+    /// <summary>Create a hostile bandit NPC entity on a planet surface.</summary>
+    public static Entity CreateBandit(World world, Vector2 position, float wanderAngle,
+        float hullMultiplier = 1f, float damageMultiplier = 1f)
+    {
+        return world.Create(
+            new Transform(position),
+            Sprite.ColoredRect(12, 12, 200, 100, 60),
+            new Velocity(GameConfig.BanditSpeed),
+            new Health(GameConfig.BanditBaseHull * hullMultiplier),
+            new SurfaceAI
+            {
+                Faction = Faction.Bandit,
+                State = AIState.Patrol,
+                MoveSpeed = GameConfig.BanditSpeed,
+                DetectRange = GameConfig.BanditDetectRange,
+                AttackRange = GameConfig.BanditAttackRange,
+                FireRate = GameConfig.BanditFireRate,
+                FireCooldown = 0f,
+                WeaponDamage = GameConfig.BanditBaseDamage * damageMultiplier,
+                ProjectileSpeed = GameConfig.BanditProjectileSpeed,
+                WanderAngle = wanderAngle,
+                WanderTimer = 3f
+            },
+            new LootDrop
+            {
+                MinCredits = GameConfig.SurfaceLootCreditsMin * 2,
+                MaxCredits = GameConfig.SurfaceLootCreditsMax * 2,
+                ResourceDropChance = 0.4f,
+                PartDropChance = 0.05f,
+                DangerLevel = 1
             }
         );
     }

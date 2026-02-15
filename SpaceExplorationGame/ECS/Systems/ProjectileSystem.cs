@@ -61,24 +61,32 @@ public class ProjectileSystem
                 if (target == projEntity) return;
                 if (targetHealth.IsDead) return;
 
-                // Don't hit entities of the same faction
+                // Determine target's faction
+                Faction? targetFaction = null;
                 if (_world.Has<EnemyAI>(target))
-                {
-                    var ai = _world.Get<EnemyAI>(target);
-                    if (ai.Faction == proj.OwnerFaction) return;
-                }
-                else if (_world.Has<PlayerControlled>(target) && proj.OwnerFaction == Faction.Player)
-                {
+                    targetFaction = _world.Get<EnemyAI>(target).Faction;
+                else if (_world.Has<SurfaceAI>(target))
+                    targetFaction = _world.Get<SurfaceAI>(target).Faction;
+                else if (_world.Has<PlayerControlled>(target))
+                    targetFaction = Faction.Player;
+
+                // Don't hit entities of the same faction
+                if (targetFaction == proj.OwnerFaction) return;
+
+                // Player projectiles skip player-controlled entities
+                if (proj.OwnerFaction == Faction.Player && _world.Has<PlayerControlled>(target))
                     return;
-                }
 
                 // Pirate projectiles should not hit other pirates
-                if (proj.OwnerFaction == Faction.Pirate && _world.Has<EnemyAI>(target) && _world.Get<EnemyAI>(target).Faction == Faction.Pirate)
+                if (proj.OwnerFaction == Faction.Pirate && targetFaction == Faction.Pirate)
                     return;
                 // Patrol/trader projectiles should not hit player or each other (friendly fire off)
                 if ((proj.OwnerFaction == Faction.Patrol || proj.OwnerFaction == Faction.Trader) &&
-                    (_world.Has<PlayerControlled>(target) ||
-                     (_world.Has<EnemyAI>(target) && _world.Get<EnemyAI>(target).Faction != Faction.Pirate)))
+                    (targetFaction == Faction.Player || (targetFaction.HasValue && targetFaction != Faction.Pirate)))
+                    return;
+                // Fauna/Bandit projectiles should not hit each other 
+                if ((proj.OwnerFaction == Faction.Fauna || proj.OwnerFaction == Faction.Bandit) &&
+                    (targetFaction == Faction.Fauna || targetFaction == Faction.Bandit))
                     return;
 
                 // Distance check
@@ -132,6 +140,12 @@ public class ProjectileSystem
                 else if (_world.Has<EnemyAI>(target))
                 {
                     faction = _world.Get<EnemyAI>(target).Faction;
+                    if (_world.Has<LootDrop>(target))
+                        loot = _world.Get<LootDrop>(target);
+                }
+                else if (_world.Has<SurfaceAI>(target))
+                {
+                    faction = _world.Get<SurfaceAI>(target).Faction;
                     if (_world.Has<LootDrop>(target))
                         loot = _world.Get<LootDrop>(target);
                 }

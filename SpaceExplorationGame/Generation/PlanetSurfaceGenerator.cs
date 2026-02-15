@@ -27,6 +27,11 @@ public class PlanetSurfaceData
     public TerrainType[,] Tiles { get; set; } = null!;
     public List<SettlementData> Settlements { get; set; } = [];
     public (int X, int Y) LandingZone { get; set; }
+
+    /// <summary>Spawn positions for hostile fauna (world-space coordinates).</summary>
+    public List<(float X, float Y, float WanderAngle)> FaunaSpawns { get; set; } = [];
+    /// <summary>Spawn positions for hostile bandits (world-space coordinates).</summary>
+    public List<(float X, float Y, float WanderAngle)> BanditSpawns { get; set; } = [];
 }
 
 /// <summary>A building within a settlement layout.</summary>
@@ -132,6 +137,9 @@ public static class PlanetSurfaceGenerator
         // Landing zone (flat area near center) — also ensure walkable
         result.LandingZone = (width / 2, height / 2);
         EnsureWalkableArea(tiles, width, height, width / 2 - 2, height / 2 - 2, 4, 4, margin: 2, planet.Type);
+
+        // Generate enemy spawn points on walkable terrain, away from landing zone and settlements
+        GenerateEnemySpawns(rng, result, planet);
 
         return result;
     }
@@ -264,6 +272,90 @@ public static class PlanetSurfaceGenerator
             TerrainType.Void => (0, 0, 0),
             _ => (80, 80, 80)
         };
+    }
+
+    /// <summary>
+    /// Generate spawn positions for fauna and bandits on walkable terrain,
+    /// away from the landing zone and settlements.
+    /// </summary>
+    private static void GenerateEnemySpawns(SeededRandom rng, PlanetSurfaceData data, PlanetData planet)
+    {
+        float ts = GameConfig.TileSize;
+        float lzX = data.LandingZone.X * ts;
+        float lzY = data.LandingZone.Y * ts;
+        float safeRadius = 8 * ts; // minimum distance from landing zone
+
+        int faunaCount = rng.NextInt(GameConfig.MinFaunaPerPlanet, GameConfig.MaxFaunaPerPlanet + 1);
+        int banditCount = rng.NextInt(GameConfig.MinBanditsPerPlanet, GameConfig.MaxBanditsPerPlanet + 1);
+
+        // No fauna on ocean worlds (hostile marine life not implemented)
+        if (planet.Type == PlanetType.Ocean)
+            faunaCount = Math.Max(0, faunaCount - 3);
+
+        // Spawn fauna
+        for (int i = 0; i < faunaCount; i++)
+        {
+            if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
+            {
+                data.FaunaSpawns.Add((sx, sy, rng.NextFloat() * MathF.PI * 2f));
+            }
+        }
+
+        // Spawn bandits (only on planets with settlements)
+        if (data.Settlements.Count > 0)
+        {
+            for (int i = 0; i < banditCount; i++)
+            {
+                if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
+                {
+                    data.BanditSpawns.Add((sx, sy, rng.NextFloat() * MathF.PI * 2f));
+                }
+            }
+        }
+    }
+
+    /// <summary>Find a walkable spawn position away from landing zone and settlements.</summary>
+    private static bool TryFindSpawnPosition(SeededRandom rng, PlanetSurfaceData data,
+        float lzX, float lzY, float safeRadius, out float worldX, out float worldY)
+    {
+        float ts = GameConfig.TileSize;
+        for (int attempt = 0; attempt < 50; attempt++)
+        {
+            int tx = rng.NextInt(5, data.Width - 5);
+            int ty = rng.NextInt(5, data.Height - 5);
+
+            // Must be walkable
+            if (data.Tiles[tx, ty] is TerrainType.Water or TerrainType.Lava or TerrainType.Void)
+                continue;
+
+            worldX = tx * ts + ts / 2f;
+            worldY = ty * ts + ts / 2f;
+
+            // Must be away from landing zone
+            float distToLz = MathF.Sqrt((worldX - lzX) * (worldX - lzX) + (worldY - lzY) * (worldY - lzY));
+            if (distToLz < safeRadius)
+                continue;
+
+            // Must be away from settlements
+            bool tooCloseToSettlement = false;
+            foreach (var s in data.Settlements)
+            {
+                float sx = (s.TileX + s.Width / 2f) * ts;
+                float sy = (s.TileY + s.Height / 2f) * ts;
+                if (MathF.Sqrt((worldX - sx) * (worldX - sx) + (worldY - sy) * (worldY - sy)) < 4 * ts)
+                {
+                    tooCloseToSettlement = true;
+                    break;
+                }
+            }
+            if (tooCloseToSettlement) continue;
+
+            return true;
+        }
+
+        worldX = 0;
+        worldY = 0;
+        return false;
     }
 
     /// <summary>

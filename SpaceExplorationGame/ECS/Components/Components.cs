@@ -151,7 +151,9 @@ public enum Faction
     Player,
     Pirate,      // Hostile — attacks player and traders
     Trader,      // Friendly — attacked by pirates, can be defended
-    Patrol       // Neutral defender — attacks pirates, helps player
+    Patrol,      // Neutral defender — attacks pirates, helps player
+    Fauna,       // Surface hostile — wild creatures, attack on sight
+    Bandit       // Surface hostile — hostile NPCs on planet surfaces
 }
 
 /// <summary>Health and shields for a combat-capable entity.</summary>
@@ -251,4 +253,21 @@ public struct AsteroidField
     public ResourceType Resource;
     public int ResourceAmount;         // units to drop on depletion
     public float Size;                 // visual size for rendering
+}
+
+/// <summary>AI for surface enemies (fauna and bandits). Walk-based movement, no rotation physics.</summary>
+public struct SurfaceAI
+{
+    public Faction Faction;          // Fauna or Bandit
+    public AIState State;
+    public float StateTimer;         // time in current state
+    public float MoveSpeed;          // walking speed
+    public float DetectRange;        // range to notice player
+    public float AttackRange;        // range to start attacking
+    public float FireCooldown;       // seconds until next attack
+    public float FireRate;           // seconds between attacks
+    public float WeaponDamage;       // damage per hit
+    public float ProjectileSpeed;    // speed of projectile (bandits)
+    public float WanderAngle;        // current wander direction
+    public float WanderTimer;        // time until next wander direction change
 }

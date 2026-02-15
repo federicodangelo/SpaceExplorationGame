@@ -99,4 +99,33 @@ public static class GameConfig
     public const int BaseLootCredits = 50;              // base credits per kill
     public const float ResourceDropChance = 0.5f;       // 50% chance to drop resources
     public const float PartDropChance = 0.10f;          // 10% chance to drop a part
+
+    // ── Surface Combat ──────────────────────────────────────────
+    public const float AvatarProjectileSpeed = 400f;     // avatar gun projectile speed
+    public const float AvatarProjectileLifetime = 1.5f;  // seconds before despawn
+    public const float AvatarFireRate = 0.35f;           // seconds between avatar shots
+    public const float BaseAvatarWeaponDamage = 10f;     // base avatar weapon damage
+
+    public const int MinFaunaPerPlanet = 3;
+    public const int MaxFaunaPerPlanet = 10;
+    public const int MinBanditsPerPlanet = 0;
+    public const int MaxBanditsPerPlanet = 4;
+
+    public const float FaunaSpeed = 80f;                // fauna walking speed
+    public const float FaunaDetectRange = 120f;         // fauna aggro range
+    public const float FaunaAttackRange = 25f;          // fauna melee range (contact damage via fast projectile)
+    public const float FaunaAttackRate = 1.2f;          // seconds between fauna attacks
+    public const float FaunaBaseDamage = 8f;
+    public const float FaunaBaseHull = 30f;
+
+    public const float BanditSpeed = 100f;              // bandit walking speed
+    public const float BanditDetectRange = 160f;        // bandit aggro range
+    public const float BanditAttackRange = 140f;        // bandit shooting range
+    public const float BanditFireRate = 1.0f;           // seconds between bandit shots
+    public const float BanditProjectileSpeed = 250f;
+    public const float BanditBaseDamage = 6f;
+    public const float BanditBaseHull = 50f;
+
+    public const int SurfaceLootCreditsMin = 10;
+    public const int SurfaceLootCreditsMax = 40;
 }

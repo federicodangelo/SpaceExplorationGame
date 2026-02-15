@@ -197,6 +197,18 @@ public class PlayerData
     public bool HasVehicle { get; set; } = true;   // player starts with a vehicle
     public bool InVehicle { get; set; } = false;    // currently driving?
 
+    // Avatar health (persistent across surface visits)
+    public float AvatarHealth { get; set; } = 100f;
+    public float AvatarMaxHealth { get; set; } = 100f;
+
+    /// <summary>Recalculate avatar max health from base + suit armor stat.</summary>
+    public void RecalculateAvatarStats()
+    {
+        var stats = GetCombinedAvatarStats();
+        AvatarMaxHealth = 100f + stats.Armor;
+        AvatarHealth = Math.Min(AvatarHealth, AvatarMaxHealth);
+    }
+
     // Avatar equipment
     public Dictionary<AvatarSlotType, AvatarPart> EquippedAvatarParts { get; set; } = AvatarPartCatalog.GetStarterLoadout();
     public List<AvatarPart> OwnedAvatarParts { get; set; } = new();
@@ -204,15 +216,17 @@ public class PlayerData
     /// <summary>Sum up stats from all equipped avatar parts.</summary>
     public AvatarPartStats GetCombinedAvatarStats()
     {
-        float walkSpeed = 0f, oxygen = 0f, terrain = 0f;
+        float walkSpeed = 0f, oxygen = 0f, terrain = 0f, weaponDmg = 0f, armor = 0f;
         foreach (var part in EquippedAvatarParts.Values)
         {
             var s = part.Stats;
             walkSpeed += s.WalkSpeed;
             oxygen += s.OxygenCapacity;
             terrain += s.TerrainPenalty;
+            weaponDmg += s.WeaponDamage;
+            armor += s.Armor;
         }
-        return new AvatarPartStats(walkSpeed, oxygen, terrain);
+        return new AvatarPartStats(walkSpeed, oxygen, terrain, weaponDmg, armor);
     }
 
     // Vehicle equipment

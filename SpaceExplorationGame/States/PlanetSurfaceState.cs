@@ -38,6 +38,24 @@ public class PlanetSurfaceState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
     private VehicleMovementSystem? _vehicleMovementSystem;
 
+    // Combat systems
+    private VelocitySystem _velocitySystem = null!;
+    private ProjectileSystem _projectileSystem = null!;
+    private SurfaceEnemyAISystem _surfaceAISystem = null!;
+    private readonly List<DamagePopup> _damagePopups = [];
+    private readonly List<Explosion> _explosions = [];
+    private float _playerFireCooldown;
+    private Vector2 _lastMoveDir = new(0, -1); // default facing up
+
+    // Combat HUD
+    private string? _combatMessage;
+    private float _combatMessageTimer;
+
+    // Death handling
+    private bool _playerDead;
+    private float _respawnTimer;
+    private const float RespawnDelay = 2.5f;
+
     // Settlement proximity tracking
     private SettlementData? _nearSettlement;
 
@@ -77,7 +95,13 @@ public class PlanetSurfaceState : GameState
         // Calculate avatar speed from equipped parts
         float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
 
-        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, lzX, lzY, avatarSpeed);
+        // Calculate avatar health from equipment
+        game.Player.RecalculateAvatarStats();
+        float maxHp = game.Player.AvatarMaxHealth;
+        float curHp = game.Player.AvatarHealth;
+
+        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, lzX, lzY, avatarSpeed,
+            maxHealth: maxHp, currentHealth: curHp);
 
         // Place ship at landing zone
         _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, lzX + 30, lzY);
@@ -101,10 +125,38 @@ public class PlanetSurfaceState : GameState
         // Camera
         game.Camera.Position = new Vector2(lzX, lzY);
         game.Camera.Zoom = 1.5f;
+
+        // Combat systems
+        _velocitySystem = new VelocitySystem(game.EcsWorld);
+        _velocitySystem.Initialize();
+        _projectileSystem = new ProjectileSystem(game.EcsWorld);
+        _surfaceAISystem = new SurfaceEnemyAISystem(
+            game.EcsWorld,
+            () => game.EcsWorld.IsAlive(_playerAvatar) ? game.EcsWorld.Get<Transform>(_playerAvatar).Position : Vector2.Zero,
+            () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead,
+            CanMoveToTerrain);
+
+        // Spawn fauna
+        foreach (var (fx, fy, angle) in _surfaceData.FaunaSpawns)
+        {
+            EntityFactory.CreateFauna(game.EcsWorld, new Vector2(fx, fy), angle);
+        }
+
+        // Spawn bandits
+        foreach (var (bx, by, angle) in _surfaceData.BanditSpawns)
+        {
+            EntityFactory.CreateBandit(game.EcsWorld, new Vector2(bx, by), angle);
+        }
     }
 
     public override void Exit(Game game)
     {
+        // Persist avatar health back to PlayerData
+        if (!_playerDead && game.EcsWorld.IsAlive(_playerAvatar) && game.EcsWorld.Has<Health>(_playerAvatar))
+        {
+            var health = game.EcsWorld.Get<Health>(_playerAvatar);
+            game.Player.AvatarHealth = health.Hull;
+        }
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
@@ -174,6 +226,14 @@ public class PlanetSurfaceState : GameState
             game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
             game.Camera.ClampZoom();
         }
+
+        // Track player facing direction from movement input
+        Vector2 moveDir = Vector2.Zero;
+        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up)) moveDir.Y -= 1;
+        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down)) moveDir.Y += 1;
+        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left)) moveDir.X -= 1;
+        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right)) moveDir.X += 1;
+        if (moveDir != Vector2.Zero) _lastMoveDir = Vector2.Normalize(moveDir);
     }
 
     public override void Update(Game game, float dt)
@@ -192,6 +252,9 @@ public class PlanetSurfaceState : GameState
             // Normal avatar movement (4-way WASD)
             _movementSystem.Update(in dt);
         }
+
+        // Move all entities with velocity (projectiles, etc.)
+        _velocitySystem.Update(in dt);
 
         // Camera follows player + handles zoom
         _cameraFollowSystem.Update(in dt);
@@ -238,6 +301,110 @@ public class PlanetSurfaceState : GameState
         {
             _nearVehicle = false;
         }
+
+        // ── Combat ─────────────────────────────────────────────────
+
+        if (!_playerDead)
+        {
+            // Player shooting (Space key or left mouse button)
+            _playerFireCooldown -= dt;
+            var input = game.Input;
+            if ((input.IsKeyDown(SDL.Scancode.Space) || input.IsMouseDown(1)) && _playerFireCooldown <= 0 && !_inVehicle)
+            {
+                var avatarStats = game.Player.GetCombinedAvatarStats();
+                float weaponDamage = GameConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
+
+                _playerFireCooldown = GameConfig.AvatarFireRate;
+
+                // Aim direction: use mouse if mouse button, else last movement direction
+                Vector2 aimDir;
+                if (input.IsMouseDown(1))
+                {
+                    var mouseWorld = game.Camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
+                    aimDir = Vector2.Normalize(mouseWorld - avatarTransform.Position);
+                    if (float.IsNaN(aimDir.X)) aimDir = _lastMoveDir;
+                }
+                else
+                {
+                    aimDir = _lastMoveDir;
+                }
+
+                var spawnPos = avatarTransform.Position + aimDir * 14f;
+                EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, aimDir,
+                    weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
+                    100, 255, 100, GameConfig.AvatarProjectileLifetime);
+            }
+
+            // Surface enemy AI
+            _surfaceAISystem.Update(dt);
+        }
+
+        // Projectile system (collisions)
+        _projectileSystem.Update(dt);
+
+        // Process damage events
+        foreach (var (pos, damage, shieldHit, _) in _projectileSystem.DamageEventsLastUpdate)
+        {
+            _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
+        }
+
+        // Process destroyed entities
+        var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
+        foreach (var (entity, pos, faction, loot, _) in _projectileSystem.DestroyedThisFrame)
+        {
+            if (faction == Faction.Player)
+            {
+                // Player avatar died
+                HandleAvatarDeath(game, pos);
+            }
+            else
+            {
+                // Enemy died
+                _explosions.Add(new Explosion(pos, 15f,
+                    faction == Faction.Fauna ? (byte)200 : (byte)255,
+                    faction == Faction.Fauna ? (byte)80 : (byte)150,
+                    faction == Faction.Fauna ? (byte)60 : (byte)50, 0.6f));
+
+                if (loot.HasValue)
+                {
+                    ProcessSurfaceLoot(game, loot.Value, combatRng);
+                }
+
+                if (game.EcsWorld.IsAlive(entity))
+                    game.EcsWorld.Destroy(entity);
+            }
+        }
+
+        // Death respawn timer
+        if (_playerDead)
+        {
+            _respawnTimer -= dt;
+            if (_respawnTimer <= 0)
+            {
+                // Return to solar system
+                game.Player.AvatarHealth = game.Player.AvatarMaxHealth; // restore health
+                game.ChangeState(new SolarSystemState(_starSystem));
+                return;
+            }
+        }
+
+        // Sync avatar health back to PlayerData
+        if (!_playerDead && game.EcsWorld.IsAlive(_playerAvatar) && game.EcsWorld.Has<Health>(_playerAvatar))
+        {
+            var health = game.EcsWorld.Get<Health>(_playerAvatar);
+            game.Player.AvatarHealth = health.Hull;
+        }
+
+        // Combat message timer
+        if (_combatMessageTimer > 0)
+        {
+            _combatMessageTimer -= dt;
+            if (_combatMessageTimer <= 0) _combatMessage = null;
+        }
+
+        // Update visual effects
+        ProjectileRenderer.UpdateDamageEffects(_damagePopups, dt);
+        ProjectileRenderer.UpdateExplosions(_explosions, dt);
     }
 
     public override void Render(Game game)
@@ -264,19 +431,55 @@ public class PlanetSurfaceState : GameState
                 vehicleTf.Rotation, _inVehicle);
         }
 
-        // Draw player avatar (only when on foot)
+        // Draw player avatar (only when on foot and alive)
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
-        if (!_inVehicle)
+        if (!_inVehicle && !_playerDead)
         {
             game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
         }
 
-        // Interaction prompts
-        PlanetSurfaceRenderer.RenderInteractionPrompt(renderer,
-            _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
+        // Draw surface enemies (fauna + bandits)
+        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, game.EcsWorld);
+
+        // Draw projectiles
+        ProjectileRenderer.RenderProjectiles(renderer, camera, game.EcsWorld);
+
+        // Draw damage popups and explosions
+        ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
+        ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
+
+        // Interaction prompts (only when alive)
+        if (!_playerDead)
+        {
+            PlanetSurfaceRenderer.RenderInteractionPrompt(renderer,
+                _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
+        }
 
         // HUD
         PlanetSurfaceRenderer.RenderHud(renderer, _planet, _inVehicle);
+
+        // Avatar health bar (bottom-left)
+        if (!_playerDead && game.EcsWorld.Has<Health>(_playerAvatar))
+        {
+            var health = game.EcsWorld.Get<Health>(_playerAvatar);
+            RenderAvatarHealthBar(renderer, health);
+        }
+
+        // Combat message
+        if (_combatMessage != null)
+        {
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 120, GameConfig.WindowHeight - 90,
+                _combatMessage, 255, 220, 80, 2f);
+        }
+
+        // Death message
+        if (_playerDead)
+        {
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 80, GameConfig.WindowHeight / 2 - 20,
+                "YOU DIED", 255, 80, 80, 3f);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight / 2 + 20,
+                "RETURNING TO ORBIT...", 200, 200, 200, 1.5f);
+        }
 
         // Minimap
         Vector2? vehiclePos = _vehicleDeployed && !_inVehicle
@@ -284,6 +487,14 @@ public class PlanetSurfaceState : GameState
             : null;
         PlanetSurfaceRenderer.RenderMinimap(renderer, _surfaceData,
             avatarTf.Position, shipTf.Position, vehiclePos);
+
+        // Enemy dots on minimap
+        float mmSize = 150;
+        float mmX = GameConfig.WindowWidth - mmSize - 10;
+        float mmY = 10;
+        float mapW = _surfaceData.Width * GameConfig.TileSize;
+        float mapH = _surfaceData.Height * GameConfig.TileSize;
+        SurfaceEnemyRenderer.RenderMinimapDots(renderer, game.EcsWorld, mmX, mmY, mmSize, mapW, mapH);
 
         // Controls
         PlanetSurfaceRenderer.RenderControls(renderer);
@@ -307,5 +518,68 @@ public class PlanetSurfaceState : GameState
             return false;
         var terrain = _surfaceData.Tiles[tileX, tileY];
         return terrain is not (TerrainType.Water or TerrainType.Lava);
+    }
+
+    /// <summary>Handle avatar death — show death screen, timer to return to orbit.</summary>
+    private void HandleAvatarDeath(Game game, Vector2 deathPos)
+    {
+        _playerDead = true;
+        _respawnTimer = RespawnDelay;
+        _explosions.Add(new Explosion(deathPos, 25f, 255, 120, 80, 1.2f));
+
+        // Apply death penalties — lose some credits
+        int creditsLost = (int)(game.Player.Credits * 0.1f);
+        game.Player.Credits -= creditsLost;
+
+        _combatMessage = creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
+        _combatMessageTimer = RespawnDelay;
+    }
+
+    /// <summary>Process loot from a destroyed surface enemy.</summary>
+    private void ProcessSurfaceLoot(Game game, LootDrop loot, SeededRandom rng)
+    {
+        int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
+        game.Player.Credits += credits;
+        string message = $"+{credits} CREDITS";
+
+        if (rng.NextFloat() < loot.ResourceDropChance)
+        {
+            var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
+            int amount = rng.NextInt(1, 4);
+            int added = game.Player.AddCargo(resource, amount);
+            if (added > 0)
+            {
+                var resName = ResourceCatalog.Get(resource).Name;
+                message += $"  +{added} {resName.ToUpper()}";
+            }
+        }
+
+        _combatMessage = message;
+        _combatMessageTimer = 3f;
+    }
+
+    /// <summary>Render the avatar health bar at the bottom-left of the screen.</summary>
+    private static void RenderAvatarHealthBar(SpriteRenderer renderer, Health health)
+    {
+        float barW = 160;
+        float barH = 12;
+        float barX = 10;
+        float barY = GameConfig.WindowHeight - 30;
+
+        // Label
+        renderer.DrawTextScreen(barX, barY - 16, "HP", 200, 100, 100, 1.5f);
+
+        // Background
+        renderer.DrawRectScreen(barX, barY, barW, barH, 40, 40, 40, 200);
+
+        // Health fill
+        float fillW = barW * health.HullPercent;
+        byte r = health.HullPercent > 0.5f ? (byte)80 : (byte)255;
+        byte g = health.HullPercent > 0.5f ? (byte)200 : (byte)(200 * health.HullPercent * 2);
+        renderer.DrawRectScreen(barX, barY, fillW, barH, r, g, 60);
+
+        // Text
+        renderer.DrawTextScreen(barX + barW + 8, barY - 2,
+            $"{(int)health.Hull}/{(int)health.MaxHull}", 200, 200, 200, 1.5f);
     }
 }
