@@ -1005,10 +1005,13 @@ public class SolarSystemState : GameState
         SolarSystemRenderer.RenderCombatHud(renderer, game.Player, game.EcsWorld,
             _playerShip, _starSystem.DangerLevel);
 
-        // Off-screen NPC ship indicators at screen borders
+        // Off-screen indicators at screen borders
         if (!_playerDead)
+        {
             SolarSystemRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
-                _enemyEntities, _playerShip);
+                _enemyEntities);
+            SolarSystemRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
+        }
 
         // Death screen
         if (_playerDead)

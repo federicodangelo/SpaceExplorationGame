@@ -199,12 +199,8 @@ public static class SolarSystemRenderer
 
     /// <summary>Render arrow indicators at screen edges for off-screen NPC ships.</summary>
     public static void RenderOffscreenIndicators(SpriteRenderer renderer, Camera camera, World ecsWorld,
-        List<Entity> enemyEntities, Entity playerShip)
+        List<Entity> enemyEntities)
     {
-        const float margin = 30f;
-        float screenW = GameConfig.WindowWidth;
-        float screenH = GameConfig.WindowHeight;
-
         foreach (var entity in enemyEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
@@ -214,14 +210,7 @@ public static class SolarSystemRenderer
 
             ref var transform = ref ecsWorld.Get<Transform>(entity);
             var ai = ecsWorld.Get<EnemyAI>(entity);
-            var screenPos = camera.WorldToScreen(transform.Position);
 
-            // Skip if on screen (with some padding)
-            if (screenPos.X >= -20 && screenPos.X <= screenW + 20 &&
-                screenPos.Y >= -20 && screenPos.Y <= screenH + 20)
-                continue;
-
-            // Faction color
             var (cr, cg, cb) = ai.Faction switch
             {
                 Faction.Pirate => ((byte)255, (byte)80, (byte)80),
@@ -230,58 +219,76 @@ public static class SolarSystemRenderer
                 _ => ((byte)200, (byte)200, (byte)200)
             };
 
-            // Clamp to screen border
-            float cx = screenW / 2f;
-            float cy = screenH / 2f;
-            float dx = screenPos.X - cx;
-            float dy = screenPos.Y - cy;
-
-            // Scale direction to hit the screen edge (with margin)
-            float halfW = cx - margin;
-            float halfH = cy - margin;
-            float scaleX = MathF.Abs(dx) > 0.001f ? halfW / MathF.Abs(dx) : float.MaxValue;
-            float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
-            float scale = MathF.Min(scaleX, scaleY);
-
-            float ix = cx + dx * scale;
-            float iy = cy + dy * scale;
-
-            // Draw a triangle arrow pointing outward
-            float angle = MathF.Atan2(dy, dx);
-            float arrowSize = 8f;
-            float tipX = ix + MathF.Cos(angle) * arrowSize;
-            float tipY = iy + MathF.Sin(angle) * arrowSize;
-            float baseX1 = ix + MathF.Cos(angle + 2.5f) * arrowSize;
-            float baseY1 = iy + MathF.Sin(angle + 2.5f) * arrowSize;
-            float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
-            float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
-
-            // Filled triangle via 3 lines (thick arrow)
-            renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
-            renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
-            renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
-            // Inner fill lines for visibility
-            renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
-            renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
-            renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
-
-            // Small dot at indicator center
-            renderer.DrawFilledCircleScreen(ix, iy, 3f, cr, cg, cb, 220);
-
-            // Distance label
-            if (ecsWorld.IsAlive(playerShip))
-            {
-                ref var playerT = ref ecsWorld.Get<Transform>(playerShip);
-                float dist = Vector2.Distance(playerT.Position, transform.Position);
-                string distLabel = dist < 1000 ? $"{dist:F0}" : $"{dist / 1000f:F1}K";
-                float labelW = renderer.MeasureText(distLabel, 1f);
-
-                // Offset label inward from the edge
-                float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
-                float labelOffY = -MathF.Sin(angle) * 16f - 4f;
-                renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, distLabel, cr, cg, cb, 1f);
-            }
+            RenderOffscreenIndicator(renderer, camera, transform.Position, cr, cg, cb);
         }
+    }
+
+    /// <summary>Render an off-screen indicator pointing toward the system's main star.</summary>
+    public static void RenderStarOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+        Vector2 starCenter)
+    {
+        RenderOffscreenIndicator(renderer, camera, starCenter, 255, 220, 80, prefix: "* ", dotRadius: 4f, arrowSize: 10f);
+    }
+
+    /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
+    private static void RenderOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+        Vector2 worldPos, byte cr, byte cg, byte cb, string? prefix = null,
+        float dotRadius = 3f, float arrowSize = 8f)
+    {
+        const float margin = 30f;
+        float screenW = GameConfig.WindowWidth;
+        float screenH = GameConfig.WindowHeight;
+
+        var screenPos = camera.WorldToScreen(worldPos);
+
+        // Skip if on screen
+        if (screenPos.X >= -20 && screenPos.X <= screenW + 20 &&
+            screenPos.Y >= -20 && screenPos.Y <= screenH + 20)
+            return;
+
+        // Clamp to screen border
+        float cx = screenW / 2f;
+        float cy = screenH / 2f;
+        float dx = screenPos.X - cx;
+        float dy = screenPos.Y - cy;
+
+        float halfW = cx - margin;
+        float halfH = cy - margin;
+        float scaleX = MathF.Abs(dx) > 0.001f ? halfW / MathF.Abs(dx) : float.MaxValue;
+        float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
+        float scale = MathF.Min(scaleX, scaleY);
+
+        float ix = cx + dx * scale;
+        float iy = cy + dy * scale;
+
+        // Triangle arrow pointing outward
+        float angle = MathF.Atan2(dy, dx);
+        float tipX = ix + MathF.Cos(angle) * arrowSize;
+        float tipY = iy + MathF.Sin(angle) * arrowSize;
+        float baseX1 = ix + MathF.Cos(angle + 2.5f) * arrowSize;
+        float baseY1 = iy + MathF.Sin(angle + 2.5f) * arrowSize;
+        float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
+        float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
+
+        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
+        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
+        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
+        renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
+        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
+        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
+
+        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, cr, cg, cb, 220);
+
+        // Distance label: world distance from screen edge to target
+        float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
+        float worldDist = screenPixelDist / camera.Zoom;
+        string distText = worldDist < 1000 ? $"{worldDist:F0}" : $"{worldDist / 1000f:F1}K";
+        string label = prefix != null ? prefix + distText : distText;
+
+        float labelW = renderer.MeasureText(label, 1f);
+        float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
+        float labelOffY = -MathF.Sin(angle) * 16f - 4f;
+        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, cr, cg, cb, 1f);
     }
 
     /// <summary>Render the combat HUD: hull/shield bars and danger level.</summary>
@@ -345,4 +352,5 @@ public static class SolarSystemRenderer
         float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
         renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, r, g, b, scale);
     }
+
 }
