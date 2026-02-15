@@ -613,213 +613,67 @@ public class SolarSystemState : GameState
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
-        // Background stars (parallax - move at 50% camera speed)
-        foreach (var (x, y, brightness) in _bgStars)
-        {
-            var parallaxPos = new Vector2(x, y);
-            var screenPos = camera.WorldToScreen(parallaxPos);
-            // Simple parallax: shift based on camera
-            screenPos.X -= (camera.Position.X - starCenter.X) * 0.3f * camera.Zoom;
-            screenPos.Y -= (camera.Position.Y - starCenter.Y) * 0.3f * camera.Zoom;
+        // Background stars (parallax)
+        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _bgStars, starCenter);
 
-            if (screenPos.X >= 0 && screenPos.X < GameConfig.WindowWidth &&
-                screenPos.Y >= 0 && screenPos.Y < GameConfig.WindowHeight)
-            {
-                renderer.DrawRectScreen(screenPos.X, screenPos.Y, 1, 1, brightness, brightness, brightness);
-            }
-        }
+        // Orbit lines
+        SolarSystemRenderer.RenderOrbitLines(renderer, camera, _planets, starCenter);
 
-        // Draw orbit lines
-        foreach (var planet in _planets)
-        {
-            renderer.DrawCircle(camera, starCenter, planet.OrbitRadius, 30, 30, 50, 255, 64);
-        }
+        // Asteroids
+        var asteroidTex = game.Textures.GetTexture(TextureManager.Asteroid);
+        SolarSystemRenderer.RenderAsteroids(renderer, camera, _asteroids, starCenter, game.GlobalTime, asteroidTex);
 
-        // Draw asteroids (computed from globalTime) using texture
-        float asteroidTime = (float)game.GlobalTime;
-        var asteroidTex = game.Textures.GetTexture(Rendering.TextureManager.Asteroid);
-        foreach (var (baseAngle, radius, speed, size) in _asteroids)
-        {
-            float angle = baseAngle + speed * asteroidTime;
-            var pos = starCenter + new Vector2(MathF.Cos(angle) * radius, MathF.Sin(angle) * radius);
-            float rot = angle * 180f / MathF.PI * 2f; // slow spin
-            renderer.DrawTexture(camera, asteroidTex, pos, (int)size + 4, (int)size + 4, rot);
-        }
-
-        // Draw star with texture
+        // Star
         float starDisplayRadius = _starSystem.StarRadius * 2f;
-        renderer.DrawTexture(camera, _starTexture, starCenter,
-            (int)(starDisplayRadius * 3), (int)(starDisplayRadius * 3));
+        SolarSystemRenderer.RenderStar(renderer, camera, _starTexture, starCenter, starDisplayRadius);
 
-        // Draw planets with textures
-        for (int i = 0; i < _planets.Count; i++)
-        {
-            if (i >= _planetEntities.Count) break;
-            var pTransform = game.EcsWorld.Get<Transform>(_planetEntities[i]);
-            var p = _planets[i];
-            int texRenderSize = (int)(p.Radius * 2) + 4;
+        // Planets and moons
+        SolarSystemRenderer.RenderPlanetsAndMoons(renderer, camera, game.EcsWorld,
+            _planets, _planetEntities, _moonEntities, _planetTextures, _moonTextures);
 
-            // Planet texture
-            if (i < _planetTextures.Count)
-            {
-                renderer.DrawTexture(camera, _planetTextures[i], pTransform.Position,
-                    texRenderSize, texRenderSize);
-            }
+        // Stations
+        var stationTex = game.Textures.GetTexture(TextureManager.Station);
+        SolarSystemRenderer.RenderStations(renderer, camera, game.EcsWorld,
+            _stationEntities, stationTex, game.GlobalTime);
 
-            // Settlement indicator (small diamond below planet)
-            if (p.HasSettlement)
-            {
-                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
-                float sz = 3f;
-                // Draw a small yellow diamond
-                renderer.DrawFilledCircle(camera, indicatorPos, sz, 255, 210, 200, 220);
-            }
-
-            // Rings
-            if (p.HasRings)
-            {
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.5f,
-                    p.R, p.G, p.B, 120, 48);
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.8f,
-                    p.R, p.G, p.B, 80, 48);
-            }
-
-            // Moon orbit lines
-            foreach (var moon in p.Moons)
-            {
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, 20, 20, 40, 255, 24);
-            }
-
-            // Moon textures
-            if (i < _moonEntities.Count)
-            {
-                for (int m = 0; m < _moonEntities[i].Count; m++)
-                {
-                    var moonTransform = game.EcsWorld.Get<Transform>(_moonEntities[i][m]);
-                    var moon = p.Moons[m];
-                    int moonTexSize = (int)(moon.Radius * 2) + 2;
-                    if (i < _moonTextures.Count && m < _moonTextures[i].Count)
-                    {
-                        renderer.DrawTexture(camera, _moonTextures[i][m], moonTransform.Position,
-                            moonTexSize, moonTexSize);
-                    }
-                }
-            }
-        }
-
-        // Draw stations with texture
-        var stationTex = game.Textures.GetTexture(Rendering.TextureManager.Station);
-        for (int i = 0; i < _stationEntities.Count; i++)
-        {
-            var stTransform = game.EcsWorld.Get<Transform>(_stationEntities[i]);
-            float stRotation = (float)(game.GlobalTime * 10) % 360f; // slow station rotation
-            renderer.DrawTexture(camera, stationTex, stTransform.Position, 28, 28, stRotation);
-        }
-
-        // Draw labels (via ECS system)
+        // Labels (via ECS system)
         float unusedDt = 0f;
         _labelRenderSystem.Update(in unusedDt);
 
-        // Draw player ship with texture
+        // Player ship
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
-        var shipTexKey = Rendering.TextureManager.GetShipSolarKey(game.Player.CurrentShipType.Id);
-        var shipTex = game.Textures.GetTexture(shipTexKey);
-
-        // Engine flame when thrusting (draw behind ship, offset backward)
         int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
-        if (game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up))
-        {
-            var flameTex = game.Textures.GetTexture(Rendering.TextureManager.ShipFlame);
-            float shipRad = shipTransform.Rotation * MathF.PI / 180f;
-            // Offset the flame behind the ship's heading
-            float flameOffset = shipSpriteSize * 0.56f;
-            var flamePos = shipTransform.Position - new Vector2(MathF.Cos(shipRad), MathF.Sin(shipRad)) * flameOffset;
-            int flameSize = (int)(shipSpriteSize * 1.25f);
-            renderer.DrawTexture(camera, flameTex, flamePos, flameSize, flameSize, shipTransform.Rotation);
-        }
+        bool isThrusting = game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up);
+        game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
+            shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
 
-        // Ship sprite (rotated to match heading)
-        renderer.DrawTexture(camera, shipTex, shipTransform.Position, shipSpriteSize, shipSpriteSize, shipTransform.Rotation);
-
-        // --- HUD ---
-        renderer.DrawRectScreen(0, 0, 280, 75, 0, 0, 0, 160);
-        renderer.DrawTextScreen(10, 10, $"SYSTEM: {_starSystem.Name}", 200, 200, 255, 2f);
-        renderer.DrawTextScreen(10, 35, $"CLASS {_starSystem.StarClass} STAR", 150, 150, 150, 1.5f);
-
+        // HUD
         ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
-        renderer.DrawTextScreen(10, 55, $"SPEED: {vel.Value.Length():F0}", 150, 150, 150, 1.5f);
+        SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, vel.Value.Length());
 
-        // Interaction prompts with body info
+        // Interaction prompts
         if (_nearbyPlanetIndex >= 0)
         {
-            var p = _planets[_nearbyPlanetIndex];
-            string action = $"[E] LAND ON {p.Name.ToUpper()}";
-            float tw = renderer.MeasureText(action, 2f);
-            float panelW = Math.Max(tw + 20, 320);
-            float panelH = 90;
-            float px = GameConfig.WindowWidth / 2f - panelW / 2f;
-            float py = GameConfig.WindowHeight - panelH - 15;
-            renderer.DrawRectScreen(px, py, panelW, panelH, 0, 0, 0, 180);
-
-            renderer.DrawTextScreen(px + 10, py + 6, action, 100, 255, 100, 2f);
-            renderer.DrawTextScreen(px + 10, py + 30, $"TYPE: {p.Type.ToString().ToUpper()}", 180, 180, 180, 1.5f);
-            string details = $"MOONS: {p.MoonCount}";
-            if (p.HasRings) details += "  RINGS: YES";
-            renderer.DrawTextScreen(px + 10, py + 48, details, 150, 150, 150, 1.5f);
-
-            byte sr = p.HasSettlement ? (byte)255 : (byte)120;
-            byte sg = p.HasSettlement ? (byte)220 : (byte)120;
-            byte sb = p.HasSettlement ? (byte)100 : (byte)120;
-            string settText = p.HasSettlement ? "SETTLEMENTS: YES" : "NO SETTLEMENTS";
-            renderer.DrawTextScreen(px + 10, py + 66, settText, sr, sg, sb, 1.5f);
+            SolarSystemRenderer.RenderPlanetPanel(renderer, _planets[_nearbyPlanetIndex]);
         }
         else if (_nearbyMoonIndex >= 0)
         {
-            var moon = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
-            var parent = _planets[_nearbyMoonPlanetIndex];
-            string action = $"[E] LAND ON {moon.Name.ToUpper()}";
-            float tw = renderer.MeasureText(action, 2f);
-            float panelW = Math.Max(tw + 20, 320);
-            float panelH = 72;
-            float px = GameConfig.WindowWidth / 2f - panelW / 2f;
-            float py = GameConfig.WindowHeight - panelH - 15;
-            renderer.DrawRectScreen(px, py, panelW, panelH, 0, 0, 0, 180);
-
-            renderer.DrawTextScreen(px + 10, py + 6, action, 180, 255, 180, 2f);
-            renderer.DrawTextScreen(px + 10, py + 30, $"TYPE: {moon.Type.ToString().ToUpper()}", 180, 180, 180, 1.5f);
-            renderer.DrawTextScreen(px + 10, py + 48, $"ORBITS: {parent.Name.ToUpper()}", 150, 150, 150, 1.5f);
+            SolarSystemRenderer.RenderMoonPanel(renderer,
+                _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex],
+                _planets[_nearbyMoonPlanetIndex]);
         }
         else if (_nearbyStationIndex >= 0)
         {
-            string stationName = _stations[_nearbyStationIndex].Name;
-            string text = $"[E] DOCK AT {stationName.ToUpper()}";
-            float tw = renderer.MeasureText(text, 2f);
-            float tx = GameConfig.WindowWidth / 2 - tw / 2;
-            renderer.DrawRectScreen(tx - 10, GameConfig.WindowHeight - 70, tw + 20, 30, 0, 0, 0, 160);
-            renderer.DrawTextScreen(tx, GameConfig.WindowHeight - 60, text, 100, 200, 255, 2f);
+            SolarSystemRenderer.RenderStationPanel(renderer, _stations[_nearbyStationIndex].Name);
         }
 
-        // Controls background
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 290, 5, 290, 130, 0, 0, 0, 160);
-
         // Controls
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 10, "W/UP: THRUST", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 30, "A/D: ROTATE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 50, "S/DOWN: BRAKE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 70, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 90, "M: GALAXY MAP", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 110, "E: INTERACT", 180, 180, 180, 1.5f);
+        SolarSystemRenderer.RenderControls(renderer);
 
-        // Station overlay drawn on top of everything
+        // Overlays drawn on top of everything
         _stationOverlay.Render(game);
-
-        // Planet landing overlay drawn on top of everything
         _planetLandingOverlay.Render(game);
-
-        // Galaxy map overlay drawn on top of everything
         _galaxyMapOverlay.Render(game);
-
-        // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);
     }
 }

@@ -6,6 +6,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays;
 
 namespace SpaceExplorationGame.States;
@@ -249,139 +250,48 @@ public class PlanetSurfaceState : GameState
         var renderer = game.SpriteRenderer;
         var camera = game.Camera;
 
-        // Draw tiles with variation via shared renderer
-        TileMapRenderer.RenderTiles(renderer, camera, _surfaceData.Width, _surfaceData.Height,
-            (x, y) => PlanetSurfaceGenerator.GetTerrainColor(_surfaceData.Tiles[x, y]),
-            800f,
-            (x, y, worldPos, hash) =>
-            {
-                var terrain = _surfaceData.Tiles[x, y];
-                var (r, g, b) = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-
-                if (terrain == TerrainType.Grass && (hash & 0x7) == 0)
-                {
-                    byte dr = (byte)Math.Clamp(r - 20, 0, 255);
-                    byte dg = (byte)Math.Clamp(g + 30, 0, 255);
-                    byte db = (byte)Math.Clamp(b - 10, 0, 255);
-                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
-                        6, 6, dr, dg, db);
-                }
-                else if (terrain == TerrainType.Rock && (hash & 0xF) == 0)
-                {
-                    byte dr = (byte)Math.Clamp(r + 20, 0, 255);
-                    byte dg = (byte)Math.Clamp(g + 15, 0, 255);
-                    byte db = (byte)Math.Clamp(b + 10, 0, 255);
-                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
-                        4, 4, dr, dg, db);
-                }
-                else if (terrain == TerrainType.Water && (hash & 0x3) == 0)
-                {
-                    byte wr = (byte)Math.Clamp(r + 30, 0, 255);
-                    byte wg = (byte)Math.Clamp(g + 30, 0, 255);
-                    byte wb = (byte)Math.Clamp(b + 40, 0, 255);
-                    renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 4) & 0xF) - 8, ((hash >> 8) & 0x7) - 4),
-                        8, 2, wr, wg, wb, 100);
-                }
-            });
+        // Draw terrain tiles
+        PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _surfaceData);
 
         // Draw settlements
-        Rendering.SettlementRenderer.Render(renderer, camera, _surfaceData);
+        SettlementRenderer.Render(renderer, camera, _surfaceData);
 
-        // Draw ship with texture
+        // Draw ship
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
-        var landedTexKey = Rendering.TextureManager.GetShipLandedKey(game.Player.CurrentShipType.Id);
-        var landedShipTex = game.Textures.GetTexture(landedTexKey);
-        int landedSize = (int)(game.Player.CurrentShipType.SpriteSize * 1.5f);
-        renderer.DrawTexture(camera, landedShipTex, shipTf.Position, landedSize, landedSize);
-        renderer.DrawText(camera, shipTf.Position + new Vector2(-12, 14), "SHIP", 180, 180, 200);
+        game.SpaceshipRenderer.RenderLanded(renderer, camera, shipTf.Position,
+            game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 
-        // Draw vehicle (when not mounted, or when mounted draw it at player position)
+        // Draw vehicle
         if (_vehicleDeployed)
         {
             var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
-            var vehicleTex = game.Textures.GetTexture(Rendering.TextureManager.Vehicle);
-            // Vehicle texture points up (north) so add 90° offset to align with 0°=right convention
-            renderer.DrawTexture(camera, vehicleTex, vehicleTf.Position, 40, 40, vehicleTf.Rotation + 90f);
-            if (!_inVehicle)
-            {
-                renderer.DrawText(camera, vehicleTf.Position + new Vector2(-20, 14), "VEHICLE", 180, 160, 100);
-            }
+            game.VehicleRenderer.Render(renderer, camera, vehicleTf.Position,
+                vehicleTf.Rotation, _inVehicle);
         }
 
         // Draw player avatar (only when on foot)
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
         if (!_inVehicle)
         {
-            var avatarTex = game.Textures.GetTexture(Rendering.TextureManager.AvatarDown);
-            renderer.DrawTexture(camera, avatarTex, avatarTf.Position, 28, 28);
+            game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
         }
 
-        // Interaction prompts (E key for everything)
-        if (_inVehicle)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
-                "[E] DISMOUNT", 255, 200, 100, 2f);
-        }
-        else if (_nearShip)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
-                "[E] BOARD SHIP (LEAVE)", 100, 255, 100, 2f);
-        }
-        else if (_nearVehicle && _vehicleDeployed)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
-                "[E] MOUNT VEHICLE", 255, 200, 100, 2f);
-        }
-        else if (_nearSettlement != null)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 120, GameConfig.WindowHeight - 60,
-                $"[E] ENTER {_nearSettlement.Name.ToUpper()}", 255, 255, 100, 2f);
-        }
+        // Interaction prompts
+        PlanetSurfaceRenderer.RenderInteractionPrompt(renderer,
+            _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
 
-        // --- HUD ---
-        renderer.DrawTextScreen(10, 10, $"PLANET: {_planet.Name.ToUpper()}", 200, 200, 255, 2f);
-        renderer.DrawTextScreen(10, 35, $"TYPE: {_planet.Type}", 150, 150, 150, 1.5f);
-        if (_inVehicle)
-        {
-            renderer.DrawTextScreen(10, 55, "DRIVING VEHICLE", 255, 200, 100, 1.5f);
-        }
+        // HUD
+        PlanetSurfaceRenderer.RenderHud(renderer, _planet, _inVehicle);
 
-        // Minimap (small box in corner)
-        float mmSize = 150;
-        float mmX = GameConfig.WindowWidth - mmSize - 10;
-        float mmY = 10;
-        renderer.DrawRectScreen(mmX, mmY, mmSize, mmSize, 0, 0, 0, 200);
-
-        float mmScaleX = mmSize / (_surfaceData.Width * GameConfig.TileSize);
-        float mmScaleY = mmSize / (_surfaceData.Height * GameConfig.TileSize);
-
-        // Player dot on minimap
-        float pmx = mmX + avatarTf.Position.X * mmScaleX;
-        float pmy = mmY + avatarTf.Position.Y * mmScaleY;
-        renderer.DrawRectScreen(pmx - 2, pmy - 2, 4, 4, 100, 255, 100);
-
-        // Ship dot on minimap
-        float smx = mmX + shipTf.Position.X * mmScaleX;
-        float smy = mmY + shipTf.Position.Y * mmScaleY;
-        renderer.DrawRectScreen(smx - 2, smy - 2, 4, 4, 150, 150, 200);
-
-        // Vehicle dot on minimap
-        if (_vehicleDeployed && !_inVehicle)
-        {
-            var vTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
-            float vmx = mmX + vTf.Position.X * mmScaleX;
-            float vmy = mmY + vTf.Position.Y * mmScaleY;
-            renderer.DrawRectScreen(vmx - 2, vmy - 2, 4, 4, 180, 140, 80);
-        }
-
-        // Controls background
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 260, mmY + mmSize + 15, 260, 100, 0, 0, 0, 160);
+        // Minimap
+        Vector2? vehiclePos = _vehicleDeployed && !_inVehicle
+            ? game.EcsWorld.Get<Transform>(_vehicleEntity).Position
+            : null;
+        PlanetSurfaceRenderer.RenderMinimap(renderer, _surfaceData,
+            avatarTf.Position, shipTf.Position, vehiclePos);
 
         // Controls
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: MENU", 180, 180, 180, 1.5f);
+        PlanetSurfaceRenderer.RenderControls(renderer);
 
         // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);

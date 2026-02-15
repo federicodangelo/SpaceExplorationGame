@@ -23,6 +23,11 @@ public class Game : IDisposable
     public SpriteRenderer SpriteRenderer { get; private set; } = null!;
     public TextureManager Textures { get; private set; } = null!;
 
+    // Entity renderers (own their textures)
+    public AvatarRenderer AvatarRenderer { get; private set; } = null!;
+    public VehicleRenderer VehicleRenderer { get; private set; } = null!;
+    public SpaceshipRenderer SpaceshipRenderer { get; private set; } = null!;
+
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
 
@@ -71,6 +76,11 @@ public class Game : IDisposable
 
         // Texture manager (procedural pixel art)
         Textures = new TextureManager(Renderer);
+
+        // Entity renderers
+        AvatarRenderer = new AvatarRenderer(Textures);
+        VehicleRenderer = new VehicleRenderer(Textures);
+        SpaceshipRenderer = new SpaceshipRenderer(Textures);
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -162,6 +172,9 @@ public class Game : IDisposable
     {
         _currentState?.Exit(this);
         EcsWorld.Dispose();
+        AvatarRenderer.Dispose();
+        VehicleRenderer.Dispose();
+        SpaceshipRenderer.Dispose();
         Textures.Dispose();
         SpriteRenderer.Dispose();
         SDL.DestroyRenderer(Renderer);
