@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
@@ -76,30 +77,17 @@ public class PlanetSurfaceState : GameState
         // Calculate avatar speed from equipped parts
         float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
 
-        _playerAvatar = game.EcsWorld.Create(
-            new Transform(lzX, lzY),
-            ECS.Components.Sprite.ColoredRect(12, 12, 100, 255, 100),
-            new Velocity(avatarSpeed),
-            new PlayerControlled()
-        );
+        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, lzX, lzY, avatarSpeed);
 
         // Place ship at landing zone
-        _shipEntity = game.EcsWorld.Create(
-            new Transform(lzX + 30, lzY),
-            ECS.Components.Sprite.ColoredRect(20, 16, 150, 150, 200),
-            new Label { Text = "SHIP", OffsetY = 14 }
-        );
+        _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, lzX + 30, lzY);
 
         // Deploy vehicle near the ship if player has one
         _inVehicle = false;
         _vehicleDeployed = game.Player.HasVehicle;
         if (_vehicleDeployed)
         {
-            _vehicleEntity = game.EcsWorld.Create(
-                new Transform(lzX - 30, lzY),
-                ECS.Components.Sprite.ColoredRect(16, 16, 180, 140, 80),
-                new Label { Text = "VEHICLE", OffsetY = 14 }
-            );
+            _vehicleEntity = EntityFactory.CreateVehicle(game.EcsWorld, lzX - 30, lzY);
         }
 
         // Initialize ECS systems

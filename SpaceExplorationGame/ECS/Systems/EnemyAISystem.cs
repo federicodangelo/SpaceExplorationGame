@@ -68,20 +68,7 @@ public class EnemyAISystem
         // Spawn pending projectiles
         foreach (var (pos, dir, damage, speed, faction, r, g, b) in _pendingProjectiles)
         {
-            float angle = MathF.Atan2(dir.Y, dir.X) * 180f / MathF.PI;
-            _world.Create(
-                new Transform(pos, angle),
-                new Velocity(speed) { Value = dir * speed },
-                new Projectile
-                {
-                    Damage = damage,
-                    Speed = speed,
-                    Lifetime = GameConfig.ProjectileLifetime,
-                    CollisionRadius = GameConfig.ProjectileRadius,
-                    OwnerFaction = faction,
-                    R = r, G = g, B = b
-                }
-            );
+            EntityFactory.CreateProjectile(_world, pos, dir, damage, speed, faction, r, g, b);
         }
     }
 

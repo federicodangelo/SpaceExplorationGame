@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
@@ -91,12 +92,7 @@ public class InteriorState : GameState
         // Calculate avatar speed from equipped parts
         float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
 
-        _playerAvatar = game.EcsWorld.Create(
-            new Transform(spawnX, spawnY),
-            ECS.Components.Sprite.ColoredRect(12, 12, 100, 255, 100),
-            new Velocity(avatarSpeed),
-            new PlayerControlled()
-        );
+        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, spawnX, spawnY, avatarSpeed);
 
         // Initialize ECS systems
         _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);

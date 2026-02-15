@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
@@ -123,19 +124,8 @@ public class SolarSystemState : GameState
 
         // Create star entity (doubled for solar system view)
         float starDisplayRadius = _starSystem.StarRadius * 2f;
-        _starEntity = game.EcsWorld.Create(
-            new Transform(center),
-            ECS.Components.Sprite.ColoredRect((int)(starDisplayRadius * 2), (int)(starDisplayRadius * 2),
-                _starSystem.StarR, _starSystem.StarG, _starSystem.StarB),
-            new CelestialBody
-            {
-                Type = CelestialType.Star,
-                Name = _starSystem.Name,
-                Radius = starDisplayRadius,
-                DataIndex = _starSystem.Index
-            },
-            new Label { Text = _starSystem.Name, OffsetY = (int)(starDisplayRadius + 15) }
-        );
+        _starEntity = EntityFactory.CreateStar(game.EcsWorld, center, starDisplayRadius,
+            _starSystem.Name, _starSystem.StarR, _starSystem.StarG, _starSystem.StarB, _starSystem.Index);
 
         // Create planet entities — compute positions from global time
         _planetEntities.Clear();
@@ -149,30 +139,10 @@ public class SolarSystemState : GameState
                 MathF.Sin(angle) * planet.OrbitRadius
             );
 
-            var planetEntity = game.EcsWorld.Create(
-                new Transform(pos),
-                ECS.Components.Sprite.ColoredRect((int)(planet.Radius * 2), (int)(planet.Radius * 2),
-                    planet.R, planet.G, planet.B),
-                new CelestialBody
-                {
-                    Type = CelestialType.Planet,
-                    Name = planet.Name,
-                    Radius = planet.Radius,
-                    DataIndex = i,
-                    HasSolidSurface = planet.HasSolidSurface
-                },
-                new Orbit(_starEntity, planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle),
-                new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 10) }
-            );
-
-            if (planet.HasSolidSurface)
-            {
-                game.EcsWorld.Add(planetEntity, new Interactable
-                {
-                    Type = InteractionType.LandOnPlanet,
-                    Label = "Land"
-                });
-            }
+            var planetEntity = EntityFactory.CreatePlanet(game.EcsWorld, pos, _starEntity,
+                planet.Name, planet.Radius, planet.R, planet.G, planet.B,
+                planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle,
+                i, planet.HasSolidSurface);
 
             _planetEntities.Add(planetEntity);
 
@@ -186,26 +156,9 @@ public class SolarSystemState : GameState
                     MathF.Sin(moonAngle) * moon.OrbitRadius
                 );
 
-                var moonEntity = game.EcsWorld.Create(
-                    new Transform(moonPos),
-                    ECS.Components.Sprite.ColoredRect((int)(moon.Radius * 2), (int)(moon.Radius * 2),
-                        moon.R, moon.G, moon.B),
-                    new CelestialBody
-                    {
-                        Type = CelestialType.Moon,
-                        Name = moon.Name,
-                        Radius = moon.Radius,
-                        DataIndex = moon.Index,
-                        HasSolidSurface = true
-                    },
-                    new Orbit(planetEntity, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle),
-                    new Label { Text = moon.Name, OffsetY = (int)(moon.Radius + 8) },
-                    new Interactable
-                    {
-                        Type = InteractionType.LandOnPlanet,
-                        Label = "Land"
-                    }
-                );
+                var moonEntity = EntityFactory.CreateMoon(game.EcsWorld, moonPos, planetEntity,
+                    moon.Name, moon.Radius, moon.R, moon.G, moon.B,
+                    moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
                 moons.Add(moonEntity);
             }
             _moonEntities.Add(moons);
@@ -232,24 +185,8 @@ public class SolarSystemState : GameState
                 MathF.Sin(stAngle) * station.OrbitRadius
             );
 
-            var stEntity = game.EcsWorld.Create(
-                new Transform(stPos),
-                ECS.Components.Sprite.ColoredRect(24, 24, 200, 200, 255),
-                new CelestialBody
-                {
-                    Type = CelestialType.SpaceStation,
-                    Name = station.Name,
-                    Radius = 12,
-                    DataIndex = station.Index
-                },
-                new Orbit(parent, station.OrbitRadius, station.OrbitSpeed, station.StartAngle),
-                new Label { Text = station.Name, OffsetY = 28 },
-                new Interactable
-                {
-                    Type = InteractionType.DockAtStation,
-                    Label = "Dock"
-                }
-            );
+            var stEntity = EntityFactory.CreateStation(game.EcsWorld, stPos, parent,
+                station.Name, station.OrbitRadius, station.OrbitSpeed, station.StartAngle, station.Index);
             _stationEntities.Add(stEntity);
         }
 
@@ -330,18 +267,8 @@ public class SolarSystemState : GameState
         int shipSize = game.Player.CurrentShipType.SpriteSize;
         var playerStats = game.Player.GetCombinedStats();
         float playerMaxShield = playerStats.ShieldStrength;
-        _playerShip = game.EcsWorld.Create(
-            new Transform(shipStartPos),
-            ECS.Components.Sprite.ColoredRect(shipSize, shipSize, 100, 255, 100),
-            new Velocity(GameConfig.ShipMaxSpeed),
-            new PlayerControlled(),
-            new Health(game.Player.ShipMaxHealth, playerMaxShield,
-                GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
-            {
-                Hull = game.Player.ShipHealth,
-                Shield = playerMaxShield // Start with full shields
-            }
-        );
+        _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, shipStartPos, shipSize,
+            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
 
         // Background stars
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
@@ -777,38 +704,9 @@ public class SolarSystemState : GameState
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 250f);
 
-            float baseHull = 40f + dangerLevel * 20f;
-            float baseShield = dangerLevel >= 3 ? 15f + dangerLevel * 10f : 0f;
-
-            var entity = game.EcsWorld.Create(
-                new Transform(pos, enemyRng.NextFloat(0, 360)),
-                ECS.Components.Sprite.ColoredRect(28, 28, 255, 80, 80),
-                new Velocity(GameConfig.PirateSpeed),
-                new Health(baseHull * hullMultiplier, baseShield,
-                    GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
-                new EnemyAI
-                {
-                    Faction = Faction.Pirate,
-                    State = AIState.Patrol,
-                    FireRate = GameConfig.EnemyFireRate / (1f + dangerLevel * 0.1f),
-                    FireCooldown = enemyRng.NextFloat(0, 2f),
-                    WeaponDamage = (5f + dangerLevel * 3f) * damageMultiplier,
-                    WeaponRange = GameConfig.EnemyWeaponRange,
-                    DetectRange = GameConfig.EnemyDetectRange,
-                    ProjectileSpeed = GameConfig.EnemyProjectileSpeed,
-                    LootCredits = GameConfig.BaseLootCredits * creditMultiplier,
-                    EngageDistance = GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent = GameConfig.EnemyFleeHealthPercent
-                },
-                new LootDrop
-                {
-                    MinCredits = GameConfig.BaseLootCredits * creditMultiplier / 2,
-                    MaxCredits = GameConfig.BaseLootCredits * creditMultiplier * 2,
-                    ResourceDropChance = GameConfig.ResourceDropChance,
-                    PartDropChance = GameConfig.PartDropChance * (1f + dangerLevel * 0.05f),
-                    DangerLevel = dangerLevel
-                }
-            );
+            var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
+                enemyRng.NextFloat(0, 360), dangerLevel, hullMultiplier, damageMultiplier,
+                creditMultiplier, enemyRng.NextFloat(0, 2f));
             _enemyEntities.Add(entity);
         }
 
@@ -817,26 +715,8 @@ public class SolarSystemState : GameState
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
-            var entity = game.EcsWorld.Create(
-                new Transform(pos, enemyRng.NextFloat(0, 360)),
-                ECS.Components.Sprite.ColoredRect(32, 32, 200, 160, 80),
-                new Velocity(GameConfig.TraderSpeed),
-                new Health(80f, 0f, 0f, 0f),
-                new EnemyAI
-                {
-                    Faction = Faction.Trader,
-                    State = AIState.Patrol,
-                    FireRate = 1f,
-                    FireCooldown = 0,
-                    WeaponDamage = 0f,
-                    WeaponRange = 0f,
-                    DetectRange = 300f,
-                    ProjectileSpeed = 0f,
-                    LootCredits = 0,
-                    EngageDistance = 0f,
-                    FleeHealthPercent = 0.5f
-                }
-            );
+            var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
+                enemyRng.NextFloat(0, 360));
             _enemyEntities.Add(entity);
         }
 
@@ -845,26 +725,8 @@ public class SolarSystemState : GameState
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
-            var entity = game.EcsWorld.Create(
-                new Transform(pos, enemyRng.NextFloat(0, 360)),
-                ECS.Components.Sprite.ColoredRect(30, 30, 80, 140, 220),
-                new Velocity(GameConfig.PatrolSpeed),
-                new Health(120f, 50f, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
-                new EnemyAI
-                {
-                    Faction = Faction.Patrol,
-                    State = AIState.Patrol,
-                    FireRate = 0.5f,
-                    FireCooldown = 0,
-                    WeaponDamage = 12f,
-                    WeaponRange = GameConfig.EnemyWeaponRange * 1.2f,
-                    DetectRange = GameConfig.EnemyDetectRange * 1.5f,
-                    ProjectileSpeed = GameConfig.EnemyProjectileSpeed * 1.1f,
-                    LootCredits = 0,
-                    EngageDistance = GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent = 0f
-                }
-            );
+            var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
+                enemyRng.NextFloat(0, 360));
             _enemyEntities.Add(entity);
         }
     }
@@ -904,19 +766,8 @@ public class SolarSystemState : GameState
                 var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
                 var spawnPos = shipT.Position + dir * 20f;
 
-                game.EcsWorld.Create(
-                    new Transform(spawnPos, shipT.Rotation),
-                    new Velocity(GameConfig.ProjectileSpeed) { Value = dir * GameConfig.ProjectileSpeed },
-                    new Projectile
-                    {
-                        Damage = weaponDamage,
-                        Speed = GameConfig.ProjectileSpeed,
-                        Lifetime = GameConfig.ProjectileLifetime,
-                        CollisionRadius = GameConfig.ProjectileRadius,
-                        OwnerFaction = Faction.Player,
-                        R = 100, G = 255, B = 100 // Green for player
-                    }
-                );
+                EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
+                    weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, 100, 255, 100);
             }
         }
 
@@ -1083,18 +934,8 @@ public class SolarSystemState : GameState
         var playerStats = game.Player.GetCombinedStats();
         float playerMaxShield = playerStats.ShieldStrength;
 
-        _playerShip = game.EcsWorld.Create(
-            new Transform(respawnPos),
-            ECS.Components.Sprite.ColoredRect(shipSize, shipSize, 100, 255, 100),
-            new Velocity(GameConfig.ShipMaxSpeed),
-            new PlayerControlled(),
-            new Health(game.Player.ShipMaxHealth, playerMaxShield,
-                GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
-            {
-                Hull = game.Player.ShipHealth,
-                Shield = playerMaxShield
-            }
-        );
+        _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, respawnPos, shipSize,
+            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
 
         game.Camera.Position = respawnPos;
         _combatMessage = "RESPAWNED — HULL AT 50%";
