@@ -29,7 +29,7 @@ SpaceExplorationGame/
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
 ├── ECS/
 │   ├── Components/
-│   │   └── Components.cs          # All ECS component structs (incl. combat: Health, Projectile, EnemyAI, Faction, LootDrop)
+│   │   └── Components.cs          # All ECS component structs (incl. combat: Health, Projectile, EnemyAI, SurfaceAI, Faction, LootDrop)
 │   └── Systems/
 │       ├── OrbitSystem.cs          # Deterministic orbital position updates
 │       ├── VelocitySystem.cs       # Velocity → position integration with speed clamping
@@ -41,7 +41,8 @@ SpaceExplorationGame/
 │       ├── TileMapRenderer.cs      # Shared tilemap rendering utility
 │       ├── ProjectileSystem.cs     # Projectile movement, collision detection, damage application
 │       ├── ShieldRegenSystem.cs    # Shield regeneration after damage delay
-│       └── EnemyAISystem.cs        # AI state machine for NPC ships (pirate/trader/patrol)
+│       ├── EnemyAISystem.cs        # AI state machine for NPC ships (pirate/trader/patrol)
+│       └── SurfaceEnemyAISystem.cs # AI state machine for surface enemies (fauna/bandits)
 ├── Generation/
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
@@ -64,6 +65,7 @@ SpaceExplorationGame/
 │   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, HUD, panels)
 │   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements, HUD)
 │   ├── ProjectileRenderer.cs      # Projectile trail rendering, damage popups, explosion effects (static)
+│   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars, minimap dots)
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels, minimap)
 │   └── SettlementRenderer.cs      # Settlement rendering helper
 ├── States/
@@ -127,7 +129,7 @@ States:
 - **GalaxyMapOverlay** (overlay, not a game state): Full-screen overlay drawn over SolarSystemState. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape.
 - **SpaceStationOverlay** (overlay, not a game state): Semi-transparent menu drawn over SolarSystemState when docked. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
-- **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel. Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
+- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Uses PlayerMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, SurfaceEnemyAISystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards (placeholder), and customization terminals (ship, avatar, vehicle). Station docking bays have four terminals: exit door, ship customization, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
 
 ### Procedural Generation Seed Hierarchy
@@ -158,7 +160,8 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `Projectile` — damage, speed, lifetime, collision radius, owner faction, RGB color
 - `EnemyAI` — faction, AI state machine, fire rate, weapon stats, detection ranges
 - `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
-- `Faction` — enum: Player, Pirate, Trader, Patrol
+- `SurfaceAI` — surface enemy AI state machine (faction, detect/attack range, walk speed, fire rate, wander behavior)
+- `Faction` — enum: Player, Pirate, Trader, Patrol, Fauna, Bandit
 - `AIState` — enum: Idle, Patrol, Chase, Attack, Flee, Defend
 
 ### ECS Systems
@@ -171,16 +174,17 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 | System | Base Class | Queries | Used By |
 |---|---|---|---|
 | **OrbitSystem** | `BaseSystem` (source gen) | `Transform + Orbit` | SolarSystemState |
-| **VelocitySystem** | `BaseSystem` (source gen) | `Transform + Velocity` | SolarSystemState |
+| **VelocitySystem** | `BaseSystem` (source gen) | `Transform + Velocity` | SolarSystemState, PlanetSurfaceState |
 | **PlayerMovementSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | PlanetSurfaceState, InteriorState |
 | **CameraFollowSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | SolarSystemState, PlanetSurfaceState, InteriorState |
 | **LabelRenderSystem** | `BaseSystem` (source gen) | `Transform + Label` | SolarSystemState |
 | **InteractionProximitySystem** | Plain class (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
 | **VehicleMovementSystem** | Plain class (manual) | Single entity | PlanetSurfaceState |
 | **TileMapRenderer** | Static utility | N/A (callback-driven) | PlanetSurfaceState, InteriorState |
-| **ProjectileSystem** | Plain class (manual query) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState |
+| **ProjectileSystem** | Plain class (manual query) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState |
 | **ShieldRegenSystem** | `BaseSystem` (source gen) | `Health` | SolarSystemState |
 | **EnemyAISystem** | Plain class (manual query) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
+| **SurfaceEnemyAISystem** | Plain class (manual query) | `Transform + Velocity + SurfaceAI + Health` | PlanetSurfaceState |
 
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
 - **VelocitySystem**: Integrates velocity into position each frame with `MaxSpeed` clamping.
@@ -190,9 +194,10 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 - **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Implemented as a plain class with `FindNearest(Vector2)` because the source generator's `Update()` does not call `BeforeUpdate()`, which prevented per-frame distance reset.
 - **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Plain class with `Update(float dt)`, configurable physics params, and `CanMoveTo` collision delegate.
 - **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
-- **ProjectileSystem**: Plain class that moves projectiles, checks lifetime expiry, and detects collisions between projectiles and Health entities. Faction logic prevents friendly fire (same-faction projectiles don't hit). Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
+- **ProjectileSystem**: Plain class that moves projectiles, checks lifetime expiry, and detects collisions between projectiles and Health entities. Faction logic prevents friendly fire (same-faction projectiles don't hit; fauna/bandit projectiles don't hit each other). Recognizes both `EnemyAI` and `SurfaceAI` components for faction detection. Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
 - **ShieldRegenSystem**: Source-generated system that regenerates shields after a configurable delay (`ShieldRegenDelay`) since last hit. Regen rate is per-second (`ShieldRegenRate`).
 - **EnemyAISystem**: Plain class implementing a state machine for NPC ships. Pirates patrol, chase, and attack the player (flee when low health). Traders cruise and flee from nearby pirates. Patrols hunt pirates and defend traders. Fires projectiles via a deferred spawn list to avoid mutation during iteration. Takes `Func<Vector2>` for player position and `Func<bool>` for player alive state.
+- **SurfaceEnemyAISystem**: Plain class implementing walk-based AI for surface enemies (no rotation/thrust physics). Fauna wander randomly, chase the player when detected, and attack with fast short-range melee projectiles. Bandits patrol, chase, fire ranged projectiles, strafe in combat, and flee when critically low on health. Uses deferred projectile spawn pattern. Takes optional `Func<Vector2, bool>` terrain collision delegate.
 
 ### Rendering
 The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
@@ -217,6 +222,7 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 **Scene Renderers** are static helper classes that handle non-entity rendering (HUD, panels, background elements):
 - **SolarSystemRenderer** — background stars (parallax), orbit lines, HUD, interaction panels (planet/moon/station)
 - **ProjectileRenderer** — projectile trail rendering (colored elongated lines), floating damage numbers (blue=shield, yellow=hull), expanding explosion circles with particle sparks
+- **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead, minimap dots (red=fauna, orange=bandit)
 - **PlanetSurfaceRenderer** — terrain details, settlement markers, surface HUD
 - **InteriorRenderer** — tiles, room labels, NPCs, interactable markers, minimap
 - **SettlementRenderer** — settlement-specific rendering
@@ -294,7 +300,7 @@ Players can equip and swap ship parts at space stations via the **ShipCustomizat
 ### Avatar Customization
 Players can equip and swap avatar gear at **Avatar Customization** terminals in station interiors via the **AvatarCustomizationOverlay**. The system is defined in `AvatarParts.cs` and integrated into `PlayerData`.
 
-**Equipment Slots** (3 total): Suit, Helmet, Boots.
+**Equipment Slots** (4 total): Suit, Helmet, Boots, Weapon.
 
 **Part Tiers**: Each slot has 3 tiers (Tier 1 = starter, Tier 3 = best). Parts are defined in `AvatarPartCatalog`.
 
@@ -304,6 +310,8 @@ Players can equip and swap avatar gear at **Avatar Customization** terminals in 
 | WalkSpeed | Suit | Bonus to base avatar movement speed (200 + WalkSpeed) |
 | OxygenCapacity | Helmet | Oxygen tank capacity (future hazardous environments) |
 | TerrainPenalty | Boots | Terrain movement penalty reduction (future terrain effects) |
+| WeaponDamage | Weapon | Bonus projectile damage on planet surface (base 10 + bonus) |
+| Armor | Suit | Bonus to avatar max health (base 100 + armor) |
 
 **Ownership model**: Same as ship parts — buy once, own permanently, swap free, sell manually. Stored in `PlayerData.OwnedAvatarParts`. Combined stats via `PlayerData.GetCombinedAvatarStats()`.
 
@@ -413,7 +421,38 @@ Real-time projectile combat in the solar system. Players fire weapons with Space
 
 **Combat HUD**: Hull bar (red→green gradient) and shield bar (blue) displayed below the cargo HUD. Danger level shown as colored text. Floating damage numbers appear at hit locations (blue = shield, yellow = hull). Expanding explosion circles on entity destruction.
 
-**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols.
+**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols. On planet surfaces, fauna and bandit projectiles don't hit each other but do hit the player.
+
+### Surface Combat
+Real-time projectile combat on planet surfaces. Players shoot with Space (fires in last movement direction) or left mouse button (fires toward cursor). Hostile fauna and bandits spawn on walkable terrain during planet surface generation.
+
+**Surface Factions**:
+| Faction | Behavior | Color |
+|---|---|---|
+| **Fauna** | Wander → detect player → chase → melee-range bite attack | Red (180,60,60) |
+| **Bandit** | Patrol → detect player → chase → ranged fire → flee when critical | Orange (200,100,60) |
+
+**Spawning**: Fauna (3–10 per planet) and bandits (0–4, only on planets with settlements) are placed on walkable terrain at least 8 tiles from the landing zone and 4 tiles from settlements. Counts and positions are seeded deterministically. Ocean planets get fewer fauna.
+
+**Avatar Weapon Tiers**:
+| Weapon | Tier | Cost | Bonus Damage |
+|---|---|---|---|
+| Sidearm | T1 | Free | +0 |
+| Pulse Rifle | T2 | 300 | +8 |
+| Plasma Cannon | T3 | 700 | +20 |
+
+Base avatar weapon damage is 10. Total damage = base + equipped weapon's `WeaponDamage` bonus.
+
+**Avatar Health**: Persistent across planet visits. Base 100 HP + `Armor` stat from equipped avatar suit. Stored in `PlayerData.AvatarHealth` / `AvatarMaxHealth`. Health is synced from the ECS `Health` component back to `PlayerData` each frame and saved on state exit.
+
+**Surface Loot Drops**: Destroyed enemies drop credits (fauna: 10–40, bandits: 20–80) with chances for resource drops (30–40%). Bandits have a small chance (5%) to drop equipment parts.
+
+**Avatar Death**: When HP reaches zero:
+- 2.5-second death screen with "YOU DIED" and "RETURNING TO ORBIT..."
+- Lose 10% of credits
+- Return to the solar system with full avatar health restored
+
+**Surface Combat HUD**: Avatar HP bar at bottom-left, floating damage numbers, explosion effects, combat loot messages. Enemy health bars above each enemy. Enemy dots on the minimap (red = fauna, orange = bandits).
 
 ### Camera
 The `Camera` class handles world-to-screen coordinate conversion with zoom support. Scrollable tilemaps render only visible tiles using `GetVisibleBounds()`.
@@ -451,9 +490,10 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 ### Planet Surface
 - WASD/Arrows: Move avatar / drive vehicle
 - Mouse Scroll: Zoom
-- V: Mount/dismount vehicle (when near)
-- E: Board ship (when near, on foot) / Enter settlement (when near, on foot)
-- Escape: Leave planet (quick exit)
+- Space (hold): Fire weapon (in movement direction)
+- Left Mouse (hold): Fire weapon (toward cursor)
+- E: Board ship (when near, on foot) / Enter settlement (when near, on foot) / Mount/dismount vehicle
+- Escape: Menu
 
 ### Interior (Station / Settlement)
 - WASD/Arrows: Move avatar
@@ -504,9 +544,9 @@ dotnet run -- 12345  # with specific galaxy seed
 
 - [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, EnemyShip, Station, Asteroid, Planet, Star renderers own their textures)
 - [x] Scene renderer extraction (SolarSystemRenderer, ProjectileRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
+- [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health)
 
 ## TODO / Next Steps
-- [ ] Planet surface combat (hostile fauna + hostile NPCs)
 - [ ] Mission system (acceptance, tracking, completion)
 - [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
