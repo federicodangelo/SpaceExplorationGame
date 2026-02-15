@@ -1,4 +1,6 @@
 using System.Numerics;
+using Arch.Core;
+using Arch.Core.Extensions;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -140,5 +142,206 @@ public static class SolarSystemRenderer
         renderer.DrawRectScreen(barX, barY, barW * hpRatio, 12, resInfo.R, resInfo.G, resInfo.B);
 
         renderer.DrawTextScreen(px + 10, py + 48, $"HP: {asteroid.Hp:F0}/{asteroid.MaxHp:F0}  QTY: {asteroid.ResourceAmount}", 180, 180, 180, 1.5f);
+    }
+
+    /// <summary>Render all NPC ships with their textures, health bars, and faction labels.</summary>
+    public static void RenderNPCShips(SpriteRenderer renderer, Camera camera, World ecsWorld,
+        List<Entity> enemyEntities, EnemyShipRenderer enemyShipRenderer)
+    {
+        foreach (var entity in enemyEntities)
+        {
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (!ecsWorld.Has<Health>(entity)) continue;
+
+            ref var health = ref ecsWorld.Get<Health>(entity);
+            if (health.IsDead) continue;
+
+            ref var transform = ref ecsWorld.Get<Transform>(entity);
+            var ai = ecsWorld.Get<EnemyAI>(entity);
+            var velocity = ecsWorld.Get<Velocity>(entity);
+
+            bool isMoving = velocity.Value.LengthSquared() > 50f * 50f;
+            int shipSize = ai.Faction switch
+            {
+                Faction.Pirate => 28,
+                Faction.Trader => 32,
+                Faction.Patrol => 30,
+                _ => 28
+            };
+
+            enemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
+                ai.Faction, shipSize, isMoving);
+
+            // Health bar
+            enemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,
+                health.HullPercent, health.ShieldPercent, health.MaxShield, shipSize);
+
+            // Faction indicator (small colored text above health bar)
+            string factionLabel = ai.Faction switch
+            {
+                Faction.Pirate => "PIRATE",
+                Faction.Trader => "TRADER",
+                Faction.Patrol => "PATROL",
+                _ => ""
+            };
+            var (fr, fg, fb) = ai.Faction switch
+            {
+                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
+                Faction.Trader => ((byte)200, (byte)180, (byte)80),
+                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
+                _ => ((byte)200, (byte)200, (byte)200)
+            };
+            var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
+            renderer.DrawText(camera, labelPos, factionLabel, fr, fg, fb, 0.8f);
+        }
+    }
+
+    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships.</summary>
+    public static void RenderOffscreenIndicators(SpriteRenderer renderer, Camera camera, World ecsWorld,
+        List<Entity> enemyEntities, Entity playerShip)
+    {
+        const float margin = 30f;
+        float screenW = GameConfig.WindowWidth;
+        float screenH = GameConfig.WindowHeight;
+
+        foreach (var entity in enemyEntities)
+        {
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (!ecsWorld.Has<Health>(entity)) continue;
+            ref var health = ref ecsWorld.Get<Health>(entity);
+            if (health.IsDead) continue;
+
+            ref var transform = ref ecsWorld.Get<Transform>(entity);
+            var ai = ecsWorld.Get<EnemyAI>(entity);
+            var screenPos = camera.WorldToScreen(transform.Position);
+
+            // Skip if on screen (with some padding)
+            if (screenPos.X >= -20 && screenPos.X <= screenW + 20 &&
+                screenPos.Y >= -20 && screenPos.Y <= screenH + 20)
+                continue;
+
+            // Faction color
+            var (cr, cg, cb) = ai.Faction switch
+            {
+                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
+                Faction.Trader => ((byte)200, (byte)180, (byte)80),
+                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
+                _ => ((byte)200, (byte)200, (byte)200)
+            };
+
+            // Clamp to screen border
+            float cx = screenW / 2f;
+            float cy = screenH / 2f;
+            float dx = screenPos.X - cx;
+            float dy = screenPos.Y - cy;
+
+            // Scale direction to hit the screen edge (with margin)
+            float halfW = cx - margin;
+            float halfH = cy - margin;
+            float scaleX = MathF.Abs(dx) > 0.001f ? halfW / MathF.Abs(dx) : float.MaxValue;
+            float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
+            float scale = MathF.Min(scaleX, scaleY);
+
+            float ix = cx + dx * scale;
+            float iy = cy + dy * scale;
+
+            // Draw a triangle arrow pointing outward
+            float angle = MathF.Atan2(dy, dx);
+            float arrowSize = 8f;
+            float tipX = ix + MathF.Cos(angle) * arrowSize;
+            float tipY = iy + MathF.Sin(angle) * arrowSize;
+            float baseX1 = ix + MathF.Cos(angle + 2.5f) * arrowSize;
+            float baseY1 = iy + MathF.Sin(angle + 2.5f) * arrowSize;
+            float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
+            float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
+
+            // Filled triangle via 3 lines (thick arrow)
+            renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
+            renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
+            renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
+            // Inner fill lines for visibility
+            renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
+            renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
+            renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
+
+            // Small dot at indicator center
+            renderer.DrawFilledCircleScreen(ix, iy, 3f, cr, cg, cb, 220);
+
+            // Distance label
+            if (ecsWorld.IsAlive(playerShip))
+            {
+                ref var playerT = ref ecsWorld.Get<Transform>(playerShip);
+                float dist = Vector2.Distance(playerT.Position, transform.Position);
+                string distLabel = dist < 1000 ? $"{dist:F0}" : $"{dist / 1000f:F1}K";
+                float labelW = renderer.MeasureText(distLabel, 1f);
+
+                // Offset label inward from the edge
+                float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
+                float labelOffY = -MathF.Sin(angle) * 16f - 4f;
+                renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, distLabel, cr, cg, cb, 1f);
+            }
+        }
+    }
+
+    /// <summary>Render the combat HUD: hull/shield bars and danger level.</summary>
+    public static void RenderCombatHud(SpriteRenderer renderer, PlayerData player, World ecsWorld,
+        Entity playerShip, int dangerLevel)
+    {
+        // Position below cargo HUD
+        float hudX = 10;
+        float hudY = 140;
+
+        // Background
+        renderer.DrawRectScreen(hudX - 5, hudY - 5, 230, 70, 0, 0, 0, 160);
+
+        // Hull bar
+        float hullPct = player.ShipMaxHealth > 0 ? player.ShipHealth / player.ShipMaxHealth : 0;
+        renderer.DrawTextScreen(hudX, hudY, "HULL", 200, 200, 200, 1.5f);
+        float barX = hudX + 60;
+        float barW = 160;
+        float barH = 12;
+        renderer.DrawRectScreen(barX, hudY, barW, barH, 40, 40, 40);
+        byte hullR = hullPct > 0.5f ? (byte)(255 * (1 - hullPct) * 2) : (byte)255;
+        byte hullG = hullPct > 0.5f ? (byte)255 : (byte)(255 * hullPct * 2);
+        renderer.DrawRectScreen(barX, hudY, barW * hullPct, barH, hullR, hullG, 0);
+        renderer.DrawTextScreen(barX + barW + 5, hudY, $"{player.ShipHealth:F0}/{player.ShipMaxHealth:F0}", 200, 200, 200, 1f);
+
+        // Shield bar (if player has shield)
+        var stats = player.GetCombinedStats();
+        if (stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip))
+        {
+            ref var health = ref ecsWorld.Get<Health>(playerShip);
+            float shieldPct = health.ShieldPercent;
+            renderer.DrawTextScreen(hudX, hudY + 20, "SHLD", 100, 160, 255, 1.5f);
+            renderer.DrawRectScreen(barX, hudY + 20, barW, barH, 40, 40, 60);
+            renderer.DrawRectScreen(barX, hudY + 20, barW * shieldPct, barH, 80, 160, 255);
+            renderer.DrawTextScreen(barX + barW + 5, hudY + 20, $"{health.Shield:F0}/{health.MaxShield:F0}", 100, 160, 255, 1f);
+        }
+
+        // Danger level
+        string dangerText = $"DANGER LV.{dangerLevel}";
+        byte dR = dangerLevel <= 2 ? (byte)100 : dangerLevel <= 3 ? (byte)255 : (byte)255;
+        byte dG = dangerLevel <= 2 ? (byte)255 : dangerLevel <= 3 ? (byte)200 : (byte)80;
+        byte dB = dangerLevel <= 2 ? (byte)100 : (byte)50;
+        renderer.DrawTextScreen(hudX, hudY + 42, dangerText, dR, dG, dB, 1.5f);
+    }
+
+    /// <summary>Render the death overlay with respawn countdown.</summary>
+    public static void RenderDeathScreen(SpriteRenderer renderer, float respawnTimer)
+    {
+        renderer.DrawRectScreen(0, GameConfig.WindowHeight / 2f - 40, GameConfig.WindowWidth, 80, 0, 0, 0, 180);
+        string deathText = $"SHIP DESTROYED - RESPAWNING IN {respawnTimer:F1}s";
+        float textW = renderer.MeasureText(deathText, 3f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - textW / 2f,
+            GameConfig.WindowHeight / 2f - 15, deathText, 255, 80, 80, 3f);
+    }
+
+    /// <summary>Render a centered feedback message at the given vertical offset.</summary>
+    public static void RenderCenteredMessage(SpriteRenderer renderer, string message,
+        float yOffset, byte r, byte g, byte b, float scale)
+    {
+        float msgW = renderer.MeasureText(message, scale);
+        float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
+        renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, r, g, b, scale);
     }
 }

@@ -1013,7 +1013,8 @@ public class SolarSystemState : GameState
         _labelRenderSystem.Update(in unusedDt);
 
         // NPC ships (enemies, traders, patrols)
-        RenderNPCShips(game);
+        SolarSystemRenderer.RenderNPCShips(renderer, camera, game.EcsWorld,
+            _enemyEntities, game.EnemyShipRenderer);
 
         // Projectiles
         ProjectileRenderer.RenderProjectiles(renderer, camera, game.EcsWorld);
@@ -1073,20 +1074,18 @@ public class SolarSystemState : GameState
         SolarSystemRenderer.RenderCargoHud(renderer, game.Player);
 
         // Combat HUD (hull/shield bars + danger level)
-        RenderCombatHud(renderer, game);
+        SolarSystemRenderer.RenderCombatHud(renderer, game.Player, game.EcsWorld,
+            _playerShip, _starSystem.DangerLevel);
 
         // Off-screen NPC ship indicators at screen borders
         if (!_playerDead)
-            RenderOffscreenIndicators(renderer, game);
+            SolarSystemRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
+                _enemyEntities, _playerShip);
 
         // Death screen
         if (_playerDead)
         {
-            renderer.DrawRectScreen(0, GameConfig.WindowHeight / 2f - 40, GameConfig.WindowWidth, 80, 0, 0, 0, 180);
-            string deathText = $"SHIP DESTROYED - RESPAWNING IN {_respawnTimer:F1}s";
-            float textW = renderer.MeasureText(deathText, 3f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - textW / 2f,
-                GameConfig.WindowHeight / 2f - 15, deathText, 255, 80, 80, 3f);
+            SolarSystemRenderer.RenderDeathScreen(renderer, _respawnTimer);
         }
 
         // Mining target info panel
@@ -1098,19 +1097,11 @@ public class SolarSystemState : GameState
 
         // Mining feedback message
         if (_miningMessage != null)
-        {
-            float msgW = renderer.MeasureText(_miningMessage, 2.5f);
-            float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
-            renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f - 40, _miningMessage, 255, 220, 80, 2.5f);
-        }
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, 255, 220, 80, 2.5f);
 
         // Combat feedback message
         if (_combatMessage != null)
-        {
-            float msgW = renderer.MeasureText(_combatMessage, 2f);
-            float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
-            renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + 30, _combatMessage, 255, 200, 80, 2f);
-        }
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, 255, 200, 80, 2f);
 
         // Interaction prompts
         if (_nearbyPlanetIndex >= 0)
@@ -1136,188 +1127,5 @@ public class SolarSystemState : GameState
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
-    }
-
-    /// <summary>Render all NPC ships with their textures and health bars.</summary>
-    private void RenderNPCShips(Game game)
-    {
-        var renderer = game.SpriteRenderer;
-        var camera = game.Camera;
-
-        foreach (var entity in _enemyEntities)
-        {
-            if (!game.EcsWorld.IsAlive(entity)) continue;
-            if (!game.EcsWorld.Has<Health>(entity)) continue;
-
-            ref var health = ref game.EcsWorld.Get<Health>(entity);
-            if (health.IsDead) continue;
-
-            ref var transform = ref game.EcsWorld.Get<Transform>(entity);
-            var ai = game.EcsWorld.Get<EnemyAI>(entity);
-            var velocity = game.EcsWorld.Get<Velocity>(entity);
-
-            bool isMoving = velocity.Value.LengthSquared() > 50f * 50f;
-            int shipSize = ai.Faction switch
-            {
-                Faction.Pirate => 28,
-                Faction.Trader => 32,
-                Faction.Patrol => 30,
-                _ => 28
-            };
-
-            game.EnemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
-                ai.Faction, shipSize, isMoving);
-
-            // Health bar
-            game.EnemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,
-                health.HullPercent, health.ShieldPercent, health.MaxShield, shipSize);
-
-            // Faction indicator (small colored text above health bar)
-            string factionLabel = ai.Faction switch
-            {
-                Faction.Pirate => "PIRATE",
-                Faction.Trader => "TRADER",
-                Faction.Patrol => "PATROL",
-                _ => ""
-            };
-            var (fr, fg, fb) = ai.Faction switch
-            {
-                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
-                Faction.Trader => ((byte)200, (byte)180, (byte)80),
-                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
-                _ => ((byte)200, (byte)200, (byte)200)
-            };
-            var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
-            renderer.DrawText(camera, labelPos, factionLabel, fr, fg, fb, 0.8f);
-        }
-    }
-
-    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships.</summary>
-    private void RenderOffscreenIndicators(SpriteRenderer renderer, Game game)
-    {
-        const float margin = 30f; // distance from screen edge
-        float screenW = GameConfig.WindowWidth;
-        float screenH = GameConfig.WindowHeight;
-        var camera = game.Camera;
-
-        foreach (var entity in _enemyEntities)
-        {
-            if (!game.EcsWorld.IsAlive(entity)) continue;
-            if (!game.EcsWorld.Has<Health>(entity)) continue;
-            ref var health = ref game.EcsWorld.Get<Health>(entity);
-            if (health.IsDead) continue;
-
-            ref var transform = ref game.EcsWorld.Get<Transform>(entity);
-            var ai = game.EcsWorld.Get<EnemyAI>(entity);
-            var screenPos = camera.WorldToScreen(transform.Position);
-
-            // Skip if on screen (with some padding)
-            if (screenPos.X >= -20 && screenPos.X <= screenW + 20 &&
-                screenPos.Y >= -20 && screenPos.Y <= screenH + 20)
-                continue;
-
-            // Faction color
-            var (cr, cg, cb) = ai.Faction switch
-            {
-                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
-                Faction.Trader => ((byte)200, (byte)180, (byte)80),
-                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
-                _ => ((byte)200, (byte)200, (byte)200)
-            };
-
-            // Clamp to screen border
-            float cx = screenW / 2f;
-            float cy = screenH / 2f;
-            float dx = screenPos.X - cx;
-            float dy = screenPos.Y - cy;
-
-            // Scale direction to hit the screen edge (with margin)
-            float halfW = cx - margin;
-            float halfH = cy - margin;
-            float scaleX = MathF.Abs(dx) > 0.001f ? halfW / MathF.Abs(dx) : float.MaxValue;
-            float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
-            float scale = MathF.Min(scaleX, scaleY);
-
-            float ix = cx + dx * scale;
-            float iy = cy + dy * scale;
-
-            // Draw a triangle arrow pointing outward
-            float angle = MathF.Atan2(dy, dx);
-            float arrowSize = 8f;
-            float tipX = ix + MathF.Cos(angle) * arrowSize;
-            float tipY = iy + MathF.Sin(angle) * arrowSize;
-            float baseX1 = ix + MathF.Cos(angle + 2.5f) * arrowSize;
-            float baseY1 = iy + MathF.Sin(angle + 2.5f) * arrowSize;
-            float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
-            float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
-
-            // Filled triangle via 3 lines (thick arrow)
-            renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
-            renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
-            renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
-            // Inner fill lines for visibility
-            renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
-            renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
-            renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
-
-            // Small dot at indicator center
-            renderer.DrawFilledCircleScreen(ix, iy, 3f, cr, cg, cb, 220);
-
-            // Distance label
-            if (game.EcsWorld.IsAlive(_playerShip))
-            {
-                ref var playerT = ref game.EcsWorld.Get<Transform>(_playerShip);
-                float dist = Vector2.Distance(playerT.Position, transform.Position);
-                string distLabel = dist < 1000 ? $"{dist:F0}" : $"{dist / 1000f:F1}K";
-                float labelW = renderer.MeasureText(distLabel, 1f);
-
-                // Offset label inward from the edge
-                float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
-                float labelOffY = -MathF.Sin(angle) * 16f - 4f;
-                renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, distLabel, cr, cg, cb, 1f);
-            }
-        }
-    }
-
-    /// <summary>Render the combat HUD: hull/shield bars and danger level.</summary>
-    private void RenderCombatHud(SpriteRenderer renderer, Game game)
-    {
-        // Position below cargo HUD
-        float hudX = 10;
-        float hudY = 140;
-
-        // Background
-        renderer.DrawRectScreen(hudX - 5, hudY - 5, 230, 70, 0, 0, 0, 160);
-
-        // Hull bar
-        float hullPct = game.Player.ShipMaxHealth > 0 ? game.Player.ShipHealth / game.Player.ShipMaxHealth : 0;
-        renderer.DrawTextScreen(hudX, hudY, "HULL", 200, 200, 200, 1.5f);
-        float barX = hudX + 60;
-        float barW = 160;
-        float barH = 12;
-        renderer.DrawRectScreen(barX, hudY, barW, barH, 40, 40, 40);
-        byte hullR = hullPct > 0.5f ? (byte)(255 * (1 - hullPct) * 2) : (byte)255;
-        byte hullG = hullPct > 0.5f ? (byte)255 : (byte)(255 * hullPct * 2);
-        renderer.DrawRectScreen(barX, hudY, barW * hullPct, barH, hullR, hullG, 0);
-        renderer.DrawTextScreen(barX + barW + 5, hudY, $"{game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", 200, 200, 200, 1f);
-
-        // Shield bar (if player has shield)
-        var stats = game.Player.GetCombinedStats();
-        if (stats.ShieldStrength > 0 && game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Health>(_playerShip))
-        {
-            ref var health = ref game.EcsWorld.Get<Health>(_playerShip);
-            float shieldPct = health.ShieldPercent;
-            renderer.DrawTextScreen(hudX, hudY + 20, "SHLD", 100, 160, 255, 1.5f);
-            renderer.DrawRectScreen(barX, hudY + 20, barW, barH, 40, 40, 60);
-            renderer.DrawRectScreen(barX, hudY + 20, barW * shieldPct, barH, 80, 160, 255);
-            renderer.DrawTextScreen(barX + barW + 5, hudY + 20, $"{health.Shield:F0}/{health.MaxShield:F0}", 100, 160, 255, 1f);
-        }
-
-        // Danger level
-        string dangerText = $"DANGER LV.{_starSystem.DangerLevel}";
-        byte dR = _starSystem.DangerLevel <= 2 ? (byte)100 : _starSystem.DangerLevel <= 3 ? (byte)255 : (byte)255;
-        byte dG = _starSystem.DangerLevel <= 2 ? (byte)255 : _starSystem.DangerLevel <= 3 ? (byte)200 : (byte)80;
-        byte dB = _starSystem.DangerLevel <= 2 ? (byte)100 : (byte)50;
-        renderer.DrawTextScreen(hudX, hudY + 42, dangerText, dR, dG, dB, 1.5f);
     }
 }
