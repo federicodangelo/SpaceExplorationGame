@@ -2,9 +2,9 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.UI;
+using SpaceExplorationGame.States;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 public enum StationMenuOption
 {

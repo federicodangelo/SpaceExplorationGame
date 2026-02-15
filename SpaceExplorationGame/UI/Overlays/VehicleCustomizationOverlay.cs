@@ -1,7 +1,7 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
 /// Vehicle customization overlay — thin subclass of CustomizationOverlayBase.

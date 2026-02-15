@@ -2,7 +2,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
 /// Abstract base class for all customization overlays (ship, avatar, vehicle).

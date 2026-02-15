@@ -1,9 +1,8 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.UI;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
 /// Shared overlay UI for Repair and Mission interactions.
