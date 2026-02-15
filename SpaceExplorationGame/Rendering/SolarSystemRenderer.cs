@@ -110,7 +110,7 @@ public static class SolarSystemRenderer
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 70, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 90, "M: GALAXY MAP", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 110, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 130, "SPACE: MINE", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 130, "SPACE: SHOOT", 180, 180, 180, 1.5f);
     }
 
     /// <summary>Renders cargo info below the system HUD.</summary>
@@ -121,10 +121,11 @@ public static class SolarSystemRenderer
         renderer.DrawTextScreen(10, hudY + 4, $"CARGO: {player.CargoUsed}/{player.MaxCargo}", 200, 180, 100, 1.5f);
     }
 
-    /// <summary>Renders the mining target info panel when aiming at an asteroid.</summary>
-    public static void RenderMiningPanel(SpriteRenderer renderer, MineableAsteroid asteroid)
+    /// <summary>Renders the mining target info panel for an asteroid entity.</summary>
+    public static void RenderMiningPanel(SpriteRenderer renderer, ResourceType resource,
+        float hp, float maxHp, int resourceAmount)
     {
-        var resInfo = ResourceCatalog.Get(asteroid.Resource);
+        var resInfo = ResourceCatalog.Get(resource);
         float panelW = 280;
         float panelH = 72;
         float px = GameConfig.WindowWidth / 2f - panelW / 2f;
@@ -137,11 +138,11 @@ public static class SolarSystemRenderer
         float barX = px + 10;
         float barY = py + 30;
         float barW = panelW - 20;
-        float hpRatio = asteroid.Hp / asteroid.MaxHp;
+        float hpRatio = maxHp > 0 ? hp / maxHp : 0;
         renderer.DrawRectScreen(barX, barY, barW, 12, 40, 40, 40);
         renderer.DrawRectScreen(barX, barY, barW * hpRatio, 12, resInfo.R, resInfo.G, resInfo.B);
 
-        renderer.DrawTextScreen(px + 10, py + 48, $"HP: {asteroid.Hp:F0}/{asteroid.MaxHp:F0}  QTY: {asteroid.ResourceAmount}", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(px + 10, py + 48, $"HP: {hp:F0}/{maxHp:F0}  QTY: {resourceAmount}", 180, 180, 180, 1.5f);
     }
 
     /// <summary>Render all NPC ships with their textures, health bars, and faction labels.</summary>

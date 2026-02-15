@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
+using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems;
@@ -18,10 +19,10 @@ public class ProjectileSystem
     private readonly List<Entity> _expired = [];
 
     /// <summary>Entities destroyed this frame (for loot/explosion handling).</summary>
-    public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot)> DestroyedThisFrame { get; } = [];
+    public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid)> DestroyedThisFrame { get; } = [];
 
     /// <summary>Damage events this frame (for visual effects).</summary>
-    public List<(Vector2 Position, float Damage, bool ShieldHit)> DamageEventsThisFrame { get; } = [];
+    public List<(Vector2 Position, float Damage, bool ShieldHit, Entity Target)> DamageEventsThisFrame { get; } = [];
 
     public ProjectileSystem(World world)
     {
@@ -111,7 +112,7 @@ public class ProjectileSystem
             health.TakeDamage(damage);
 
             var targetPos = _world.Get<Transform>(target).Position;
-            DamageEventsThisFrame.Add((targetPos, damage, hadShield));
+            DamageEventsThisFrame.Add((targetPos, damage, hadShield, target));
 
             // Destroy the projectile
             if (!_expired.Contains(projectile))
@@ -122,8 +123,13 @@ public class ProjectileSystem
             {
                 var faction = Faction.Player;
                 LootDrop? loot = null;
+                AsteroidField? asteroid = null;
 
-                if (_world.Has<EnemyAI>(target))
+                if (_world.Has<AsteroidField>(target))
+                {
+                    asteroid = _world.Get<AsteroidField>(target);
+                }
+                else if (_world.Has<EnemyAI>(target))
                 {
                     faction = _world.Get<EnemyAI>(target).Faction;
                     if (_world.Has<LootDrop>(target))
@@ -134,7 +140,7 @@ public class ProjectileSystem
                     faction = Faction.Player;
                 }
 
-                DestroyedThisFrame.Add((target, targetPos, faction, loot));
+                DestroyedThisFrame.Add((target, targetPos, faction, loot, asteroid));
             }
         }
 

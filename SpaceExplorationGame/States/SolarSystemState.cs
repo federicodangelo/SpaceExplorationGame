@@ -31,14 +31,12 @@ public class SolarSystemState : GameState
     private List<Entity> _stationEntities = [];
     private List<List<Entity>> _moonEntities = [];
 
-    // Mineable asteroids (replaces old tuple list)
-    private List<MineableAsteroid> _asteroids = [];
+    // Mineable asteroids (ECS entities)
+    private List<Entity> _asteroidEntities = [];
 
-    // Mining state
-    private bool _isMining;
-    private int _miningTargetIndex = -1;  // index into _asteroids
-    private float _miningBeamTimer;       // visual flicker timer
-    private const float MiningRange = 120f; // max beam range in world pixels
+    // Mining state (projectile-based)
+    private Entity _lastHitAsteroid;      // last asteroid hit by projectile (for HUD)
+    private float _miningHudTimer;        // how long to show the mining panel
     private string? _miningMessage;       // feedback message
     private float _miningMessageTimer;    // how long to show the message
 
@@ -190,7 +188,7 @@ public class SolarSystemState : GameState
             _stationEntities.Add(stEntity);
         }
 
-        // Generate mineable asteroids (base angles, resource types, HP)
+        // Generate mineable asteroids as ECS entities
         var asteroidRng = new SeededRandom(rng.DeriveChildSeed(999));
         foreach (var belt in _asteroidBelts)
         {
@@ -212,18 +210,12 @@ public class SolarSystemState : GameState
 
                 int resourceAmount = (int)(size * asteroidRng.NextFloat(1f, 3f));
 
-                _asteroids.Add(new MineableAsteroid
-                {
-                    BaseAngle = asteroidRng.NextFloat(0, MathF.PI * 2),
-                    Radius = asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
-                    Speed = asteroidRng.NextFloat(0.002f, 0.008f),
-                    Size = size,
-                    MaxHp = hp,
-                    Hp = hp,
-                    Resource = resource,
-                    ResourceAmount = resourceAmount,
-                    Depleted = false
-                });
+                var entity = EntityFactory.CreateAsteroid(game.EcsWorld, _starEntity, size, hp,
+                    resource, resourceAmount,
+                    asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
+                    asteroidRng.NextFloat(0.002f, 0.008f),
+                    asteroidRng.NextFloat(0, MathF.PI * 2));
+                _asteroidEntities.Add(entity);
             }
         }
 
@@ -395,7 +387,7 @@ public class SolarSystemState : GameState
         _planetEntities.Clear();
         _stationEntities.Clear();
         _moonEntities.Clear();
-        _asteroids.Clear();
+        _asteroidEntities.Clear();
         _bgStars.Clear();
         _enemyEntities.Clear();
         _damagePopups.Clear();
@@ -586,95 +578,8 @@ public class SolarSystemState : GameState
             }
         }
 
-        // --- Mining laser ---
-        UpdateMining(game, dt);
-
-        // --- Combat systems ---
+        // --- Combat systems (includes asteroid mining via projectiles) ---
         UpdateCombat(game, dt);
-    }
-
-    /// <summary>Handle mining laser: hold Space to fire beam at nearest asteroid.</summary>
-    private void UpdateMining(Game game, float dt)
-    {
-        var input = game.Input;
-
-        // Tick mining message timer
-        if (_miningMessageTimer > 0)
-        {
-            _miningMessageTimer -= dt;
-            if (_miningMessageTimer <= 0) _miningMessage = null;
-        }
-
-        // Check if player has any weapon equipped (weapon damage = mining DPS)
-        var stats = game.Player.GetCombinedStats();
-        float miningDps = stats.WeaponDamage;
-
-        if (!input.IsKeyDown(SDL.Scancode.Space) || miningDps <= 0)
-        {
-            _isMining = false;
-            _miningTargetIndex = -1;
-            return;
-        }
-
-        // Find nearest non-depleted asteroid within mining range
-        ref var shipPos = ref game.EcsWorld.Get<Transform>(_playerShip);
-        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        Vector2 starCenter = new(starCenterX, starCenterY);
-
-        float nearestDist = float.MaxValue;
-        int nearestIdx = -1;
-
-        for (int i = 0; i < _asteroids.Count; i++)
-        {
-            var asteroid = _asteroids[i];
-            if (asteroid.Depleted) continue;
-
-            var aPos = AsteroidRenderer.GetAsteroidPosition(asteroid, starCenter, game.GlobalTime);
-            float dist = Vector2.Distance(shipPos.Position, aPos);
-            if (dist < MiningRange && dist < nearestDist)
-            {
-                nearestDist = dist;
-                nearestIdx = i;
-            }
-        }
-
-        if (nearestIdx < 0)
-        {
-            _isMining = false;
-            _miningTargetIndex = -1;
-            return;
-        }
-
-        // Apply damage
-        _isMining = true;
-        _miningTargetIndex = nearestIdx;
-        _miningBeamTimer += dt;
-
-        var target = _asteroids[nearestIdx];
-        target.Hp -= miningDps * dt;
-
-        if (target.Hp <= 0)
-        {
-            target.Hp = 0;
-            target.Depleted = true;
-            _isMining = false;
-            _miningTargetIndex = -1;
-
-            // Collect resources
-            int added = game.Player.AddCargo(target.Resource, target.ResourceAmount);
-            var resInfo = ResourceCatalog.Get(target.Resource);
-            if (added > 0)
-            {
-                _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
-                _miningMessageTimer = 2.5f;
-            }
-            else
-            {
-                _miningMessage = "CARGO FULL!";
-                _miningMessageTimer = 2.5f;
-            }
-        }
     }
 
     /// <summary>Spawn NPC ships based on system danger level.</summary>
@@ -740,10 +645,18 @@ public class SolarSystemState : GameState
         return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
     }
 
-    /// <summary>Update combat: player shooting, AI, projectiles, damage, death.</summary>
+    /// <summary>Update combat: player shooting, AI, projectiles, asteroid mining, damage, death.</summary>
     private void UpdateCombat(Game game, float dt)
     {
         var input = game.Input;
+
+        // Tick mining timers
+        if (_miningHudTimer > 0) _miningHudTimer -= dt;
+        if (_miningMessageTimer > 0)
+        {
+            _miningMessageTimer -= dt;
+            if (_miningMessageTimer <= 0) _miningMessage = null;
+        }
 
         // Sync player health from Health component → PlayerData
         if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Health>(_playerShip))
@@ -752,9 +665,9 @@ public class SolarSystemState : GameState
             game.Player.ShipHealth = playerHealth.Hull;
         }
 
-        // Player shooting (Space key, but not while mining)
+        // Player shooting (Space key)
         _playerFireCooldown -= dt;
-        if (input.IsKeyDown(SDL.Scancode.Space) && !_isMining && _playerFireCooldown <= 0)
+        if (input.IsKeyDown(SDL.Scancode.Space) && _playerFireCooldown <= 0)
         {
             var stats = game.Player.GetCombinedStats();
             float weaponDamage = stats.WeaponDamage;
@@ -774,23 +687,60 @@ public class SolarSystemState : GameState
         // Run AI system
         _enemyAISystem.Update(dt);
 
-        // Run projectile system (collision detection)
+        // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
+
+        // Run projectile system (collision detection with ships + asteroids)
         _projectileSystem.Update(dt);
 
         // Run shield regen
         _shieldRegenSystem.Update(in dt);
 
-        // Process damage events (visual effects)
-        foreach (var (pos, damage, shieldHit) in _projectileSystem.DamageEventsThisFrame)
+        // Process damage events (visual effects + mining HUD tracking)
+        foreach (var (pos, damage, shieldHit, target) in _projectileSystem.DamageEventsThisFrame)
         {
             _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
+
+            // Track last asteroid hit for mining HUD
+            if (game.EcsWorld.IsAlive(target) && game.EcsWorld.Has<AsteroidField>(target))
+            {
+                _lastHitAsteroid = target;
+                _miningHudTimer = 2f;
+            }
         }
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xDEADBEEF);
-        foreach (var (entity, pos, faction, loot) in _projectileSystem.DestroyedThisFrame)
+        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedThisFrame)
         {
-            if (faction == Faction.Player)
+            if (asteroidData.HasValue)
+            {
+                // Asteroid destroyed — collect resources
+                var asteroid = asteroidData.Value;
+                _explosions.Add(new Explosion(pos, 15f, 140, 120, 100, 0.5f));
+
+                int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
+                var resInfo = ResourceCatalog.Get(asteroid.Resource);
+                if (added > 0)
+                {
+                    _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
+                    _miningMessageTimer = 2.5f;
+                }
+                else
+                {
+                    _miningMessage = "CARGO FULL!";
+                    _miningMessageTimer = 2.5f;
+                }
+
+                // Clear mining HUD since asteroid is gone
+                if (_lastHitAsteroid == entity) _miningHudTimer = 0;
+
+                if (game.EcsWorld.IsAlive(entity))
+                {
+                    _asteroidEntities.Remove(entity);
+                    game.EcsWorld.Destroy(entity);
+                }
+            }
+            else if (faction == Faction.Player)
             {
                 // Player died
                 HandlePlayerDeath(game, pos);
@@ -994,7 +944,7 @@ public class SolarSystemState : GameState
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _planets, starCenter);
 
         // Asteroids
-        game.AsteroidRenderer.RenderAsteroids(renderer, camera, _asteroids, starCenter, game.GlobalTime);
+        game.AsteroidRenderer.RenderAsteroids(renderer, camera, game.EcsWorld, _asteroidEntities);
 
         // Star
         float starDisplayRadius = _starSystem.StarRadius * 2f;
@@ -1027,31 +977,6 @@ public class SolarSystemState : GameState
             bool isThrusting = game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up);
             game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
-        }
-
-        // Mining laser beam
-        if (!_playerDead && _isMining && _miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count
-            && game.EcsWorld.IsAlive(_playerShip))
-        {
-            ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
-            var target = _asteroids[_miningTargetIndex];
-            var targetPos = AsteroidRenderer.GetAsteroidPosition(target, starCenter, game.GlobalTime);
-
-            // Flickering beam effect
-            float flicker = 0.7f + 0.3f * MathF.Sin(_miningBeamTimer * 20f);
-            byte beamR = (byte)(255 * flicker);
-            byte beamG = (byte)(80 * flicker);
-            byte beamB = (byte)(80 * flicker);
-
-            // Draw multiple lines for a thicker beam
-            renderer.DrawLine(camera, shipTransform.Position, targetPos, beamR, beamG, beamB, 200);
-            var perp = Vector2.Normalize(targetPos - shipTransform.Position);
-            var offset = new Vector2(-perp.Y, perp.X) * 1.5f;
-            renderer.DrawLine(camera, shipTransform.Position + offset, targetPos + offset, beamR, beamG, beamB, 140);
-            renderer.DrawLine(camera, shipTransform.Position - offset, targetPos - offset, beamR, beamG, beamB, 140);
-
-            // Hit glow at asteroid
-            renderer.DrawFilledCircle(camera, targetPos, 4f, beamR, (byte)(beamG + 60), beamB, 160);
         }
 
         // Visual effects (damage popups, explosions)
@@ -1088,11 +1013,14 @@ public class SolarSystemState : GameState
             SolarSystemRenderer.RenderDeathScreen(renderer, _respawnTimer);
         }
 
-        // Mining target info panel
-        if (_miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count)
+        // Mining target info panel (shown for 2s after a projectile hit)
+        if (_miningHudTimer > 0 && game.EcsWorld.IsAlive(_lastHitAsteroid)
+            && game.EcsWorld.Has<AsteroidField>(_lastHitAsteroid))
         {
-            var target = _asteroids[_miningTargetIndex];
-            SolarSystemRenderer.RenderMiningPanel(renderer, target);
+            ref var asteroidField = ref game.EcsWorld.Get<AsteroidField>(_lastHitAsteroid);
+            ref var asteroidHealth = ref game.EcsWorld.Get<Health>(_lastHitAsteroid);
+            SolarSystemRenderer.RenderMiningPanel(renderer, asteroidField.Resource,
+                asteroidHealth.Hull, asteroidHealth.MaxHull, asteroidField.ResourceAmount);
         }
 
         // Mining feedback message

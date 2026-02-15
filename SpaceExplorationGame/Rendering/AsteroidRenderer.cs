@@ -1,6 +1,9 @@
 using System.Numerics;
+using Arch.Core;
+using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -16,32 +19,27 @@ public class AsteroidRenderer : IDisposable
         _texture = GenerateAsteroidTexture(textures);
     }
 
-    /// <summary>Computes the world position of an asteroid at a given time.</summary>
-    public static Vector2 GetAsteroidPosition(MineableAsteroid asteroid, Vector2 center, double globalTime)
-    {
-        float angle = asteroid.BaseAngle + asteroid.Speed * (float)globalTime;
-        return center + new Vector2(MathF.Cos(angle) * asteroid.Radius, MathF.Sin(angle) * asteroid.Radius);
-    }
-
-    /// <summary>Renders asteroids orbiting around a center point.</summary>
+    /// <summary>Renders asteroids from ECS entities (with Transform, Health, AsteroidField).</summary>
     public void RenderAsteroids(SpriteRenderer renderer, Camera camera,
-        List<MineableAsteroid> asteroids,
-        Vector2 starCenter, double globalTime)
+        World ecsWorld, List<Entity> asteroidEntities)
     {
-        float asteroidTime = (float)globalTime;
-        foreach (var asteroid in asteroids)
+        foreach (var entity in asteroidEntities)
         {
-            if (asteroid.Depleted) continue;
+            if (!ecsWorld.IsAlive(entity)) continue;
 
-            float angle = asteroid.BaseAngle + asteroid.Speed * asteroidTime;
-            var pos = starCenter + new Vector2(MathF.Cos(angle) * asteroid.Radius, MathF.Sin(angle) * asteroid.Radius);
-            float rot = angle * 180f / MathF.PI * 2f;
+            ref var transform = ref ecsWorld.Get<Transform>(entity);
+            ref var health = ref ecsWorld.Get<Health>(entity);
+            ref var asteroid = ref ecsWorld.Get<AsteroidField>(entity);
+
+            if (health.IsDead) continue;
+
+            float rot = MathF.Atan2(transform.Position.Y, transform.Position.X) * 180f / MathF.PI * 2f;
 
             // Scale down visual size as HP drops
-            float hpRatio = asteroid.Hp / asteroid.MaxHp;
+            float hpRatio = health.HullPercent;
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
 
-            renderer.DrawTexture(camera, _texture, pos, (int)visualSize, (int)visualSize, rot);
+            renderer.DrawTexture(camera, _texture, transform.Position, (int)visualSize, (int)visualSize, rot);
         }
     }
 

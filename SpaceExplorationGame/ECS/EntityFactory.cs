@@ -116,6 +116,25 @@ public static class EntityFactory
 
     // ── Player Entities ─────────────────────────────────────────────
 
+    /// <summary>Create a mineable asteroid entity orbiting the star.</summary>
+    public static Entity CreateAsteroid(World world, Entity starEntity, float size, float hp,
+        ResourceType resource, int resourceAmount,
+        float orbitRadius, float orbitSpeed, float baseAngle)
+    {
+        return world.Create(
+            new Transform(Vector2.Zero), // OrbitSystem will compute position
+            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), 140, 120, 100),
+            new Orbit(starEntity, orbitRadius, orbitSpeed, baseAngle),
+            new Health(hp, 0f, 0f, 0f),
+            new AsteroidField
+            {
+                Resource = resource,
+                ResourceAmount = resourceAmount,
+                Size = size
+            }
+        );
+    }
+
     /// <summary>Create the player's ship entity for solar system flight.</summary>
     public static Entity CreatePlayerShip(World world, Vector2 position, int spriteSize,
         float maxHull, float currentHull, float maxShield, float maxSpeed)

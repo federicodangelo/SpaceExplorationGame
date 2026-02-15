@@ -1,4 +1,5 @@
 using System.Numerics;
+using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Components;
 
@@ -242,4 +243,12 @@ public struct LootDrop
     public float ResourceDropChance;   // 0-1 chance to drop resources
     public float PartDropChance;       // 0-1 chance to drop an equipment part
     public int DangerLevel;            // used to determine loot quality
+}
+
+/// <summary>Marks an entity as a mineable asteroid that drops resources when destroyed.</summary>
+public struct AsteroidField
+{
+    public ResourceType Resource;
+    public int ResourceAmount;         // units to drop on depletion
+    public float Size;                 // visual size for rendering
 }
