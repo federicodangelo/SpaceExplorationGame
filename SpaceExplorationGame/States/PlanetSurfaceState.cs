@@ -38,6 +38,12 @@ public class PlanetSurfaceState : GameState
     // Settlement proximity tracking
     private SettlementData? _nearSettlement;
 
+    // Ship proximity tracking (for boarding prompt)
+    private bool _nearShip;
+
+    // Vehicle proximity tracking (for mount prompt)
+    private bool _nearVehicle;
+
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
     private readonly int _landingTileY;
@@ -119,12 +125,12 @@ public class PlanetSurfaceState : GameState
         // Get player position for proximity checks
         ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
 
-        // Vehicle mount/dismount with V key
-        if (input.IsKeyPressed(SDL.Scancode.V) && _vehicleDeployed)
+        // Unified interaction with E key (priority: ship > vehicle > settlement)
+        if (input.IsKeyPressed(SDL.Scancode.E))
         {
             if (_inVehicle)
             {
-                // Dismount: place avatar next to vehicle, reset rotation
+                // Dismount vehicle: place avatar next to vehicle, reset rotation
                 ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
                 avatarTransform.Position = vehicleTf.Position + new Vector2(20, 0);
                 avatarTransform.Rotation = 0f;
@@ -132,56 +138,37 @@ public class PlanetSurfaceState : GameState
                 _inVehicle = false;
                 game.Player.InVehicle = false;
             }
-            else
+            else if (_nearShip)
             {
-                // Mount: check proximity to vehicle
-                var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
-                float distToVehicle = Vector2.Distance(avatarTransform.Position, vehicleTf.Position);
-                if (distToVehicle < GameConfig.VehicleMountRadius)
-                {
-                    // Snap player to vehicle position and adopt its rotation
-                    ref var vTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
-                    avatarTransform.Position = vTf.Position;
-                    avatarTransform.Rotation = vTf.Rotation;
-                    var vStats = game.Player.GetCombinedVehicleStats();
-                    _vehicleMovementSystem = new VehicleMovementSystem(
-                        game.EcsWorld, game.Input, _playerAvatar,
-                        acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
-                        maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
-                        rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
-                        friction: GameConfig.VehicleFriction + vStats.Friction);
-                    _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
-                    _inVehicle = true;
-                    game.Player.InVehicle = true;
-                }
+                // Board ship (highest priority when on foot)
+                game.Player.InVehicle = false;
+                game.ChangeState(new SolarSystemState(_starSystem));
             }
-        }
-
-        // Board ship / enter settlement
-        var shipTransform = game.EcsWorld.Get<Transform>(_shipEntity);
-        float distToShip = Vector2.Distance(avatarTransform.Position, shipTransform.Position);
-        if (input.IsKeyPressed(SDL.Scancode.E))
-        {
-            if (_nearSettlement != null && !_inVehicle)
+            else if (_nearVehicle && _vehicleDeployed)
             {
-                // Enter settlement interior (must be on foot)
+                // Mount vehicle
+                ref var vTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
+                avatarTransform.Position = vTf.Position;
+                avatarTransform.Rotation = vTf.Rotation;
+                var vStats = game.Player.GetCombinedVehicleStats();
+                _vehicleMovementSystem = new VehicleMovementSystem(
+                    game.EcsWorld, game.Input, _playerAvatar,
+                    acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
+                    maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
+                    rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
+                    friction: GameConfig.VehicleFriction + vStats.Friction);
+                _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
+                _inVehicle = true;
+                game.Player.InVehicle = true;
+            }
+            else if (_nearSettlement != null)
+            {
+                // Enter settlement interior (lowest priority)
                 game.ChangeState(new InteriorState(
                     InteriorOrigin.Settlement, _starSystem,
                     planet: _planet, settlement: _nearSettlement));
                 return;
             }
-            else if (distToShip < BoardShipRadius && !_inVehicle)
-            {
-                // Return to solar system (must be on foot)
-                game.Player.InVehicle = false;
-                game.ChangeState(new SolarSystemState(_starSystem));
-            }
-        }
-
-        // Quick exit
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
-        {
-            game.ChangeState(new SolarSystemState(_starSystem));
         }
     }
 
@@ -225,6 +212,23 @@ public class PlanetSurfaceState : GameState
                 _nearSettlement = settlement;
                 break;
             }
+        }
+
+        // Check ship proximity
+        var shipTransform = game.EcsWorld.Get<Transform>(_shipEntity);
+        float distToShip = Vector2.Distance(avatarTransform.Position, shipTransform.Position);
+        _nearShip = distToShip < BoardShipRadius;
+
+        // Check vehicle proximity
+        if (_vehicleDeployed)
+        {
+            var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
+            float distToVehicle = Vector2.Distance(avatarTransform.Position, vehicleTf.Position);
+            _nearVehicle = distToVehicle < GameConfig.VehicleMountRadius;
+        } 
+        else        
+        {
+            _nearVehicle = false;
         }
     }
 
@@ -318,45 +322,26 @@ public class PlanetSurfaceState : GameState
             renderer.DrawTexture(camera, avatarTex, avatarTf.Position, 28, 28);
         }
 
-        // Board ship / settlement entry prompt
-        float distToShip = Vector2.Distance(avatarTf.Position, shipTf.Position);
-
-        // Vehicle mount/dismount prompt
-        if (_vehicleDeployed && !_inVehicle)
+        // Interaction prompts (E key for everything)
+        if (_inVehicle)
         {
-            var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
-            float distToVehicle = Vector2.Distance(avatarTf.Position, vehicleTf.Position);
-            if (distToVehicle < GameConfig.VehicleMountRadius)
-            {
-                renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 90,
-                    "[V] MOUNT VEHICLE", 255, 200, 100, 2f);
-            }
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
+                "[E] DISMOUNT", 255, 200, 100, 2f);
         }
-        else if (_inVehicle)
+        else if (_nearShip)
         {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 90,
-                "[V] DISMOUNT", 255, 200, 100, 2f);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
+                "[E] BOARD SHIP (LEAVE)", 100, 255, 100, 2f);
         }
-
-        if (_nearSettlement != null && !_inVehicle)
+        else if (_nearVehicle && _vehicleDeployed)
+        {
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
+                "[E] MOUNT VEHICLE", 255, 200, 100, 2f);
+        }
+        else if (_nearSettlement != null)
         {
             renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 120, GameConfig.WindowHeight - 60,
                 $"[E] ENTER {_nearSettlement.Name.ToUpper()}", 255, 255, 100, 2f);
-        }
-        else if (_nearSettlement != null && _inVehicle)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 140, GameConfig.WindowHeight - 60,
-                "DISMOUNT TO ENTER SETTLEMENT", 255, 100, 100, 2f);
-        }
-        else if (distToShip < BoardShipRadius && !_inVehicle)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight - 60,
-                "[E] BOARD SHIP", 100, 255, 100, 2f);
-        }
-        else if (distToShip < BoardShipRadius && _inVehicle)
-        {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 140, GameConfig.WindowHeight - 60,
-                "DISMOUNT TO BOARD SHIP", 255, 100, 100, 2f);
         }
 
         // --- HUD ---
@@ -396,14 +381,13 @@ public class PlanetSurfaceState : GameState
         }
 
         // Controls background
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 260, mmY + mmSize + 15, 260, 120, 0, 0, 0, 160);
+        renderer.DrawRectScreen(GameConfig.WindowWidth - 260, mmY + mmSize + 15, 260, 100, 0, 0, 0, 160);
 
         // Controls
         renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "V: VEHICLE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 100, "ESC: LEAVE", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: INTERACT", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: LEAVE", 180, 180, 180, 1.5f);
     }
 
     /// <summary>Creates a terrain collision delegate for the movement system.</summary>

@@ -183,12 +183,6 @@ public class InteriorState : GameState
                 _dialogueLine = 0;
             }
         }
-
-        // Exit
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
-        {
-            ExitInterior(game);
-        }
     }
 
     public override void Update(Game game, float dt)
