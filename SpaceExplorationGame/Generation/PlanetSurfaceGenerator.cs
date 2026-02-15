@@ -102,7 +102,7 @@ public static class PlanetSurfaceGenerator
 
         // Landing zone (flat area near center) — also ensure walkable
         result.LandingZone = (width / 2, height / 2);
-        EnsureWalkableArea(tiles, width, height, width / 2, height / 2, 4, 4, margin: 2, planet.Type);
+        EnsureWalkableArea(tiles, width, height, width / 2 - 2, height / 2 - 2, 4, 4, margin: 2, planet.Type);
 
         return result;
     }
@@ -240,15 +240,16 @@ public static class PlanetSurfaceGenerator
     /// <summary>
     /// Replace any non-walkable tiles (Water, Lava, Void) within the given rectangle
     /// (plus a margin border) with the default walkable terrain for the planet type.
+    /// The coordinates (topLeftX, topLeftY) represent the top-left corner of the area.
     /// </summary>
     private static void EnsureWalkableArea(TerrainType[,] tiles, int mapW, int mapH,
-        int centerX, int centerY, int areaW, int areaH, int margin, PlanetType planetType)
+        int topLeftX, int topLeftY, int areaW, int areaH, int margin, PlanetType planetType)
     {
         var replacement = GetDefaultWalkableTerrain(planetType);
-        int x0 = Math.Max(0, centerX - areaW / 2 - margin);
-        int y0 = Math.Max(0, centerY - areaH / 2 - margin);
-        int x1 = Math.Min(mapW - 1, centerX + areaW / 2 + margin);
-        int y1 = Math.Min(mapH - 1, centerY + areaH / 2 + margin);
+        int x0 = Math.Max(0, topLeftX - margin);
+        int y0 = Math.Max(0, topLeftY - margin);
+        int x1 = Math.Min(mapW - 1, topLeftX + areaW - 1 + margin);
+        int y1 = Math.Min(mapH - 1, topLeftY + areaH - 1 + margin);
 
         for (int x = x0; x <= x1; x++)
         {

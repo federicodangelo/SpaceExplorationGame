@@ -6,6 +6,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.UI.Overlays;
 
 namespace SpaceExplorationGame.States;
 
@@ -43,6 +44,9 @@ public class PlanetSurfaceState : GameState
 
     // Vehicle proximity tracking (for mount prompt)
     private bool _nearVehicle;
+
+    // In-game menu overlay
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
 
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
@@ -120,6 +124,10 @@ public class PlanetSurfaceState : GameState
 
     public override void UpdateInput(Game game)
     {
+        // In-game menu overlay (handles Escape toggle + menu navigation)
+        if (_inGameMenuOverlay.UpdateInput(game))
+            return;
+
         var input = game.Input;
 
         // Get player position for proximity checks
@@ -174,6 +182,10 @@ public class PlanetSurfaceState : GameState
 
     public override void Update(Game game, float dt)
     {
+        // In-game menu active — no simulation
+        if (_inGameMenuOverlay.IsOpen)
+            return;
+
         if (_inVehicle)
         {
             // Vehicle movement (thrust/rotation)
@@ -387,7 +399,10 @@ public class PlanetSurfaceState : GameState
         renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: LEAVE", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: MENU", 180, 180, 180, 1.5f);
+
+        // In-game menu overlay drawn on top of everything
+        _inGameMenuOverlay.Render(game);
     }
 
     /// <summary>Creates a terrain collision delegate for the movement system.</summary>
