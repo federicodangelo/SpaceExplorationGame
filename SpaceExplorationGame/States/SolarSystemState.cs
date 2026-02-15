@@ -58,6 +58,10 @@ public class SolarSystemState : GameState
     // In-game menu overlay
     private readonly InGameMenuOverlay _inGameMenuOverlay = new();
 
+    // Anchor: keeps the ship at a fixed offset from a target while overlays are open
+    private Entity _anchorEntity;
+    private Vector2 _anchorOffset;
+
     // ECS Systems
     private OrbitSystem _orbitSystem = null!;
     private VelocitySystem _velocitySystem = null!;
@@ -349,6 +353,11 @@ public class SolarSystemState : GameState
         // Auto-open station overlay if we were asked to (e.g. returning from interior)
         if (_autoOpenStation != null)
         {
+            // Anchor ship to the matching station entity
+            int stIdx = _stations.FindIndex(s => s.Index == _autoOpenStation.Index);
+            if (stIdx >= 0 && stIdx < _stationEntities.Count)
+                SetAnchor(game, _stationEntities[stIdx]);
+
             _stationOverlay.Open(_starSystem, _autoOpenStation, game);
         }
 
@@ -361,6 +370,11 @@ public class SolarSystemState : GameState
         // Auto-open planet landing overlay if requested (e.g. from main menu 'Planet Surface')
         if (_autoOpenPlanet != null)
         {
+            // Anchor ship to the matching planet entity
+            int pIdx = _planets.FindIndex(p => p.Name == _autoOpenPlanet.Name);
+            if (pIdx >= 0 && pIdx < _planetEntities.Count)
+                SetAnchor(game, _planetEntities[pIdx]);
+
             _planetLandingOverlay.Open(_starSystem, _autoOpenPlanet, game);
         }
     }
@@ -414,14 +428,17 @@ public class SolarSystemState : GameState
         {
             if (_nearbyStationIndex >= 0)
             {
+                SetAnchor(game, _stationEntities[_nearbyStationIndex]);
                 _stationOverlay.Open(_starSystem, _stations[_nearbyStationIndex], game);
             }
             else if (_nearbyPlanetIndex >= 0)
             {
+                SetAnchor(game, _planetEntities[_nearbyPlanetIndex]);
                 _planetLandingOverlay.Open(_starSystem, _planets[_nearbyPlanetIndex], game);
             }
             else if (_nearbyMoonIndex >= 0)
             {
+                SetAnchor(game, _moonEntities[_nearbyMoonPlanetIndex][_nearbyMoonIndex]);
                 var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
                 _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex), game,
                     isMoon: true, moonPlanetIndex: _nearbyMoonPlanetIndex, moonIndex: _nearbyMoonIndex);
@@ -443,6 +460,7 @@ public class SolarSystemState : GameState
         if (_inGameMenuOverlay.IsOpen)
         {
             _orbitSystem.Update(in dt);
+            ApplyAnchor(game);
             return;
         }
 
@@ -451,6 +469,7 @@ public class SolarSystemState : GameState
         {
             _planetLandingOverlay.Update(game, dt);
             _orbitSystem.Update(in dt);
+            ApplyAnchor(game);
             return;
         }
 
@@ -469,9 +488,13 @@ public class SolarSystemState : GameState
 
             // Still update orbits so the background stays alive
             _orbitSystem.Update(in dt);
+            ApplyAnchor(game);
             _cameraFollowSystem.Update(in dt);
             return;
         }
+
+        // Clear anchor when returning to normal gameplay
+        ClearAnchor(game);
 
         // --- Player ship controls ---
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
@@ -543,6 +566,42 @@ public class SolarSystemState : GameState
                     break;
             }
         }
+    }
+
+    /// <summary>Record the entity the ship should follow and the offset from it.</summary>
+    private void SetAnchor(Game game, Entity target)
+    {
+        _anchorEntity = target;
+        var targetPos = game.EcsWorld.Get<Transform>(target).Position;
+        var shipPos = game.EcsWorld.Get<Transform>(_playerShip).Position;
+        _anchorOffset = shipPos - targetPos;
+
+        // Zero the ship velocity so it doesn't drift when the overlay closes
+        ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
+        vel.Value = Vector2.Zero;
+    }
+
+    /// <summary>Move the ship to keep its offset from the anchor entity (call after OrbitSystem).</summary>
+    private void ApplyAnchor(Game game)
+    {
+        if (_anchorEntity == default || !game.EcsWorld.IsAlive(_anchorEntity))
+            return;
+
+        var targetPos = game.EcsWorld.Get<Transform>(_anchorEntity).Position;
+        ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
+        shipTransform.Position = targetPos + _anchorOffset;
+    }
+
+    /// <summary>Clear the anchor so the ship returns to normal movement.</summary>
+    private void ClearAnchor(Game game)
+    {
+        if (_anchorEntity != default && game.EcsWorld.IsAlive(_anchorEntity))
+        {
+            // Snap one last time before releasing
+            ApplyAnchor(game);
+        }
+        _anchorEntity = default;
+        _anchorOffset = Vector2.Zero;
     }
 
     public override void Render(Game game)
