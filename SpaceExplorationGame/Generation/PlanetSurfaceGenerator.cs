@@ -84,19 +84,25 @@ public static class PlanetSurfaceGenerator
                     attempts++;
                 } while (tiles[sx, sy] is TerrainType.Water or TerrainType.Lava or TerrainType.Void && attempts < 50);
 
-                result.Settlements.Add(new SettlementData
+                var settlement = new SettlementData
                 {
                     Name = $"Outpost {(char)('A' + i)}{rng.NextInt(1, 100)}",
                     TileX = sx,
                     TileY = sy,
                     Width = rng.NextInt(6, 12),
                     Height = rng.NextInt(4, 8)
-                });
+                };
+                result.Settlements.Add(settlement);
+
+                // Ensure the settlement area and a 2-tile border are walkable
+                EnsureWalkableArea(tiles, width, height, settlement.TileX, settlement.TileY,
+                    settlement.Width, settlement.Height, margin: 2, planet.Type);
             }
         }
 
-        // Landing zone (flat area near center)
+        // Landing zone (flat area near center) — also ensure walkable
         result.LandingZone = (width / 2, height / 2);
+        EnsureWalkableArea(tiles, width, height, width / 2, height / 2, 4, 4, margin: 2, planet.Type);
 
         return result;
     }
@@ -228,6 +234,46 @@ public static class PlanetSurfaceGenerator
             TerrainType.Metal => (160, 160, 170),
             TerrainType.Void => (0, 0, 0),
             _ => (80, 80, 80)
+        };
+    }
+
+    /// <summary>
+    /// Replace any non-walkable tiles (Water, Lava, Void) within the given rectangle
+    /// (plus a margin border) with the default walkable terrain for the planet type.
+    /// </summary>
+    private static void EnsureWalkableArea(TerrainType[,] tiles, int mapW, int mapH,
+        int centerX, int centerY, int areaW, int areaH, int margin, PlanetType planetType)
+    {
+        var replacement = GetDefaultWalkableTerrain(planetType);
+        int x0 = Math.Max(0, centerX - areaW / 2 - margin);
+        int y0 = Math.Max(0, centerY - areaH / 2 - margin);
+        int x1 = Math.Min(mapW - 1, centerX + areaW / 2 + margin);
+        int y1 = Math.Min(mapH - 1, centerY + areaH / 2 + margin);
+
+        for (int x = x0; x <= x1; x++)
+        {
+            for (int y = y0; y <= y1; y++)
+            {
+                if (tiles[x, y] is TerrainType.Water or TerrainType.Lava or TerrainType.Void)
+                {
+                    tiles[x, y] = replacement;
+                }
+            }
+        }
+    }
+
+    /// <summary>Returns the most natural walkable terrain for a given planet type.</summary>
+    private static TerrainType GetDefaultWalkableTerrain(PlanetType type)
+    {
+        return type switch
+        {
+            PlanetType.Terrestrial => TerrainType.Grass,
+            PlanetType.Desert => TerrainType.Sand,
+            PlanetType.Rocky => TerrainType.Rock,
+            PlanetType.Volcanic => TerrainType.Rock,
+            PlanetType.Ocean => TerrainType.Sand,
+            PlanetType.Frozen => TerrainType.Ice,
+            _ => TerrainType.Rock
         };
     }
 }
