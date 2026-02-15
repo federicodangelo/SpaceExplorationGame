@@ -22,11 +22,11 @@ public static class SurfaceEnemyRenderer
             var pos = transform.Position;
 
             // Draw enemy body
-            if (ai.Faction == Faction.Fauna)
+            if (ai.Config.Faction == Faction.Fauna)
             {
                 RenderFauna(renderer, camera, pos, ai.State);
             }
-            else if (ai.Faction == Faction.Bandit)
+            else if (ai.Config.Faction == Faction.Bandit)
             {
                 RenderBandit(renderer, camera, pos, ai.State);
             }
@@ -111,9 +111,9 @@ public static class SurfaceEnemyRenderer
             // Clamp to minimap bounds
             if (ex < mmX || ex > mmX + mmSize || ey < mmY || ey > mmY + mmSize) return;
 
-            byte r = ai.Faction == Faction.Fauna ? (byte)200 : (byte)255;
-            byte g = ai.Faction == Faction.Fauna ? (byte)60 : (byte)150;
-            byte b = ai.Faction == Faction.Fauna ? (byte)60 : (byte)50;
+            byte r = ai.Config.Faction == Faction.Fauna ? (byte)200 : (byte)255;
+            byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
+            byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
 
             renderer.DrawRectScreen(ex - 1, ey - 1, 3, 3, r, g, b);
         });

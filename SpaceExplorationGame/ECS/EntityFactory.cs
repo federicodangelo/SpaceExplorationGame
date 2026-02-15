@@ -211,17 +211,19 @@ public static class EntityFactory
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
-                Faction = Faction.Pirate,
+                Config = new EnemyAIConfig(
+                    Faction: Faction.Pirate,
+                    FireRate: GameConfig.EnemyFireRate / (1f + dangerLevel * 0.1f),
+                    WeaponDamage: (5f + dangerLevel * 3f) * damageMultiplier,
+                    WeaponRange: GameConfig.EnemyWeaponRange,
+                    DetectRange: GameConfig.EnemyDetectRange,
+                    ProjectileSpeed: GameConfig.EnemyProjectileSpeed,
+                    LootCredits: GameConfig.BaseLootCredits * creditMultiplier,
+                    EngageDistance: GameConfig.EnemyEngageDistance,
+                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent,
+                    MaxRotationSpeed: 180f),
                 State = AIState.Patrol,
-                FireRate = GameConfig.EnemyFireRate / (1f + dangerLevel * 0.1f),
-                FireCooldown = fireCooldown,
-                WeaponDamage = (5f + dangerLevel * 3f) * damageMultiplier,
-                WeaponRange = GameConfig.EnemyWeaponRange,
-                DetectRange = GameConfig.EnemyDetectRange,
-                ProjectileSpeed = GameConfig.EnemyProjectileSpeed,
-                LootCredits = GameConfig.BaseLootCredits * creditMultiplier,
-                EngageDistance = GameConfig.EnemyEngageDistance,
-                FleeHealthPercent = GameConfig.EnemyFleeHealthPercent
+                FireCooldown = fireCooldown
             },
             new LootDrop
             {
@@ -244,17 +246,19 @@ public static class EntityFactory
             new Health(80f, 0f, 0f, 0f),
             new EnemyAI
             {
-                Faction = Faction.Trader,
+                Config = new EnemyAIConfig(
+                    Faction: Faction.Trader,
+                    FireRate: 1f,
+                    WeaponDamage: 0f,
+                    WeaponRange: 0f,
+                    DetectRange: 300f,
+                    ProjectileSpeed: 0f,
+                    LootCredits: 0,
+                    EngageDistance: 0f,
+                    FleeHealthPercent: 0.5f,
+                    MaxRotationSpeed: 90f),
                 State = AIState.Patrol,
-                FireRate = 1f,
-                FireCooldown = 0,
-                WeaponDamage = 0f,
-                WeaponRange = 0f,
-                DetectRange = 300f,
-                ProjectileSpeed = 0f,
-                LootCredits = 0,
-                EngageDistance = 0f,
-                FleeHealthPercent = 0.5f
+                FireCooldown = 0
             }
         );
     }
@@ -269,17 +273,19 @@ public static class EntityFactory
             new Health(120f, 50f, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
-                Faction = Faction.Patrol,
+                Config = new EnemyAIConfig(
+                    Faction: Faction.Patrol,
+                    FireRate: 0.5f,
+                    WeaponDamage: 12f,
+                    WeaponRange: GameConfig.EnemyWeaponRange * 1.2f,
+                    DetectRange: GameConfig.EnemyDetectRange * 1.5f,
+                    ProjectileSpeed: GameConfig.EnemyProjectileSpeed * 1.1f,
+                    LootCredits: 0,
+                    EngageDistance: GameConfig.EnemyEngageDistance,
+                    FleeHealthPercent: 0f,
+                    MaxRotationSpeed: 150f),
                 State = AIState.Patrol,
-                FireRate = 0.5f,
-                FireCooldown = 0,
-                WeaponDamage = 12f,
-                WeaponRange = GameConfig.EnemyWeaponRange * 1.2f,
-                DetectRange = GameConfig.EnemyDetectRange * 1.5f,
-                ProjectileSpeed = GameConfig.EnemyProjectileSpeed * 1.1f,
-                LootCredits = 0,
-                EngageDistance = GameConfig.EnemyEngageDistance,
-                FleeHealthPercent = 0f
+                FireCooldown = 0
             }
         );
     }
@@ -320,15 +326,16 @@ public static class EntityFactory
             new Health(GameConfig.FaunaBaseHull * hullMultiplier),
             new SurfaceAI
             {
-                Faction = Faction.Fauna,
+                Config = new SurfaceAIConfig(
+                    Faction: Faction.Fauna,
+                    MoveSpeed: GameConfig.FaunaSpeed,
+                    DetectRange: GameConfig.FaunaDetectRange,
+                    AttackRange: GameConfig.FaunaAttackRange,
+                    FireRate: GameConfig.FaunaAttackRate,
+                    WeaponDamage: GameConfig.FaunaBaseDamage * damageMultiplier,
+                    ProjectileSpeed: 500f),
                 State = AIState.Idle,
-                MoveSpeed = GameConfig.FaunaSpeed,
-                DetectRange = GameConfig.FaunaDetectRange,
-                AttackRange = GameConfig.FaunaAttackRange,
-                FireRate = GameConfig.FaunaAttackRate,
                 FireCooldown = 0f,
-                WeaponDamage = GameConfig.FaunaBaseDamage * damageMultiplier,
-                ProjectileSpeed = 500f, // fast short-range "bite" projectile
                 WanderAngle = wanderAngle,
                 WanderTimer = 2f
             },
@@ -354,15 +361,16 @@ public static class EntityFactory
             new Health(GameConfig.BanditBaseHull * hullMultiplier),
             new SurfaceAI
             {
-                Faction = Faction.Bandit,
+                Config = new SurfaceAIConfig(
+                    Faction: Faction.Bandit,
+                    MoveSpeed: GameConfig.BanditSpeed,
+                    DetectRange: GameConfig.BanditDetectRange,
+                    AttackRange: GameConfig.BanditAttackRange,
+                    FireRate: GameConfig.BanditFireRate,
+                    WeaponDamage: GameConfig.BanditBaseDamage * damageMultiplier,
+                    ProjectileSpeed: GameConfig.BanditProjectileSpeed),
                 State = AIState.Patrol,
-                MoveSpeed = GameConfig.BanditSpeed,
-                DetectRange = GameConfig.BanditDetectRange,
-                AttackRange = GameConfig.BanditAttackRange,
-                FireRate = GameConfig.BanditFireRate,
                 FireCooldown = 0f,
-                WeaponDamage = GameConfig.BanditBaseDamage * damageMultiplier,
-                ProjectileSpeed = GameConfig.BanditProjectileSpeed,
                 WanderAngle = wanderAngle,
                 WanderTimer = 3f
             },

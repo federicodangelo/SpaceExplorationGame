@@ -162,7 +162,7 @@ public static class SolarSystemRenderer
             var velocity = ecsWorld.Get<Velocity>(entity);
 
             bool isMoving = velocity.Value.LengthSquared() > 50f * 50f;
-            int shipSize = ai.Faction switch
+            int shipSize = ai.Config.Faction switch
             {
                 Faction.Pirate => 28,
                 Faction.Trader => 32,
@@ -171,21 +171,21 @@ public static class SolarSystemRenderer
             };
 
             enemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
-                ai.Faction, shipSize, isMoving);
+                ai.Config.Faction, shipSize, isMoving);
 
             // Health bar
             enemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,
                 health.HullPercent, health.ShieldPercent, health.MaxShield, shipSize);
 
             // Faction indicator (small colored text above health bar)
-            string factionLabel = ai.Faction switch
+            string factionLabel = ai.Config.Faction switch
             {
                 Faction.Pirate => "PIRATE",
                 Faction.Trader => "TRADER",
                 Faction.Patrol => "PATROL",
                 _ => ""
             };
-            var (fr, fg, fb) = ai.Faction switch
+            var (fr, fg, fb) = ai.Config.Faction switch
             {
                 Faction.Pirate => ((byte)255, (byte)80, (byte)80),
                 Faction.Trader => ((byte)200, (byte)180, (byte)80),
@@ -211,7 +211,7 @@ public static class SolarSystemRenderer
             ref var transform = ref ecsWorld.Get<Transform>(entity);
             var ai = ecsWorld.Get<EnemyAI>(entity);
 
-            var (cr, cg, cb) = ai.Faction switch
+            var (cr, cg, cb) = ai.Config.Faction switch
             {
                 Faction.Pirate => ((byte)255, (byte)80, (byte)80),
                 Faction.Trader => ((byte)200, (byte)180, (byte)80),

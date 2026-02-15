@@ -17,12 +17,24 @@ public partial class VelocitySystem : BaseSystem<World, float>
     [All(typeof(Transform), typeof(Velocity))]
     public void ApplyVelocity(ref Transform transform, ref Velocity velocity, [Data] float dt)
     {
-        // Clamp to max speed
+        // Clamp linear speed
         if (velocity.Value.LengthSquared() > velocity.MaxSpeed * velocity.MaxSpeed)
         {
             velocity.Value = Vector2.Normalize(velocity.Value) * velocity.MaxSpeed;
         }
 
         transform.Position += velocity.Value * dt;
+
+        // Apply rotation velocity
+        if (velocity.RotationVelocity != 0f)
+        {
+            if (velocity.MaxRotationSpeed > 0f &&
+                MathF.Abs(velocity.RotationVelocity) > velocity.MaxRotationSpeed)
+            {
+                velocity.RotationVelocity = MathF.Sign(velocity.RotationVelocity) * velocity.MaxRotationSpeed;
+            }
+
+            transform.Rotation += velocity.RotationVelocity * dt;
+        }
     }
 }

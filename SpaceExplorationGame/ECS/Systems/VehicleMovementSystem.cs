@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Arch.System;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Systems;
@@ -10,9 +11,8 @@ namespace SpaceExplorationGame.ECS.Systems;
 /// The vehicle always moves forward in its facing direction (no drift).
 /// Uses a pluggable collision delegate like PlayerMovementSystem.
 /// </summary>
-public class VehicleMovementSystem
+public partial class VehicleMovementSystem : BaseSystem<World, float>
 {
-    private readonly World _world;
     private readonly InputManager _input;
     private readonly float _acceleration;
     private readonly float _maxSpeed;
@@ -37,9 +37,8 @@ public class VehicleMovementSystem
         float maxSpeed = GameConfig.VehicleMaxSpeed,
         float rotationSpeed = GameConfig.VehicleRotationSpeed,
         float friction = GameConfig.VehicleFriction,
-        float brakeMultiplier = GameConfig.VehicleBrakeMultiplier)
+        float brakeMultiplier = GameConfig.VehicleBrakeMultiplier) : base(world)
     {
-        _world = world;
         _input = input;
         _entity = entity;
         _acceleration = acceleration;
@@ -49,9 +48,9 @@ public class VehicleMovementSystem
         _brakeMultiplier = brakeMultiplier;
     }
 
-    public void Update(float dt)
+    public override void Update(in float dt)
     {
-        ref var transform = ref _world.Get<ECS.Components.Transform>(_entity);
+        ref var transform = ref World.Get<ECS.Components.Transform>(_entity);
 
         // Rotation
         if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))

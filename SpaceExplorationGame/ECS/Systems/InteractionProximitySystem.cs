@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Arch.System;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems;
@@ -8,9 +9,11 @@ namespace SpaceExplorationGame.ECS.Systems;
 /// Finds the nearest interactable entity (with CelestialBody) to a given position.
 /// Call FindNearest() each frame and check HasNearest / NearestEntity / NearestDistance.
 /// </summary>
-public class InteractionProximitySystem
+public partial class InteractionProximitySystem : BaseSystem<World, float>
 {
-    private readonly World _world;
+    private static readonly QueryDescription _interactableQuery =
+        new QueryDescription().WithAll<Transform, Interactable, CelestialBody>();
+
     private readonly float _interactionRadius;
 
     /// <summary>The nearest interactable entity found.</summary>
@@ -22,9 +25,8 @@ public class InteractionProximitySystem
     /// <summary>Distance to the nearest interactable.</summary>
     public float NearestDistance { get; private set; }
 
-    public InteractionProximitySystem(World world, float interactionRadius)
+    public InteractionProximitySystem(World world, float interactionRadius) : base(world)
     {
-        _world = world;
         _interactionRadius = interactionRadius;
     }
 
@@ -36,8 +38,7 @@ public class InteractionProximitySystem
         HasNearest = false;
         NearestDistance = float.MaxValue;
 
-        var query = new QueryDescription().WithAll<Transform, Interactable, CelestialBody>();
-        _world.Query(in query, (Entity entity, ref Transform transform, ref CelestialBody body) =>
+        World.Query(in _interactableQuery, (Entity entity, ref Transform transform, ref CelestialBody body) =>
         {
             float dist = Vector2.Distance(playerPosition, transform.Position);
             if (dist < body.Radius + _interactionRadius && dist < NearestDistance)

@@ -73,8 +73,9 @@ public class SolarSystemState : GameState
     private OrbitSystem _orbitSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
-    private LabelRenderSystem _labelRenderSystem = null!;
+    private LabelRenderer _labelRenderer = null!;
     private InteractionProximitySystem _proximitySystem = null!;
+    private ShipMovementSystem _shipMovementSystem = null!;
 
     // Combat systems
     private ProjectileSystem _projectileSystem = null!;
@@ -319,13 +320,18 @@ public class SolarSystemState : GameState
         _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
         _cameraFollowSystem.Initialize();
 
-        _labelRenderSystem = new LabelRenderSystem(game.EcsWorld, game.SpriteRenderer, game.Camera);
-        _labelRenderSystem.Initialize();
+        _labelRenderer = new LabelRenderer(game.EcsWorld, game.SpriteRenderer, game.Camera);
 
         _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
+        _proximitySystem.Initialize();
+
+        // Ship movement system
+        _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
+        _shipMovementSystem.Initialize();
 
         // Combat systems
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
+        _projectileSystem.Initialize();
         _shieldRegenSystem = new ShieldRegenSystem(game.EcsWorld);
         _shieldRegenSystem.Initialize();
 
@@ -335,6 +341,7 @@ public class SolarSystemState : GameState
             () => game.EcsWorld.IsAlive(_playerShip) ? game.EcsWorld.Get<Transform>(_playerShip).Position : center,
             () => !_playerDead && game.EcsWorld.IsAlive(_playerShip),
             totalMapW, totalMapH);
+        _enemyAISystem.Initialize();
 
         // Camera follows player
         game.Camera.Position = shipStartPos;
@@ -503,8 +510,8 @@ public class SolarSystemState : GameState
             _respawnTimer -= dt;
             _orbitSystem.Update(in dt);
             // Still run enemy AI and projectiles during death animation
-            _enemyAISystem.Update(dt);
-            _projectileSystem.Update(dt);
+            _enemyAISystem.Update(in dt);
+            _projectileSystem.Update(in dt);
             _shieldRegenSystem.Update(in dt);
 
             if (_respawnTimer <= 0)
@@ -515,37 +522,11 @@ public class SolarSystemState : GameState
         }
 
         // --- Player ship controls ---
-        ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
-        ref var shipVelocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
         var shipStats = game.Player.GetCombinedStats();
-
-        // Update max speed from parts
-        shipVelocity.MaxSpeed = shipStats.MaxSpeed > 0 ? shipStats.MaxSpeed : GameConfig.ShipMaxSpeed;
-
-        // Rotation
-        float rotSpeed = shipStats.RotationSpeed > 0 ? shipStats.RotationSpeed : GameConfig.ShipRotationSpeed;
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            shipTransform.Rotation -= rotSpeed * dt;
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            shipTransform.Rotation += rotSpeed * dt;
-
-        // Thrust
-        float accel = shipStats.Acceleration > 0 ? shipStats.Acceleration : GameConfig.ShipAcceleration;
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-        {
-            float rad = shipTransform.Rotation * MathF.PI / 180f;
-            var thrust = new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * accel * dt;
-            shipVelocity.Value += thrust;
-        }
-
-        // Brake
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-        {
-            shipVelocity.Value *= 0.95f;
-        }
-
-        // Apply friction
-        shipVelocity.Value *= GameConfig.ShipFriction;
+        _shipMovementSystem.MaxSpeed = shipStats.MaxSpeed > 0 ? shipStats.MaxSpeed : GameConfig.ShipMaxSpeed;
+        _shipMovementSystem.RotationSpeed = shipStats.RotationSpeed > 0 ? shipStats.RotationSpeed : GameConfig.ShipRotationSpeed;
+        _shipMovementSystem.Acceleration = shipStats.Acceleration > 0 ? shipStats.Acceleration : GameConfig.ShipAcceleration;
+        _shipMovementSystem.Update(in dt);
 
         // Apply velocity (speed clamping + position update via system)
         _velocitySystem.Update(in dt);
@@ -692,21 +673,20 @@ public class SolarSystemState : GameState
         }
 
         // Run AI system
-        _enemyAISystem.Update(dt);
+        _enemyAISystem.Update(in dt);
 
         // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
 
         // Run projectile system (collision detection with ships + asteroids)
-        _projectileSystem.Update(dt);
+        _projectileSystem.Update(in dt);
 
         // Run shield regen
         _shieldRegenSystem.Update(in dt);
 
         // Process damage events (visual effects + mining HUD tracking)
-        foreach (var (pos, damage, shieldHit, target) in _projectileSystem.DamageEventsLastUpdate)
+        CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
+        foreach (var (pos, _, _, target) in _projectileSystem.DamageEventsLastUpdate)
         {
-            _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
-
             // Track last asteroid hit for mining HUD
             if (game.EcsWorld.IsAlive(target) && game.EcsWorld.Has<AsteroidField>(target))
             {
@@ -762,7 +742,9 @@ public class SolarSystemState : GameState
 
                 if (loot.HasValue)
                 {
-                    ProcessLootDrop(game, loot.Value, combatRng, pos);
+                    _combatMessage = CombatHelper.ProcessLootDrop(game, loot.Value, combatRng,
+                        resourceAmountMax: 5 + loot.Value.DangerLevel * 2, enablePartDrops: true);
+                    _combatMessageTimer = 3f;
                 }
 
                 // Destroy the entity
@@ -775,61 +757,10 @@ public class SolarSystemState : GameState
         }
 
         // Combat message timer
-        if (_combatMessageTimer > 0)
-        {
-            _combatMessageTimer -= dt;
-            if (_combatMessageTimer <= 0) _combatMessage = null;
-        }
+        CombatHelper.UpdateCombatMessageTimer(ref _combatMessage, ref _combatMessageTimer, dt);
 
         // Update visual effects (timers, positions, removal)
-        ProjectileRenderer.UpdateDamageEffects(_damagePopups, dt);
-        ProjectileRenderer.UpdateExplosions(_explosions, dt);
-    }
-
-    /// <summary>Process loot when an enemy is destroyed.</summary>
-    private void ProcessLootDrop(Game game, LootDrop loot, SeededRandom rng, Vector2 pos)
-    {
-        // Credits
-        int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
-        game.Player.Credits += credits;
-        string message = $"+{credits} CREDITS";
-
-        // Resource drop
-        if (rng.NextFloat() < loot.ResourceDropChance)
-        {
-            var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
-            int amount = rng.NextInt(1, 5 + loot.DangerLevel * 2);
-            int added = game.Player.AddCargo(resource, amount);
-            if (added > 0)
-            {
-                var resName = ResourceCatalog.Get(resource).Name;
-                message += $"  +{added} {resName.ToUpper()}";
-            }
-        }
-
-        // Part drop
-        if (rng.NextFloat() < loot.PartDropChance)
-        {
-            // Pick a random part with tier scaled to danger level
-            int maxTier = Math.Min(3, 1 + loot.DangerLevel / 2);
-            var candidates = ShipPartCatalog.AllParts
-                .Where(p => p.Tier > 0 && p.Tier <= maxTier)
-                .ToArray();
-
-            if (candidates.Length > 0)
-            {
-                var droppedPart = candidates[rng.NextInt(0, candidates.Length)];
-                if (!game.Player.OwnedParts.Contains(droppedPart) &&
-                    !game.Player.EquippedParts.ContainsValue(droppedPart))
-                {
-                    game.Player.OwnedParts.Add(droppedPart);
-                    message += $"  +{droppedPart.Name.ToUpper()}!";
-                }
-            }
-        }
-
-        _combatMessage = message;
-        _combatMessageTimer = 3f;
+        CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
     }
 
     /// <summary>Handle player death — apply penalties and start respawn timer.</summary>
@@ -897,6 +828,9 @@ public class SolarSystemState : GameState
 
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, respawnPos, shipSize,
             game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
+
+        // Recreate movement system with new entity
+        _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
 
         game.Camera.Position = respawnPos;
         _combatMessage = "RESPAWNED — HULL AT 50%";
@@ -969,9 +903,8 @@ public class SolarSystemState : GameState
         game.StationRenderer.RenderStations(renderer, camera, game.EcsWorld,
             _stationEntities, game.GlobalTime);
 
-        // Labels (via ECS system)
-        float unusedDt = 0f;
-        _labelRenderSystem.Update(in unusedDt);
+        // Labels
+        _labelRenderer.Render();
 
         // NPC ships (enemies, traders, patrols)
         SolarSystemRenderer.RenderNPCShips(renderer, camera, game.EcsWorld,

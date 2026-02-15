@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
@@ -8,11 +9,10 @@ namespace SpaceExplorationGame.ECS.Systems;
 
 /// <summary>
 /// AI behavior system for NPC ships (pirates, traders, patrols).
-/// Plain class with manual queries — needs access to player position and entity creation for firing.
+/// Uses Arch source generator for the main entity query; manual queries for target finding.
 /// </summary>
-public class EnemyAISystem
+public partial class EnemyAISystem : BaseSystem<World, float>
 {
-    private readonly World _world;
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
     private readonly float _mapWidth;
@@ -21,54 +21,67 @@ public class EnemyAISystem
     // Projectiles spawned this frame (to be created after query completes)
     private readonly List<(Vector2 Pos, Vector2 Dir, float Damage, float Speed, Faction Faction, byte R, byte G, byte B)> _pendingProjectiles = [];
 
+    // Cached query description for nested target/pirate lookups
+    private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
+
+    // Per-frame cached state for [Query] method access
+    private float _dt;
+    private Vector2 _playerPos;
+    private bool _playerAlive;
+
     public EnemyAISystem(World world, Func<Vector2> getPlayerPosition, Func<bool> isPlayerAlive,
         float mapWidth, float mapHeight)
+        : base(world)
     {
-        _world = world;
         _getPlayerPosition = getPlayerPosition;
         _isPlayerAlive = isPlayerAlive;
         _mapWidth = mapWidth;
         _mapHeight = mapHeight;
     }
 
-    public void Update(float dt)
+    public override void Update(in float dt)
     {
         _pendingProjectiles.Clear();
+        _dt = dt;
+        _playerPos = _getPlayerPosition();
+        _playerAlive = _isPlayerAlive();
 
-        var playerPos = _getPlayerPosition();
-        bool playerAlive = _isPlayerAlive();
-
-        var query = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
-        _world.Query(in query, (Entity entity, ref Transform transform, ref Velocity velocity,
-            ref EnemyAI ai, ref Health health) =>
-        {
-            if (health.IsDead) return;
-
-            ai.StateTimer += dt;
-            ai.FireCooldown -= dt;
-
-            // Find the best target based on faction
-            var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Faction, transform.Position, ai.DetectRange, playerPos, playerAlive);
-
-            // State machine
-            switch (ai.Faction)
-            {
-                case Faction.Pirate:
-                    UpdatePirate(ref transform, ref velocity, ref ai, ref health, dt, playerPos, playerAlive, targetPos, hasTarget);
-                    break;
-                case Faction.Trader:
-                    UpdateTrader(ref transform, ref velocity, ref ai, ref health, dt, playerPos, playerAlive);
-                    break;
-                case Faction.Patrol:
-                    UpdatePatrol(ref transform, ref velocity, ref ai, ref health, dt, targetPos, hasTarget);
-                    break;
-            }
-        });
+        ProcessEnemyAIQuery(World);
 
         // Spawn pending projectiles
         foreach (var (pos, dir, damage, speed, faction, r, g, b) in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(_world, pos, dir, damage, speed, faction, r, g, b);
+            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, r, g, b);
+        }
+    }
+
+    /// <summary>Source-generated query: iterates all NPC ships with AI.</summary>
+    [Query]
+    [All(typeof(Transform), typeof(Velocity), typeof(EnemyAI), typeof(Health))]
+    public void ProcessEnemyAI(Entity entity, ref Transform transform, ref Velocity velocity,
+        ref EnemyAI ai, ref Health health)
+    {
+        if (health.IsDead) return;
+
+        ai.StateTimer += _dt;
+        ai.FireCooldown -= _dt;
+        velocity.RotationVelocity = 0f; // Reset each frame; TurnToward sets it when needed
+
+        // Find the best target based on faction
+        var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
+
+        // State machine
+        switch (ai.Config.Faction)
+        {
+            case Faction.Pirate:
+                UpdatePirate(ref transform, ref velocity, ref ai, ref health, _dt, _playerPos, _playerAlive, targetPos, hasTarget);
+                break;
+            case Faction.Trader:
+                UpdateTrader(ref transform, ref velocity, ref ai, ref health, _dt, _playerPos, _playerAlive);
+                break;
+            case Faction.Patrol:
+                UpdatePatrol(ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
+                break;
         }
     }
 
@@ -78,13 +91,13 @@ public class EnemyAISystem
         float hullPercent = health.HullPercent;
 
         // Flee if low health
-        if (hullPercent < ai.FleeHealthPercent)
+        if (hullPercent < ai.Config.FleeHealthPercent)
         {
             ai.State = AIState.Flee;
             var fleeDir = Vector2.Normalize(transform.Position - targetPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
             velocity.Value += fleeDir * GameConfig.PirateSpeed * 0.5f * dt;
-            transform.Rotation = MathF.Atan2(fleeDir.Y, fleeDir.X) * 180f / MathF.PI;
+            TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
             return;
         }
 
@@ -97,7 +110,7 @@ public class EnemyAISystem
                 ai.StateTimer = 0;
                 float angle = transform.Rotation * MathF.PI / 180f;
                 angle += (float)(Math.Sin(transform.Position.X * 0.01 + transform.Position.Y * 0.01) * 0.5);
-                transform.Rotation = angle * 180f / MathF.PI;
+                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
             velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * GameConfig.PirateSpeed * 0.2f * dt;
@@ -110,20 +123,20 @@ public class EnemyAISystem
 
         float distToTarget = Vector2.Distance(transform.Position, targetPos);
 
-        if (distToTarget <= ai.WeaponRange)
+        if (distToTarget <= ai.Config.WeaponRange)
         {
             // Attack
             ai.State = AIState.Attack;
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
-            transform.Rotation = MathF.Atan2(dirToTarget.Y, dirToTarget.X) * 180f / MathF.PI;
+            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
 
             // Maintain engage distance
-            if (distToTarget < ai.EngageDistance * 0.7f)
+            if (distToTarget < ai.Config.EngageDistance * 0.7f)
             {
                 // Too close — back up slightly
                 velocity.Value -= dirToTarget * GameConfig.PirateSpeed * 0.3f * dt;
             }
-            else if (distToTarget > ai.EngageDistance * 1.3f)
+            else if (distToTarget > ai.Config.EngageDistance * 1.3f)
             {
                 // Too far — close in
                 velocity.Value += dirToTarget * GameConfig.PirateSpeed * 0.5f * dt;
@@ -136,19 +149,14 @@ public class EnemyAISystem
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
             }
 
-            // Fire
-            if (ai.FireCooldown <= 0)
-            {
-                ai.FireCooldown = ai.FireRate;
-                FireProjectile(transform.Position, dirToTarget, ai.WeaponDamage, ai.ProjectileSpeed, ai.Faction);
-            }
+            TryFireProjectile(ref transform, ref ai, dirToTarget);
         }
-        else if (distToTarget <= ai.DetectRange)
+        else if (distToTarget <= ai.Config.DetectRange)
         {
             // Chase
             ai.State = AIState.Chase;
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
-            transform.Rotation = MathF.Atan2(dirToTarget.Y, dirToTarget.X) * 180f / MathF.PI;
+            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
             velocity.Value += dirToTarget * GameConfig.PirateSpeed * 0.6f * dt;
         }
 
@@ -169,7 +177,7 @@ public class EnemyAISystem
             var fleeDir = Vector2.Normalize(transform.Position - nearestPirate.Value);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
             velocity.Value += fleeDir * GameConfig.TraderSpeed * 0.7f * dt;
-            transform.Rotation = MathF.Atan2(fleeDir.Y, fleeDir.X) * 180f / MathF.PI;
+            TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
         }
         else
         {
@@ -179,7 +187,7 @@ public class EnemyAISystem
             {
                 ai.StateTimer = 0;
                 float angle = transform.Rotation * MathF.PI / 180f + 0.3f;
-                transform.Rotation = angle * 180f / MathF.PI;
+                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float cruiseRad = transform.Rotation * MathF.PI / 180f;
             velocity.Value += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * GameConfig.TraderSpeed * 0.3f * dt;
@@ -205,29 +213,25 @@ public class EnemyAISystem
             float distToTarget = Vector2.Distance(transform.Position, targetPos);
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
 
-            if (distToTarget <= ai.WeaponRange)
+            if (distToTarget <= ai.Config.WeaponRange)
             {
                 ai.State = AIState.Attack;
-                transform.Rotation = MathF.Atan2(dirToTarget.Y, dirToTarget.X) * 180f / MathF.PI;
+                TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
 
                 // Strafe while attacking
                 var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
                 velocity.Value += strafeDir * GameConfig.PatrolSpeed * 0.3f * dt *
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.7f));
 
-                if (distToTarget > ai.EngageDistance)
+                if (distToTarget > ai.Config.EngageDistance)
                     velocity.Value += dirToTarget * GameConfig.PatrolSpeed * 0.4f * dt;
 
-                if (ai.FireCooldown <= 0)
-                {
-                    ai.FireCooldown = ai.FireRate;
-                    FireProjectile(transform.Position, dirToTarget, ai.WeaponDamage, ai.ProjectileSpeed, ai.Faction);
-                }
+                TryFireProjectile(ref transform, ref ai, dirToTarget);
             }
             else
             {
                 ai.State = AIState.Chase;
-                transform.Rotation = MathF.Atan2(dirToTarget.Y, dirToTarget.X) * 180f / MathF.PI;
+                TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
                 velocity.Value += dirToTarget * GameConfig.PatrolSpeed * 0.5f * dt;
             }
         }
@@ -239,7 +243,7 @@ public class EnemyAISystem
             {
                 ai.StateTimer = 0;
                 float angle = transform.Rotation * MathF.PI / 180f + 0.4f;
-                transform.Rotation = angle * 180f / MathF.PI;
+                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
             velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * GameConfig.PatrolSpeed * 0.2f * dt;
@@ -275,11 +279,10 @@ public class EnemyAISystem
             }
 
             // Also look for traders
-            var traderQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
-            _world.Query(in traderQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
+            World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
             {
                 if (entity == self || h.IsDead) return;
-                if (ai.Faction != Faction.Trader) return;
+                if (ai.Config.Faction != Faction.Trader) return;
                 float dist = Vector2.Distance(selfPos, t.Position);
                 if (dist < range && dist < bestDist)
                 {
@@ -292,11 +295,10 @@ public class EnemyAISystem
         else if (selfFaction == Faction.Patrol)
         {
             // Patrols target pirates
-            var pirateQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
-            _world.Query(in pirateQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
+            World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
             {
                 if (entity == self || h.IsDead) return;
-                if (ai.Faction != Faction.Pirate) return;
+                if (ai.Config.Faction != Faction.Pirate) return;
                 float dist = Vector2.Distance(selfPos, t.Position);
                 if (dist < range && dist < bestDist)
                 {
@@ -315,10 +317,10 @@ public class EnemyAISystem
         float bestDist = range;
         Vector2? bestPos = null;
 
-        var q = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
-        _world.Query(in q, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
+        var q = _aiEntityQuery;
+        World.Query(in q, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
         {
-            if (h.IsDead || ai.Faction != Faction.Pirate) return;
+            if (h.IsDead || ai.Config.Faction != Faction.Pirate) return;
             float dist = Vector2.Distance(pos, t.Position);
             if (dist < bestDist)
             {
@@ -328,6 +330,29 @@ public class EnemyAISystem
         });
 
         return bestPos;
+    }
+
+    /// <summary>Whether the fire cooldown has elapsed and the ship is facing close enough to the target (~18° cone).</summary>
+    private static bool CanFireProjectile(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
+    {
+        if (ai.FireCooldown > 0) return false;
+        var facing = FacingDirection(transform.Rotation);
+        return Vector2.Dot(facing, dirToTarget) > 0.95f;
+    }
+
+    /// <summary>Checks CanFireProjectile and, if true, resets cooldown and enqueues the projectile.</summary>
+    private void TryFireProjectile(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
+    {
+        if (!CanFireProjectile(ref transform, ref ai, dirToTarget)) return;
+        ai.FireCooldown = ai.Config.FireRate;
+        var facing = FacingDirection(transform.Rotation);
+        FireProjectile(transform.Position, facing, ai.Config.WeaponDamage, ai.Config.ProjectileSpeed, ai.Config.Faction);
+    }
+
+    private static Vector2 FacingDirection(float rotationDeg)
+    {
+        float rad = rotationDeg * (MathF.PI / 180f);
+        return new Vector2(MathF.Cos(rad), MathF.Sin(rad));
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed, Faction faction)
@@ -352,5 +377,29 @@ public class EnemyAISystem
         float margin = 100f;
         transform.Position.X = Math.Clamp(transform.Position.X, margin, _mapWidth - margin);
         transform.Position.Y = Math.Clamp(transform.Position.Y, margin, _mapHeight - margin);
+    }
+
+    /// <summary>
+    /// Smoothly turn toward a desired angle using rotation velocity, clamped by maxRotSpeed.
+    /// Sets velocity.RotationVelocity; VelocitySystem applies the actual rotation.
+    /// </summary>
+    private static void TurnToward(ref Transform transform, ref Velocity velocity,
+        float desiredAngleDeg, float maxRotSpeed, float dt)
+    {
+        float diff = desiredAngleDeg - transform.Rotation;
+        // Normalize to [-180, 180]
+        diff = ((diff % 360f) + 540f) % 360f - 180f;
+        // Set rotation velocity, clamped by max rotation speed
+        velocity.RotationVelocity = Math.Clamp(diff / dt, -maxRotSpeed, maxRotSpeed);
+    }
+
+    /// <summary>
+    /// Smoothly turn toward a direction vector using rotation velocity.
+    /// </summary>
+    private static void TurnTowardDirection(ref Transform transform, ref Velocity velocity,
+        Vector2 direction, float maxRotSpeed, float dt)
+    {
+        float desiredAngle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
+        TurnToward(ref transform, ref velocity, desiredAngle, maxRotSpeed, dt);
     }
 }

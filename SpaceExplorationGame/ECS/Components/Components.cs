@@ -22,16 +22,20 @@ public struct Transform
     }
 }
 
-/// <summary>Linear velocity.</summary>
+/// <summary>Linear and angular velocity.</summary>
 public struct Velocity
 {
     public Vector2 Value;
     public float MaxSpeed;
+    public float RotationVelocity;    // degrees per second
+    public float MaxRotationSpeed;    // max degrees per second (0 = unlimited)
 
-    public Velocity(float maxSpeed)
+    public Velocity(float maxSpeed, float maxRotationSpeed = 0f)
     {
         Value = Vector2.Zero;
         MaxSpeed = maxSpeed;
+        RotationVelocity = 0f;
+        MaxRotationSpeed = maxRotationSpeed;
     }
 }
 
@@ -210,21 +214,26 @@ public struct Projectile
     public byte R, G, B;            // projectile color
 }
 
-/// <summary>AI-controlled ship with combat behavior.</summary>
+/// <summary>Immutable configuration shared across enemies of the same type.</summary>
+public sealed record EnemyAIConfig(
+    Faction Faction,
+    float FireRate,
+    float WeaponDamage,
+    float WeaponRange,
+    float DetectRange,
+    float ProjectileSpeed,
+    int LootCredits,
+    float EngageDistance,
+    float FleeHealthPercent,
+    float MaxRotationSpeed = 180f);
+
+/// <summary>AI-controlled ship with combat behavior. Config holds immutable stats; mutable state lives here.</summary>
 public struct EnemyAI
 {
-    public Faction Faction;
+    public EnemyAIConfig Config;
     public AIState State;
     public float StateTimer;         // time in current state
     public float FireCooldown;       // seconds until next shot
-    public float FireRate;           // seconds between shots
-    public float WeaponDamage;       // damage per projectile
-    public float WeaponRange;        // max firing range
-    public float DetectRange;        // range to detect targets
-    public float ProjectileSpeed;    // speed of fired projectiles
-    public int LootCredits;          // credits dropped on death
-    public float EngageDistance;     // preferred combat distance
-    public float FleeHealthPercent;  // flee when hull % drops below this
 }
 
 public enum AIState
@@ -255,19 +264,23 @@ public struct AsteroidField
     public float Size;                 // visual size for rendering
 }
 
-/// <summary>AI for surface enemies (fauna and bandits). Walk-based movement, no rotation physics.</summary>
+/// <summary>Immutable configuration shared across surface enemies of the same type.</summary>
+public sealed record SurfaceAIConfig(
+    Faction Faction,
+    float MoveSpeed,
+    float DetectRange,
+    float AttackRange,
+    float FireRate,
+    float WeaponDamage,
+    float ProjectileSpeed);
+
+/// <summary>AI for surface enemies (fauna and bandits). Config holds immutable stats; mutable state lives here.</summary>
 public struct SurfaceAI
 {
-    public Faction Faction;          // Fauna or Bandit
+    public SurfaceAIConfig Config;
     public AIState State;
     public float StateTimer;         // time in current state
-    public float MoveSpeed;          // walking speed
-    public float DetectRange;        // range to notice player
-    public float AttackRange;        // range to start attacking
     public float FireCooldown;       // seconds until next attack
-    public float FireRate;           // seconds between attacks
-    public float WeaponDamage;       // damage per hit
-    public float ProjectileSpeed;    // speed of projectile (bandits)
     public float WanderAngle;        // current wander direction
     public float WanderTimer;        // time until next wander direction change
 }

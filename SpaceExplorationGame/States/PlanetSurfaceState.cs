@@ -130,11 +130,13 @@ public class PlanetSurfaceState : GameState
         _velocitySystem = new VelocitySystem(game.EcsWorld);
         _velocitySystem.Initialize();
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
+        _projectileSystem.Initialize();
         _surfaceAISystem = new SurfaceEnemyAISystem(
             game.EcsWorld,
             () => game.EcsWorld.IsAlive(_playerAvatar) ? game.EcsWorld.Get<Transform>(_playerAvatar).Position : Vector2.Zero,
             () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead,
             CanMoveToTerrain);
+        _surfaceAISystem.Initialize();
 
         // Spawn fauna
         foreach (var (fx, fy, angle) in _surfaceData.FaunaSpawns)
@@ -245,7 +247,7 @@ public class PlanetSurfaceState : GameState
         if (_inVehicle)
         {
             // Vehicle movement (thrust/rotation)
-            _vehicleMovementSystem!.Update(dt);
+            _vehicleMovementSystem!.Update(in dt);
         }
         else
         {
@@ -336,17 +338,14 @@ public class PlanetSurfaceState : GameState
             }
 
             // Surface enemy AI
-            _surfaceAISystem.Update(dt);
+            _surfaceAISystem.Update(in dt);
         }
 
         // Projectile system (collisions)
-        _projectileSystem.Update(dt);
+        _projectileSystem.Update(in dt);
 
         // Process damage events
-        foreach (var (pos, damage, shieldHit, _) in _projectileSystem.DamageEventsLastUpdate)
-        {
-            _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
-        }
+        CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
@@ -367,7 +366,8 @@ public class PlanetSurfaceState : GameState
 
                 if (loot.HasValue)
                 {
-                    ProcessSurfaceLoot(game, loot.Value, combatRng);
+                    _combatMessage = CombatHelper.ProcessLootDrop(game, loot.Value, combatRng);
+                    _combatMessageTimer = 3f;
                 }
 
                 if (game.EcsWorld.IsAlive(entity))
@@ -396,15 +396,10 @@ public class PlanetSurfaceState : GameState
         }
 
         // Combat message timer
-        if (_combatMessageTimer > 0)
-        {
-            _combatMessageTimer -= dt;
-            if (_combatMessageTimer <= 0) _combatMessage = null;
-        }
+        CombatHelper.UpdateCombatMessageTimer(ref _combatMessage, ref _combatMessageTimer, dt);
 
         // Update visual effects
-        ProjectileRenderer.UpdateDamageEffects(_damagePopups, dt);
-        ProjectileRenderer.UpdateExplosions(_explosions, dt);
+        CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
     }
 
     public override void Render(Game game)
@@ -533,29 +528,6 @@ public class PlanetSurfaceState : GameState
 
         _combatMessage = creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
         _combatMessageTimer = RespawnDelay;
-    }
-
-    /// <summary>Process loot from a destroyed surface enemy.</summary>
-    private void ProcessSurfaceLoot(Game game, LootDrop loot, SeededRandom rng)
-    {
-        int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
-        game.Player.Credits += credits;
-        string message = $"+{credits} CREDITS";
-
-        if (rng.NextFloat() < loot.ResourceDropChance)
-        {
-            var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
-            int amount = rng.NextInt(1, 4);
-            int added = game.Player.AddCargo(resource, amount);
-            if (added > 0)
-            {
-                var resName = ResourceCatalog.Get(resource).Name;
-                message += $"  +{added} {resName.ToUpper()}";
-            }
-        }
-
-        _combatMessage = message;
-        _combatMessageTimer = 3f;
     }
 
     /// <summary>Render the avatar health bar at the bottom-left of the screen.</summary>

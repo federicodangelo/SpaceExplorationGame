@@ -32,10 +32,10 @@ SpaceExplorationGame/
 │   │   └── Components.cs          # All ECS component structs (incl. combat: Health, Projectile, EnemyAI, SurfaceAI, Faction, LootDrop)
 │   └── Systems/
 │       ├── OrbitSystem.cs          # Deterministic orbital position updates
-│       ├── VelocitySystem.cs       # Velocity → position integration with speed clamping
+│       ├── VelocitySystem.cs       # Velocity → position + rotation integration with speed clamping
 │       ├── PlayerMovementSystem.cs  # WASD/arrow movement with pluggable collision
 │       ├── CameraFollowSystem.cs   # Smooth camera follow + mouse wheel zoom
-│       ├── LabelRenderSystem.cs    # Centered text labels below entities
+│       ├── ShipMovementSystem.cs   # Ship flight physics (thrust, rotation, braking, friction)
 │       ├── InteractionProximitySystem.cs  # Nearest interactable entity detection
 │       ├── VehicleMovementSystem.cs # Thrust/rotation physics for planet rover
 │       ├── TileMapRenderer.cs      # Shared tilemap rendering utility
@@ -50,8 +50,11 @@ SpaceExplorationGame/
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
 │   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
 │   └── InteriorGenerator.cs       # Station/settlement interior layouts
+├── Core/
+│   └── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
 ├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
+│   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── TextureManager.cs          # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
 │   ├── MiniBitmapFont.cs          # Built-in 5x8 pixel font
 │   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
@@ -149,7 +152,7 @@ Station interiors derive seeds from system seed + 2000 + station index. Settleme
 ### ECS Usage (Arch)
 Components are plain structs defined in `Components.cs`. The game uses Arch's `World.Query()` with lambda syntax for ad-hoc iteration, plus dedicated **systems** for recurring logic. Key component types:
 - `Transform` — position + rotation
-- `Velocity` — movement
+- `Velocity` — linear movement (`Value`) plus rotation velocity (`RotationVelocity`, `MaxRotationSpeed`)
 - `Sprite` — rendering info (currently colored rects)
 - `CelestialBody` — star/planet/moon/station properties
 - `Orbit` — orbital mechanics (parent entity, radius, speed, angle)
@@ -158,9 +161,9 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `Interactable` — landing/docking capability
 - `Health` — hull + shield HP, shield regen rate/delay, damage tracking
 - `Projectile` — damage, speed, lifetime, collision radius, owner faction, RGB color
-- `EnemyAI` — faction, AI state machine, fire rate, weapon stats, detection ranges
+- `EnemyAI` — mutable state (State, StateTimer, FireCooldown) + immutable `EnemyAIConfig` record (faction, detection ranges, weapon stats, MaxRotationSpeed)
 - `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
-- `SurfaceAI` — surface enemy AI state machine (faction, detect/attack range, walk speed, fire rate, wander behavior)
+- `SurfaceAI` — mutable state (State, StateTimer, FireCooldown, WanderTimer, WanderAngle) + immutable `SurfaceAIConfig` record (faction, detect/attack range, walk speed, fire rate)
 - `Faction` — enum: Player, Pirate, Trader, Patrol, Fauna, Bandit
 - `AIState` — enum: Idle, Patrol, Chase, Attack, Flee, Defend
 
@@ -177,27 +180,30 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 | **VelocitySystem** | `BaseSystem` (source gen) | `Transform + Velocity` | SolarSystemState, PlanetSurfaceState |
 | **PlayerMovementSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | PlanetSurfaceState, InteriorState |
 | **CameraFollowSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | SolarSystemState, PlanetSurfaceState, InteriorState |
-| **LabelRenderSystem** | `BaseSystem` (source gen) | `Transform + Label` | SolarSystemState |
-| **InteractionProximitySystem** | Plain class (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
-| **VehicleMovementSystem** | Plain class (manual) | Single entity | PlanetSurfaceState |
+| **ShipMovementSystem** | `BaseSystem` (manual) | Single entity | SolarSystemState |
+| **InteractionProximitySystem** | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
+| **VehicleMovementSystem** | `BaseSystem` (manual) | Single entity | PlanetSurfaceState |
 | **TileMapRenderer** | Static utility | N/A (callback-driven) | PlanetSurfaceState, InteriorState |
-| **ProjectileSystem** | Plain class (manual query) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState |
+| **ProjectileSystem** | `BaseSystem` (source gen) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState |
 | **ShieldRegenSystem** | `BaseSystem` (source gen) | `Health` | SolarSystemState |
-| **EnemyAISystem** | Plain class (manual query) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
-| **SurfaceEnemyAISystem** | Plain class (manual query) | `Transform + Velocity + SurfaceAI + Health` | PlanetSurfaceState |
+| **EnemyAISystem** | `BaseSystem` (source gen) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
+| **SurfaceEnemyAISystem** | `BaseSystem` (source gen) | `Transform + Velocity + SurfaceAI + Health` | PlanetSurfaceState |
+| **LabelRenderer** | Plain class (Rendering/) | `Transform + Label` | SolarSystemState |
 
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
-- **VelocitySystem**: Integrates velocity into position each frame with `MaxSpeed` clamping.
+- **VelocitySystem**: Integrates velocity into position each frame with `MaxSpeed` clamping. Also applies `RotationVelocity` to `Transform.Rotation` (clamped by `MaxRotationSpeed`).
 - **PlayerMovementSystem**: Handles WASD/arrow input with configurable speed. Exposes a `Func<Vector2, bool>? CanMoveTo` delegate for collision checking (terrain, walls).
 - **CameraFollowSystem**: Lerps camera toward the player entity and handles mouse-wheel zoom.
-- **LabelRenderSystem**: Draws centered text labels below entities using the bitmap font.
-- **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Implemented as a plain class with `FindNearest(Vector2)` because the source generator's `Update()` does not call `BeforeUpdate()`, which prevented per-frame distance reset.
-- **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Plain class with `Update(float dt)`, configurable physics params, and `CanMoveTo` collision delegate.
+- **ShipMovementSystem**: Handles ship flight physics — A/D rotation, W thrust, S braking, friction. Extends `BaseSystem<World, float>` with manual `Update()`. Reads equipped ship stats (acceleration, maxSpeed, rotationSpeed) from `PlayerData`.
+- **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Extends `BaseSystem<World, float>` with a static cached `QueryDescription` and manual iteration via `FindNearest(Vector2)`.
+- **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Extends `BaseSystem<World, float>` with manual `Update()`, configurable physics params, and `CanMoveTo` collision delegate.
 - **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
-- **ProjectileSystem**: Plain class that moves projectiles, checks lifetime expiry, and detects collisions between projectiles and Health entities. Faction logic prevents friendly fire (same-faction projectiles don't hit; fauna/bandit projectiles don't hit each other). Recognizes both `EnemyAI` and `SurfaceAI` components for faction detection. Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
+- **ProjectileSystem**: Extends `BaseSystem<World, float>` with source-generated iteration over `Transform + Velocity + Projectile`. Uses a `HashSet<Entity>` for O(1) expired-entity tracking and a static cached `QueryDescription` for health collision queries. Faction logic prevents friendly fire (same-faction projectiles don't hit; fauna/bandit projectiles don't hit each other). Recognizes both `EnemyAI` and `SurfaceAI` components for faction detection. Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
 - **ShieldRegenSystem**: Source-generated system that regenerates shields after a configurable delay (`ShieldRegenDelay`) since last hit. Regen rate is per-second (`ShieldRegenRate`).
-- **EnemyAISystem**: Plain class implementing a state machine for NPC ships. Pirates patrol, chase, and attack the player (flee when low health). Traders cruise and flee from nearby pirates. Patrols hunt pirates and defend traders. Fires projectiles via a deferred spawn list to avoid mutation during iteration. Takes `Func<Vector2>` for player position and `Func<bool>` for player alive state.
-- **SurfaceEnemyAISystem**: Plain class implementing walk-based AI for surface enemies (no rotation/thrust physics). Fauna wander randomly, chase the player when detected, and attack with fast short-range melee projectiles. Bandits patrol, chase, fire ranged projectiles, strafe in combat, and flee when critically low on health. Uses deferred projectile spawn pattern. Takes optional `Func<Vector2, bool>` terrain collision delegate.
+- **EnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `EnemyAIConfig` records (shared across entities of the same faction) to separate immutable configuration from mutable AI state. Implements smooth rotation via `TurnToward()`/`TurnTowardDirection()` helpers that set `Velocity.RotationVelocity` (consumed by VelocitySystem) instead of instant rotation. MaxRotationSpeed per faction: Pirates=180°/s, Traders=90°/s, Patrols=150°/s. Pirates patrol, chase, and attack the player (flee when low health). Traders cruise and flee from nearby pirates. Patrols hunt pirates and defend traders. Fires projectiles via a deferred spawn list.
+- **SurfaceEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `SurfaceAIConfig` records. Sets `Velocity.Value` for desired movement (consumed by VelocitySystem) instead of modifying position directly, with a pre-check collision helper (`SetVelocityWithCollision`). Fauna wander randomly, chase the player when detected, and attack with fast short-range melee projectiles. Bandits patrol, chase, fire ranged projectiles, strafe in combat, and flee when critically low on health.
+- **LabelRenderer**: Plain class in `Rendering/` (not a system). Queries `Transform + Label` entities and draws centered text labels below them using the bitmap font. Uses a static cached `QueryDescription`.
+- **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemState and PlanetSurfaceState.
 
 ### Rendering
 The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
