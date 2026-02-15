@@ -5,7 +5,7 @@ using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.AI;
 
 /// <summary>
 /// AI behavior system for surface enemies (fauna and bandits).

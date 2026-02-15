@@ -6,6 +6,9 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
+using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.ECS.Systems.AI;
+using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays;
@@ -349,7 +352,7 @@ public class PlanetSurfaceState : GameState
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
-        foreach (var (entity, pos, faction, loot, _) in _projectileSystem.DestroyedThisFrame)
+        foreach (var (entity, pos, faction, loot, _) in _projectileSystem.DestroyedLastUpdate)
         {
             if (faction == Faction.Player)
             {

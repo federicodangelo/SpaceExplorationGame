@@ -5,7 +5,7 @@ using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.Combat;
 
 /// <summary>
 /// Moves projectiles, checks lifetime expiry, and detects collision with Health entities.
@@ -25,7 +25,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     private float _dt;
 
     /// <summary>Entities destroyed this frame (for loot/explosion handling).</summary>
-    public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid)> DestroyedThisFrame { get; } = [];
+    public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid)> DestroyedLastUpdate { get; } = [];
 
     /// <summary>Damage events from last update (for visual effects).</summary>
     public List<(Vector2 Position, float Damage, bool ShieldHit, Entity Target)> DamageEventsLastUpdate { get; } = [];
@@ -38,7 +38,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     {
         _hits.Clear();
         _expired.Clear();
-        DestroyedThisFrame.Clear();
+        DestroyedLastUpdate.Clear();
         DamageEventsLastUpdate.Clear();
         _projectileData.Clear();
         _dt = dt;
@@ -146,7 +146,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                     faction = Faction.Player;
                 }
 
-                DestroyedThisFrame.Add((target, targetPos, faction, loot, asteroid));
+                DestroyedLastUpdate.Add((target, targetPos, faction, loot, asteroid));
             }
         }
 

@@ -10,6 +10,9 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays;
 using SpaceExplorationGame.UI.Overlays.Customization;
+using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.ECS.Systems.AI;
+using SpaceExplorationGame.ECS.Systems.Combat;
 
 namespace SpaceExplorationGame.States;
 
@@ -697,7 +700,7 @@ public class SolarSystemState : GameState
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xDEADBEEF);
-        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedThisFrame)
+        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedLastUpdate)
         {
             if (asteroidData.HasValue)
             {

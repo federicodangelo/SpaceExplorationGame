@@ -4,7 +4,7 @@ using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
 /// Handles top-down 4-way WASD/arrow movement for the player-controlled entity.

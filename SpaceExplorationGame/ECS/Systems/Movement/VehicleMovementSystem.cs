@@ -4,7 +4,7 @@ using Arch.Core.Extensions;
 using Arch.System;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
 /// Handles vehicle-style movement: rotation with A/D, acceleration with W, braking with S.

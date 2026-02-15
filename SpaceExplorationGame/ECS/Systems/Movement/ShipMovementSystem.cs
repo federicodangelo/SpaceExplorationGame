@@ -5,7 +5,7 @@ using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
 /// Handles spaceship movement: rotation with A/D, thrust with W along facing direction,

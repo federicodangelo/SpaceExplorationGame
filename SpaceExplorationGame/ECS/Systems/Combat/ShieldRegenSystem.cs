@@ -2,7 +2,7 @@ using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems;
+namespace SpaceExplorationGame.ECS.Systems.Combat;
 
 /// <summary>
 /// Regenerates shields for all entities with Health components after a delay since last hit.
