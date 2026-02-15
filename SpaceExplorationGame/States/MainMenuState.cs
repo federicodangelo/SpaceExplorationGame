@@ -9,11 +9,13 @@ namespace SpaceExplorationGame.States;
 public enum StartOption
 {
     None = -1,
-    GalaxyMap = 0,
-    StarSystem = 1,
-    PlanetSurface = 2,
-    SpaceStation = 3,
-    Settlement = 4
+    GalaxyMap,
+    StarSystem ,
+    PlanetSurface,
+    SpaceStation,
+    SpaceStationInside,
+    Settlement,
+    SettlementInside
 }
 
 /// <summary>
@@ -33,8 +35,10 @@ public class MainMenuState : GameState
         new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
         new(StartOption.StarSystem, "STAR SYSTEM", "Start inside a random star system, ready to explore"),
         new(StartOption.SpaceStation, "SPACE STATION", "Dock at a random space station"),
+        new(StartOption.SpaceStationInside, "INSIDE SPACE STATION", "Walk around inside a random space station"),
         new(StartOption.PlanetSurface, "PLANET SURFACE", "Land directly on a random planet's surface"),
-        new(StartOption.Settlement, "SETTLEMENT", "Start at a settlement on an inhabited planet")
+        new(StartOption.Settlement, "SETTLEMENT", "Start at a settlement on an inhabited planet"),
+        new(StartOption.SettlementInside, "INSIDE SETTLEMENT", "Walk around inside a random settlement")
     ];
 
     private readonly MenuWidget<StartOption> _menu = new(MenuOptions)
@@ -132,6 +136,17 @@ public class MainMenuState : GameState
                 break;
             }
 
+            case StartOption.SpaceStationInside:
+            {
+                var (system, station) = PickRandomStation(game);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
+                game.Player.ReturnStationIndex = station.Index;
+                game.ChangeState(new InteriorState(
+                    InteriorOrigin.Station, system, station: station));
+                break;
+            }
+
             case StartOption.Settlement:
             {
                 var (system, planet) = PickRandomSettlement(game);
@@ -151,6 +166,17 @@ public class MainMenuState : GameState
                     ly = s.TileY + s.Height / 2;
                 }
                 game.ChangeState(new PlanetSurfaceState(system, planet, lx, ly));
+                break;
+            }
+
+            case StartOption.SettlementInside:
+            {
+                var (system, planet, settlement) = PickRandomSettlementWithData(game);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = planet.Index;
+                game.ChangeState(new InteriorState(
+                    InteriorOrigin.Settlement, system, planet: planet, settlement: settlement));
                 break;
             }
         }
@@ -250,6 +276,40 @@ public class MainMenuState : GameState
 
         // Fallback: any solid planet
         return PickRandomPlanet(game);
+    }
+
+    private (StarSystemData System, PlanetData Planet, SettlementData Settlement) PickRandomSettlementWithData(Game game)
+    {
+        var galaxyRng = game.Seeds.GetGalaxyRandom();
+        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 6));
+
+        // Find a planet with settlements and return the settlement data
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            var system = systems[rng.NextInt(0, systems.Count)];
+            var sysRng = game.Seeds.GetStarSystemRandom(system.Index);
+            var (planets, _, _) = SolarSystemGenerator.Generate(sysRng, system);
+
+            var settled = planets.Where(p => p.HasSettlement && p.HasSolidSurface).ToList();
+            if (settled.Count > 0)
+            {
+                var planet = settled[rng.NextInt(0, settled.Count)];
+                var surfRng = game.Seeds.GetPlanetSurfaceRandom(system.Index, planet.Index);
+                var surfaceData = PlanetSurfaceGenerator.Generate(surfRng, planet);
+                if (surfaceData.Settlements.Count > 0)
+                {
+                    var settlement = surfaceData.Settlements[rng.NextInt(0, surfaceData.Settlements.Count)];
+                    return (system, planet, settlement);
+                }
+            }
+        }
+
+        // Fallback: use PickRandomSettlement and generate surface to get settlement data
+        var (fbSystem, fbPlanet) = PickRandomSettlement(game);
+        var fbSurfRng = game.Seeds.GetPlanetSurfaceRandom(fbSystem.Index, fbPlanet.Index);
+        var fbSurface = PlanetSurfaceGenerator.Generate(fbSurfRng, fbPlanet);
+        return (fbSystem, fbPlanet, fbSurface.Settlements[0]);
     }
 
     public override void Render(Game game)

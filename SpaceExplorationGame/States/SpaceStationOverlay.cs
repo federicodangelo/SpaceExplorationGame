@@ -42,7 +42,7 @@ public class SpaceStationOverlay
         new(StationMenuOption.ShipDealer, "SHIP DEALER"),
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
-        new(StationMenuOption.WalkStation, "EXIT SHIP (WALK STATION)"),
+        new(StationMenuOption.WalkStation, "WALK STATION"),
         new(StationMenuOption.ExitStation, "EXIT SPACE STATION")
     ];
 

@@ -23,7 +23,9 @@ internal static class Program
                     "system" => StartOption.StarSystem,
                     "planet" => StartOption.PlanetSurface,
                     "station" => StartOption.SpaceStation,
+                    "settlement-inside" => StartOption.SettlementInside,
                     "settlement" => StartOption.Settlement,
+                    "station-inside" => StartOption.SpaceStationInside,
                     _ => throw new ArgumentException($"Invalid start option: {args[i + 1]}")
                 };
                 i++; // skip value
