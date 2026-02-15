@@ -4,7 +4,7 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Customization;
 
 public enum StationMenuOption
 {

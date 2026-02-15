@@ -7,7 +7,7 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.UI.Overlays;
+using SpaceExplorationGame.UI.Overlays.Customization;
 
 namespace SpaceExplorationGame.States;
 

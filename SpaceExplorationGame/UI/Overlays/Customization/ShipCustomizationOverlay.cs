@@ -1,7 +1,7 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Customization;
 
 /// <summary>
 /// Ship customization overlay — thin subclass of CustomizationOverlayBase.
