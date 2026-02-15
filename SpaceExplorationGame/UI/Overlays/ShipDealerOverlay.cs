@@ -137,7 +137,7 @@ public class ShipDealerOverlay : OverlayBase
 
             // Quick stats line
             renderer.DrawTextScreen(panelX + 30, itemY + 22,
-                $"SLOTS: {ship.AvailableSlots.Length}  HULL: {ship.BaseHull:F0}  FUEL: {ship.BaseFuel:F0}",
+                $"SLOTS: {ship.AvailableSlots.Length}  HULL: {ship.BaseHull:F0}  FUEL: {ship.BaseFuel:F0}  CARGO: {ship.BaseCargo:F0}",
                 100, 140, 160, 1.3f);
 
             // Price
@@ -183,6 +183,7 @@ public class ShipDealerOverlay : OverlayBase
         RenderStatRow(renderer, rightX + 5, ref detailY, "SLOTS", sel.AvailableSlots.Length, cur.AvailableSlots.Length, selIsCurrent);
         RenderStatRow(renderer, rightX + 5, ref detailY, "BASE HULL", sel.BaseHull, cur.BaseHull, selIsCurrent);
         RenderStatRow(renderer, rightX + 5, ref detailY, "BASE FUEL", sel.BaseFuel, cur.BaseFuel, selIsCurrent);
+        RenderStatRow(renderer, rightX + 5, ref detailY, "BASE CARGO", sel.BaseCargo, cur.BaseCargo, selIsCurrent);
         RenderStatRow(renderer, rightX + 5, ref detailY, "WEIGHT", sel.Weight, cur.Weight, selIsCurrent, lowerIsBetter: true);
         RenderStatRow(renderer, rightX + 5, ref detailY, "SIZE", sel.SpriteSize, cur.SpriteSize, selIsCurrent);
 

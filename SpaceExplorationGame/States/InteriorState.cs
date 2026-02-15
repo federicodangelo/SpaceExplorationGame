@@ -52,6 +52,7 @@ public class InteriorState : GameState
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
+    private readonly SellCargoOverlay _sellCargo = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -144,6 +145,8 @@ public class InteriorState : GameState
             return;
         if (_shipDealer.UpdateInput(game))
             return;
+        if (_sellCargo.UpdateInput(game))
+            return;
 
         // Handle dialogue
         if (_showingDialogue)
@@ -192,11 +195,12 @@ public class InteriorState : GameState
         _avatarCustomization.Update(game, dt);
         _vehicleCustomization.Update(game, dt);
         _shipDealer.Update(game, dt);
+        _sellCargo.Update(game, dt);
 
         // Skip simulation when overlays or dialogue are active
         if (_repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen)
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
             return;
 
         // Player movement (via system with tile collision)
@@ -266,6 +270,9 @@ public class InteriorState : GameState
             case InteractableType.ShipDealer:
                 _shipDealer.Open();
                 break;
+            case InteractableType.CargoTerminal:
+                _sellCargo.Open();
+                break;
         }
     }
 
@@ -303,7 +310,7 @@ public class InteriorState : GameState
         int h = GameConfig.WindowHeight;
         bool anyOverlayOpen = _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen;
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen;
 
         InteriorRenderer.RenderHud(renderer, _interior, game.Player.Credits,
             anyOverlayOpen ? null : _nearestInteractable,
@@ -323,6 +330,7 @@ public class InteriorState : GameState
         _avatarCustomization.Render(game);
         _vehicleCustomization.Render(game);
         _shipDealer.Render(game);
+        _sellCargo.Render(game);
 
         // Minimap
         InteriorRenderer.RenderMinimap(renderer, _interior, avatarTf.Position, w);

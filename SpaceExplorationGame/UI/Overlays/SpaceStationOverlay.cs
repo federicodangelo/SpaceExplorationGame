@@ -10,6 +10,7 @@ public enum StationMenuOption
 {
     Repair,
     Missions,
+    SellCargo,
     ShipCustomization,
     ShipDealer,
     AvatarCustomization,
@@ -32,11 +33,13 @@ public class SpaceStationOverlay : OverlayBase
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
+    private readonly SellCargoOverlay _sellCargo = new();
 
     private static readonly MenuOption<StationMenuOption>[] StationMenuOptions =
     [
         new(StationMenuOption.Repair, "REPAIR"),
         new(StationMenuOption.Missions, "MISSIONS"),
+        new(StationMenuOption.SellCargo, "SELL CARGO"),
         new(StationMenuOption.ShipCustomization, "SHIP CUSTOMIZATION"),
         new(StationMenuOption.ShipDealer, "SHIP DEALER"),
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
@@ -94,6 +97,8 @@ public class SpaceStationOverlay : OverlayBase
             return true;
         if (_shipDealer.UpdateInput(game))
             return true;
+        if (_sellCargo.UpdateInput(game))
+            return true;
 
         var confirmed = _menu.Update(input);
         if (confirmed is { } menuOption)
@@ -105,6 +110,9 @@ public class SpaceStationOverlay : OverlayBase
                     break;
                 case StationMenuOption.Missions:
                     _missionOverlay.Open();
+                    break;
+                case StationMenuOption.SellCargo:
+                    _sellCargo.Open();
                     break;
                 case StationMenuOption.ShipCustomization:
                     _shipCustomization.Open(game.Player);
@@ -151,6 +159,7 @@ public class SpaceStationOverlay : OverlayBase
         _avatarCustomization.Update(game, dt);
         _vehicleCustomization.Update(game, dt);
         _shipDealer.Update(game, dt);
+        _sellCargo.Update(game, dt);
     }
 
     public override void Render(Game game)
@@ -226,5 +235,6 @@ public class SpaceStationOverlay : OverlayBase
         _avatarCustomization.Render(game);
         _vehicleCustomization.Render(game);
         _shipDealer.Render(game);
+        _sellCargo.Render(game);
     }
 }

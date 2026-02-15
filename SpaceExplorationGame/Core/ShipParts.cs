@@ -13,7 +13,8 @@ public record ShipType(
     float BaseHull,       // base hull points before armor parts
     float BaseFuel,       // base fuel capacity before FTL drive parts
     int BuyCost,          // credits to purchase (0 = starter ship, free)
-    int SellValue         // credits received when trading in
+    int SellValue,        // credits received when trading in
+    float BaseCargo = 50f // base cargo capacity before utility part bonuses
 );
 
 /// <summary>
@@ -23,23 +24,23 @@ public static class ShipTypeCatalog
 {
     public static readonly ShipType Scout = new(
         "scout", "Scout", "Light reconnaissance craft. Fast and nimble but limited.",
-        [ShipSlotType.Engine, ShipSlotType.Shield, ShipSlotType.FtlDrive, ShipSlotType.Utility],
+        [ShipSlotType.Engine, ShipSlotType.Shield, ShipSlotType.FtlDrive, ShipSlotType.Utility, ShipSlotType.Weapon1],
         SpriteSize: 32, Weight: 1.0f, BaseHull: 80f, BaseFuel: 80f,
-        BuyCost: 0, SellValue: 200
+        BuyCost: 0, SellValue: 200, BaseCargo: 40f
     );
 
     public static readonly ShipType Fighter = new(
         "fighter", "Fighter", "Combat vessel with dual weapon mounts. Tough but short-range.",
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.Weapon1, ShipSlotType.Weapon2],
         SpriteSize: 32, Weight: 1.1f, BaseHull: 120f, BaseFuel: 60f,
-        BuyCost: 1500, SellValue: 750
+        BuyCost: 1500, SellValue: 750, BaseCargo: 30f
     );
 
     public static readonly ShipType Freighter = new(
         "freighter", "Freighter", "Heavy hauler with extra cargo space. Slow but durable.",
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.FtlDrive, ShipSlotType.Utility, ShipSlotType.Utility2, ShipSlotType.Weapon1],
         SpriteSize: 48, Weight: 1.4f, BaseHull: 200f, BaseFuel: 160f,
-        BuyCost: 3000, SellValue: 1500
+        BuyCost: 3000, SellValue: 1500, BaseCargo: 120f
     );
 
     public static readonly ShipType Explorer = new(
@@ -47,7 +48,7 @@ public static class ShipTypeCatalog
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.FtlDrive,
          ShipSlotType.Weapon1, ShipSlotType.Weapon2, ShipSlotType.Utility],
         SpriteSize: 40, Weight: 1.2f, BaseHull: 150f, BaseFuel: 140f,
-        BuyCost: 5000, SellValue: 2500
+        BuyCost: 5000, SellValue: 2500, BaseCargo: 80f
     );
 
     public static readonly ShipType[] AllTypes = [Scout, Fighter, Freighter, Explorer];
@@ -100,8 +101,9 @@ public record ShipPartStats(
     float MaxFuel = 0f,
     float FtlRange = 0f,
     float ShieldStrength = 0f,   // future: damage absorption
-    float WeaponDamage = 0f,     // future: combat DPS
-    float FuelEfficiency = 0f    // multiplier reduction on fuel cost (0.1 = 10% less fuel)
+    float WeaponDamage = 0f,     // weapon damage / mining beam DPS
+    float FuelEfficiency = 0f,   // multiplier reduction on fuel cost (0.1 = 10% less fuel)
+    float CargoCapacity = 0f     // bonus cargo capacity (added to ship base)
 );
 
 /// <summary>
@@ -185,10 +187,6 @@ public static class ShipPartCatalog
             "No utility module installed.",
             new ShipPartStats()),
 
-        new("util_scanner",    "Cargo Scanner",      ShipSlotType.Utility, 1, 0,   25,
-            "Basic scanner. Helps find resources.",
-            new ShipPartStats()),
-
         new("util_efficiency", "Fuel Optimizer",     ShipSlotType.Utility, 2, 300, 150,
             "Reduces fuel consumption by 20%.",
             new ShipPartStats(FuelEfficiency: 0.2f)),
@@ -196,6 +194,15 @@ public static class ShipPartCatalog
         new("util_booster",    "Afterburner",        ShipSlotType.Utility, 3, 600, 300,
             "Emergency speed boost. +100 max speed.",
             new ShipPartStats(MaxSpeed: 100f, Acceleration: 50f)),
+
+        // ── Cargo ────────────────────────────────────────────────
+        new("util_cargo_small", "Cargo Pod",          ShipSlotType.Utility, 1, 200, 100,
+            "Small cargo expansion. +30 capacity.",
+            new ShipPartStats(CargoCapacity: 30f)),
+
+        new("util_cargo_large", "Cargo Bay",          ShipSlotType.Utility, 2, 500, 250,
+            "Large cargo expansion. +80 capacity.",
+            new ShipPartStats(CargoCapacity: 80f)),
     ];
 
     /// <summary>Find a part by its ID.</summary>

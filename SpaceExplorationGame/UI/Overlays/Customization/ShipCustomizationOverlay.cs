@@ -84,6 +84,7 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
         if (n.ShieldStrength - o.ShieldStrength != 0) diffs.Add(("SHD", n.ShieldStrength - o.ShieldStrength));
         if (n.WeaponDamage - o.WeaponDamage != 0) diffs.Add(("DMG", n.WeaponDamage - o.WeaponDamage));
         if (n.FuelEfficiency - o.FuelEfficiency != 0) diffs.Add(("EFF", (n.FuelEfficiency - o.FuelEfficiency) * 100));
+        if (n.CargoCapacity - o.CargoCapacity != 0) diffs.Add(("CARGO", n.CargoCapacity - o.CargoCapacity));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

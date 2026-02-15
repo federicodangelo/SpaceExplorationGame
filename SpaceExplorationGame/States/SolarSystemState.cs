@@ -30,8 +30,16 @@ public class SolarSystemState : GameState
     private List<Entity> _stationEntities = [];
     private List<List<Entity>> _moonEntities = [];
 
-    // Asteroid entities (for visual) — stores base angles, positions computed from globalTime
-    private List<(float BaseAngle, float Radius, float Speed, float Size)> _asteroids = [];
+    // Mineable asteroids (replaces old tuple list)
+    private List<MineableAsteroid> _asteroids = [];
+
+    // Mining state
+    private bool _isMining;
+    private int _miningTargetIndex = -1;  // index into _asteroids
+    private float _miningBeamTimer;       // visual flicker timer
+    private const float MiningRange = 120f; // max beam range in world pixels
+    private string? _miningMessage;       // feedback message
+    private float _miningMessageTimer;    // how long to show the message
 
     // Interaction
     private int _nearbyPlanetIndex = -1;
@@ -227,18 +235,40 @@ public class SolarSystemState : GameState
             _stationEntities.Add(stEntity);
         }
 
-        // Generate asteroid positions (base angles, rendered from globalTime)
+        // Generate mineable asteroids (base angles, resource types, HP)
         var asteroidRng = new SeededRandom(rng.DeriveChildSeed(999));
         foreach (var belt in _asteroidBelts)
         {
             for (int i = 0; i < belt.AsteroidCount; i++)
             {
-                _asteroids.Add((
-                    asteroidRng.NextFloat(0, MathF.PI * 2),
-                    asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
-                    asteroidRng.NextFloat(0.002f, 0.008f),
-                    asteroidRng.NextFloat(4, 10)
-                ));
+                float size = asteroidRng.NextFloat(4, 10);
+                float hp = size * 5f; // bigger asteroids have more HP
+
+                // Pick resource type based on weighted probabilities
+                var resource = asteroidRng.NextFloat() switch
+                {
+                    < 0.30f => ResourceType.Iron,
+                    < 0.55f => ResourceType.Nickel,
+                    < 0.70f => ResourceType.Ice,
+                    < 0.85f => ResourceType.Gold,
+                    < 0.95f => ResourceType.Platinum,
+                    _       => ResourceType.Crystal
+                };
+
+                int resourceAmount = (int)(size * asteroidRng.NextFloat(1f, 3f));
+
+                _asteroids.Add(new MineableAsteroid
+                {
+                    BaseAngle = asteroidRng.NextFloat(0, MathF.PI * 2),
+                    Radius = asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
+                    Speed = asteroidRng.NextFloat(0.002f, 0.008f),
+                    Size = size,
+                    MaxHp = hp,
+                    Hp = hp,
+                    Resource = resource,
+                    ResourceAmount = resourceAmount,
+                    Depleted = false
+                });
             }
         }
 
@@ -566,6 +596,93 @@ public class SolarSystemState : GameState
                     break;
             }
         }
+
+        // --- Mining laser ---
+        UpdateMining(game, dt);
+    }
+
+    /// <summary>Handle mining laser: hold Space to fire beam at nearest asteroid.</summary>
+    private void UpdateMining(Game game, float dt)
+    {
+        var input = game.Input;
+
+        // Tick mining message timer
+        if (_miningMessageTimer > 0)
+        {
+            _miningMessageTimer -= dt;
+            if (_miningMessageTimer <= 0) _miningMessage = null;
+        }
+
+        // Check if player has any weapon equipped (weapon damage = mining DPS)
+        var stats = game.Player.GetCombinedStats();
+        float miningDps = stats.WeaponDamage;
+
+        if (!input.IsKeyDown(SDL.Scancode.Space) || miningDps <= 0)
+        {
+            _isMining = false;
+            _miningTargetIndex = -1;
+            return;
+        }
+
+        // Find nearest non-depleted asteroid within mining range
+        ref var shipPos = ref game.EcsWorld.Get<Transform>(_playerShip);
+        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
+        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        Vector2 starCenter = new(starCenterX, starCenterY);
+
+        float nearestDist = float.MaxValue;
+        int nearestIdx = -1;
+
+        for (int i = 0; i < _asteroids.Count; i++)
+        {
+            var asteroid = _asteroids[i];
+            if (asteroid.Depleted) continue;
+
+            var aPos = AsteroidRenderer.GetAsteroidPosition(asteroid, starCenter, game.GlobalTime);
+            float dist = Vector2.Distance(shipPos.Position, aPos);
+            if (dist < MiningRange && dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearestIdx = i;
+            }
+        }
+
+        if (nearestIdx < 0)
+        {
+            _isMining = false;
+            _miningTargetIndex = -1;
+            return;
+        }
+
+        // Apply damage
+        _isMining = true;
+        _miningTargetIndex = nearestIdx;
+        _miningBeamTimer += dt;
+
+        var target = _asteroids[nearestIdx];
+        target.Hp -= miningDps * dt;
+
+        if (target.Hp <= 0)
+        {
+            target.Hp = 0;
+            target.Depleted = true;
+            _isMining = false;
+            _miningTargetIndex = -1;
+
+            // Collect resources
+            int added = game.Player.AddCargo(target.Resource, target.ResourceAmount);
+            var resInfo = ResourceCatalog.Get(target.Resource);
+            if (added > 0)
+            {
+                _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
+                _miningMessageTimer = 2.5f;
+            }
+            else
+            {
+                _miningMessage = "CARGO FULL!";
+                _miningMessageTimer = 2.5f;
+            }
+        }
     }
 
     /// <summary>Record the entity the ship should follow and the offset from it.</summary>
@@ -645,9 +762,50 @@ public class SolarSystemState : GameState
         game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
             shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
 
+        // Mining laser beam
+        if (_isMining && _miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count)
+        {
+            var target = _asteroids[_miningTargetIndex];
+            var targetPos = AsteroidRenderer.GetAsteroidPosition(target, starCenter, game.GlobalTime);
+
+            // Flickering beam effect
+            float flicker = 0.7f + 0.3f * MathF.Sin(_miningBeamTimer * 20f);
+            byte beamR = (byte)(255 * flicker);
+            byte beamG = (byte)(80 * flicker);
+            byte beamB = (byte)(80 * flicker);
+
+            // Draw multiple lines for a thicker beam
+            renderer.DrawLine(camera, shipTransform.Position, targetPos, beamR, beamG, beamB, 200);
+            var perp = Vector2.Normalize(targetPos - shipTransform.Position);
+            var offset = new Vector2(-perp.Y, perp.X) * 1.5f;
+            renderer.DrawLine(camera, shipTransform.Position + offset, targetPos + offset, beamR, beamG, beamB, 140);
+            renderer.DrawLine(camera, shipTransform.Position - offset, targetPos - offset, beamR, beamG, beamB, 140);
+
+            // Hit glow at asteroid
+            renderer.DrawFilledCircle(camera, targetPos, 4f, beamR, (byte)(beamG + 60), beamB, 160);
+        }
+
         // HUD
         ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
         SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, vel.Value.Length());
+
+        // Cargo HUD (below system HUD)
+        SolarSystemRenderer.RenderCargoHud(renderer, game.Player);
+
+        // Mining target info panel
+        if (_miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count)
+        {
+            var target = _asteroids[_miningTargetIndex];
+            SolarSystemRenderer.RenderMiningPanel(renderer, target);
+        }
+
+        // Mining feedback message
+        if (_miningMessage != null)
+        {
+            float msgW = renderer.MeasureText(_miningMessage, 2.5f);
+            float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
+            renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f - 40, _miningMessage, 255, 220, 80, 2.5f);
+        }
 
         // Interaction prompts
         if (_nearbyPlanetIndex >= 0)

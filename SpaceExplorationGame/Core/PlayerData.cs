@@ -37,7 +37,7 @@ public class PlayerData
     public ShipPartStats GetCombinedStats()
     {
         float accel = 0, maxSpd = 0, rot = 0, hull = 0, fuel = 0, ftl = 0;
-        float shield = 0, dmg = 0, fuelEff = 0;
+        float shield = 0, dmg = 0, fuelEff = 0, cargo = 0;
 
         foreach (var part in EquippedParts.Values)
         {
@@ -51,6 +51,7 @@ public class PlayerData
             shield += s.ShieldStrength;
             dmg += s.WeaponDamage;
             fuelEff += s.FuelEfficiency;
+            cargo += s.CargoCapacity;
         }
 
         // Apply ship weight: heavier ships are slower
@@ -58,7 +59,7 @@ public class PlayerData
         accel /= weight;
         maxSpd /= weight;
 
-        return new ShipPartStats(accel, maxSpd, rot, hull, fuel, ftl, shield, dmg, fuelEff);
+        return new ShipPartStats(accel, maxSpd, rot, hull, fuel, ftl, shield, dmg, fuelEff, cargo);
     }
 
     /// <summary>Deduct fuel for an FTL jump. Returns false if not enough fuel.</summary>
@@ -136,6 +137,61 @@ public class PlayerData
 
     // Credits
     public int Credits { get; set; } = 10000;
+
+    // Cargo hold
+    public Dictionary<ResourceType, int> Cargo { get; set; } = new();
+
+    /// <summary>Total units currently in the cargo hold.</summary>
+    public int CargoUsed
+    {
+        get
+        {
+            int total = 0;
+            foreach (var amount in Cargo.Values) total += amount;
+            return total;
+        }
+    }
+
+    /// <summary>Max cargo capacity = ship base + part bonuses.</summary>
+    public int MaxCargo => (int)(CurrentShipType.BaseCargo + GetCombinedStats().CargoCapacity);
+
+    /// <summary>Remaining cargo space.</summary>
+    public int CargoFree => MaxCargo - CargoUsed;
+
+    /// <summary>Add resources to cargo. Returns actual amount added (clamped to available space).</summary>
+    public int AddCargo(ResourceType resource, int amount)
+    {
+        int space = CargoFree;
+        int toAdd = Math.Min(amount, space);
+        if (toAdd <= 0) return 0;
+
+        Cargo.TryGetValue(resource, out int current);
+        Cargo[resource] = current + toAdd;
+        return toAdd;
+    }
+
+    /// <summary>Sell all cargo and return credits earned.</summary>
+    public int SellAllCargo()
+    {
+        int total = 0;
+        foreach (var (resource, amount) in Cargo)
+        {
+            total += amount * ResourceCatalog.Get(resource).ValuePerUnit;
+        }
+        Credits += total;
+        Cargo.Clear();
+        return total;
+    }
+
+    /// <summary>Sell a specific resource and return credits earned.</summary>
+    public int SellCargo(ResourceType resource)
+    {
+        if (!Cargo.TryGetValue(resource, out int amount) || amount <= 0) return 0;
+        int earned = amount * ResourceCatalog.Get(resource).ValuePerUnit;
+        Credits += earned;
+        Cargo.Remove(resource);
+        return earned;
+    }
 
     // Vehicle
     public bool HasVehicle { get; set; } = true;   // player starts with a vehicle

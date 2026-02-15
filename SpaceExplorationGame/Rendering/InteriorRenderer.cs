@@ -393,6 +393,7 @@ public static class InteriorRenderer
                     InteractableType.AvatarCustomization => "[E] AVATAR CUSTOMIZATION",
                     InteractableType.VehicleCustomization => "[E] VEHICLE CUSTOMIZATION",
                     InteractableType.ShipDealer => "[E] SHIP DEALER",
+                    InteractableType.CargoTerminal => "[E] SELL CARGO",
                     _ => "[E] INTERACT"
                 };
                 float tw = renderer.MeasureText(prompt, 2f);
@@ -429,6 +430,7 @@ public static class InteriorRenderer
         InteractableType.AvatarCustomization => (100, 255, 180),
         InteractableType.VehicleCustomization => (255, 180, 80),
         InteractableType.ShipDealer => (255, 200, 80),
+        InteractableType.CargoTerminal => (255, 180, 50),
         InteractableType.ExitDoor => (255, 100, 100),
         _ => (200, 200, 200)
     };

@@ -16,18 +16,32 @@ public class AsteroidRenderer : IDisposable
         _texture = GenerateAsteroidTexture(textures);
     }
 
+    /// <summary>Computes the world position of an asteroid at a given time.</summary>
+    public static Vector2 GetAsteroidPosition(MineableAsteroid asteroid, Vector2 center, double globalTime)
+    {
+        float angle = asteroid.BaseAngle + asteroid.Speed * (float)globalTime;
+        return center + new Vector2(MathF.Cos(angle) * asteroid.Radius, MathF.Sin(angle) * asteroid.Radius);
+    }
+
     /// <summary>Renders asteroids orbiting around a center point.</summary>
     public void RenderAsteroids(SpriteRenderer renderer, Camera camera,
-        List<(float BaseAngle, float Radius, float Speed, float Size)> asteroids,
+        List<MineableAsteroid> asteroids,
         Vector2 starCenter, double globalTime)
     {
         float asteroidTime = (float)globalTime;
-        foreach (var (baseAngle, radius, speed, size) in asteroids)
+        foreach (var asteroid in asteroids)
         {
-            float angle = baseAngle + speed * asteroidTime;
-            var pos = starCenter + new Vector2(MathF.Cos(angle) * radius, MathF.Sin(angle) * radius);
+            if (asteroid.Depleted) continue;
+
+            float angle = asteroid.BaseAngle + asteroid.Speed * asteroidTime;
+            var pos = starCenter + new Vector2(MathF.Cos(angle) * asteroid.Radius, MathF.Sin(angle) * asteroid.Radius);
             float rot = angle * 180f / MathF.PI * 2f;
-            renderer.DrawTexture(camera, _texture, pos, (int)size + 4, (int)size + 4, rot);
+
+            // Scale down visual size as HP drops
+            float hpRatio = asteroid.Hp / asteroid.MaxHp;
+            float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
+
+            renderer.DrawTexture(camera, _texture, pos, (int)visualSize, (int)visualSize, rot);
         }
     }
 

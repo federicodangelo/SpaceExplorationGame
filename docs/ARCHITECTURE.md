@@ -25,7 +25,8 @@ SpaceExplorationGame/
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── ShipParts.cs               # Ship types, equipment data model, stats, and part catalog
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
-│   └── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
+│   ├── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
+│   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
 ├── ECS/
 │   ├── Components/
 │   │   └── Components.cs          # All ECS component structs
@@ -215,16 +216,16 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 ### Ship Types
 The game has multiple ship types defined in `ShipTypeCatalog`. Each `ShipType` record specifies the hull's available equipment slots, sprite size, weight multiplier, base hull/fuel values, and buy/sell pricing.
 
-| Ship | Slots | Size | Weight | Base Hull | Base Fuel | Cost | Sell |
-|---|---|---|---|---|---|---|---|
-| Scout (starter) | 4 (Engine, Shield, FTL, Utility) | 32px | 1.0x | 80 | 80 | Free | 200 |
-| Fighter | 5 (Engine, Armor, Shield, Weapon×2) | 32px | 1.1x | 120 | 60 | 1500 | 750 |
-| Freighter | 6 (Engine, Armor, FTL, Utility×2, Weapon) | 48px | 1.4x | 200 | 160 | 3000 | 1500 |
-| Explorer | 7 (All slots) | 40px | 1.2x | 150 | 140 | 5000 | 2500 |
+| Ship | Slots | Size | Weight | Base Hull | Base Fuel | Base Cargo | Cost | Sell |
+|---|---|---|---|---|---|---|---|---|
+| Scout (starter) | 4 (Engine, Shield, FTL, Utility) | 32px | 1.0x | 80 | 80 | 40 | Free | 200 |
+| Fighter | 5 (Engine, Armor, Shield, Weapon×2) | 32px | 1.1x | 120 | 60 | 30 | 1500 | 750 |
+| Freighter | 6 (Engine, Armor, FTL, Utility×2, Weapon) | 48px | 1.4x | 200 | 160 | 120 | 3000 | 1500 |
+| Explorer | 7 (All slots) | 40px | 1.2x | 150 | 140 | 80 | 5000 | 2500 |
 
 **Weight system**: `PlayerData.GetCombinedStats()` divides acceleration and maxSpeed by the ship type's weight factor. Heavier ships are slower.
 
-**Base hull/fuel**: Ship type provides base hull and fuel values. Part bonuses add on top: `MaxHull = BaseHull + PartBonuses`, `MaxFuel = BaseFuel + PartBonuses`.
+**Base hull/fuel/cargo**: Ship type provides base hull, fuel, and cargo values. Part bonuses add on top: `MaxHull = BaseHull + PartBonuses`, `MaxFuel = BaseFuel + PartBonuses`, `MaxCargo = BaseCargo + PartBonuses`.
 
 **Dynamic sprite size**: `SolarSystemState` and `PlanetSurfaceState` read `CurrentShipType.SpriteSize` for rendering. Flame offset and size scale proportionally.
 
@@ -260,6 +261,7 @@ Players can equip and swap ship parts at space stations via the **ShipCustomizat
 | ShieldStrength | Shield | Damage absorption (future combat) |
 | WeaponDamage | Weapon 1/2 | Attack power (future combat) |
 | FuelEfficiency | Utility | Reduces fuel consumption per jump |
+| CargoCapacity | Utility | Bonus cargo capacity for mined resources |
 
 **Ownership model**: Once a part is purchased, the player owns it permanently. Owned parts are stored in `PlayerData.OwnedParts` (inventory). Swapping between owned parts is free — the old part returns to inventory. Players can sell owned (unequipped) parts manually for their sell value.
 
@@ -304,6 +306,31 @@ Players can equip and swap vehicle parts at **Vehicle Customization** terminals 
 **Ownership model**: Same as ship/avatar parts. Stored in `PlayerData.OwnedVehicleParts`. Combined stats via `PlayerData.GetCombinedVehicleStats()`.
 
 **Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceState`, the `VehicleMovementSystem` is created with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction). Falls back to `GameConfig` defaults if a stat is zero.
+
+### Asteroid Mining
+Players can mine asteroids in the solar system view by holding **Space** near an asteroid belt. The mining laser beam originates from the ship and targets the nearest asteroid within range (120 world pixels). Mining DPS equals the ship's combined `WeaponDamage` stat — weapons are dual-use for both combat and mining.
+
+**Resource Types** (defined in `MiningResources.cs`):
+| Resource | Value/Unit | Rarity | Color |
+|---|---|---|---|
+| Iron | 5 | Common (30%) | Brown |
+| Nickel | 8 | Common (25%) | Gray |
+| Ice | 3 | Common (15%) | Light Blue |
+| Gold | 20 | Uncommon (15%) | Gold |
+| Platinum | 35 | Rare (10%) | Silver-White |
+| Crystal | 50 | Rare (5%) | Cyan |
+
+**Asteroid Properties**: Each asteroid has HP (proportional to visual size), a resource type, and a resource amount. When HP reaches zero the asteroid is destroyed and resources are added to the player's cargo hold.
+
+**Cargo System**: The player has a cargo hold with limited capacity. Capacity = `ShipType.BaseCargo` + part bonuses (`CargoCapacity` stat from Utility parts like Cargo Pod/Bay). Cargo is stored in `PlayerData.Cargo` as a dictionary of `ResourceType → int`. The HUD shows current/max cargo at all times in the solar system.
+
+**Mining Beam Visual**: A flickering red laser beam (3 parallel lines) rendered from ship to asteroid with a glow effect at the impact point. Asteroids visually shrink as they take damage.
+
+**Selling Cargo**: Resources can be sold for credits at:
+- **Space Station overlay** — "SELL CARGO" menu option (via `SellCargoOverlay`)
+- **Interior Cargo Terminals** — `InteractableType.CargoTerminal` placed in station trading rooms and settlement markets
+
+**Sell Cargo UI**: Lists all held resources with amounts and credit values. Navigate with Up/Down, sell individual resources with Enter, or sell all at once.
 
 ### Customization UI Pattern
 All three customization overlays (Ship, Avatar, Vehicle) inherit from `CustomizationOverlayBase`, which provides the full two-column UI layout, input handling, equip/buy/sell logic, and rendering. Each part record (`ShipPart`, `AvatarPart`, `VehiclePart`) implements the `ICustomizablePart` interface. Subclasses only supply:
@@ -353,6 +380,7 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - A/D or Left/Right: Rotate ship
 - S/Down: Brake
 - Mouse Scroll: Zoom
+- Space (hold): Fire mining laser at nearest asteroid
 - E: Interact (enter orbit view for planets / dock at station)
 - M: Return to galaxy map
 
@@ -416,6 +444,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Avatar customization system (3 equipment slots, 3 tiers, dynamic walk speed)
 - [x] Vehicle customization system (3 equipment slots, 3 tiers, dynamic vehicle physics)
 - [x] Customization terminals in station interiors (ship, avatar, vehicle)
+- [x] Asteroid mining (mining laser beam, named resources, cargo system, sell at stations/terminals)
 
 - [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, Station, Asteroid, Planet, Star renderers own their textures)
 - [x] Scene renderer extraction (SolarSystemRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
@@ -427,4 +456,3 @@ dotnet run -- 12345  # with specific galaxy seed
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
 - [ ] FTL travel animation
-- [ ] Asteroid mining/collection

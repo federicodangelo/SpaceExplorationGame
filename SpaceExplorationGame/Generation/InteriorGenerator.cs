@@ -91,7 +91,8 @@ public enum InteractableType
     ShipCustomization,
     AvatarCustomization,
     VehicleCustomization,
-    ShipDealer
+    ShipDealer,
+    CargoTerminal
 }
 
 /// <summary>
@@ -242,6 +243,16 @@ public static class InteriorGenerator
         });
         data.Tiles[trading.CenterX, trading.Y + 1] = InteriorTileType.Console;
 
+        // Cargo terminal (sell mined resources) - next to trade terminal
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "CARGO TERMINAL",
+            Type = InteractableType.CargoTerminal,
+            TileX = trading.CenterX + 2,
+            TileY = trading.Y + 1
+        });
+        data.Tiles[trading.CenterX + 2, trading.Y + 1] = InteriorTileType.Console;
+
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "REPAIR STATION",
@@ -384,6 +395,16 @@ public static class InteriorGenerator
             TileY = market.Y + 1
         });
         data.Tiles[market.CenterX, market.Y + 1] = InteriorTileType.Console;
+
+        // Cargo terminal (sell mining resources)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "CARGO TERMINAL",
+            Type = InteractableType.CargoTerminal,
+            TileX = market.CenterX + 2,
+            TileY = market.Y + 1
+        });
+        data.Tiles[market.CenterX + 2, market.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
