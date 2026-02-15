@@ -47,8 +47,19 @@ SpaceExplorationGame/
 │   └── InteriorGenerator.cs       # Station/settlement interior layouts
 ├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
-│   ├── TextureManager.cs          # Procedural pixel art texture generation
-│   └── MiniBitmapFont.cs          # Built-in 5x8 pixel font
+│   ├── TextureManager.cs          # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
+│   ├── MiniBitmapFont.cs          # Built-in 5x8 pixel font
+│   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
+│   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
+│   ├── SpaceshipRenderer.cs       # Player ship textures & rendering (IDisposable, owns textures per type)
+│   ├── StationRenderer.cs         # Space station texture & rendering (IDisposable, owns texture)
+│   ├── AsteroidRenderer.cs        # Asteroid texture & rendering (IDisposable, owns texture)
+│   ├── PlanetRenderer.cs          # Planet/moon texture factory & rendering (IDisposable, tracks textures)
+│   ├── StarRenderer.cs            # Star texture factory & rendering (IDisposable, tracks textures)
+│   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, HUD, panels)
+│   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements, HUD)
+│   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels, minimap)
+│   └── SettlementRenderer.cs      # Settlement rendering helper
 ├── States/
 │   ├── MainMenuState.cs           # Starting point selection menu
 │   ├── SolarSystemState.cs        # Space flight within a solar system + overlays
@@ -166,15 +177,39 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 - **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
 
 ### Rendering
-The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support. The `TextureManager` generates all game sprites procedurally at startup as SDL textures from pixel arrays:
-- **Ship**: Triangular pixel-art sprite with cockpit highlight and engine pods
+The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
+
+**TextureManager** is a lightweight utility class that wraps the SDL renderer handle and provides two public methods used by all entity renderers:
+- `CreateTextureFromPixels(byte[] pixels, int width, int height)` — creates an SDL texture from raw RGBA pixel data
+- `SetPixelBlock(...)` — static helper to fill rectangular pixel regions
+
+**Entity Renderers** follow a consistent pattern: each is an `IDisposable` class that receives a `TextureManager` in its constructor, generates its own textures procedurally, owns them for their lifetime, and provides `Render()`/rendering methods. They are all owned by `Game` and disposed on shutdown.
+
+| Renderer | Texture Ownership | Key Methods |
+|---|---|---|
+| **AvatarRenderer** | Singleton texture (16×16 humanoid) | `Render(renderer, camera, position)` |
+| **VehicleRenderer** | Singleton texture (20×20 rover) | `Render(renderer, camera, position, rotation, isMounted)` |
+| **SpaceshipRenderer** | Per-type solar + landed textures, flame texture | `RenderFlying(...)`, `RenderLanded(...)` |
+| **StationRenderer** | Singleton texture (32×32 station) | `RenderStations(renderer, camera, ecsWorld, entities, globalTime)` |
+| **AsteroidRenderer** | Singleton texture (12×12 rock) | `RenderAsteroids(renderer, camera, asteroids, center, globalTime)` |
+| **PlanetRenderer** | Factory — tracks all created textures | `CreateTexture(size, r, g, b, seed)`, `RenderPlanetsAndMoons(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
+| **StarRenderer** | Factory — tracks all created textures | `CreateTexture(size, r, g, b)`, `Render(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
+
+**Scene Renderers** are static helper classes that handle non-entity rendering (HUD, panels, background elements):
+- **SolarSystemRenderer** — background stars (parallax), orbit lines, HUD, interaction panels (planet/moon/station)
+- **PlanetSurfaceRenderer** — terrain details, settlement markers, surface HUD
+- **InteriorRenderer** — tiles, room labels, NPCs, interactable markers, minimap
+- **SettlementRenderer** — settlement-specific rendering
+
+**Procedural texture descriptions:**
+- **Ship (solar)**: 4 variants (Scout/Fighter/Freighter/Explorer) — triangular/angular pixel-art with cockpit highlights and engine pods
+- **Ship (landed)**: Oval hull with cockpit and landing struts, color-matched per type
 - **Engine flame**: Orange-yellow gradient cone rendered behind the ship when thrusting
 - **Planets/moons**: Sphere-shaded textures with diffuse + specular lighting, surface noise, and edge darkening — unique per body
 - **Stars**: Radial gradient glow from white core to star color
 - **Stations**: Cross-shaped design with central hub, outer ring, solar panels, and docking indicators; slowly rotates
 - **Asteroids**: Irregular rocky blobs with angular distortion
 - **Avatar**: Tiny humanoid in green suit with blue visor
-- **Landed ship**: Oval hull with cockpit and landing struts
 - **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
 
 ### Ship Types
@@ -381,6 +416,9 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Avatar customization system (3 equipment slots, 3 tiers, dynamic walk speed)
 - [x] Vehicle customization system (3 equipment slots, 3 tiers, dynamic vehicle physics)
 - [x] Customization terminals in station interiors (ship, avatar, vehicle)
+
+- [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, Station, Asteroid, Planet, Star renderers own their textures)
+- [x] Scene renderer extraction (SolarSystemRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
 
 ## TODO / Next Steps
 - [ ] Mission system (acceptance, tracking, completion)
