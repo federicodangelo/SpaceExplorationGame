@@ -341,16 +341,6 @@ public class InteriorState : GameState
                     renderer.DrawRect(camera, worldPos, 2, GameConfig.TileSize - 6, 120, 100, 60);
                 }
 
-                // Window transparency effect
-                if (tile == InteriorTileType.Window)
-                {
-                    float shimmer = MathF.Sin((float)game.GlobalTime * 2f + x * 0.5f) * 0.2f + 0.5f;
-                    byte wr = (byte)(80 * shimmer);
-                    byte wg = (byte)(120 * shimmer);
-                    byte wb = (byte)(180 * shimmer);
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 4, GameConfig.TileSize - 4, wr, wg, wb, 150);
-                }
-
                 // Landing pad markings
                 if (tile == InteriorTileType.LandingPad)
                 {

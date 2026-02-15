@@ -11,7 +11,6 @@ public enum InteriorTileType
     DoorOpen,    // Open doorway (walkable)
     Console,     // Interactive terminal (walkable, interactable)
     Crate,       // Storage crate (impassable decoration)
-    Window,      // Transparent wall section (impassable)
     FloorAccent, // Decorative floor (walkable, different color)
     LandingPad,  // Spawn point floor (walkable)
     StreetTile,  // Settlement outdoor walkway
@@ -222,16 +221,13 @@ public static class InteriorGenerator
         PlaceCrates(data, rng, cargo, 6);
 
         // Add consoles in command center
-        PlaceConsoles(data, command, 3);
+        PlaceConsoles(data, command, 1);
 
         // Add accent floors in trading post
         for (int x = trading.X + 2; x < trading.X + trading.Width - 2; x++)
             for (int y = trading.Y + 2; y < trading.Y + trading.Height - 2; y++)
                 if (data.Tiles[x, y] == InteriorTileType.Floor)
                     data.Tiles[x, y] = InteriorTileType.FloorAccent;
-
-        // Add windows to command center
-        PlaceWindows(data, command);
 
         // Spawn point
         data.SpawnPoint = (docking.CenterX, docking.CenterY);
@@ -462,7 +458,6 @@ public static class InteriorGenerator
             InteriorTileType.DoorOpen => (80, 80, 60),
             InteriorTileType.Console => (30, 80, 120),
             InteriorTileType.Crate => (100, 80, 50),
-            InteriorTileType.Window => (60, 80, 120),
             InteriorTileType.FloorAccent => (70, 65, 80),
             InteriorTileType.LandingPad => (50, 55, 65),
             InteriorTileType.StreetTile => (55, 50, 45),
@@ -641,16 +636,6 @@ public static class InteriorGenerator
             int cy = room.Y + 1;
             if (tx_InBounds(data, cx, cy))
                 data.Tiles[cx, cy] = InteriorTileType.Console;
-        }
-    }
-
-    private static void PlaceWindows(InteriorData data, InteriorRoom room)
-    {
-        // Place windows along the top wall
-        for (int x = room.X + 2; x < room.X + room.Width - 2; x += 2)
-        {
-            if (tx_InBounds(data, x, room.Y) && data.Tiles[x, room.Y] == InteriorTileType.Wall)
-                data.Tiles[x, room.Y] = InteriorTileType.Window;
         }
     }
 
