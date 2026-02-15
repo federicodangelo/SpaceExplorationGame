@@ -1,22 +1,20 @@
 using System.Numerics;
-using Arch.Core;
-using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.UI;
-using SpaceExplorationGame.UI.Overlays;
+using SpaceExplorationGame.States;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
-/// Galaxy map state: Shows all star systems, player can select and travel to them.
+/// Full-screen overlay that shows the galaxy map on top of the solar system.
+/// The player can browse star systems and travel to them (spending fuel).
+/// Opened with M key from SolarSystemState.
 /// </summary>
-public class GalaxyMapState : GameState
+public class GalaxyMapOverlay
 {
-    public override GameStateType Type => GameStateType.GalaxyMap;
+    public bool IsOpen { get; private set; }
 
     private List<StarSystemData> _starSystems = [];
     private int _selectedSystemIndex = -1;
@@ -32,56 +30,34 @@ public class GalaxyMapState : GameState
     // Double-click detection
     private float _lastClickTime;
     private int _lastClickSystem = -1;
-    private const float DoubleClickTime = 0.4f; // seconds
+    private const float DoubleClickTime = 0.4f;
 
-    // Cached star textures for the galaxy map
+    // Cached star textures
     private List<nint> _starTextures = [];
 
     // Nebula decorations
     private List<(float X, float Y, float Radius, byte R, byte G, byte B)> _nebulae = [];
 
-    // Pause menu overlay
-    private readonly PauseMenuOverlay _pauseOverlay = new();
+    // Saved camera state from the solar system (restored on close)
+    private Vector2 _savedCameraPos;
+    private float _savedCameraZoom;
 
-    public override void Enter(Game game)
+    /// <summary>Open the galaxy map overlay.</summary>
+    public void Open(Game game)
     {
-        // Generate galaxy
+        IsOpen = true;
+
+        // Save solar system camera
+        _savedCameraPos = game.Camera.Position;
+        _savedCameraZoom = game.Camera.Zoom;
+
+        // Generate galaxy data
         var galaxyRng = game.Seeds.GetGalaxyRandom();
         _starSystems = GalaxyGenerator.Generate(galaxyRng);
 
-        // Center camera on galaxy
-        float centerX = GameConfig.GalaxyWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.GalaxyHeight * GameConfig.TileSize / 2f;
-        game.Camera.Position = new Vector2(centerX, centerY);
-        game.Camera.Zoom = 0.5f;
-
-        // Create star system entities
-        foreach (var system in _starSystems)
-        {
-            game.EcsWorld.Create(
-                new Transform(system.GalaxyPosition),
-                new ECS.Components.Sprite
-                {
-                    Width = (int)(system.StarRadius * 2),
-                    Height = (int)(system.StarRadius * 2),
-                    R = system.StarR,
-                    G = system.StarG,
-                    B = system.StarB,
-                    A = 255,
-                    UseColor = true
-                },
-                new StarSystemMarker
-                {
-                    SystemIndex = system.Index,
-                    Name = system.Name,
-                    StarClass = system.StarClass
-                },
-                new Label { Text = system.Name, OffsetY = (int)(system.StarRadius + 12) }
-            );
-        }
-
         // Generate background stars
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xDEADBEEF);
+        _backgroundStars.Clear();
         for (int i = 0; i < 500; i++)
         {
             _backgroundStars.Add((
@@ -91,8 +67,9 @@ public class GalaxyMapState : GameState
             ));
         }
 
-        // Generate nebula clouds for visual depth
+        // Generate nebula clouds
         var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
+        _nebulae.Clear();
         for (int i = 0; i < 8; i++)
         {
             byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
@@ -107,7 +84,8 @@ public class GalaxyMapState : GameState
             ));
         }
 
-        // Create star textures for each system
+        // Create star textures
+        foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
         _starTextures.Clear();
         foreach (var system in _starSystems)
         {
@@ -116,43 +94,41 @@ public class GalaxyMapState : GameState
                 texSize, system.StarR, system.StarG, system.StarB));
         }
 
-        // If player has a current system, select it
+        // Select current system and center camera on it
+        _selectedSystemIndex = -1;
+        _hoveredSystemIndex = -1;
+        _lastClickSystem = -1;
+        _isPanning = false;
+
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
         {
             _selectedSystemIndex = game.Player.CurrentStarSystemIndex;
+            game.Camera.Position = _starSystems[_selectedSystemIndex].GalaxyPosition;
         }
         else
         {
-            // Start at a random system near the center
-            _selectedSystemIndex = 0;
-            float bestDist = float.MaxValue;
-            for (int i = 0; i < _starSystems.Count; i++)
-            {
-                float dx = _starSystems[i].GalaxyPosition.X - centerX;
-                float dy = _starSystems[i].GalaxyPosition.Y - centerY;
-                float dist = dx * dx + dy * dy;
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    _selectedSystemIndex = i;
-                }
-            }
-            game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
+            float centerX = GameConfig.GalaxyWidth * GameConfig.TileSize / 2f;
+            float centerY = GameConfig.GalaxyHeight * GameConfig.TileSize / 2f;
+            game.Camera.Position = new Vector2(centerX, centerY);
         }
+        game.Camera.Zoom = 0.5f;
     }
 
-    public override void Exit(Game game)
+    /// <summary>Close the overlay and restore the solar system camera.</summary>
+    public void Close(Game game)
     {
+        IsOpen = false;
+
         // Destroy cached textures
         foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
         _starTextures.Clear();
         _nebulae.Clear();
         _starSystems.Clear();
         _backgroundStars.Clear();
-    }
 
-    public override void HandleEvent(Game game, SDL.Event e)
-    {
+        // Restore solar system camera
+        game.Camera.Position = _savedCameraPos;
+        game.Camera.Zoom = _savedCameraZoom;
     }
 
     /// <summary>Calculate distance between two star systems in world pixels.</summary>
@@ -199,25 +175,42 @@ public class GalaxyMapState : GameState
         int current = game.Player.CurrentStarSystemIndex;
         if (_selectedSystemIndex == current)
         {
-            game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+            // Already here — just close the overlay
+            Close(game);
         }
         else if (IsSystemReachable(game, _selectedSystemIndex))
         {
             float fuelCost = GetFuelCost(current, _selectedSystemIndex);
             game.Player.TrySpendFuel(fuelCost);
             game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
-            game.ChangeState(new SolarSystemState(_starSystems[_selectedSystemIndex]));
+            var targetSystem = _starSystems[_selectedSystemIndex];
+            // Clean up overlay resources before changing state
+            foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
+            _starTextures.Clear();
+            _nebulae.Clear();
+            _starSystems.Clear();
+            _backgroundStars.Clear();
+            IsOpen = false;
+            game.ChangeState(new SolarSystemState(targetSystem));
         }
     }
 
-    public override void Update(Game game, float dt)
+    /// <summary>
+    /// Update the galaxy map overlay. Returns true if overlay consumed input.
+    /// </summary>
+    public bool Update(Game game, float dt)
     {
+        if (!IsOpen) return false;
+
         var input = game.Input;
         var camera = game.Camera;
 
-        // Pause menu overlay
-        if (_pauseOverlay.Update(game, input))
-            return;
+        // Close on M or Escape
+        if (input.IsKeyPressed(SDL.Scancode.M) || input.IsKeyPressed(SDL.Scancode.Escape))
+        {
+            Close(game);
+            return true;
+        }
 
         // Camera movement with WASD/arrows
         float camSpeed = 500f / camera.Zoom;
@@ -247,7 +240,7 @@ public class GalaxyMapState : GameState
         if (input.IsMouseDown(1))
         {
             Vector2 delta = currentMouse - _lastMouseScreen;
-            if (delta.LengthSquared() > 4f) // moved more than 2px
+            if (delta.LengthSquared() > 4f)
             {
                 _isPanning = true;
                 camera.Position -= delta / camera.Zoom;
@@ -258,7 +251,7 @@ public class GalaxyMapState : GameState
         // Mouse hover check
         var mouseWorld = camera.ScreenToWorld(currentMouse);
         _hoveredSystemIndex = -1;
-        float bestDist = 30f / camera.Zoom; // 30 pixel hit radius
+        float bestDist = 30f / camera.Zoom;
         bestDist *= bestDist;
 
         for (int i = 0; i < _starSystems.Count; i++)
@@ -272,7 +265,7 @@ public class GalaxyMapState : GameState
             }
         }
 
-        // Click to select / double-click to travel (on mouse release, only if not panning)
+        // Click to select / double-click to travel
         if (input.IsMouseReleased(1))
         {
             if (!_isPanning && _hoveredSystemIndex >= 0)
@@ -280,14 +273,12 @@ public class GalaxyMapState : GameState
                 float now = (float)game.GlobalTime;
                 if (_hoveredSystemIndex == _lastClickSystem && (now - _lastClickTime) < DoubleClickTime)
                 {
-                    // Double-click: travel to system
                     _selectedSystemIndex = _hoveredSystemIndex;
                     TravelToSelected(game);
                     _lastClickSystem = -1;
                 }
                 else
                 {
-                    // Single click: select
                     _selectedSystemIndex = _hoveredSystemIndex;
                     _lastClickTime = now;
                     _lastClickSystem = _hoveredSystemIndex;
@@ -295,7 +286,6 @@ public class GalaxyMapState : GameState
             }
             else if (!_isPanning)
             {
-                // Clicked on empty space, reset double-click
                 _lastClickSystem = -1;
             }
             _isPanning = false;
@@ -306,12 +296,20 @@ public class GalaxyMapState : GameState
         {
             TravelToSelected(game);
         }
+
+        return true;
     }
 
-    public override void Render(Game game)
+    /// <summary>Render the galaxy map overlay.</summary>
+    public void Render(Game game)
     {
+        if (!IsOpen) return;
+
         var renderer = game.SpriteRenderer;
         var camera = game.Camera;
+
+        // Dark background to cover the solar system
+        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 240);
 
         // Draw background stars
         foreach (var (x, y, brightness) in _backgroundStars)
@@ -340,10 +338,8 @@ public class GalaxyMapState : GameState
         {
             var playerPos = _starSystems[currentSys].GalaxyPosition;
             float ftlRange = GetFtlRange(game);
-            // Max FTL range circle
             renderer.DrawCircle(camera, playerPos, ftlRange,
                 40, 80, 40, 200, 64);
-            // Fuel-limited range circle (may be smaller than FTL max)
             float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
             if (fuelRange < ftlRange)
             {
@@ -366,26 +362,22 @@ public class GalaxyMapState : GameState
             float texSize = radius * 4;
             if (isHovered) texSize *= 1.3f;
 
-            // Alpha based on reachability
             byte alpha = 255;
             if (!inRange) alpha = 80;
             else if (!reachable && !isCurrentSystem) alpha = 160;
 
-            // Draw star texture
             if (i < _starTextures.Count)
             {
                 renderer.DrawTexture(camera, _starTextures[i], sys.GalaxyPosition,
                     (int)texSize, (int)texSize, 0f, alpha);
             }
 
-            // Red tint overlay for not-enough-fuel stars
             if (inRange && !reachable && !isCurrentSystem)
             {
                 renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f,
                     255, 40, 40, 60);
             }
 
-            // Selection ring
             if (isSelected)
             {
                 byte ringR = reachable || isCurrentSystem ? (byte)255 : (byte)255;
@@ -394,7 +386,6 @@ public class GalaxyMapState : GameState
                 renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, ringR, ringG, ringB);
             }
 
-            // Draw name label
             float textScale = Math.Max(1f, camera.Zoom);
             byte labelBright = (byte)(inRange ? 200 : 80);
             renderer.DrawText(camera,
@@ -443,7 +434,7 @@ public class GalaxyMapState : GameState
             if (isCurrentSystem)
             {
                 renderer.DrawTextScreen(10, panelY + 95, "YOU ARE HERE", 100, 255, 200, 1.5f);
-                renderer.DrawTextScreen(10, panelY + 115, "[ENTER/DBLCLICK] ENTER SYSTEM", 100, 255, 100, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, "[ENTER/DBLCLICK] CLOSE MAP", 100, 255, 100, 1.5f);
             }
             else
             {
@@ -470,9 +461,6 @@ public class GalaxyMapState : GameState
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", 180, 180, 180, 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "ESC: MENU", 180, 180, 180, 1.5f);
-
-        // Pause menu overlay
-        _pauseOverlay.Render(renderer);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "M/ESC: CLOSE MAP", 180, 180, 180, 1.5f);
     }
 }

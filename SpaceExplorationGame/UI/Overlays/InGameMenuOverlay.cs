@@ -6,26 +6,26 @@ using SpaceExplorationGame.States;
 namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
-/// Overlay for the in-game pause menu. Provides Resume and Main Menu options.
-/// Can be reused by any game state that needs a pause/escape menu.
+/// Overlay for the in-game menu. Provides Resume and Main Menu options.
+/// Can be reused by any game state that needs an escape menu.
 /// </summary>
-public class PauseMenuOverlay
+public class InGameMenuOverlay
 {
     public bool IsOpen { get; private set; }
 
-    private enum PauseMenuOption
+    private enum InGameMenuOption
     {
         Resume,
         MainMenu
     }
 
-    private static readonly MenuOption<PauseMenuOption>[] PauseMenuOptions =
+    private static readonly MenuOption<InGameMenuOption>[] InGameMenuOptions =
     [
-        new(PauseMenuOption.Resume, "RESUME"),
-        new(PauseMenuOption.MainMenu, "MAIN MENU")
+        new(InGameMenuOption.Resume, "RESUME"),
+        new(InGameMenuOption.MainMenu, "MAIN MENU")
     ];
 
-    private readonly MenuWidget<PauseMenuOption> _pauseMenu = new(PauseMenuOptions)
+    private readonly MenuWidget<InGameMenuOption> _menu = new(InGameMenuOptions)
     {
         CenterAlign = true,
         ItemHeight = 45f,
@@ -39,7 +39,7 @@ public class PauseMenuOverlay
 
     public void Open()
     {
-        _pauseMenu.SelectedIndex = 0;
+        _menu.SelectedIndex = 0;
         IsOpen = true;
     }
 
@@ -52,7 +52,7 @@ public class PauseMenuOverlay
     }
 
     /// <summary>
-    /// Process input for the pause menu overlay. Returns true if the overlay consumed input
+    /// Process input for the in-game menu overlay. Returns true if the overlay consumed input
     /// (blocks underlying state controls). Handles state transitions internally.
     /// </summary>
     public bool Update(Game game, InputManager input)
@@ -70,16 +70,16 @@ public class PauseMenuOverlay
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
         float menuW = 300f;
 
-        var confirmed = _pauseMenu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
-        if (confirmed == PauseMenuOption.Resume)
+        var confirmed = _menu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
+        if (confirmed == InGameMenuOption.Resume)
             Close();
-        else if (confirmed == PauseMenuOption.MainMenu)
+        else if (confirmed == InGameMenuOption.MainMenu)
             game.ChangeState(new MainMenuState());
 
         return true;
     }
 
-    /// <summary>Render the pause menu overlay.</summary>
+    /// <summary>Render the in-game menu overlay.</summary>
     public void Render(SpriteRenderer renderer)
     {
         if (!IsOpen) return;
@@ -96,14 +96,14 @@ public class PauseMenuOverlay
         renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, 20, 24, 50, 200);
 
         // Title
-        string pauseTitle = "PAUSED";
+        string title = "MENU";
         float ptScale = 3f;
-        float ptW = renderer.MeasureText(pauseTitle, ptScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, pauseTitle, 200, 210, 255, ptScale);
+        float ptW = renderer.MeasureText(title, ptScale);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, 200, 210, 255, ptScale);
 
         // Options
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
         float menuW = 300f;
-        _pauseMenu.Render(renderer, GameConfig.WindowWidth / 2f - menuW / 2f, menuStartY, menuW);
+        _menu.Render(renderer, GameConfig.WindowWidth / 2f - menuW / 2f, menuStartY, menuW);
     }
 }

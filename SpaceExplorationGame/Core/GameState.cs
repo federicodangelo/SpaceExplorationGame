@@ -6,7 +6,6 @@ namespace SpaceExplorationGame.Core;
 public enum GameStateType
 {
     MainMenu,
-    GalaxyMap,
     SolarSystem,
     PlanetLanding,
     PlanetSurface,

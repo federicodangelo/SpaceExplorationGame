@@ -7,6 +7,7 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays;
 using SpaceExplorationGame.UI.Overlays.Customization;
 
 namespace SpaceExplorationGame.States;
@@ -46,6 +47,13 @@ public class SolarSystemState : GameState
     private readonly SpaceStationOverlay _stationOverlay = new();
     private readonly SpaceStationData? _autoOpenStation;
 
+    // Galaxy map overlay
+    private readonly GalaxyMapOverlay _galaxyMapOverlay = new();
+    private readonly bool _autoOpenGalaxyMap;
+
+    // In-game menu overlay
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
+
     // ECS Systems
     private OrbitSystem _orbitSystem = null!;
     private VelocitySystem _velocitySystem = null!;
@@ -58,10 +66,11 @@ public class SolarSystemState : GameState
     private List<nint> _planetTextures = [];
     private List<List<nint>> _moonTextures = [];
 
-    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null)
+    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null, bool autoOpenGalaxyMap = false)
     {
         _starSystem = starSystem;
         _autoOpenStation = autoOpenStation;
+        _autoOpenGalaxyMap = autoOpenGalaxyMap;
     }
 
     public override void Enter(Game game)
@@ -337,6 +346,12 @@ public class SolarSystemState : GameState
         {
             _stationOverlay.Open(_starSystem, _autoOpenStation, game);
         }
+
+        // Auto-open galaxy map overlay if requested (e.g. from main menu 'Galaxy Map')
+        if (_autoOpenGalaxyMap)
+        {
+            _galaxyMapOverlay.Open(game);
+        }
     }
 
     public override void Exit(Game game)
@@ -369,6 +384,19 @@ public class SolarSystemState : GameState
     {
         var input = game.Input;
         var camera = game.Camera;
+
+        // In-game menu overlay
+        if (_inGameMenuOverlay.Update(game, input))
+            return;
+
+        // Galaxy map overlay takes priority
+        if (_galaxyMapOverlay.IsOpen)
+        {
+            _galaxyMapOverlay.Update(game, dt);
+            // Still update orbits in the background
+            _orbitSystem.Update(in dt);
+            return;
+        }
 
         // Station overlay takes priority over all solar system input
         if (_stationOverlay.IsOpen)
@@ -471,10 +499,10 @@ public class SolarSystemState : GameState
             }
         }
 
-        // Back to galaxy map
+        // Open galaxy map overlay
         if (input.IsKeyPressed(SDL.Scancode.M))
         {
-            game.ChangeState(new GalaxyMapState());
+            _galaxyMapOverlay.Open(game);
         }
     }
 
@@ -686,5 +714,11 @@ public class SolarSystemState : GameState
 
         // Station overlay drawn on top of everything
         _stationOverlay.Render(game);
+
+        // Galaxy map overlay drawn on top of everything
+        _galaxyMapOverlay.Render(game);
+
+        // In-game menu overlay drawn on top of everything
+        _inGameMenuOverlay.Render(renderer);
     }
 }

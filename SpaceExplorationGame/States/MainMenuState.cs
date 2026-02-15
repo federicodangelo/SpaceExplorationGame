@@ -32,8 +32,8 @@ public class MainMenuState : GameState
 
     private static readonly MenuOption<StartOption>[] MenuOptions =
     [
-        new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
         new(StartOption.StarSystem, "STAR SYSTEM", "Start inside a random star system, ready to explore"),
+        new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
         new(StartOption.SpaceStation, "SPACE STATION", "Dock at a random space station"),
         new(StartOption.SpaceStationInside, "INSIDE SPACE STATION", "Walk around inside a random space station"),
         new(StartOption.PlanetSurface, "PLANET SURFACE", "Land directly on a random planet's surface"),
@@ -107,8 +107,13 @@ public class MainMenuState : GameState
         switch (option)
         {
             case StartOption.GalaxyMap:
-                game.ChangeState(new GalaxyMapState());
+            {
+                // Start in a random solar system with the galaxy map overlay auto-opened
+                var system = PickRandomSystem(game);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.ChangeState(new SolarSystemState(system, autoOpenGalaxyMap: true));
                 break;
+            }
 
             case StartOption.StarSystem:
             {

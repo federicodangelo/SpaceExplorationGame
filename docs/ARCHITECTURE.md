@@ -51,14 +51,14 @@ SpaceExplorationGame/
 │   └── MiniBitmapFont.cs          # Built-in 5x8 pixel font
 ├── States/
 │   ├── MainMenuState.cs           # Starting point selection menu
-│   ├── GalaxyMapState.cs          # Galaxy overview with star system selection
-│   ├── SolarSystemState.cs        # Space flight within a solar system + station overlay
+│   ├── SolarSystemState.cs        # Space flight within a solar system + overlays
 │   ├── PlanetLandingState.cs      # Orbital landing site selection
 │   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
 │   └── InteriorState.cs           # Walkable station/settlement interiors
 └── UI/
     ├── MenuWidget.cs              # Reusable scrollable menu widget
     └── Overlays/
+        ├── GalaxyMapOverlay.cs        # Galaxy map overlay (rendered atop SolarSystem)
         ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
         ├── RepairOverlay.cs           # Ship repair overlay
         ├── MissionOverlay.cs          # Mission board overlay
@@ -106,8 +106,8 @@ The game uses a state machine pattern. Each state (`GameState` subclass) owns it
 
 States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
-- **GalaxyMapState**: Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars.
-- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
+- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
+- **GalaxyMapOverlay** (overlay, not a game state): Full-screen overlay drawn over SolarSystemState. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape.
 - **SpaceStationOverlay** (overlay, not a game state): Semi-transparent menu drawn over SolarSystemState when docked. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
 - **PlanetSurfaceState**: Tilemap exploration with per-tile brightness variation and terrain detail sprites (trees, rocks, water shimmer). Player avatar walks on generated terrain. Lands at the site chosen in PlanetLandingState (or map center by default). Press V to mount/dismount a rover vehicle for faster travel. Must dismount before entering settlements or boarding the ship. Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Uses PlayerMovementSystem (with terrain collision), CameraFollowSystem, and TileMapRenderer.
@@ -221,14 +221,14 @@ Players can equip and swap ship parts at space stations via the **ShipCustomizat
 | RotationSpeed | Engine | Ship turning rate in SolarSystemState |
 | MaxHull | Armor | Hull capacity (future combat) |
 | MaxFuel | Utility | Fuel tank size, extends range |
-| FtlRange | FTL Drive | Maximum FTL jump distance in GalaxyMapState |
+| FtlRange | FTL Drive | Maximum FTL jump distance in GalaxyMapOverlay |
 | ShieldStrength | Shield | Damage absorption (future combat) |
 | WeaponDamage | Weapon 1/2 | Attack power (future combat) |
 | FuelEfficiency | Utility | Reduces fuel consumption per jump |
 
 **Ownership model**: Once a part is purchased, the player owns it permanently. Owned parts are stored in `PlayerData.OwnedParts` (inventory). Swapping between owned parts is free — the old part returns to inventory. Players can sell owned (unequipped) parts manually for their sell value.
 
-**How combined stats work**: `PlayerData.GetCombinedStats()` sums the stats of all equipped parts, then divides acceleration/maxSpeed by the ship type's weight factor. SolarSystemState reads acceleration/maxSpeed/rotationSpeed each frame. GalaxyMapState reads FTL range for jump distance and range circle. `TrySpendFuel()` applies fuel efficiency.
+**How combined stats work**: `PlayerData.GetCombinedStats()` sums the stats of all equipped parts, then divides acceleration/maxSpeed by the ship type's weight factor. SolarSystemState reads acceleration/maxSpeed/rotationSpeed each frame. GalaxyMapOverlay reads FTL range for jump distance and range circle. `TrySpendFuel()` applies fuel efficiency.
 
 **UI**: Two-column overlay — left column lists equipped slots, right column shows available parts for the selected slot. Parts show status tags: [EQUIPPED], [OWNED] (free to equip), or a credit cost (must buy). Stat comparison shown for selected parts (green = better, red = worse). Press Enter to equip/buy, X to sell owned parts.
 

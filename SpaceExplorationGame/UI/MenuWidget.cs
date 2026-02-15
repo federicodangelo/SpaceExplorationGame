@@ -12,7 +12,7 @@ public record struct MenuOption<T>(T Value, string Label, string? Description = 
 /// <summary>
 /// Reusable menu widget that handles keyboard / mouse navigation and rendering.
 /// Generic over an enum type <typeparamref name="T"/> for type-safe option handling.
-/// Used by main menu, pause menu, station menu, service overlays, etc.
+/// Used by main menu, in-game menu, station menu, service overlays, etc.
 /// </summary>
 public class MenuWidget<T> where T : struct, Enum
 {
