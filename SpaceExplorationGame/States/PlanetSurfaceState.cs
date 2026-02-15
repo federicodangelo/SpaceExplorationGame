@@ -95,7 +95,7 @@ public class PlanetSurfaceState : GameState
         _movementSystem.CanMoveTo = MakeTerrainCollisionCheck();
         _movementSystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
         _cameraFollowSystem.Initialize();
 
         // Camera
@@ -166,6 +166,13 @@ public class PlanetSurfaceState : GameState
                     planet: _planet, settlement: _nearSettlement));
                 return;
             }
+        }
+
+        // Camera zoom (handled per-frame so scroll events aren't missed)
+        if (input.MouseWheelY != 0)
+        {
+            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
+            game.Camera.ClampZoom();
         }
     }
 

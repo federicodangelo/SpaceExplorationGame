@@ -106,7 +106,7 @@ public class InteriorState : GameState
         };
         _movementSystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
         _cameraFollowSystem.Initialize();
 
         // Camera setup
@@ -181,6 +181,13 @@ public class InteriorState : GameState
                 _dialogueNpc = _nearestNpc;
                 _dialogueLine = 0;
             }
+        }
+
+        // Camera zoom (handled per-frame so scroll events aren't missed)
+        if (input.MouseWheelY != 0)
+        {
+            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
+            game.Camera.ClampZoom();
         }
     }
 

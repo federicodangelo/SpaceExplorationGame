@@ -13,14 +13,12 @@ namespace SpaceExplorationGame.ECS.Systems;
 public partial class CameraFollowSystem : BaseSystem<World, float>
 {
     private readonly Camera _camera;
-    private readonly InputManager _input;
     private readonly float _lerpSpeed;
 
-    public CameraFollowSystem(World world, Camera camera, InputManager input, float lerpSpeed = 5f)
+    public CameraFollowSystem(World world, Camera camera, float lerpSpeed = 5f)
         : base(world)
     {
         _camera = camera;
-        _input = input;
         _lerpSpeed = lerpSpeed;
     }
 
@@ -29,11 +27,5 @@ public partial class CameraFollowSystem : BaseSystem<World, float>
     public void FollowPlayer(ref Transform transform, [Data] float dt)
     {
         _camera.LerpTo(transform.Position, _lerpSpeed * dt);
-
-        if (_input.MouseWheelY != 0)
-        {
-            _camera.Zoom += _input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            _camera.ClampZoom();
-        }
     }
 }

@@ -316,7 +316,7 @@ public class SolarSystemState : GameState
         _velocitySystem = new VelocitySystem(game.EcsWorld);
         _velocitySystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera, game.Input);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
         _cameraFollowSystem.Initialize();
 
         _labelRenderSystem = new LabelRenderSystem(game.EcsWorld, game.SpriteRenderer, game.Camera);
@@ -443,6 +443,13 @@ public class SolarSystemState : GameState
         if (input.IsKeyPressed(SDL.Scancode.M))
         {
             _galaxyMapOverlay.Open(game);
+        }
+
+        // Camera zoom (handled per-frame so scroll events aren't missed)
+        if (input.MouseWheelY != 0)
+        {
+            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
+            game.Camera.ClampZoom();
         }
     }
 
