@@ -5,24 +5,31 @@ using SpaceExplorationGame.Rendering;
 namespace SpaceExplorationGame.UI;
 
 /// <summary>
+/// Represents a single menu option with an associated enum value, display label, and optional description.
+/// </summary>
+public record struct MenuOption<T>(T Value, string Label, string? Description = null) where T : struct, Enum;
+
+/// <summary>
 /// Reusable menu widget that handles keyboard / mouse navigation and rendering.
+/// Generic over an enum type <typeparamref name="T"/> for type-safe option handling.
 /// Used by main menu, pause menu, station menu, service overlays, etc.
 /// </summary>
-public class MenuWidget
+public class MenuWidget<T> where T : struct, Enum
 {
     private int _selected;
-    private readonly string[] _labels;
-    private readonly string[]? _descriptions;
+    private readonly MenuOption<T>[] _options;
 
     // ── Public state ──────────────────────────────────────────────
     public int SelectedIndex
     {
         get => _selected;
-        set => _selected = _labels.Length > 0 ? Math.Clamp(value, 0, _labels.Length - 1) : 0;
+        set => _selected = _options.Length > 0 ? Math.Clamp(value, 0, _options.Length - 1) : 0;
     }
 
-    public int ItemCount => _labels.Length;
-    public bool IsSelected(int index) => index == _selected;
+    public T SelectedValue => _options[_selected].Value;
+    public int ItemCount => _options.Length;
+    public IReadOnlyList<MenuOption<T>> Options => _options;
+    public bool IsSelected(T value) => EqualityComparer<T>.Default.Equals(_options[_selected].Value, value);
 
     // ── Styling (set via init properties) ─────────────────────────
     public float ItemHeight { get; init; } = 50f;
@@ -38,32 +45,31 @@ public class MenuWidget
 
     // ── Constructor ───────────────────────────────────────────────
 
-    public MenuWidget(string[] labels, string[]? descriptions = null)
+    public MenuWidget(MenuOption<T>[] options)
     {
-        _labels = labels;
-        _descriptions = descriptions;
+        _options = options;
     }
 
     // ── Update (keyboard only) ────────────────────────────────────
 
     /// <summary>
     /// Process keyboard navigation (Up/Down/W/S) and confirm (Return/E).
-    /// Returns the confirmed index, or -1 if nothing was confirmed.
+    /// Returns the confirmed enum value, or null if nothing was confirmed.
     /// </summary>
-    public int Update(InputManager input)
+    public T? Update(InputManager input)
     {
-        if (_labels.Length == 0) return -1;
+        if (_options.Length == 0) return null;
 
         if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-            _selected = (_selected - 1 + _labels.Length) % _labels.Length;
+            _selected = (_selected - 1 + _options.Length) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-            _selected = (_selected + 1) % _labels.Length;
+            _selected = (_selected + 1) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            return _selected;
+            return _options[_selected].Value;
 
-        return -1;
+        return null;
     }
 
     // ── Update (keyboard + mouse) ─────────────────────────────────
@@ -73,16 +79,16 @@ public class MenuWidget
     /// <paramref name="menuScreenX"/> and <paramref name="menuScreenY"/> define
     /// the top-left of the first item in screen coordinates.
     /// <paramref name="itemWidth"/> is the clickable width of each item.
-    /// Returns the confirmed index, or -1 if nothing was confirmed.
+    /// Returns the confirmed enum value, or null if nothing was confirmed.
     /// </summary>
-    public int Update(InputManager input, float menuScreenX, float menuScreenY, float itemWidth)
+    public T? Update(InputManager input, float menuScreenX, float menuScreenY, float itemWidth)
     {
-        if (_labels.Length == 0) return -1;
+        if (_options.Length == 0) return null;
 
         // Mouse hover / click
         float mx = input.MouseX;
         float my = input.MouseY;
-        for (int i = 0; i < _labels.Length; i++)
+        for (int i = 0; i < _options.Length; i++)
         {
             float optY = menuScreenY + i * ItemHeight;
             if (mx >= menuScreenX && mx <= menuScreenX + itemWidth &&
@@ -90,22 +96,22 @@ public class MenuWidget
             {
                 _selected = i;
                 if (input.IsMousePressed(1))
-                    return i;
+                    return _options[i].Value;
                 break;
             }
         }
 
         // Keyboard (after mouse so keyboard can still override)
         if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-            _selected = (_selected - 1 + _labels.Length) % _labels.Length;
+            _selected = (_selected - 1 + _options.Length) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-            _selected = (_selected + 1) % _labels.Length;
+            _selected = (_selected + 1) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            return _selected;
+            return _options[_selected].Value;
 
-        return -1;
+        return null;
     }
 
     // ── Render ────────────────────────────────────────────────────
@@ -118,12 +124,13 @@ public class MenuWidget
     /// </summary>
     public void Render(SpriteRenderer renderer, float x, float y, float width)
     {
-        for (int i = 0; i < _labels.Length; i++)
+        for (int i = 0; i < _options.Length; i++)
         {
             float optY = y + i * ItemHeight;
             bool sel = i == _selected;
             float scale = sel ? SelectedScale : NormalScale;
             var (cr, cg, cb) = sel ? SelectedColor : NormalColor;
+            string label = _options[i].Label;
 
             // Selection highlight
             if (sel)
@@ -134,44 +141,44 @@ public class MenuWidget
                 // Arrow indicator to the left of centered text
                 if (sel)
                 {
-                    float textW = renderer.MeasureText(_labels[i], scale);
+                    float textW = renderer.MeasureText(label, scale);
                     float textX = x + width / 2f - textW / 2f;
                     renderer.DrawTextScreen(textX - renderer.MeasureText("> ", scale), optY, ">", cr, cg, cb, scale);
-                    renderer.DrawTextScreen(textX, optY, _labels[i], cr, cg, cb, scale);
+                    renderer.DrawTextScreen(textX, optY, label, cr, cg, cb, scale);
                 }
                 else
                 {
-                    float textW = renderer.MeasureText(_labels[i], scale);
-                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, optY, _labels[i], cr, cg, cb, scale);
+                    float textW = renderer.MeasureText(label, scale);
+                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, optY, label, cr, cg, cb, scale);
                 }
             }
             else
             {
                 // Left-aligned with > prefix
-                string label = sel ? $"> {_labels[i]}" : _labels[i];
+                string displayLabel = sel ? $"> {label}" : label;
                 float textX = sel ? x + 10 : x + 20;
-                renderer.DrawTextScreen(textX, optY, label, cr, cg, cb, scale);
+                renderer.DrawTextScreen(textX, optY, displayLabel, cr, cg, cb, scale);
             }
         }
 
         // Description for selected item (below the list)
-        if (_descriptions != null && _selected >= 0 && _selected < _descriptions.Length)
+        string? description = _options[_selected].Description;
+        if (description != null)
         {
-            float descY = y + _labels.Length * ItemHeight + 10;
-            string desc = _descriptions[_selected];
+            float descY = y + _options.Length * ItemHeight + 10;
             if (CenterAlign)
             {
-                float descW = renderer.MeasureText(desc, DescriptionScale);
+                float descW = renderer.MeasureText(description, DescriptionScale);
                 renderer.DrawRectScreen(x + width / 2f - descW / 2f - 8, descY - 4, descW + 16, 22, 0, 0, 0, 160);
-                renderer.DrawTextScreen(x + width / 2f - descW / 2f, descY, desc, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
+                renderer.DrawTextScreen(x + width / 2f - descW / 2f, descY, description, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
             }
             else
             {
-                renderer.DrawTextScreen(x + 20, descY, desc, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
+                renderer.DrawTextScreen(x + 20, descY, description, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
             }
         }
     }
 
     /// <summary>Total pixel height of the menu items (excluding description).</summary>
-    public float TotalHeight => _labels.Length * ItemHeight;
+    public float TotalHeight => _options.Length * ItemHeight;
 }

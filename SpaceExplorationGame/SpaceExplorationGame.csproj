@@ -6,7 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- View generated sources files -->
+    <!--
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\Generated</CompilerGeneratedFilesOutputPath>
+    -->
+    <!-- -->
+
   </PropertyGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Arch" Version="2.1.0" />
@@ -17,5 +26,6 @@
     <PackageReference Include="SDL3-CS.Native.Image" Version="3.5.0" />
     <PackageReference Include="SDL3-CS.Native.TTF" Version="3.2.2" />
   </ItemGroup>
+  
 
 </Project>

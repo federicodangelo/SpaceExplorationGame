@@ -6,6 +6,18 @@ using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
+public enum StationMenuOption
+{
+    Repair,
+    Missions,
+    ShipCustomization,
+    ShipDealer,
+    AvatarCustomization,
+    VehicleCustomization,
+    WalkStation,
+    ExitStation
+}
+
 /// <summary>
 /// Overlay displayed atop SolarSystemState when the player docks at a space station.
 /// Provides repair, missions, customization, ship dealer, walk-interior, and exit options.
@@ -22,19 +34,19 @@ public class SpaceStationOverlay
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
 
-    private static readonly string[] StationMenuLabels =
+    private static readonly MenuOption<StationMenuOption>[] StationMenuOptions =
     [
-        "REPAIR",
-        "MISSIONS",
-        "SHIP CUSTOMIZATION",
-        "SHIP DEALER",
-        "AVATAR CUSTOMIZATION",
-        "VEHICLE CUSTOMIZATION",
-        "EXIT SHIP (WALK STATION)",
-        "EXIT SPACE STATION"
+        new(StationMenuOption.Repair, "REPAIR"),
+        new(StationMenuOption.Missions, "MISSIONS"),
+        new(StationMenuOption.ShipCustomization, "SHIP CUSTOMIZATION"),
+        new(StationMenuOption.ShipDealer, "SHIP DEALER"),
+        new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
+        new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
+        new(StationMenuOption.WalkStation, "EXIT SHIP (WALK STATION)"),
+        new(StationMenuOption.ExitStation, "EXIT SPACE STATION")
     ];
 
-    private readonly MenuWidget _menu = new(StationMenuLabels)
+    private readonly MenuWidget<StationMenuOption> _menu = new(StationMenuOptions)
     {
         ItemHeight = 50f,
         SelectedScale = 2.5f,
@@ -101,37 +113,37 @@ public class SpaceStationOverlay
             return true;
         }
 
-        int confirmed = _menu.Update(input);
-        if (confirmed >= 0)
+        var confirmed = _menu.Update(input);
+        if (confirmed is { } menuOption)
         {
-            switch (confirmed)
+            switch (menuOption)
             {
-                case 0: // Repair
+                case StationMenuOption.Repair:
                     _overlays.Open(ServiceOverlays.OverlayType.Repair);
                     break;
-                case 1: // Missions
+                case StationMenuOption.Missions:
                     _overlays.Open(ServiceOverlays.OverlayType.Mission);
                     break;
-                case 2: // Ship customization
+                case StationMenuOption.ShipCustomization:
                     _shipCustomization.Open(game.Player);
                     break;
-                case 3: // Ship dealer
+                case StationMenuOption.ShipDealer:
                     _shipDealer.Open();
                     break;
-                case 4: // Avatar customization
+                case StationMenuOption.AvatarCustomization:
                     _avatarCustomization.Open();
                     break;
-                case 5: // Vehicle customization
+                case StationMenuOption.VehicleCustomization:
                     _vehicleCustomization.Open();
                     break;
-                case 6: // Walk station (transitions to InteriorState)
+                case StationMenuOption.WalkStation:
                     game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                     game.Player.ReturnStationIndex = _station.Index;
                     Close();
                     game.ChangeState(new InteriorState(
                         InteriorOrigin.Station, _starSystem, station: _station));
                     break;
-                case 7: // Exit station
+                case StationMenuOption.ExitStation:
                     Close();
                     break;
             }

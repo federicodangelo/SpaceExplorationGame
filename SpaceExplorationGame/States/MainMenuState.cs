@@ -6,6 +6,16 @@ using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.States;
 
+public enum StartOption
+{
+    None = -1,
+    GalaxyMap = 0,
+    StarSystem = 1,
+    PlanetSurface = 2,
+    SpaceStation = 3,
+    Settlement = 4
+}
+
 /// <summary>
 /// Main menu: lets the player choose where to start the game.
 /// </summary>
@@ -18,25 +28,16 @@ public class MainMenuState : GameState
     // Background stars for visual flair
     private List<(float X, float Y, byte Brightness, float Speed)> _bgStars = [];
 
-    private static readonly string[] MenuOptionLabels =
+    private static readonly MenuOption<StartOption>[] MenuOptions =
     [
-        "GALAXY MAP",
-        "STAR SYSTEM",
-        "PLANET SURFACE",
-        "SPACE STATION",
-        "SETTLEMENT"
+        new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
+        new(StartOption.StarSystem, "STAR SYSTEM", "Start inside a random star system, ready to explore"),
+        new(StartOption.SpaceStation, "SPACE STATION", "Dock at a random space station"),
+        new(StartOption.PlanetSurface, "PLANET SURFACE", "Land directly on a random planet's surface"),
+        new(StartOption.Settlement, "SETTLEMENT", "Start at a settlement on an inhabited planet")
     ];
 
-    private static readonly string[] MenuDescriptions =
-    [
-        "Begin at the galaxy overview and choose your destination",
-        "Start inside a random star system, ready to explore",
-        "Land directly on a random planet's surface",
-        "Dock at a random space station",
-        "Start at a settlement on an inhabited planet"
-    ];
-
-    private readonly MenuWidget _menu = new(MenuOptionLabels, MenuDescriptions)
+    private readonly MenuWidget<StartOption> _menu = new(MenuOptions)
     {
         CenterAlign = true,
         ItemHeight = 50f,
@@ -50,10 +51,10 @@ public class MainMenuState : GameState
         DescriptionColor = (160, 160, 180)
     };
 
-    // Auto-launch: if >= 0, skip menu and launch this option immediately
-    private readonly int _autoLaunchOption;
+    // Auto-launch: if not None, skip menu and launch this option immediately
+    private readonly StartOption _autoLaunchOption;
 
-    public MainMenuState(int autoLaunchOption = -1)
+    public MainMenuState(StartOption autoLaunchOption = StartOption.None)
     {
         _autoLaunchOption = autoLaunchOption;
     }
@@ -61,7 +62,7 @@ public class MainMenuState : GameState
     public override void Enter(Game game)
     {
         // Auto-launch if requested (from command line)
-        if (_autoLaunchOption >= 0 && _autoLaunchOption < MenuOptionLabels.Length)
+        if (_autoLaunchOption != StartOption.None)
         {
             LaunchOption(game, _autoLaunchOption);
             return;
@@ -92,20 +93,20 @@ public class MainMenuState : GameState
         float centerX = GameConfig.WindowWidth / 2f;
         float menuW = 420f;
 
-        int confirmed = _menu.Update(input, centerX - menuW / 2f, menuStartY, menuW);
-        if (confirmed >= 0)
-            LaunchOption(game, confirmed);
+        var confirmed = _menu.Update(input, centerX - menuW / 2f, menuStartY, menuW);
+        if (confirmed is { } option)
+            LaunchOption(game, option);
     }
 
-    private void LaunchOption(Game game, int option)
+    private void LaunchOption(Game game, StartOption option)
     {
         switch (option)
         {
-            case 0: // Galaxy Map
+            case StartOption.GalaxyMap:
                 game.ChangeState(new GalaxyMapState());
                 break;
 
-            case 1: // Star System
+            case StartOption.StarSystem:
             {
                 var system = PickRandomSystem(game);
                 game.Player.CurrentStarSystemIndex = system.Index;
@@ -113,7 +114,7 @@ public class MainMenuState : GameState
                 break;
             }
 
-            case 2: // Planet Surface
+            case StartOption.PlanetSurface:
             {
                 var (system, planet) = PickRandomPlanet(game);
                 game.Player.CurrentStarSystemIndex = system.Index;
@@ -121,7 +122,7 @@ public class MainMenuState : GameState
                 break;
             }
 
-            case 3: // Space Station
+            case StartOption.SpaceStation:
             {
                 var (system, station) = PickRandomStation(game);
                 game.Player.CurrentStarSystemIndex = system.Index;
@@ -131,7 +132,7 @@ public class MainMenuState : GameState
                 break;
             }
 
-            case 4: // Settlement
+            case StartOption.Settlement:
             {
                 var (system, planet) = PickRandomSettlement(game);
                 game.Player.CurrentStarSystemIndex = system.Index;

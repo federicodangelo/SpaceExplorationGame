@@ -11,7 +11,7 @@ internal static class Program
         // Parse optional arguments:
         //   dotnet run [seed] [--start galaxy|system|planet|station|settlement]
         ulong? galaxySeed = null;
-        int autoLaunch = -1;
+        var autoLaunch = StartOption.None;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -19,12 +19,12 @@ internal static class Program
             {
                 autoLaunch = args[i + 1].ToLower() switch
                 {
-                    "galaxy" or "0" => 0,
-                    "system" or "1" => 1,
-                    "planet" or "2" => 2,
-                    "station" or "3" => 3,
-                    "settlement" or "4" => 4,
-                    _ => -1
+                    "galaxy" => StartOption.GalaxyMap,
+                    "system" => StartOption.StarSystem,
+                    "planet" => StartOption.PlanetSurface,
+                    "station" => StartOption.SpaceStation,
+                    "settlement" => StartOption.Settlement,
+                    _ => throw new ArgumentException($"Invalid start option: {args[i + 1]}")
                 };
                 i++; // skip value
             }
@@ -39,8 +39,8 @@ internal static class Program
 
         Console.WriteLine($"Galaxy Seed: {game.Seeds.GalaxySeed}");
         Console.WriteLine("Starting game...");
-        if (autoLaunch >= 0)
-            Console.WriteLine($"Auto-start: {(new[] { "galaxy", "system", "planet", "station", "settlement" })[autoLaunch]}");
+        if (autoLaunch != StartOption.None)
+            Console.WriteLine($"Auto-start: {autoLaunch}");
 
         game.ChangeState(new MainMenuState(autoLaunch));
         game.Run();

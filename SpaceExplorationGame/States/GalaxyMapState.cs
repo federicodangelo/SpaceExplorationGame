@@ -41,8 +41,20 @@ public class GalaxyMapState : GameState
 
     // Pause menu
     private bool _showPauseMenu = false;
-    private static readonly string[] PauseMenuLabels = ["RESUME", "MAIN MENU"];
-    private readonly MenuWidget _pauseMenu = new(PauseMenuLabels)
+
+    private enum PauseMenuOption
+    {
+        Resume,
+        MainMenu
+    }
+
+    private static readonly MenuOption<PauseMenuOption>[] PauseMenuOptions =
+    [
+        new(PauseMenuOption.Resume, "RESUME"),
+        new(PauseMenuOption.MainMenu, "MAIN MENU")
+    ];
+
+    private readonly MenuWidget<PauseMenuOption> _pauseMenu = new(PauseMenuOptions)
     {
         CenterAlign = true,
         ItemHeight = 45f,
@@ -241,10 +253,10 @@ public class GalaxyMapState : GameState
             float menuStartY = GameConfig.WindowHeight / 2f - 30;
             float menuW = 300f;
 
-            int confirmed = _pauseMenu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
-            if (confirmed == 0)
+            var confirmed = _pauseMenu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
+            if (confirmed == PauseMenuOption.Resume)
                 _showPauseMenu = false; // Resume
-            else if (confirmed == 1)
+            else if (confirmed == PauseMenuOption.MainMenu)
                 game.ChangeState(new MainMenuState()); // Main Menu
 
             return;

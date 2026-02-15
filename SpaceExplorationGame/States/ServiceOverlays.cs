@@ -19,21 +19,21 @@ public class ServiceOverlays
     private const int RepairCostPerPoint = 2;
 
     // Mission state
-    private static readonly string[] MissionNames =
+    public enum MissionType
+    {
+        CargoDelivery,
+        SurveyMission,
+        EscortDuty
+    }
+
+    private static readonly MenuOption<MissionType>[] MissionOptions =
     [
-        "CARGO DELIVERY - 200 CR",
-        "SURVEY MISSION - 350 CR",
-        "ESCORT DUTY - 500 CR"
+        new(MissionType.CargoDelivery, "CARGO DELIVERY - 200 CR", "Transport supplies to a nearby settlement."),
+        new(MissionType.SurveyMission, "SURVEY MISSION - 350 CR", "Map an uncharted planetary surface."),
+        new(MissionType.EscortDuty, "ESCORT DUTY - 500 CR", "Protect a freighter convoy through the sector.")
     ];
 
-    private readonly MenuWidget _missionMenu = new(MissionNames) { ItemHeight = 70f, NormalScale = 2f, SelectedScale = 2f };
-
-    private static readonly string[] MissionDescriptions =
-    [
-        "Transport supplies to a nearby settlement.",
-        "Map an uncharted planetary surface.",
-        "Protect a freighter convoy through the sector."
-    ];
+    private readonly MenuWidget<MissionType> _missionMenu = new(MissionOptions) { ItemHeight = 70f, NormalScale = 2f, SelectedScale = 2f };
 
     /// <summary>Open an overlay.</summary>
     public void Open(OverlayType type)
@@ -173,21 +173,22 @@ public class ServiceOverlays
 
         renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, 60, 60, 100);
 
-        for (int i = 0; i < MissionNames.Length; i++)
+        var options = _missionMenu.Options;
+        for (int i = 0; i < options.Count; i++)
         {
             float optY = py + 60 + i * 70;
-            bool selected = _missionMenu.IsSelected(i);
+            bool selected = _missionMenu.IsSelected(options[i].Value);
 
             if (selected)
                 renderer.DrawRectScreen(px + 5, optY - 5, pw - 10, 60, 40, 40, 70);
 
             renderer.DrawTextScreen(px + 20, optY,
-                selected ? $"> {MissionNames[i]}" : $"  {MissionNames[i]}",
+                selected ? $"> {options[i].Label}" : $"  {options[i].Label}",
                 selected ? (byte)255 : (byte)180,
                 selected ? (byte)255 : (byte)180,
                 selected ? (byte)200 : (byte)200, 2f);
 
-            renderer.DrawTextScreen(px + 30, optY + 25, MissionDescriptions[i], 130, 130, 150, 1.5f);
+            renderer.DrawTextScreen(px + 30, optY + 25, options[i].Description ?? "", 130, 130, 150, 1.5f);
             renderer.DrawTextScreen(px + 30, optY + 43, "[COMING SOON]", 100, 100, 120, 1.2f);
         }
     }
