@@ -68,25 +68,25 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
         switch (ai.Config.Faction)
         {
             case Faction.Fauna:
-                UpdateFauna(ref transform, ref velocity, ref ai, _dt, _playerPos, _playerAlive, distToPlayer);
+                UpdateFauna(ref transform, ref velocity, ref ai, distToPlayer);
                 break;
             case Faction.Bandit:
-                UpdateBandit(ref transform, ref velocity, ref ai, ref health, _dt, _playerPos, _playerAlive, distToPlayer);
+                UpdateBandit(ref transform, ref velocity, ref ai, ref health, distToPlayer);
                 break;
         }
     }
 
     private void UpdateFauna(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        float dt, Vector2 playerPos, bool playerAlive, float dist)
+        float dist)
     {
-        if (playerAlive && dist < ai.Config.DetectRange)
+        if (_playerAlive && dist < ai.Config.DetectRange)
         {
             // Chase player
             ai.State = AIState.Chase;
-            var dir = Vector2.Normalize(playerPos - transform.Position);
+            var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
-            SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed, dt);
+            SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
 
             // Melee attack: fast short-range projectile when close
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
@@ -100,7 +100,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
         {
             // Wander randomly
             ai.State = AIState.Idle;
-            ai.WanderTimer -= dt;
+            ai.WanderTimer -= _dt;
             if (ai.WanderTimer <= 0)
             {
                 ai.WanderTimer = 2f + MathF.Abs(MathF.Sin(transform.Position.X * 0.1f)) * 3f;
@@ -109,43 +109,43 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.3f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed, dt);
+            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed);
         }
     }
 
     private void UpdateBandit(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        ref Health health, float dt, Vector2 playerPos, bool playerAlive, float dist)
+        ref Health health, float dist)
     {
         float hullPercent = health.HullPercent;
 
         // Flee if very low health
-        if (hullPercent < 0.15f && playerAlive && dist < ai.Config.DetectRange)
+        if (hullPercent < 0.15f && _playerAlive && dist < ai.Config.DetectRange)
         {
             ai.State = AIState.Flee;
-            var fleeDir = Vector2.Normalize(transform.Position - playerPos);
+            var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
 
-            SetVelocityWithCollision(ref transform, ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f, dt);
+            SetVelocityWithCollision(ref transform, ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
             return;
         }
 
-        if (playerAlive && dist < ai.Config.DetectRange)
+        if (_playerAlive && dist < ai.Config.DetectRange)
         {
-            var dir = Vector2.Normalize(playerPos - transform.Position);
+            var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
             if (dist > ai.Config.AttackRange * 0.7f)
             {
                 // Close distance
                 ai.State = AIState.Chase;
-                SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed, dt);
+                SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
             }
             else
             {
                 // In range — strafe slightly
                 ai.State = AIState.Attack;
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
-                SetVelocityWithCollision(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f, dt);
+                SetVelocityWithCollision(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
             }
 
             // Fire ranged weapon
@@ -160,7 +160,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
         {
             // Patrol / wander
             ai.State = AIState.Patrol;
-            ai.WanderTimer -= dt;
+            ai.WanderTimer -= _dt;
             if (ai.WanderTimer <= 0)
             {
                 ai.WanderTimer = 3f + MathF.Abs(MathF.Sin(transform.Position.X * 0.07f)) * 4f;
@@ -169,7 +169,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed, dt);
+            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed);
         }
     }
 
@@ -178,11 +178,11 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
     /// If the predicted next position is blocked, velocity is zeroed.
     /// </summary>
     private void SetVelocityWithCollision(ref Transform transform, ref Velocity velocity,
-        Vector2 desiredVelocity, float dt)
+        Vector2 desiredVelocity)
     {
         if (_canMoveTo != null)
         {
-            var nextPos = transform.Position + desiredVelocity * dt;
+            var nextPos = transform.Position + desiredVelocity * _dt;
             if (!_canMoveTo(nextPos))
             {
                 velocity.Value = Vector2.Zero;
