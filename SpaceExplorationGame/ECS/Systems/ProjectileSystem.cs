@@ -21,8 +21,8 @@ public class ProjectileSystem
     /// <summary>Entities destroyed this frame (for loot/explosion handling).</summary>
     public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid)> DestroyedThisFrame { get; } = [];
 
-    /// <summary>Damage events this frame (for visual effects).</summary>
-    public List<(Vector2 Position, float Damage, bool ShieldHit, Entity Target)> DamageEventsThisFrame { get; } = [];
+    /// <summary>Damage events from last update (for visual effects).</summary>
+    public List<(Vector2 Position, float Damage, bool ShieldHit, Entity Target)> DamageEventsLastUpdate { get; } = [];
 
     public ProjectileSystem(World world)
     {
@@ -34,7 +34,7 @@ public class ProjectileSystem
         _hits.Clear();
         _expired.Clear();
         DestroyedThisFrame.Clear();
-        DamageEventsThisFrame.Clear();
+        DamageEventsLastUpdate.Clear();
 
         // 1. Move projectiles and check lifetime — collect data for collision phase
         var projectileData = new List<(Entity Entity, Vector2 Position, Projectile Proj)>();
@@ -112,7 +112,7 @@ public class ProjectileSystem
             health.TakeDamage(damage);
 
             var targetPos = _world.Get<Transform>(target).Position;
-            DamageEventsThisFrame.Add((targetPos, damage, hadShield, target));
+            DamageEventsLastUpdate.Add((targetPos, damage, hadShield, target));
 
             // Destroy the projectile
             if (!_expired.Contains(projectile))

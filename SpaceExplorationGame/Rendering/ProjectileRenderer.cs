@@ -43,9 +43,8 @@ public static class ProjectileRenderer
         });
     }
 
-    /// <summary>Render damage number popups.</summary>
-    public static void RenderDamageEffects(SpriteRenderer renderer, Camera camera,
-        List<DamagePopup> popups, float dt)
+    /// <summary>Update damage popups: advance timers, float upward, remove expired.</summary>
+    public static void UpdateDamageEffects(List<DamagePopup> popups, float dt)
     {
         for (int i = popups.Count - 1; i >= 0; i--)
         {
@@ -56,10 +55,16 @@ public static class ProjectileRenderer
             if (popup.Timer <= 0)
             {
                 popups.RemoveAt(i);
-                continue;
             }
+        }
+    }
 
-            byte alpha = (byte)(255 * (popup.Timer / popup.MaxTime));
+    /// <summary>Render damage number popups (no mutation).</summary>
+    public static void RenderDamageEffects(SpriteRenderer renderer, Camera camera,
+        List<DamagePopup> popups)
+    {
+        foreach (var popup in popups)
+        {
             string text = popup.Damage.ToString("F0");
 
             if (popup.ShieldHit)
@@ -73,9 +78,8 @@ public static class ProjectileRenderer
         }
     }
 
-    /// <summary>Render explosion effects.</summary>
-    public static void RenderExplosions(SpriteRenderer renderer, Camera camera,
-        List<Explosion> explosions, float dt)
+    /// <summary>Update explosions: advance timers, remove expired.</summary>
+    public static void UpdateExplosions(List<Explosion> explosions, float dt)
     {
         for (int i = explosions.Count - 1; i >= 0; i--)
         {
@@ -85,9 +89,16 @@ public static class ProjectileRenderer
             if (explosion.Timer <= 0)
             {
                 explosions.RemoveAt(i);
-                continue;
             }
+        }
+    }
 
+    /// <summary>Render explosion effects (no mutation).</summary>
+    public static void RenderExplosions(SpriteRenderer renderer, Camera camera,
+        List<Explosion> explosions)
+    {
+        foreach (var explosion in explosions)
+        {
             float progress = 1f - (explosion.Timer / explosion.MaxTime);
             float radius = explosion.Radius * (0.3f + progress * 0.7f);
             byte alpha = (byte)(255 * (1f - progress));

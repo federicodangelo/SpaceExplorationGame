@@ -696,7 +696,7 @@ public class SolarSystemState : GameState
         _shieldRegenSystem.Update(in dt);
 
         // Process damage events (visual effects + mining HUD tracking)
-        foreach (var (pos, damage, shieldHit, target) in _projectileSystem.DamageEventsThisFrame)
+        foreach (var (pos, damage, shieldHit, target) in _projectileSystem.DamageEventsLastUpdate)
         {
             _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
 
@@ -773,6 +773,10 @@ public class SolarSystemState : GameState
             _combatMessageTimer -= dt;
             if (_combatMessageTimer <= 0) _combatMessage = null;
         }
+
+        // Update visual effects (timers, positions, removal)
+        ProjectileRenderer.UpdateDamageEffects(_damagePopups, dt);
+        ProjectileRenderer.UpdateExplosions(_explosions, dt);
     }
 
     /// <summary>Process loot when an enemy is destroyed.</summary>
@@ -980,9 +984,8 @@ public class SolarSystemState : GameState
         }
 
         // Visual effects (damage popups, explosions)
-        float effectDt = GameConfig.FixedTimeStep;
-        ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups, effectDt);
-        ProjectileRenderer.RenderExplosions(renderer, camera, _explosions, effectDt);
+        ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
+        ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
 
         // HUD
         if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
