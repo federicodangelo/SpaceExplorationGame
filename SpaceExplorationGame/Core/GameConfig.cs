@@ -30,8 +30,8 @@ public static class GameConfig
     public const int MaxStarSystems = 80;
 
     // Solar System
-    public const int SolarSystemWidth = 400;  // in tiles
-    public const int SolarSystemHeight = 400;
+    public const int SolarSystemWidth = 100;  // in tiles
+    public const int SolarSystemHeight = 100;
     public const int MinPlanets = 2;
     public const int MaxPlanets = 10;
 
@@ -66,18 +66,18 @@ public static class GameConfig
     public const float PlayerFireRate = 0.25f;         // seconds between player shots
 
     // Enemy ships
-    public const int MinEnemiesPerSystem = 2;
-    public const int MaxEnemiesPerSystem = 8;
+    public const int MinEnemiesPerSystem = 0;
+    public const int MaxEnemiesPerSystem = 2;
     public const int MinTradersPerSystem = 1;
     public const int MaxTradersPerSystem = 4;
     public const int MinPatrolsPerSystem = 0;
     public const int MaxPatrolsPerSystem = 2;
-    public const float EnemyDetectRange = 500f;        // range to notice targets
+    public const float EnemyDetectRange = 300f;        // range to notice targets
     public const float EnemyWeaponRange = 300f;        // range to start firing
     public const float EnemyEngageDistance = 200f;      // preferred combat distance
     public const float EnemyFleeHealthPercent = 0.2f;   // flee below 20% hull
-    public const float EnemyProjectileSpeed = 400f;     // slightly slower than player
-    public const float EnemyFireRate = 0.6f;            // seconds between shots
+    public const float EnemyProjectileSpeed = 300f;     // slightly slower than player
+    public const float EnemyFireRate = 1.4f;            // seconds between shots
     public const float TraderSpeed = 150f;              // trader max speed
     public const float PirateSpeed = 300f;              // pirate max speed
     public const float PatrolSpeed = 250f;              // patrol max speed

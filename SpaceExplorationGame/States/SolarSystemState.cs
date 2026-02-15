@@ -757,6 +757,12 @@ public class SolarSystemState : GameState
         var enemyRng = new SeededRandom(game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(5000));
         int dangerLevel = _starSystem.DangerLevel;
 
+        // Determine spawn radius based on outermost planet orbit (+ margin)
+        float maxOrbit = 0f;
+        foreach (var planet in _planets)
+            maxOrbit = MathF.Max(maxOrbit, planet.OrbitRadius);
+        float spawnRadius = MathF.Max(maxOrbit + 400f, 800f); // at least 800px, or outermost orbit + 400
+
         // Scale enemy count and stats by danger level
         int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
         int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
@@ -769,13 +775,7 @@ public class SolarSystemState : GameState
         // Spawn pirates
         for (int i = 0; i < pirateCount; i++)
         {
-            var pos = new Vector2(
-                enemyRng.NextFloat(200, mapW - 200),
-                enemyRng.NextFloat(200, mapH - 200));
-
-            // Avoid spawning too close to center (star)
-            if (Vector2.Distance(pos, center) < 300f)
-                pos += Vector2.Normalize(pos - center) * 300f;
+            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 250f);
 
             float baseHull = 40f + dangerLevel * 20f;
             float baseShield = dangerLevel >= 3 ? 15f + dangerLevel * 10f : 0f;
@@ -815,9 +815,7 @@ public class SolarSystemState : GameState
         // Spawn traders
         for (int i = 0; i < traderCount; i++)
         {
-            var pos = new Vector2(
-                enemyRng.NextFloat(300, mapW - 300),
-                enemyRng.NextFloat(300, mapH - 300));
+            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
             var entity = game.EcsWorld.Create(
                 new Transform(pos, enemyRng.NextFloat(0, 360)),
@@ -845,9 +843,7 @@ public class SolarSystemState : GameState
         // Spawn patrols
         for (int i = 0; i < patrolCount; i++)
         {
-            var pos = new Vector2(
-                enemyRng.NextFloat(300, mapW - 300),
-                enemyRng.NextFloat(300, mapH - 300));
+            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
             var entity = game.EcsWorld.Create(
                 new Transform(pos, enemyRng.NextFloat(0, 360)),
@@ -871,6 +867,15 @@ public class SolarSystemState : GameState
             );
             _enemyEntities.Add(entity);
         }
+    }
+
+    /// <summary>Pick a random position within the orbit zone, avoiding the star.</summary>
+    private static Vector2 SpawnPositionInOrbitZone(SeededRandom rng, Vector2 center, float maxRadius, float minRadius)
+    {
+        // Random angle + distance between minRadius and maxRadius from center
+        float angle = rng.NextFloat(0, MathF.PI * 2f);
+        float dist = rng.NextFloat(minRadius, maxRadius);
+        return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
     }
 
     /// <summary>Update combat: player shooting, AI, projectiles, damage, death.</summary>
@@ -1229,6 +1234,10 @@ public class SolarSystemState : GameState
         // Combat HUD (hull/shield bars + danger level)
         RenderCombatHud(renderer, game);
 
+        // Off-screen NPC ship indicators at screen borders
+        if (!_playerDead)
+            RenderOffscreenIndicators(renderer, game);
+
         // Death screen
         if (_playerDead)
         {
@@ -1339,6 +1348,93 @@ public class SolarSystemState : GameState
             };
             var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
             renderer.DrawText(camera, labelPos, factionLabel, fr, fg, fb, 0.8f);
+        }
+    }
+
+    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships.</summary>
+    private void RenderOffscreenIndicators(SpriteRenderer renderer, Game game)
+    {
+        const float margin = 30f; // distance from screen edge
+        float screenW = GameConfig.WindowWidth;
+        float screenH = GameConfig.WindowHeight;
+        var camera = game.Camera;
+
+        foreach (var entity in _enemyEntities)
+        {
+            if (!game.EcsWorld.IsAlive(entity)) continue;
+            if (!game.EcsWorld.Has<Health>(entity)) continue;
+            ref var health = ref game.EcsWorld.Get<Health>(entity);
+            if (health.IsDead) continue;
+
+            ref var transform = ref game.EcsWorld.Get<Transform>(entity);
+            var ai = game.EcsWorld.Get<EnemyAI>(entity);
+            var screenPos = camera.WorldToScreen(transform.Position);
+
+            // Skip if on screen (with some padding)
+            if (screenPos.X >= -20 && screenPos.X <= screenW + 20 &&
+                screenPos.Y >= -20 && screenPos.Y <= screenH + 20)
+                continue;
+
+            // Faction color
+            var (cr, cg, cb) = ai.Faction switch
+            {
+                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
+                Faction.Trader => ((byte)200, (byte)180, (byte)80),
+                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
+                _ => ((byte)200, (byte)200, (byte)200)
+            };
+
+            // Clamp to screen border
+            float cx = screenW / 2f;
+            float cy = screenH / 2f;
+            float dx = screenPos.X - cx;
+            float dy = screenPos.Y - cy;
+
+            // Scale direction to hit the screen edge (with margin)
+            float halfW = cx - margin;
+            float halfH = cy - margin;
+            float scaleX = MathF.Abs(dx) > 0.001f ? halfW / MathF.Abs(dx) : float.MaxValue;
+            float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
+            float scale = MathF.Min(scaleX, scaleY);
+
+            float ix = cx + dx * scale;
+            float iy = cy + dy * scale;
+
+            // Draw a triangle arrow pointing outward
+            float angle = MathF.Atan2(dy, dx);
+            float arrowSize = 8f;
+            float tipX = ix + MathF.Cos(angle) * arrowSize;
+            float tipY = iy + MathF.Sin(angle) * arrowSize;
+            float baseX1 = ix + MathF.Cos(angle + 2.5f) * arrowSize;
+            float baseY1 = iy + MathF.Sin(angle + 2.5f) * arrowSize;
+            float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
+            float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
+
+            // Filled triangle via 3 lines (thick arrow)
+            renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
+            renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
+            renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
+            // Inner fill lines for visibility
+            renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
+            renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
+            renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
+
+            // Small dot at indicator center
+            renderer.DrawFilledCircleScreen(ix, iy, 3f, cr, cg, cb, 220);
+
+            // Distance label
+            if (game.EcsWorld.IsAlive(_playerShip))
+            {
+                ref var playerT = ref game.EcsWorld.Get<Transform>(_playerShip);
+                float dist = Vector2.Distance(playerT.Position, transform.Position);
+                string distLabel = dist < 1000 ? $"{dist:F0}" : $"{dist / 1000f:F1}K";
+                float labelW = renderer.MeasureText(distLabel, 1f);
+
+                // Offset label inward from the edge
+                float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
+                float labelOffY = -MathF.Sin(angle) * 16f - 4f;
+                renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, distLabel, cr, cg, cb, 1f);
+            }
         }
     }
 
