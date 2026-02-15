@@ -125,36 +125,25 @@ public class InteriorState : GameState
     {
     }
 
-    public override void Update(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         var input = game.Input;
-        var camera = game.Camera;
 
         // Handle overlay interactions first
-        if (_repairOverlay.Update(game, input))
+        if (_repairOverlay.UpdateInput(game))
             return;
-        if (_missionOverlay.Update(game, input))
+        if (_missionOverlay.UpdateInput(game))
             return;
-        if (_shipCustomization.IsOpen)
-        {
-            _shipCustomization.Update(game, input, dt);
+
+        // Customization/dealer overlays take priority over game input
+        if (_shipCustomization.UpdateInput(game))
             return;
-        }
-        if (_avatarCustomization.IsOpen)
-        {
-            _avatarCustomization.Update(game, input, dt);
+        if (_avatarCustomization.UpdateInput(game))
             return;
-        }
-        if (_vehicleCustomization.IsOpen)
-        {
-            _vehicleCustomization.Update(game, input, dt);
+        if (_vehicleCustomization.UpdateInput(game))
             return;
-        }
-        if (_shipDealer.IsOpen)
-        {
-            _shipDealer.Update(game, input, dt);
+        if (_shipDealer.UpdateInput(game))
             return;
-        }
 
         // Handle dialogue
         if (_showingDialogue)
@@ -178,6 +167,43 @@ public class InteriorState : GameState
             }
             return;
         }
+
+        // Interact
+        if (input.IsKeyPressed(SDL.Scancode.E))
+        {
+            // Prefer interactable over NPC when both are nearby
+            if (_nearestInteractable != null)
+            {
+                HandleInteraction(game, _nearestInteractable);
+            }
+            else if (_nearestNpc != null)
+            {
+                _showingDialogue = true;
+                _dialogueNpc = _nearestNpc;
+                _dialogueLine = 0;
+            }
+        }
+
+        // Exit
+        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        {
+            ExitInterior(game);
+        }
+    }
+
+    public override void Update(Game game, float dt)
+    {
+        // Handle customization/dealer overlays that need dt
+        _shipCustomization.Update(game, dt);
+        _avatarCustomization.Update(game, dt);
+        _vehicleCustomization.Update(game, dt);
+        _shipDealer.Update(game, dt);
+
+        // Skip simulation when overlays or dialogue are active
+        if (_repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
+            || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen)
+            return;
 
         // Player movement (via system with tile collision)
         _movementSystem.Update(in dt);
@@ -218,28 +244,6 @@ public class InteriorState : GameState
                 nearestIntDist = dist;
                 _nearestInteractable = interactable;
             }
-        }
-
-        // Interact
-        if (input.IsKeyPressed(SDL.Scancode.E))
-        {
-            // Prefer interactable over NPC when both are nearby
-            if (_nearestInteractable != null)
-            {
-                HandleInteraction(game, _nearestInteractable);
-            }
-            else if (_nearestNpc != null)
-            {
-                _showingDialogue = true;
-                _dialogueNpc = _nearestNpc;
-                _dialogueLine = 0;
-            }
-        }
-
-        // Exit
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
-        {
-            ExitInterior(game);
         }
     }
 
@@ -479,12 +483,12 @@ public class InteriorState : GameState
         }
 
         // Overlays
-        _repairOverlay.Render(game, renderer);
-        _missionOverlay.Render(game, renderer);
-        _shipCustomization.Render(game, renderer);
-        _avatarCustomization.Render(game, renderer);
-        _vehicleCustomization.Render(game, renderer);
-        _shipDealer.Render(game, renderer);
+        _repairOverlay.Render(game);
+        _missionOverlay.Render(game);
+        _shipCustomization.Render(game);
+        _avatarCustomization.Render(game);
+        _vehicleCustomization.Render(game);
+        _shipDealer.Render(game);
 
         // Controls help (when no overlay)
         if (!_repairOverlay.IsOpen && !_missionOverlay.IsOpen && !_showingDialogue

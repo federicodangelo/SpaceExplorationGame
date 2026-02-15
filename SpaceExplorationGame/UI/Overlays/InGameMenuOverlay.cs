@@ -9,10 +9,8 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Overlay for the in-game menu. Provides Resume and Main Menu options.
 /// Can be reused by any game state that needs an escape menu.
 /// </summary>
-public class InGameMenuOverlay
+public class InGameMenuOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     private enum InGameMenuOption
     {
         Resume,
@@ -43,8 +41,6 @@ public class InGameMenuOverlay
         IsOpen = true;
     }
 
-    public void Close() => IsOpen = false;
-
     public void Toggle()
     {
         if (IsOpen) Close();
@@ -55,8 +51,10 @@ public class InGameMenuOverlay
     /// Process input for the in-game menu overlay. Returns true if the overlay consumed input
     /// (blocks underlying state controls). Handles state transitions internally.
     /// </summary>
-    public bool Update(Game game, InputManager input)
+    public override bool UpdateInput(Game game)
     {
+        var input = game.Input;
+
         // Toggle on Escape
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
@@ -80,9 +78,11 @@ public class InGameMenuOverlay
     }
 
     /// <summary>Render the in-game menu overlay.</summary>
-    public void Render(SpriteRenderer renderer)
+    public override void Render(Game game)
     {
         if (!IsOpen) return;
+
+        var renderer = game.SpriteRenderer;
 
         // Dim background
         renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 160);

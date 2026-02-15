@@ -7,7 +7,6 @@ public enum GameStateType
 {
     MainMenu,
     SolarSystem,
-    PlanetLanding,
     PlanetSurface,
     Interior
 }
@@ -25,7 +24,10 @@ public abstract class GameState
     /// <summary>Called when this state is being left.</summary>
     public abstract void Exit(Game game);
 
-    /// <summary>Fixed timestep update for logic.</summary>
+    /// <summary>Called once per frame for input handling.</summary>
+    public abstract void UpdateInput(Game game);
+
+    /// <summary>Fixed timestep update for simulation (can run multiple times per frame).</summary>
     public abstract void Update(Game game, float dt);
 
     /// <summary>Render the current frame.</summary>

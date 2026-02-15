@@ -51,6 +51,10 @@ public class SolarSystemState : GameState
     private readonly GalaxyMapOverlay _galaxyMapOverlay = new();
     private readonly bool _autoOpenGalaxyMap;
 
+    // Planet landing overlay
+    private readonly PlanetLandingOverlay _planetLandingOverlay = new();
+    private readonly PlanetData? _autoOpenPlanet;
+
     // In-game menu overlay
     private readonly InGameMenuOverlay _inGameMenuOverlay = new();
 
@@ -66,11 +70,12 @@ public class SolarSystemState : GameState
     private List<nint> _planetTextures = [];
     private List<List<nint>> _moonTextures = [];
 
-    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null, bool autoOpenGalaxyMap = false)
+    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null, bool autoOpenGalaxyMap = false, PlanetData? autoOpenPlanet = null)
     {
         _starSystem = starSystem;
         _autoOpenStation = autoOpenStation;
         _autoOpenGalaxyMap = autoOpenGalaxyMap;
+        _autoOpenPlanet = autoOpenPlanet;
     }
 
     public override void Enter(Game game)
@@ -352,6 +357,12 @@ public class SolarSystemState : GameState
         {
             _galaxyMapOverlay.Open(game);
         }
+
+        // Auto-open planet landing overlay if requested (e.g. from main menu 'Planet Surface')
+        if (_autoOpenPlanet != null)
+        {
+            _planetLandingOverlay.Open(_starSystem, _autoOpenPlanet, game);
+        }
     }
 
     public override void Exit(Game game)
@@ -374,26 +385,79 @@ public class SolarSystemState : GameState
         _moonEntities.Clear();
         _asteroids.Clear();
         _bgStars.Clear();
+
+        _planetLandingOverlay.Cleanup();
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
     {
     }
 
+    public override void UpdateInput(Game game)
+    {
+        var input = game.Input;
+
+        // Overlays take priority over game input
+        if (_planetLandingOverlay.UpdateInput(game))
+            return;
+        if (_galaxyMapOverlay.UpdateInput(game))
+            return;
+        if (_stationOverlay.UpdateInput(game))
+            return;
+
+        // In-game menu overlay (handles Escape toggle + menu navigation)
+        if (_inGameMenuOverlay.UpdateInput(game))
+            return;
+
+        // Interact
+        if (input.IsKeyPressed(SDL.Scancode.E))
+        {
+            if (_nearbyStationIndex >= 0)
+            {
+                _stationOverlay.Open(_starSystem, _stations[_nearbyStationIndex], game);
+            }
+            else if (_nearbyPlanetIndex >= 0)
+            {
+                _planetLandingOverlay.Open(_starSystem, _planets[_nearbyPlanetIndex], game);
+            }
+            else if (_nearbyMoonIndex >= 0)
+            {
+                var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
+                _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex), game,
+                    isMoon: true, moonPlanetIndex: _nearbyMoonPlanetIndex, moonIndex: _nearbyMoonIndex);
+            }
+        }
+
+        // Open galaxy map overlay
+        if (input.IsKeyPressed(SDL.Scancode.M))
+        {
+            _galaxyMapOverlay.Open(game);
+        }
+    }
+
     public override void Update(Game game, float dt)
     {
         var input = game.Input;
-        var camera = game.Camera;
 
-        // In-game menu overlay
-        if (_inGameMenuOverlay.Update(game, input))
+        // In-game menu active — no simulation
+        if (_inGameMenuOverlay.IsOpen)
+        {
+            _orbitSystem.Update(in dt);
             return;
+        }
+
+        // Planet landing overlay takes priority
+        if (_planetLandingOverlay.IsOpen)
+        {
+            _planetLandingOverlay.Update(game, dt);
+            _orbitSystem.Update(in dt);
+            return;
+        }
 
         // Galaxy map overlay takes priority
         if (_galaxyMapOverlay.IsOpen)
         {
             _galaxyMapOverlay.Update(game, dt);
-            // Still update orbits in the background
             _orbitSystem.Update(in dt);
             return;
         }
@@ -478,31 +542,6 @@ public class SolarSystemState : GameState
                     _nearbyStationIndex = _stationEntities.IndexOf(_proximitySystem.NearestEntity);
                     break;
             }
-        }
-
-        // Interact
-        if (input.IsKeyPressed(SDL.Scancode.E))
-        {
-            if (_nearbyStationIndex >= 0)
-            {
-                _stationOverlay.Open(_starSystem, _stations[_nearbyStationIndex], game);
-            }
-            else if (_nearbyPlanetIndex >= 0)
-            {
-                game.ChangeState(new PlanetLandingState(_starSystem, _planets[_nearbyPlanetIndex]));
-            }
-            else if (_nearbyMoonIndex >= 0)
-            {
-                var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
-                game.ChangeState(new PlanetLandingState(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex),
-                    isMoon: true, moonPlanetIndex: _nearbyMoonPlanetIndex, moonIndex: _nearbyMoonIndex));
-            }
-        }
-
-        // Open galaxy map overlay
-        if (input.IsKeyPressed(SDL.Scancode.M))
-        {
-            _galaxyMapOverlay.Open(game);
         }
     }
 
@@ -715,10 +754,13 @@ public class SolarSystemState : GameState
         // Station overlay drawn on top of everything
         _stationOverlay.Render(game);
 
+        // Planet landing overlay drawn on top of everything
+        _planetLandingOverlay.Render(game);
+
         // Galaxy map overlay drawn on top of everything
         _galaxyMapOverlay.Render(game);
 
         // In-game menu overlay drawn on top of everything
-        _inGameMenuOverlay.Render(renderer);
+        _inGameMenuOverlay.Render(game);
     }
 }

@@ -112,24 +112,9 @@ public class PlanetSurfaceState : GameState
     {
     }
 
-    public override void Update(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         var input = game.Input;
-        var camera = game.Camera;
-
-        if (_inVehicle)
-        {
-            // Vehicle movement (thrust/rotation)
-            _vehicleMovementSystem!.Update(dt);
-        }
-        else
-        {
-            // Normal avatar movement (4-way WASD)
-            _movementSystem.Update(in dt);
-        }
-
-        // Camera follows player + handles zoom
-        _cameraFollowSystem.Update(in dt);
 
         // Get player position for proximity checks
         ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
@@ -172,29 +157,6 @@ public class PlanetSurfaceState : GameState
             }
         }
 
-        // Keep vehicle position and rotation synced when driving
-        if (_inVehicle && _vehicleDeployed)
-        {
-            ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
-            vehicleTf.Position = avatarTransform.Position;
-            vehicleTf.Rotation = avatarTransform.Rotation;
-        }
-
-        // Check settlement proximity
-        _nearSettlement = null;
-        foreach (var settlement in _surfaceData.Settlements)
-        {
-            float sx = (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize;
-            float sy = (settlement.TileY + settlement.Height / 2f) * GameConfig.TileSize;
-            float distToSettlement = Vector2.Distance(avatarTransform.Position, new Vector2(sx, sy));
-            float settlementRadius = Math.Max(settlement.Width, settlement.Height) * GameConfig.TileSize / 2f + 20f;
-            if (distToSettlement < settlementRadius)
-            {
-                _nearSettlement = settlement;
-                break;
-            }
-        }
-
         // Board ship / enter settlement
         var shipTransform = game.EcsWorld.Get<Transform>(_shipEntity);
         float distToShip = Vector2.Distance(avatarTransform.Position, shipTransform.Position);
@@ -220,6 +182,49 @@ public class PlanetSurfaceState : GameState
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
             game.ChangeState(new SolarSystemState(_starSystem));
+        }
+    }
+
+    public override void Update(Game game, float dt)
+    {
+        if (_inVehicle)
+        {
+            // Vehicle movement (thrust/rotation)
+            _vehicleMovementSystem!.Update(dt);
+        }
+        else
+        {
+            // Normal avatar movement (4-way WASD)
+            _movementSystem.Update(in dt);
+        }
+
+        // Camera follows player + handles zoom
+        _cameraFollowSystem.Update(in dt);
+
+        // Get player position for proximity checks
+        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
+
+        // Keep vehicle position and rotation synced when driving
+        if (_inVehicle && _vehicleDeployed)
+        {
+            ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
+            vehicleTf.Position = avatarTransform.Position;
+            vehicleTf.Rotation = avatarTransform.Rotation;
+        }
+
+        // Check settlement proximity
+        _nearSettlement = null;
+        foreach (var settlement in _surfaceData.Settlements)
+        {
+            float sx = (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize;
+            float sy = (settlement.TileY + settlement.Height / 2f) * GameConfig.TileSize;
+            float distToSettlement = Vector2.Distance(avatarTransform.Position, new Vector2(sx, sy));
+            float settlementRadius = Math.Max(settlement.Width, settlement.Height) * GameConfig.TileSize / 2f + 20f;
+            if (distToSettlement < settlementRadius)
+            {
+                _nearSettlement = settlement;
+                break;
+            }
         }
     }
 

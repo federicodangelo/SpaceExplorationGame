@@ -8,19 +8,18 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Overlay for the Repair Station interaction.
 /// Used by both SpaceStationOverlay (docked menu) and InteriorState (walkable).
 /// </summary>
-public class RepairOverlay
+public class RepairOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     private const int RepairCostPerPoint = 2;
 
     public void Open() => IsOpen = true;
-    public void Close() => IsOpen = false;
 
     /// <summary>Process input for the repair overlay. Returns true if the overlay is active.</summary>
-    public bool Update(Game game, InputManager input)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
+
+        var input = game.Input;
 
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
@@ -43,10 +42,11 @@ public class RepairOverlay
     }
 
     /// <summary>Render the repair overlay.</summary>
-    public void Render(Game game, SpriteRenderer renderer)
+    public override void Render(Game game)
     {
         if (!IsOpen) return;
 
+        var renderer = game.SpriteRenderer;
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
 

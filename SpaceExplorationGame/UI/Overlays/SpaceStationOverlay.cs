@@ -22,10 +22,8 @@ public enum StationMenuOption
 /// Overlay displayed atop SolarSystemState when the player docks at a space station.
 /// Provides repair, missions, customization, ship dealer, walk-interior, and exit options.
 /// </summary>
-public class SpaceStationOverlay
+public class SpaceStationOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     private StarSystemData _starSystem = null!;
     private SpaceStationData _station = null!;
     private readonly RepairOverlay _repairOverlay = new();
@@ -69,49 +67,33 @@ public class SpaceStationOverlay
         game.Player.Refuel(GameConfig.StationRefuelAmount);
     }
 
-    public void Close()
+    public override void Close()
     {
         IsOpen = false;
     }
 
     /// <summary>
-    /// Update overlay logic. Returns true if the overlay consumed input (blocks solar system controls).
+    /// Handle input once per frame. Returns true if the overlay consumed input.
     /// </summary>
-    public bool Update(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
         var input = game.Input;
 
         // Sub-overlays take priority
-        if (_repairOverlay.Update(game, input))
+        if (_repairOverlay.UpdateInput(game))
             return true;
-        if (_missionOverlay.Update(game, input))
+        if (_missionOverlay.UpdateInput(game))
             return true;
-
-        if (_shipCustomization.IsOpen)
-        {
-            _shipCustomization.Update(game, input, dt);
+        if (_shipCustomization.UpdateInput(game))
             return true;
-        }
-
-        if (_avatarCustomization.IsOpen)
-        {
-            _avatarCustomization.Update(game, input, dt);
+        if (_avatarCustomization.UpdateInput(game))
             return true;
-        }
-
-        if (_vehicleCustomization.IsOpen)
-        {
-            _vehicleCustomization.Update(game, input, dt);
+        if (_vehicleCustomization.UpdateInput(game))
             return true;
-        }
-
-        if (_shipDealer.IsOpen)
-        {
-            _shipDealer.Update(game, input, dt);
+        if (_shipDealer.UpdateInput(game))
             return true;
-        }
 
         var confirmed = _menu.Update(input);
         if (confirmed is { } menuOption)
@@ -157,7 +139,21 @@ public class SpaceStationOverlay
         return true;
     }
 
-    public void Render(Game game)
+    /// <summary>
+    /// Fixed timestep update — delegates to sub-overlays that need dt.
+    /// </summary>
+    public override void Update(Game game, float dt)
+    {
+        if (!IsOpen) return;
+
+        // Sub-overlays that need dt for status message timers
+        _shipCustomization.Update(game, dt);
+        _avatarCustomization.Update(game, dt);
+        _vehicleCustomization.Update(game, dt);
+        _shipDealer.Update(game, dt);
+    }
+
+    public override void Render(Game game)
     {
         if (!IsOpen) return;
 
@@ -224,11 +220,11 @@ public class SpaceStationOverlay
         renderer.DrawTextScreen(frameX + 20, frameY + frameH - 30, "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT", 100, 100, 130, 1.5f);
 
         // Sub-overlays drawn on top
-        _repairOverlay.Render(game, renderer);
-        _missionOverlay.Render(game, renderer);
-        _shipCustomization.Render(game, renderer);
-        _avatarCustomization.Render(game, renderer);
-        _vehicleCustomization.Render(game, renderer);
-        _shipDealer.Render(game, renderer);
+        _repairOverlay.Render(game);
+        _missionOverlay.Render(game);
+        _shipCustomization.Render(game);
+        _avatarCustomization.Render(game);
+        _vehicleCustomization.Render(game);
+        _shipDealer.Render(game);
     }
 }

@@ -8,10 +8,8 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Overlay for buying and selling ship hulls at stations/settlements.
 /// Shows all available ship types with stats, comparison to current ship, and buy/sell pricing.
 /// </summary>
-public class ShipDealerOverlay
+public class ShipDealerOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     private int _selectedIndex;
     private string? _statusMessage;
     private float _statusTimer;
@@ -33,18 +31,11 @@ public class ShipDealerOverlay
         }
     }
 
-    public void Close() => IsOpen = false;
-
-    public bool Update(Game game, InputManager input, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
-        // Tick status message timer
-        if (_statusTimer > 0)
-        {
-            _statusTimer -= dt;
-            if (_statusTimer <= 0) _statusMessage = null;
-        }
+        var input = game.Input;
 
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
@@ -64,10 +55,23 @@ public class ShipDealerOverlay
         return true;
     }
 
-    public void Render(Game game, SpriteRenderer renderer)
+    public override void Update(Game game, float dt)
     {
         if (!IsOpen) return;
 
+        // Tick status message timer
+        if (_statusTimer > 0)
+        {
+            _statusTimer -= dt;
+            if (_statusTimer <= 0) _statusMessage = null;
+        }
+    }
+
+    public override void Render(Game game)
+    {
+        if (!IsOpen) return;
+
+        var renderer = game.SpriteRenderer;
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
         var player = game.Player;

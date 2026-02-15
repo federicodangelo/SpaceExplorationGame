@@ -132,7 +132,10 @@ public class Game : IDisposable
             // Apply pending state changes
             ApplyPendingState();
 
-            // Fixed timestep updates
+            // Process input once per frame
+            _currentState?.UpdateInput(this);
+
+            // Fixed timestep updates (may run multiple times per frame)
             int steps = 0;
             while (accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
             {
@@ -142,12 +145,8 @@ public class Game : IDisposable
                 steps++;
             }
 
-            // Clear edge-detection input only after Update has consumed it.
-            // If no update ran this frame, events survive until the next frame.
-            if (steps > 0)
-            {
-                Input.EndFrame();
-            }
+            // Clear edge-detection input after UpdateInput/Update have consumed it.
+            Input.EndFrame();
 
             // Render
             SDL.SetRenderDrawColor(Renderer, 0, 0, 0, 255);

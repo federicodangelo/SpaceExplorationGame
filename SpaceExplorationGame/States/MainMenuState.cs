@@ -88,10 +88,9 @@ public class MainMenuState : GameState
 
     public override void HandleEvent(Game game, SDL.Event e) { }
 
-    public override void Update(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         var input = game.Input;
-        _animTimer += dt;
 
         float menuStartY = GameConfig.WindowHeight / 2f - 40;
         float centerX = GameConfig.WindowWidth / 2f;
@@ -100,6 +99,11 @@ public class MainMenuState : GameState
         var confirmed = _menu.Update(input, centerX - menuW / 2f, menuStartY, menuW);
         if (confirmed is { } option)
             LaunchOption(game, option);
+    }
+
+    public override void Update(Game game, float dt)
+    {
+        _animTimer += dt;
     }
 
     private void LaunchOption(Game game, StartOption option)
@@ -127,7 +131,7 @@ public class MainMenuState : GameState
             {
                 var (system, planet) = PickRandomPlanet(game);
                 game.Player.CurrentStarSystemIndex = system.Index;
-                game.ChangeState(new PlanetLandingState(system, planet));
+                game.ChangeState(new SolarSystemState(system, autoOpenPlanet: planet));
                 break;
             }
 

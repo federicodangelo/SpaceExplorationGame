@@ -12,10 +12,8 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// The player can browse star systems and travel to them (spending fuel).
 /// Opened with M key from SolarSystemState.
 /// </summary>
-public class GalaxyMapOverlay
+public class GalaxyMapOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     private List<StarSystemData> _starSystems = [];
     private int _selectedSystemIndex = -1;
     private int _hoveredSystemIndex = -1;
@@ -117,8 +115,6 @@ public class GalaxyMapOverlay
     /// <summary>Close the overlay and restore the solar system camera.</summary>
     public void Close(Game game)
     {
-        IsOpen = false;
-
         // Destroy cached textures
         foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
         _starTextures.Clear();
@@ -129,6 +125,8 @@ public class GalaxyMapOverlay
         // Restore solar system camera
         game.Camera.Position = _savedCameraPos;
         game.Camera.Zoom = _savedCameraZoom;
+
+        base.Close();
     }
 
     /// <summary>Calculate distance between two star systems in world pixels.</summary>
@@ -196,9 +194,9 @@ public class GalaxyMapOverlay
     }
 
     /// <summary>
-    /// Update the galaxy map overlay. Returns true if overlay consumed input.
+    /// Handle input once per frame. Returns true if overlay consumed input.
     /// </summary>
-    public bool Update(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
@@ -211,17 +209,6 @@ public class GalaxyMapOverlay
             Close(game);
             return true;
         }
-
-        // Camera movement with WASD/arrows
-        float camSpeed = 500f / camera.Zoom;
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-            camera.Position -= new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-            camera.Position += new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            camera.Position -= new Vector2(camSpeed * dt, 0);
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            camera.Position += new Vector2(camSpeed * dt, 0);
 
         // Zoom with mouse wheel
         if (input.MouseWheelY != 0)
@@ -300,8 +287,30 @@ public class GalaxyMapOverlay
         return true;
     }
 
+    /// <summary>
+    /// Fixed timestep update for camera movement.
+    /// </summary>
+    public override void Update(Game game, float dt)
+    {
+        if (!IsOpen) return;
+
+        var input = game.Input;
+        var camera = game.Camera;
+
+        // Camera movement with WASD/arrows
+        float camSpeed = 500f / camera.Zoom;
+        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
+            camera.Position -= new Vector2(0, camSpeed * dt);
+        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
+            camera.Position += new Vector2(0, camSpeed * dt);
+        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
+            camera.Position -= new Vector2(camSpeed * dt, 0);
+        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
+            camera.Position += new Vector2(camSpeed * dt, 0);
+    }
+
     /// <summary>Render the galaxy map overlay.</summary>
-    public void Render(Game game)
+    public override void Render(Game game)
     {
         if (!IsOpen) return;
 

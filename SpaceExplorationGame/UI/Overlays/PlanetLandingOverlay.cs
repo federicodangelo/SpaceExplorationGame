@@ -3,18 +3,16 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 
-namespace SpaceExplorationGame.States;
+namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
-/// Orbital landing site selection: shows a zoomed-out terrain map of the planet.
+/// Orbital landing site selection overlay: shows a zoomed-out terrain map of the planet.
 /// The player clicks to choose a landing site and confirms with Enter/E.
 /// </summary>
-public class PlanetLandingState : GameState
+public class PlanetLandingOverlay : OverlayBase
 {
-    public override GameStateType Type => GameStateType.PlanetLanding;
-
-    private readonly StarSystemData _starSystem;
-    private readonly PlanetData _planet;
+    private StarSystemData _starSystem = null!;
+    private PlanetData _planet = null!;
     private PlanetSurfaceData _surfaceData = null!;
 
     // Orbital map rendering
@@ -38,11 +36,11 @@ public class PlanetLandingState : GameState
     private const float DoubleClickTime = 0.4f;
 
     // Moon tracking (if landing on a moon)
-    private readonly bool _isMoon;
-    private readonly int _moonPlanetIndex;
-    private readonly int _moonIndex;
+    private bool _isMoon;
+    private int _moonPlanetIndex;
+    private int _moonIndex;
 
-    public PlanetLandingState(StarSystemData starSystem, PlanetData planet,
+    public void Open(StarSystemData starSystem, PlanetData planet, Game game,
         bool isMoon = false, int moonPlanetIndex = -1, int moonIndex = -1)
     {
         _starSystem = starSystem;
@@ -50,10 +48,15 @@ public class PlanetLandingState : GameState
         _isMoon = isMoon;
         _moonPlanetIndex = moonPlanetIndex;
         _moonIndex = moonIndex;
-    }
 
-    public override void Enter(Game game)
-    {
+        // Reset state
+        _mapZoom = 1.0f;
+        _mapOffset = Vector2.Zero;
+        _cursorPulse = 0f;
+        _isPanning = false;
+        _lastClickTime = 0f;
+        _lastClickTile = (-1, -1);
+
         // Generate the same surface we'll land on
         var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
         _surfaceData = PlanetSurfaceGenerator.Generate(rng, _planet);
@@ -64,9 +67,17 @@ public class PlanetLandingState : GameState
         // Default cursor at center
         _cursorTile = (_surfaceData.Width / 2, _surfaceData.Height / 2);
         _hasCursor = true;
+
+        IsOpen = true;
     }
 
-    public override void Exit(Game game)
+    public override void Close()
+    {
+        base.Close();
+    }
+
+    /// <summary>Destroy the cached terrain texture. Call when leaving the solar system.</summary>
+    public void Cleanup()
     {
         if (_terrainTexture != nint.Zero)
         {
@@ -75,14 +86,11 @@ public class PlanetLandingState : GameState
         }
     }
 
-    public override void HandleEvent(Game game, SDL.Event e)
+    public override bool UpdateInput(Game game)
     {
-    }
+        if (!IsOpen) return false;
 
-    public override void Update(Game game, float dt)
-    {
         var input = game.Input;
-        _cursorPulse += dt * 3f;
 
         // Zoom with scroll
         if (input.MouseWheelY != 0)
@@ -166,22 +174,20 @@ public class PlanetLandingState : GameState
             TryLand(game);
         }
 
-        // Cancel — return to solar system near the planet/moon we were orbiting
+        // Cancel — close overlay and return to solar system view
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
-            if (_isMoon)
-            {
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromMoon;
-                game.Player.ReturnMoonPlanetIndex = _moonPlanetIndex;
-                game.Player.ReturnMoonIndex = _moonIndex;
-            }
-            else
-            {
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = _planet.Index;
-            }
-            game.ChangeState(new SolarSystemState(_starSystem));
+            Cleanup();
+            Close();
         }
+
+        return true; // overlay consumes all input while open
+    }
+
+    public override void Update(Game game, float dt)
+    {
+        if (!IsOpen) return;
+        _cursorPulse += dt * 3f;
     }
 
     private void TryLand(Game game)
@@ -202,16 +208,21 @@ public class PlanetLandingState : GameState
             game.Player.ReturnPlanetIndex = _planet.Index;
         }
 
-        game.ChangeState(new PlanetSurfaceState(_starSystem, _planet, _cursorTile.TileX, _cursorTile.TileY));
+        Cleanup();
+        Close();
+        game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.TileX, _cursorTile.TileY));
     }
 
     public override void Render(Game game)
     {
-        var renderer = game.SpriteRenderer;
+        if (!IsOpen) return;
 
-        // Dark space background
-        SDL.SetRenderDrawColor(game.Renderer, 4, 4, 12, 255);
-        SDL.RenderClear(game.Renderer);
+        var renderer = game.SpriteRenderer;
+        int w = GameConfig.WindowWidth;
+        int h = GameConfig.WindowHeight;
+
+        // Semi-transparent dark overlay so the solar system is visible behind
+        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 180);
 
         // Draw the terrain map
         float displayW = MapDisplaySize * _mapZoom;

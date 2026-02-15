@@ -8,10 +8,8 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Overlay for the Mission Board interaction.
 /// Used by both SpaceStationOverlay (docked menu) and InteriorState (walkable).
 /// </summary>
-public class MissionOverlay
+public class MissionOverlay : OverlayBase
 {
-    public bool IsOpen { get; private set; }
-
     public enum MissionType
     {
         CargoDelivery,
@@ -34,12 +32,12 @@ public class MissionOverlay
         _missionMenu.SelectedIndex = 0;
     }
 
-    public void Close() => IsOpen = false;
-
     /// <summary>Process input for the mission overlay. Returns true if the overlay is active.</summary>
-    public bool Update(Game game, InputManager input)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
+
+        var input = game.Input;
 
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
@@ -54,10 +52,11 @@ public class MissionOverlay
     }
 
     /// <summary>Render the mission overlay.</summary>
-    public void Render(Game game, SpriteRenderer renderer)
+    public override void Render(Game game)
     {
         if (!IsOpen) return;
 
+        var renderer = game.SpriteRenderer;
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
 
