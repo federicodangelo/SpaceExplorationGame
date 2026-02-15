@@ -44,8 +44,9 @@ public class InteriorState : GameState
     private InteriorNpc? _dialogueNpc;
     private int _dialogueLine;
 
-    // Shared service overlays (repair, missions)
-    private readonly ServiceOverlays _overlays = new();
+    // Service overlays (repair, missions)
+    private readonly RepairOverlay _repairOverlay = new();
+    private readonly MissionOverlay _missionOverlay = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
@@ -129,7 +130,9 @@ public class InteriorState : GameState
         var camera = game.Camera;
 
         // Handle overlay interactions first
-        if (_overlays.Update(game, input))
+        if (_repairOverlay.Update(game, input))
+            return;
+        if (_missionOverlay.Update(game, input))
             return;
         if (_shipCustomization.IsOpen)
         {
@@ -247,10 +250,10 @@ public class InteriorState : GameState
                 ExitInterior(game);
                 break;
             case InteractableType.RepairStation:
-                _overlays.Open(ServiceOverlays.OverlayType.Repair);
+                _repairOverlay.Open();
                 break;
             case InteractableType.MissionBoard:
-                _overlays.Open(ServiceOverlays.OverlayType.Mission);
+                _missionOverlay.Open();
                 break;
             case InteractableType.ShipCustomization:
                 _shipCustomization.Open(game.Player);
@@ -439,7 +442,7 @@ public class InteriorState : GameState
         renderer.DrawTextScreen(w - 200, 8, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
 
         // Interaction prompts
-        if (_nearestInteractable != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
+        if (_nearestInteractable != null && !_showingDialogue && !_repairOverlay.IsOpen && !_missionOverlay.IsOpen
             && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen
             && !_shipDealer.IsOpen)
         {
@@ -458,7 +461,7 @@ public class InteriorState : GameState
             renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
             renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 100, 255, 200, 2f);
         }
-        else if (_nearestNpc != null && !_showingDialogue && _overlays.Active == ServiceOverlays.OverlayType.None
+        else if (_nearestNpc != null && !_showingDialogue && !_repairOverlay.IsOpen && !_missionOverlay.IsOpen
             && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen
             && !_shipDealer.IsOpen)
         {
@@ -475,14 +478,15 @@ public class InteriorState : GameState
         }
 
         // Overlays
-        _overlays.Render(game, renderer);
+        _repairOverlay.Render(game, renderer);
+        _missionOverlay.Render(game, renderer);
         _shipCustomization.Render(game, renderer);
         _avatarCustomization.Render(game, renderer);
         _vehicleCustomization.Render(game, renderer);
         _shipDealer.Render(game, renderer);
 
         // Controls help (when no overlay)
-        if (_overlays.Active == ServiceOverlays.OverlayType.None && !_showingDialogue
+        if (!_repairOverlay.IsOpen && !_missionOverlay.IsOpen && !_showingDialogue
             && !_shipCustomization.IsOpen && !_avatarCustomization.IsOpen && !_vehicleCustomization.IsOpen
             && !_shipDealer.IsOpen)
         {

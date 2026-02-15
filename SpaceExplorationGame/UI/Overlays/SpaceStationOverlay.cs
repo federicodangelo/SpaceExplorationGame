@@ -28,7 +28,8 @@ public class SpaceStationOverlay
 
     private StarSystemData _starSystem = null!;
     private SpaceStationData _station = null!;
-    private readonly ServiceOverlays _overlays = new();
+    private readonly RepairOverlay _repairOverlay = new();
+    private readonly MissionOverlay _missionOverlay = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
@@ -83,11 +84,10 @@ public class SpaceStationOverlay
         var input = game.Input;
 
         // Sub-overlays take priority
-        if (_overlays.Active != ServiceOverlays.OverlayType.None)
-        {
-            _overlays.Update(game, input);
+        if (_repairOverlay.Update(game, input))
             return true;
-        }
+        if (_missionOverlay.Update(game, input))
+            return true;
 
         if (_shipCustomization.IsOpen)
         {
@@ -119,10 +119,10 @@ public class SpaceStationOverlay
             switch (menuOption)
             {
                 case StationMenuOption.Repair:
-                    _overlays.Open(ServiceOverlays.OverlayType.Repair);
+                    _repairOverlay.Open();
                     break;
                 case StationMenuOption.Missions:
-                    _overlays.Open(ServiceOverlays.OverlayType.Mission);
+                    _missionOverlay.Open();
                     break;
                 case StationMenuOption.ShipCustomization:
                     _shipCustomization.Open(game.Player);
@@ -224,7 +224,8 @@ public class SpaceStationOverlay
         renderer.DrawTextScreen(frameX + 20, frameY + frameH - 30, "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT", 100, 100, 130, 1.5f);
 
         // Sub-overlays drawn on top
-        _overlays.Render(game, renderer);
+        _repairOverlay.Render(game, renderer);
+        _missionOverlay.Render(game, renderer);
         _shipCustomization.Render(game, renderer);
         _avatarCustomization.Render(game, renderer);
         _vehicleCustomization.Render(game, renderer);

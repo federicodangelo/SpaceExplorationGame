@@ -53,18 +53,20 @@ SpaceExplorationGame/
 │   ├── MainMenuState.cs           # Starting point selection menu
 │   ├── GalaxyMapState.cs          # Galaxy overview with star system selection
 │   ├── SolarSystemState.cs        # Space flight within a solar system + station overlay
-│   ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
 │   ├── PlanetLandingState.cs      # Orbital landing site selection
 │   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
-│   ├── InteriorState.cs           # Walkable station/settlement interiors
-│   ├── ServiceOverlays.cs         # Reusable overlays (ServiceMenuOverlay)
-│   ├── CustomizationOverlayBase.cs # Abstract base for all customization overlays
-│   ├── ShipCustomizationOverlay.cs # Ship equipment management UI (dynamic slots per ship type)
-│   ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in UI
-│   ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
-│   └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
+│   └── InteriorState.cs           # Walkable station/settlement interiors
 └── UI/
-    └── MenuWidget.cs              # Reusable scrollable menu widget
+    ├── MenuWidget.cs              # Reusable scrollable menu widget
+    └── Overlays/
+        ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
+        ├── RepairOverlay.cs           # Ship repair overlay
+        ├── MissionOverlay.cs          # Mission board overlay
+        ├── CustomizationOverlayBase.cs # Abstract base for all customization overlays
+        ├── ShipCustomizationOverlay.cs # Ship equipment management UI (dynamic slots per ship type)
+        ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in UI
+        ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
+        └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
 ```
 
 ## Command Line Options
