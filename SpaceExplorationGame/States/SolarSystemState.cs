@@ -302,7 +302,7 @@ public class SolarSystemState : GameState
 
         // Create textures for celestial bodies
         int starTexSize = (int)(_starSystem.StarRadius * 6);
-        _starTexture = game.Textures.CreateStarTexture(
+        _starTexture = game.StarRenderer.CreateTexture(
             Math.Max(16, starTexSize),
             _starSystem.StarR, _starSystem.StarG, _starSystem.StarB);
 
@@ -312,7 +312,7 @@ public class SolarSystemState : GameState
         {
             var p = _planets[i];
             int texSize = Math.Max(8, (int)(p.Radius * 2) + 4);
-            _planetTextures.Add(game.Textures.CreatePlanetTexture(
+            _planetTextures.Add(game.PlanetRenderer.CreateTexture(
                 texSize, p.R, p.G, p.B, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 7919))));
 
             var moonTexList = new List<nint>();
@@ -320,7 +320,7 @@ public class SolarSystemState : GameState
             {
                 var moon = p.Moons[m];
                 int mTexSize = Math.Max(6, (int)(moon.Radius * 2) + 2);
-                moonTexList.Add(game.Textures.CreatePlanetTexture(
+                moonTexList.Add(game.PlanetRenderer.CreateTexture(
                     mTexSize, moon.R, moon.G, moon.B, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 1000 + m * 31))));
             }
             _moonTextures.Add(moonTexList);
@@ -382,12 +382,12 @@ public class SolarSystemState : GameState
     public override void Exit(Game game)
     {
         // Destroy cached textures
-        if (_starTexture != nint.Zero) { SDL.DestroyTexture(_starTexture); _starTexture = nint.Zero; }
-        foreach (var tex in _planetTextures) SDL.DestroyTexture(tex);
+        if (_starTexture != nint.Zero) { game.StarRenderer.DestroyTexture(_starTexture); _starTexture = nint.Zero; }
+        foreach (var tex in _planetTextures) game.PlanetRenderer.DestroyTexture(tex);
         _planetTextures.Clear();
         foreach (var moonList in _moonTextures)
         {
-            foreach (var tex in moonList) SDL.DestroyTexture(tex);
+            foreach (var tex in moonList) game.PlanetRenderer.DestroyTexture(tex);
         }
         _moonTextures.Clear();
 
@@ -620,21 +620,19 @@ public class SolarSystemState : GameState
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _planets, starCenter);
 
         // Asteroids
-        var asteroidTex = game.Textures.GetTexture(TextureManager.Asteroid);
-        SolarSystemRenderer.RenderAsteroids(renderer, camera, _asteroids, starCenter, game.GlobalTime, asteroidTex);
+        game.AsteroidRenderer.RenderAsteroids(renderer, camera, _asteroids, starCenter, game.GlobalTime);
 
         // Star
         float starDisplayRadius = _starSystem.StarRadius * 2f;
-        SolarSystemRenderer.RenderStar(renderer, camera, _starTexture, starCenter, starDisplayRadius);
+        game.StarRenderer.Render(renderer, camera, _starTexture, starCenter, starDisplayRadius);
 
         // Planets and moons
-        SolarSystemRenderer.RenderPlanetsAndMoons(renderer, camera, game.EcsWorld,
+        game.PlanetRenderer.RenderPlanetsAndMoons(renderer, camera, game.EcsWorld,
             _planets, _planetEntities, _moonEntities, _planetTextures, _moonTextures);
 
         // Stations
-        var stationTex = game.Textures.GetTexture(TextureManager.Station);
-        SolarSystemRenderer.RenderStations(renderer, camera, game.EcsWorld,
-            _stationEntities, stationTex, game.GlobalTime);
+        game.StationRenderer.RenderStations(renderer, camera, game.EcsWorld,
+            _stationEntities, game.GlobalTime);
 
         // Labels (via ECS system)
         float unusedDt = 0f;

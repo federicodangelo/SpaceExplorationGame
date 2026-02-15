@@ -1,7 +1,4 @@
 using System.Numerics;
-using Arch.Core;
-using Arch.Core.Extensions;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -39,101 +36,6 @@ public static class SolarSystemRenderer
         foreach (var planet in planets)
         {
             renderer.DrawCircle(camera, starCenter, planet.OrbitRadius, 30, 30, 50, 255, 64);
-        }
-    }
-
-    /// <summary>Renders asteroids computed from global time.</summary>
-    public static void RenderAsteroids(SpriteRenderer renderer, Camera camera,
-        List<(float BaseAngle, float Radius, float Speed, float Size)> asteroids,
-        Vector2 starCenter, double globalTime, nint asteroidTexture)
-    {
-        float asteroidTime = (float)globalTime;
-        foreach (var (baseAngle, radius, speed, size) in asteroids)
-        {
-            float angle = baseAngle + speed * asteroidTime;
-            var pos = starCenter + new Vector2(MathF.Cos(angle) * radius, MathF.Sin(angle) * radius);
-            float rot = angle * 180f / MathF.PI * 2f;
-            renderer.DrawTexture(camera, asteroidTexture, pos, (int)size + 4, (int)size + 4, rot);
-        }
-    }
-
-    /// <summary>Renders the central star with texture.</summary>
-    public static void RenderStar(SpriteRenderer renderer, Camera camera,
-        nint starTexture, Vector2 starCenter, float starDisplayRadius)
-    {
-        renderer.DrawTexture(camera, starTexture, starCenter,
-            (int)(starDisplayRadius * 3), (int)(starDisplayRadius * 3));
-    }
-
-    /// <summary>Renders planets with textures, settlement indicators, rings, moon orbits, and moons.</summary>
-    public static void RenderPlanetsAndMoons(SpriteRenderer renderer, Camera camera,
-        World ecsWorld, List<PlanetData> planets,
-        List<Entity> planetEntities, List<List<Entity>> moonEntities,
-        List<nint> planetTextures, List<List<nint>> moonTextures)
-    {
-        for (int i = 0; i < planets.Count; i++)
-        {
-            if (i >= planetEntities.Count) break;
-            var pTransform = ecsWorld.Get<Transform>(planetEntities[i]);
-            var p = planets[i];
-            int texRenderSize = (int)(p.Radius * 2) + 4;
-
-            // Planet texture
-            if (i < planetTextures.Count)
-            {
-                renderer.DrawTexture(camera, planetTextures[i], pTransform.Position,
-                    texRenderSize, texRenderSize);
-            }
-
-            // Settlement indicator (small diamond below planet)
-            if (p.HasSettlement)
-            {
-                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
-                renderer.DrawFilledCircle(camera, indicatorPos, 3f, 255, 210, 200, 220);
-            }
-
-            // Rings
-            if (p.HasRings)
-            {
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.5f,
-                    p.R, p.G, p.B, 120, 48);
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.8f,
-                    p.R, p.G, p.B, 80, 48);
-            }
-
-            // Moon orbit lines
-            foreach (var moon in p.Moons)
-            {
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, 20, 20, 40, 255, 24);
-            }
-
-            // Moon textures
-            if (i < moonEntities.Count)
-            {
-                for (int m = 0; m < moonEntities[i].Count; m++)
-                {
-                    var moonTransform = ecsWorld.Get<Transform>(moonEntities[i][m]);
-                    var moon = p.Moons[m];
-                    int moonTexSize = (int)(moon.Radius * 2) + 2;
-                    if (i < moonTextures.Count && m < moonTextures[i].Count)
-                    {
-                        renderer.DrawTexture(camera, moonTextures[i][m], moonTransform.Position,
-                            moonTexSize, moonTexSize);
-                    }
-                }
-            }
-        }
-    }
-
-    /// <summary>Renders space stations with rotating texture.</summary>
-    public static void RenderStations(SpriteRenderer renderer, Camera camera,
-        World ecsWorld, List<Entity> stationEntities, nint stationTexture, double globalTime)
-    {
-        for (int i = 0; i < stationEntities.Count; i++)
-        {
-            var stTransform = ecsWorld.Get<Transform>(stationEntities[i]);
-            float stRotation = (float)(globalTime * 10) % 360f;
-            renderer.DrawTexture(camera, stationTexture, stTransform.Position, 28, 28, stRotation);
         }
     }
 

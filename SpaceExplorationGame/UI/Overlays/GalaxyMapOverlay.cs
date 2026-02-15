@@ -83,12 +83,12 @@ public class GalaxyMapOverlay : OverlayBase
         }
 
         // Create star textures
-        foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
+        foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
         _starTextures.Clear();
         foreach (var system in _starSystems)
         {
             int texSize = Math.Max(12, (int)(system.StarRadius * 4));
-            _starTextures.Add(game.Textures.CreateStarTexture(
+            _starTextures.Add(game.StarRenderer.CreateTexture(
                 texSize, system.StarR, system.StarG, system.StarB));
         }
 
@@ -116,7 +116,7 @@ public class GalaxyMapOverlay : OverlayBase
     public void Close(Game game)
     {
         // Destroy cached textures
-        foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
+        foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
         _starTextures.Clear();
         _nebulae.Clear();
         _starSystems.Clear();
@@ -183,7 +183,7 @@ public class GalaxyMapOverlay : OverlayBase
             game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
             var targetSystem = _starSystems[_selectedSystemIndex];
             // Clean up overlay resources before changing state
-            foreach (var tex in _starTextures) SDL.DestroyTexture(tex);
+            foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
             _starTextures.Clear();
             _nebulae.Clear();
             _starSystems.Clear();

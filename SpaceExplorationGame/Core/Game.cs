@@ -27,6 +27,10 @@ public class Game : IDisposable
     public AvatarRenderer AvatarRenderer { get; private set; } = null!;
     public VehicleRenderer VehicleRenderer { get; private set; } = null!;
     public SpaceshipRenderer SpaceshipRenderer { get; private set; } = null!;
+    public StationRenderer StationRenderer { get; private set; } = null!;
+    public AsteroidRenderer AsteroidRenderer { get; private set; } = null!;
+    public PlanetRenderer PlanetRenderer { get; private set; } = null!;
+    public StarRenderer StarRenderer { get; private set; } = null!;
 
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
@@ -81,6 +85,10 @@ public class Game : IDisposable
         AvatarRenderer = new AvatarRenderer(Textures);
         VehicleRenderer = new VehicleRenderer(Textures);
         SpaceshipRenderer = new SpaceshipRenderer(Textures);
+        StationRenderer = new StationRenderer(Textures);
+        AsteroidRenderer = new AsteroidRenderer(Textures);
+        PlanetRenderer = new PlanetRenderer(Textures);
+        StarRenderer = new StarRenderer(Textures);
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -175,6 +183,10 @@ public class Game : IDisposable
         AvatarRenderer.Dispose();
         VehicleRenderer.Dispose();
         SpaceshipRenderer.Dispose();
+        StationRenderer.Dispose();
+        AsteroidRenderer.Dispose();
+        PlanetRenderer.Dispose();
+        StarRenderer.Dispose();
         Textures.Dispose();
         SpriteRenderer.Dispose();
         SDL.DestroyRenderer(Renderer);
