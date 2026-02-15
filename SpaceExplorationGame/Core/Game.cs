@@ -31,6 +31,7 @@ public class Game : IDisposable
     public AsteroidRenderer AsteroidRenderer { get; private set; } = null!;
     public PlanetRenderer PlanetRenderer { get; private set; } = null!;
     public StarRenderer StarRenderer { get; private set; } = null!;
+    public EnemyShipRenderer EnemyShipRenderer { get; private set; } = null!;
 
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
@@ -89,6 +90,7 @@ public class Game : IDisposable
         AsteroidRenderer = new AsteroidRenderer(Textures);
         PlanetRenderer = new PlanetRenderer(Textures);
         StarRenderer = new StarRenderer(Textures);
+        EnemyShipRenderer = new EnemyShipRenderer(Textures);
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -187,6 +189,7 @@ public class Game : IDisposable
         AsteroidRenderer.Dispose();
         PlanetRenderer.Dispose();
         StarRenderer.Dispose();
+        EnemyShipRenderer.Dispose();
         Textures.Dispose();
         SpriteRenderer.Dispose();
         SDL.DestroyRenderer(Renderer);

@@ -1,0 +1,158 @@
+using System.Numerics;
+using Arch.Core;
+using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
+
+namespace SpaceExplorationGame.Rendering;
+
+/// <summary>
+/// Renders projectiles as colored elongated dots with a trail effect.
+/// Stateless — uses draw primitives, no owned textures.
+/// </summary>
+public static class ProjectileRenderer
+{
+    /// <summary>Render all projectile entities in the world.</summary>
+    public static void RenderProjectiles(SpriteRenderer renderer, Camera camera, World world)
+    {
+        var query = new QueryDescription().WithAll<Transform, Velocity, Projectile>();
+        world.Query(in query, (ref Transform transform, ref Velocity velocity, ref Projectile proj) =>
+        {
+            var pos = transform.Position;
+            float speed = velocity.Value.Length();
+
+            // Draw projectile as a small elongated shape
+            if (speed > 10f)
+            {
+                // Trail: draw a line behind the projectile
+                var dir = Vector2.Normalize(velocity.Value);
+                var trailEnd = pos - dir * 8f;
+
+                // Main beam
+                renderer.DrawLine(camera, trailEnd, pos, proj.R, proj.G, proj.B, 255);
+
+                // Glow core (brighter, slightly offset lines)
+                var perp = new Vector2(-dir.Y, dir.X) * 0.8f;
+                renderer.DrawLine(camera, trailEnd + perp, pos + perp, proj.R, proj.G, proj.B, 140);
+                renderer.DrawLine(camera, trailEnd - perp, pos - perp, proj.R, proj.G, proj.B, 140);
+            }
+            else
+            {
+                // Slow/stationary projectile: just a dot
+                renderer.DrawFilledCircle(camera, pos, 2f, proj.R, proj.G, proj.B, 255);
+            }
+        });
+    }
+
+    /// <summary>Render damage number popups.</summary>
+    public static void RenderDamageEffects(SpriteRenderer renderer, Camera camera,
+        List<DamagePopup> popups, float dt)
+    {
+        for (int i = popups.Count - 1; i >= 0; i--)
+        {
+            var popup = popups[i];
+            popup.Timer -= dt;
+            popup.Position.Y -= 30f * dt; // float upward
+
+            if (popup.Timer <= 0)
+            {
+                popups.RemoveAt(i);
+                continue;
+            }
+
+            byte alpha = (byte)(255 * (popup.Timer / popup.MaxTime));
+            string text = popup.Damage.ToString("F0");
+
+            if (popup.ShieldHit)
+            {
+                renderer.DrawText(camera, popup.Position, text, 80, 160, 255, 1.5f);
+            }
+            else
+            {
+                renderer.DrawText(camera, popup.Position, text, 255, 200, 80, 1.5f);
+            }
+        }
+    }
+
+    /// <summary>Render explosion effects.</summary>
+    public static void RenderExplosions(SpriteRenderer renderer, Camera camera,
+        List<Explosion> explosions, float dt)
+    {
+        for (int i = explosions.Count - 1; i >= 0; i--)
+        {
+            var explosion = explosions[i];
+            explosion.Timer -= dt;
+
+            if (explosion.Timer <= 0)
+            {
+                explosions.RemoveAt(i);
+                continue;
+            }
+
+            float progress = 1f - (explosion.Timer / explosion.MaxTime);
+            float radius = explosion.Radius * (0.3f + progress * 0.7f);
+            byte alpha = (byte)(255 * (1f - progress));
+
+            // Outer glow
+            renderer.DrawFilledCircle(camera, explosion.Position, radius,
+                explosion.R, explosion.G, explosion.B, (byte)(alpha / 2));
+
+            // Inner core
+            renderer.DrawFilledCircle(camera, explosion.Position, radius * 0.5f,
+                255, 255, 200, alpha);
+
+            // Sparks
+            if (progress < 0.5f)
+            {
+                float sparkRadius = radius * 1.5f;
+                int sparkCount = 6;
+                for (int s = 0; s < sparkCount; s++)
+                {
+                    float angle = s * MathF.PI * 2f / sparkCount + progress * 3f;
+                    var sparkPos = explosion.Position + new Vector2(
+                        MathF.Cos(angle) * sparkRadius * progress,
+                        MathF.Sin(angle) * sparkRadius * progress);
+                    renderer.DrawFilledCircle(camera, sparkPos, 2f,
+                        255, (byte)(200 * (1 - progress)), 50, alpha);
+                }
+            }
+        }
+    }
+}
+
+/// <summary>Floating damage number popup.</summary>
+public class DamagePopup
+{
+    public Vector2 Position;
+    public float Damage;
+    public float Timer;
+    public float MaxTime;
+    public bool ShieldHit;
+
+    public DamagePopup(Vector2 position, float damage, bool shieldHit, float duration = 1.0f)
+    {
+        Position = position;
+        Damage = damage;
+        Timer = duration;
+        MaxTime = duration;
+        ShieldHit = shieldHit;
+    }
+}
+
+/// <summary>Visual explosion effect.</summary>
+public class Explosion
+{
+    public Vector2 Position;
+    public float Radius;
+    public float Timer;
+    public float MaxTime;
+    public byte R, G, B;
+
+    public Explosion(Vector2 position, float radius, byte r, byte g, byte b, float duration = 0.6f)
+    {
+        Position = position;
+        Radius = radius;
+        Timer = duration;
+        MaxTime = duration;
+        R = r; G = g; B = b;
+    }
+}

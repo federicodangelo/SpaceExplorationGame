@@ -433,32 +433,39 @@ public class GalaxyMapOverlay : OverlayBase
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
-            float panelY = GameConfig.WindowHeight - 160;
-            renderer.DrawRectScreen(0, panelY, 420, 160, 10, 10, 30, 200);
+            float panelY = GameConfig.WindowHeight - 180;
+            renderer.DrawRectScreen(0, panelY, 420, 180, 10, 10, 30, 200);
             renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", 255, 255, 255, 2f);
             renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", 200, 200, 200, 1.5f);
             renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", 200, 200, 200, 1.5f);
             renderer.DrawTextScreen(10, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", 200, 200, 200, 1.5f);
 
+            // Danger level with color coding
+            string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)} ({sys.DangerLevel}/5)";
+            byte dangerR = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)255 : (byte)255;
+            byte dangerG = sys.DangerLevel <= 2 ? (byte)255 : sys.DangerLevel <= 3 ? (byte)200 : (byte)80;
+            byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
+            renderer.DrawTextScreen(10, panelY + 95, dangerText, dangerR, dangerG, dangerB, 1.5f);
+
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(10, panelY + 95, "YOU ARE HERE", 100, 255, 200, 1.5f);
-                renderer.DrawTextScreen(10, panelY + 115, "[ENTER/DBLCLICK] CLOSE MAP", 100, 255, 100, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, "YOU ARE HERE", 100, 255, 200, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] CLOSE MAP", 100, 255, 100, 1.5f);
             }
             else
             {
-                renderer.DrawTextScreen(10, panelY + 95, $"DISTANCE: {distance:F0}", 200, 200, 200, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, $"DISTANCE: {distance:F0}", 200, 200, 200, 1.5f);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(10, panelY + 115, $"FUEL COST: {fuelCost:F1}", fuelR, fuelG, fuelB, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 135, $"FUEL COST: {fuelCost:F1}", fuelR, fuelG, fuelB, 1.5f);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(10, panelY + 135, "OUT OF FTL RANGE", 255, 80, 80, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "OUT OF FTL RANGE", 255, 80, 80, 1.5f);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(10, panelY + 135, "NOT ENOUGH FUEL", 255, 80, 80, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "NOT ENOUGH FUEL", 255, 80, 80, 1.5f);
                 else
-                    renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] TRAVEL", 100, 255, 100, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "[ENTER/DBLCLICK] TRAVEL", 100, 255, 100, 1.5f);
             }
         }
 

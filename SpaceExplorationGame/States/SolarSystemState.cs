@@ -77,6 +77,24 @@ public class SolarSystemState : GameState
     private LabelRenderSystem _labelRenderSystem = null!;
     private InteractionProximitySystem _proximitySystem = null!;
 
+    // Combat systems
+    private ProjectileSystem _projectileSystem = null!;
+    private ShieldRegenSystem _shieldRegenSystem = null!;
+    private EnemyAISystem _enemyAISystem = null!;
+
+    // Combat state
+    private List<Entity> _enemyEntities = [];
+    private float _playerFireCooldown;
+    private bool _playerDead;
+    private float _respawnTimer;
+    private const float RespawnDelay = 3f;
+    private string? _combatMessage;
+    private float _combatMessageTimer;
+
+    // Visual effects
+    private readonly List<DamagePopup> _damagePopups = [];
+    private readonly List<Explosion> _explosions = [];
+
     // Cached textures for this solar system
     private nint _starTexture;
     private List<nint> _planetTextures = [];
@@ -310,17 +328,28 @@ public class SolarSystemState : GameState
 
         // Create player ship
         int shipSize = game.Player.CurrentShipType.SpriteSize;
+        var playerStats = game.Player.GetCombinedStats();
+        float playerMaxShield = playerStats.ShieldStrength;
         _playerShip = game.EcsWorld.Create(
             new Transform(shipStartPos),
             ECS.Components.Sprite.ColoredRect(shipSize, shipSize, 100, 255, 100),
             new Velocity(GameConfig.ShipMaxSpeed),
-            new PlayerControlled()
+            new PlayerControlled(),
+            new Health(game.Player.ShipMaxHealth, playerMaxShield,
+                GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
+            {
+                Hull = game.Player.ShipHealth,
+                Shield = playerMaxShield // Start with full shields
+            }
         );
 
         // Background stars
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+
+        // --- Spawn NPC ships (pirates, traders, patrols) based on danger level ---
+        SpawnNPCShips(game, center, mapW, mapH);
         for (int i = 0; i < 800; i++)
         {
             _bgStars.Add((
@@ -376,6 +405,18 @@ public class SolarSystemState : GameState
 
         _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
 
+        // Combat systems
+        _projectileSystem = new ProjectileSystem(game.EcsWorld);
+        _shieldRegenSystem = new ShieldRegenSystem(game.EcsWorld);
+        _shieldRegenSystem.Initialize();
+
+        float totalMapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
+        float totalMapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        _enemyAISystem = new EnemyAISystem(game.EcsWorld,
+            () => game.EcsWorld.IsAlive(_playerShip) ? game.EcsWorld.Get<Transform>(_playerShip).Position : center,
+            () => !_playerDead && game.EcsWorld.IsAlive(_playerShip),
+            totalMapW, totalMapH);
+
         // Camera follows player
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
@@ -429,6 +470,10 @@ public class SolarSystemState : GameState
         _moonEntities.Clear();
         _asteroids.Clear();
         _bgStars.Clear();
+        _enemyEntities.Clear();
+        _damagePopups.Clear();
+        _explosions.Clear();
+        _playerDead = false;
 
         _planetLandingOverlay.Cleanup();
     }
@@ -526,6 +571,23 @@ public class SolarSystemState : GameState
         // Clear anchor when returning to normal gameplay
         ClearAnchor(game);
 
+        // --- Handle player death / respawn ---
+        if (_playerDead)
+        {
+            _respawnTimer -= dt;
+            _orbitSystem.Update(in dt);
+            // Still run enemy AI and projectiles during death animation
+            _enemyAISystem.Update(dt);
+            _projectileSystem.Update(dt);
+            _shieldRegenSystem.Update(in dt);
+
+            if (_respawnTimer <= 0)
+            {
+                HandlePlayerRespawn(game);
+            }
+            return;
+        }
+
         // --- Player ship controls ---
         ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
         ref var shipVelocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
@@ -599,6 +661,9 @@ public class SolarSystemState : GameState
 
         // --- Mining laser ---
         UpdateMining(game, dt);
+
+        // --- Combat systems ---
+        UpdateCombat(game, dt);
     }
 
     /// <summary>Handle mining laser: hold Space to fire beam at nearest asteroid.</summary>
@@ -685,6 +750,352 @@ public class SolarSystemState : GameState
         }
     }
 
+    /// <summary>Spawn NPC ships based on system danger level.</summary>
+    private void SpawnNPCShips(Game game, Vector2 center, float mapW, float mapH)
+    {
+        _enemyEntities.Clear();
+        var enemyRng = new SeededRandom(game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(5000));
+        int dangerLevel = _starSystem.DangerLevel;
+
+        // Scale enemy count and stats by danger level
+        int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
+        int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
+        int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
+
+        float hullMultiplier = 1f + (dangerLevel - 1) * 0.4f;
+        float damageMultiplier = 1f + (dangerLevel - 1) * 0.3f;
+        int creditMultiplier = dangerLevel;
+
+        // Spawn pirates
+        for (int i = 0; i < pirateCount; i++)
+        {
+            var pos = new Vector2(
+                enemyRng.NextFloat(200, mapW - 200),
+                enemyRng.NextFloat(200, mapH - 200));
+
+            // Avoid spawning too close to center (star)
+            if (Vector2.Distance(pos, center) < 300f)
+                pos += Vector2.Normalize(pos - center) * 300f;
+
+            float baseHull = 40f + dangerLevel * 20f;
+            float baseShield = dangerLevel >= 3 ? 15f + dangerLevel * 10f : 0f;
+
+            var entity = game.EcsWorld.Create(
+                new Transform(pos, enemyRng.NextFloat(0, 360)),
+                ECS.Components.Sprite.ColoredRect(28, 28, 255, 80, 80),
+                new Velocity(GameConfig.PirateSpeed),
+                new Health(baseHull * hullMultiplier, baseShield,
+                    GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
+                new EnemyAI
+                {
+                    Faction = Faction.Pirate,
+                    State = AIState.Patrol,
+                    FireRate = GameConfig.EnemyFireRate / (1f + dangerLevel * 0.1f),
+                    FireCooldown = enemyRng.NextFloat(0, 2f),
+                    WeaponDamage = (5f + dangerLevel * 3f) * damageMultiplier,
+                    WeaponRange = GameConfig.EnemyWeaponRange,
+                    DetectRange = GameConfig.EnemyDetectRange,
+                    ProjectileSpeed = GameConfig.EnemyProjectileSpeed,
+                    LootCredits = GameConfig.BaseLootCredits * creditMultiplier,
+                    EngageDistance = GameConfig.EnemyEngageDistance,
+                    FleeHealthPercent = GameConfig.EnemyFleeHealthPercent
+                },
+                new LootDrop
+                {
+                    MinCredits = GameConfig.BaseLootCredits * creditMultiplier / 2,
+                    MaxCredits = GameConfig.BaseLootCredits * creditMultiplier * 2,
+                    ResourceDropChance = GameConfig.ResourceDropChance,
+                    PartDropChance = GameConfig.PartDropChance * (1f + dangerLevel * 0.05f),
+                    DangerLevel = dangerLevel
+                }
+            );
+            _enemyEntities.Add(entity);
+        }
+
+        // Spawn traders
+        for (int i = 0; i < traderCount; i++)
+        {
+            var pos = new Vector2(
+                enemyRng.NextFloat(300, mapW - 300),
+                enemyRng.NextFloat(300, mapH - 300));
+
+            var entity = game.EcsWorld.Create(
+                new Transform(pos, enemyRng.NextFloat(0, 360)),
+                ECS.Components.Sprite.ColoredRect(32, 32, 200, 160, 80),
+                new Velocity(GameConfig.TraderSpeed),
+                new Health(80f, 0f, 0f, 0f),
+                new EnemyAI
+                {
+                    Faction = Faction.Trader,
+                    State = AIState.Patrol,
+                    FireRate = 1f,
+                    FireCooldown = 0,
+                    WeaponDamage = 0f,
+                    WeaponRange = 0f,
+                    DetectRange = 300f,
+                    ProjectileSpeed = 0f,
+                    LootCredits = 0,
+                    EngageDistance = 0f,
+                    FleeHealthPercent = 0.5f
+                }
+            );
+            _enemyEntities.Add(entity);
+        }
+
+        // Spawn patrols
+        for (int i = 0; i < patrolCount; i++)
+        {
+            var pos = new Vector2(
+                enemyRng.NextFloat(300, mapW - 300),
+                enemyRng.NextFloat(300, mapH - 300));
+
+            var entity = game.EcsWorld.Create(
+                new Transform(pos, enemyRng.NextFloat(0, 360)),
+                ECS.Components.Sprite.ColoredRect(30, 30, 80, 140, 220),
+                new Velocity(GameConfig.PatrolSpeed),
+                new Health(120f, 50f, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
+                new EnemyAI
+                {
+                    Faction = Faction.Patrol,
+                    State = AIState.Patrol,
+                    FireRate = 0.5f,
+                    FireCooldown = 0,
+                    WeaponDamage = 12f,
+                    WeaponRange = GameConfig.EnemyWeaponRange * 1.2f,
+                    DetectRange = GameConfig.EnemyDetectRange * 1.5f,
+                    ProjectileSpeed = GameConfig.EnemyProjectileSpeed * 1.1f,
+                    LootCredits = 0,
+                    EngageDistance = GameConfig.EnemyEngageDistance,
+                    FleeHealthPercent = 0f
+                }
+            );
+            _enemyEntities.Add(entity);
+        }
+    }
+
+    /// <summary>Update combat: player shooting, AI, projectiles, damage, death.</summary>
+    private void UpdateCombat(Game game, float dt)
+    {
+        var input = game.Input;
+
+        // Sync player health from Health component → PlayerData
+        if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Health>(_playerShip))
+        {
+            ref var playerHealth = ref game.EcsWorld.Get<Health>(_playerShip);
+            game.Player.ShipHealth = playerHealth.Hull;
+        }
+
+        // Player shooting (Space key, but not while mining)
+        _playerFireCooldown -= dt;
+        if (input.IsKeyDown(SDL.Scancode.Space) && !_isMining && _playerFireCooldown <= 0)
+        {
+            var stats = game.Player.GetCombinedStats();
+            float weaponDamage = stats.WeaponDamage;
+            if (weaponDamage > 0)
+            {
+                _playerFireCooldown = GameConfig.PlayerFireRate;
+                ref var shipT = ref game.EcsWorld.Get<Transform>(_playerShip);
+                float rad = shipT.Rotation * MathF.PI / 180f;
+                var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+                var spawnPos = shipT.Position + dir * 20f;
+
+                game.EcsWorld.Create(
+                    new Transform(spawnPos, shipT.Rotation),
+                    new Velocity(GameConfig.ProjectileSpeed) { Value = dir * GameConfig.ProjectileSpeed },
+                    new Projectile
+                    {
+                        Damage = weaponDamage,
+                        Speed = GameConfig.ProjectileSpeed,
+                        Lifetime = GameConfig.ProjectileLifetime,
+                        CollisionRadius = GameConfig.ProjectileRadius,
+                        OwnerFaction = Faction.Player,
+                        R = 100, G = 255, B = 100 // Green for player
+                    }
+                );
+            }
+        }
+
+        // Run AI system
+        _enemyAISystem.Update(dt);
+
+        // Run projectile system (collision detection)
+        _projectileSystem.Update(dt);
+
+        // Run shield regen
+        _shieldRegenSystem.Update(in dt);
+
+        // Process damage events (visual effects)
+        foreach (var (pos, damage, shieldHit) in _projectileSystem.DamageEventsThisFrame)
+        {
+            _damagePopups.Add(new DamagePopup(pos, damage, shieldHit));
+        }
+
+        // Process destroyed entities
+        var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xDEADBEEF);
+        foreach (var (entity, pos, faction, loot) in _projectileSystem.DestroyedThisFrame)
+        {
+            if (faction == Faction.Player)
+            {
+                // Player died
+                HandlePlayerDeath(game, pos);
+            }
+            else
+            {
+                // Enemy died — create explosion and drop loot
+                byte expR = faction == Faction.Pirate ? (byte)255 : (byte)200;
+                byte expG = faction == Faction.Pirate ? (byte)120 : (byte)200;
+                byte expB = faction == Faction.Pirate ? (byte)80 : (byte)200;
+                _explosions.Add(new Explosion(pos, 30f, expR, expG, expB));
+
+                if (loot.HasValue)
+                {
+                    ProcessLootDrop(game, loot.Value, combatRng, pos);
+                }
+
+                // Destroy the entity
+                if (game.EcsWorld.IsAlive(entity))
+                {
+                    _enemyEntities.Remove(entity);
+                    game.EcsWorld.Destroy(entity);
+                }
+            }
+        }
+
+        // Combat message timer
+        if (_combatMessageTimer > 0)
+        {
+            _combatMessageTimer -= dt;
+            if (_combatMessageTimer <= 0) _combatMessage = null;
+        }
+    }
+
+    /// <summary>Process loot when an enemy is destroyed.</summary>
+    private void ProcessLootDrop(Game game, LootDrop loot, SeededRandom rng, Vector2 pos)
+    {
+        // Credits
+        int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
+        game.Player.Credits += credits;
+        string message = $"+{credits} CREDITS";
+
+        // Resource drop
+        if (rng.NextFloat() < loot.ResourceDropChance)
+        {
+            var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
+            int amount = rng.NextInt(1, 5 + loot.DangerLevel * 2);
+            int added = game.Player.AddCargo(resource, amount);
+            if (added > 0)
+            {
+                var resName = ResourceCatalog.Get(resource).Name;
+                message += $"  +{added} {resName.ToUpper()}";
+            }
+        }
+
+        // Part drop
+        if (rng.NextFloat() < loot.PartDropChance)
+        {
+            // Pick a random part with tier scaled to danger level
+            int maxTier = Math.Min(3, 1 + loot.DangerLevel / 2);
+            var candidates = ShipPartCatalog.AllParts
+                .Where(p => p.Tier > 0 && p.Tier <= maxTier)
+                .ToArray();
+
+            if (candidates.Length > 0)
+            {
+                var droppedPart = candidates[rng.NextInt(0, candidates.Length)];
+                if (!game.Player.OwnedParts.Contains(droppedPart) &&
+                    !game.Player.EquippedParts.ContainsValue(droppedPart))
+                {
+                    game.Player.OwnedParts.Add(droppedPart);
+                    message += $"  +{droppedPart.Name.ToUpper()}!";
+                }
+            }
+        }
+
+        _combatMessage = message;
+        _combatMessageTimer = 3f;
+    }
+
+    /// <summary>Handle player death — apply penalties and start respawn timer.</summary>
+    private void HandlePlayerDeath(Game game, Vector2 deathPos)
+    {
+        _playerDead = true;
+        _respawnTimer = RespawnDelay;
+        _explosions.Add(new Explosion(deathPos, 50f, 255, 200, 80, 1.5f));
+
+        // Destroy the old player ship entity so CameraFollowSystem doesn't track it
+        if (game.EcsWorld.IsAlive(_playerShip))
+            game.EcsWorld.Destroy(_playerShip);
+
+        // Apply death penalties
+        int creditsLost = (int)(game.Player.Credits * GameConfig.DeathCreditsLossPercent);
+        game.Player.Credits -= creditsLost;
+
+        // Lose some cargo
+        var cargoKeys = game.Player.Cargo.Keys.ToList();
+        foreach (var key in cargoKeys)
+        {
+            int loss = (int)(game.Player.Cargo[key] * GameConfig.DeathCargoLossPercent);
+            game.Player.Cargo[key] -= loss;
+            if (game.Player.Cargo[key] <= 0) game.Player.Cargo.Remove(key);
+        }
+
+        _combatMessage = $"DESTROYED! -{creditsLost} CREDITS";
+        _combatMessageTimer = RespawnDelay;
+    }
+
+    /// <summary>Respawn the player at the nearest station (or center of system).</summary>
+    private void HandlePlayerRespawn(Game game)
+    {
+        _playerDead = false;
+
+        // Determine respawn position (nearest station, or system center)
+        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
+        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        Vector2 respawnPos = new(centerX + 400, centerY);
+
+        if (_stationEntities.Count > 0)
+        {
+            // Find nearest station from last known player position
+            float bestDist = float.MaxValue;
+            foreach (var stEntity in _stationEntities)
+            {
+                if (!game.EcsWorld.IsAlive(stEntity)) continue;
+                var stPos = game.EcsWorld.Get<Transform>(stEntity).Position;
+                float dist = Vector2.Distance(stPos, respawnPos);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    respawnPos = stPos + new Vector2(50, 0);
+                }
+            }
+        }
+
+        // Restore hull to 50%
+        game.Player.ShipHealth = game.Player.ShipMaxHealth * GameConfig.DeathHullPercent;
+
+        // Recreate player ship entity
+        int shipSize = game.Player.CurrentShipType.SpriteSize;
+        var playerStats = game.Player.GetCombinedStats();
+        float playerMaxShield = playerStats.ShieldStrength;
+
+        _playerShip = game.EcsWorld.Create(
+            new Transform(respawnPos),
+            ECS.Components.Sprite.ColoredRect(shipSize, shipSize, 100, 255, 100),
+            new Velocity(GameConfig.ShipMaxSpeed),
+            new PlayerControlled(),
+            new Health(game.Player.ShipMaxHealth, playerMaxShield,
+                GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
+            {
+                Hull = game.Player.ShipHealth,
+                Shield = playerMaxShield
+            }
+        );
+
+        game.Camera.Position = respawnPos;
+        _combatMessage = "RESPAWNED — HULL AT 50%";
+        _combatMessageTimer = 3f;
+    }
+
     /// <summary>Record the entity the ship should follow and the offset from it.</summary>
     private void SetAnchor(Game game, Entity target)
     {
@@ -755,16 +1166,27 @@ public class SolarSystemState : GameState
         float unusedDt = 0f;
         _labelRenderSystem.Update(in unusedDt);
 
-        // Player ship
-        ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
-        int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
-        bool isThrusting = game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up);
-        game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
-            shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
+        // NPC ships (enemies, traders, patrols)
+        RenderNPCShips(game);
+
+        // Projectiles
+        ProjectileRenderer.RenderProjectiles(renderer, camera, game.EcsWorld);
+
+        // Player ship (only when alive)
+        if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+        {
+            ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
+            int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
+            bool isThrusting = game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up);
+            game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
+                shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
+        }
 
         // Mining laser beam
-        if (_isMining && _miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count)
+        if (!_playerDead && _isMining && _miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count
+            && game.EcsWorld.IsAlive(_playerShip))
         {
+            ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
             var target = _asteroids[_miningTargetIndex];
             var targetPos = AsteroidRenderer.GetAsteroidPosition(target, starCenter, game.GlobalTime);
 
@@ -785,12 +1207,37 @@ public class SolarSystemState : GameState
             renderer.DrawFilledCircle(camera, targetPos, 4f, beamR, (byte)(beamG + 60), beamB, 160);
         }
 
+        // Visual effects (damage popups, explosions)
+        float effectDt = GameConfig.FixedTimeStep;
+        ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups, effectDt);
+        ProjectileRenderer.RenderExplosions(renderer, camera, _explosions, effectDt);
+
         // HUD
-        ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
-        SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, vel.Value.Length());
+        if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+        {
+            ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
+            SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, vel.Value.Length());
+        }
+        else
+        {
+            SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, 0f);
+        }
 
         // Cargo HUD (below system HUD)
         SolarSystemRenderer.RenderCargoHud(renderer, game.Player);
+
+        // Combat HUD (hull/shield bars + danger level)
+        RenderCombatHud(renderer, game);
+
+        // Death screen
+        if (_playerDead)
+        {
+            renderer.DrawRectScreen(0, GameConfig.WindowHeight / 2f - 40, GameConfig.WindowWidth, 80, 0, 0, 0, 180);
+            string deathText = $"SHIP DESTROYED - RESPAWNING IN {_respawnTimer:F1}s";
+            float textW = renderer.MeasureText(deathText, 3f);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - textW / 2f,
+                GameConfig.WindowHeight / 2f - 15, deathText, 255, 80, 80, 3f);
+        }
 
         // Mining target info panel
         if (_miningTargetIndex >= 0 && _miningTargetIndex < _asteroids.Count)
@@ -805,6 +1252,14 @@ public class SolarSystemState : GameState
             float msgW = renderer.MeasureText(_miningMessage, 2.5f);
             float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
             renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f - 40, _miningMessage, 255, 220, 80, 2.5f);
+        }
+
+        // Combat feedback message
+        if (_combatMessage != null)
+        {
+            float msgW = renderer.MeasureText(_combatMessage, 2f);
+            float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
+            renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + 30, _combatMessage, 255, 200, 80, 2f);
         }
 
         // Interaction prompts
@@ -831,5 +1286,101 @@ public class SolarSystemState : GameState
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
+    }
+
+    /// <summary>Render all NPC ships with their textures and health bars.</summary>
+    private void RenderNPCShips(Game game)
+    {
+        var renderer = game.SpriteRenderer;
+        var camera = game.Camera;
+
+        foreach (var entity in _enemyEntities)
+        {
+            if (!game.EcsWorld.IsAlive(entity)) continue;
+            if (!game.EcsWorld.Has<Health>(entity)) continue;
+
+            ref var health = ref game.EcsWorld.Get<Health>(entity);
+            if (health.IsDead) continue;
+
+            ref var transform = ref game.EcsWorld.Get<Transform>(entity);
+            var ai = game.EcsWorld.Get<EnemyAI>(entity);
+            var velocity = game.EcsWorld.Get<Velocity>(entity);
+
+            bool isMoving = velocity.Value.LengthSquared() > 50f * 50f;
+            int shipSize = ai.Faction switch
+            {
+                Faction.Pirate => 28,
+                Faction.Trader => 32,
+                Faction.Patrol => 30,
+                _ => 28
+            };
+
+            game.EnemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
+                ai.Faction, shipSize, isMoving);
+
+            // Health bar
+            game.EnemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,
+                health.HullPercent, health.ShieldPercent, health.MaxShield, shipSize);
+
+            // Faction indicator (small colored text above health bar)
+            string factionLabel = ai.Faction switch
+            {
+                Faction.Pirate => "PIRATE",
+                Faction.Trader => "TRADER",
+                Faction.Patrol => "PATROL",
+                _ => ""
+            };
+            var (fr, fg, fb) = ai.Faction switch
+            {
+                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
+                Faction.Trader => ((byte)200, (byte)180, (byte)80),
+                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
+                _ => ((byte)200, (byte)200, (byte)200)
+            };
+            var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
+            renderer.DrawText(camera, labelPos, factionLabel, fr, fg, fb, 0.8f);
+        }
+    }
+
+    /// <summary>Render the combat HUD: hull/shield bars and danger level.</summary>
+    private void RenderCombatHud(SpriteRenderer renderer, Game game)
+    {
+        // Position below cargo HUD
+        float hudX = 10;
+        float hudY = 140;
+
+        // Background
+        renderer.DrawRectScreen(hudX - 5, hudY - 5, 230, 70, 0, 0, 0, 160);
+
+        // Hull bar
+        float hullPct = game.Player.ShipMaxHealth > 0 ? game.Player.ShipHealth / game.Player.ShipMaxHealth : 0;
+        renderer.DrawTextScreen(hudX, hudY, "HULL", 200, 200, 200, 1.5f);
+        float barX = hudX + 60;
+        float barW = 160;
+        float barH = 12;
+        renderer.DrawRectScreen(barX, hudY, barW, barH, 40, 40, 40);
+        byte hullR = hullPct > 0.5f ? (byte)(255 * (1 - hullPct) * 2) : (byte)255;
+        byte hullG = hullPct > 0.5f ? (byte)255 : (byte)(255 * hullPct * 2);
+        renderer.DrawRectScreen(barX, hudY, barW * hullPct, barH, hullR, hullG, 0);
+        renderer.DrawTextScreen(barX + barW + 5, hudY, $"{game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", 200, 200, 200, 1f);
+
+        // Shield bar (if player has shield)
+        var stats = game.Player.GetCombinedStats();
+        if (stats.ShieldStrength > 0 && game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Health>(_playerShip))
+        {
+            ref var health = ref game.EcsWorld.Get<Health>(_playerShip);
+            float shieldPct = health.ShieldPercent;
+            renderer.DrawTextScreen(hudX, hudY + 20, "SHLD", 100, 160, 255, 1.5f);
+            renderer.DrawRectScreen(barX, hudY + 20, barW, barH, 40, 40, 60);
+            renderer.DrawRectScreen(barX, hudY + 20, barW * shieldPct, barH, 80, 160, 255);
+            renderer.DrawTextScreen(barX + barW + 5, hudY + 20, $"{health.Shield:F0}/{health.MaxShield:F0}", 100, 160, 255, 1f);
+        }
+
+        // Danger level
+        string dangerText = $"DANGER LV.{_starSystem.DangerLevel}";
+        byte dR = _starSystem.DangerLevel <= 2 ? (byte)100 : _starSystem.DangerLevel <= 3 ? (byte)255 : (byte)255;
+        byte dG = _starSystem.DangerLevel <= 2 ? (byte)255 : _starSystem.DangerLevel <= 3 ? (byte)200 : (byte)80;
+        byte dB = _starSystem.DangerLevel <= 2 ? (byte)100 : (byte)50;
+        renderer.DrawTextScreen(hudX, hudY + 42, dangerText, dR, dG, dB, 1.5f);
     }
 }

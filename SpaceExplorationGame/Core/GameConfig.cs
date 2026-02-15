@@ -57,4 +57,46 @@ public static class GameConfig
     public const float VehicleFriction = 0.98f;       // per-frame velocity damping
     public const float VehicleBrakeMultiplier = 0.92f; // brake damping per frame
     public const float VehicleMountRadius = 35f;      // distance to mount/dismount
+
+    // ── Combat ──────────────────────────────────────────────────
+    // Projectiles
+    public const float ProjectileSpeed = 600f;         // pixels/sec (player projectile)
+    public const float ProjectileLifetime = 2.0f;      // seconds before despawn
+    public const float ProjectileRadius = 4f;          // collision radius
+    public const float PlayerFireRate = 0.25f;         // seconds between player shots
+
+    // Enemy ships
+    public const int MinEnemiesPerSystem = 2;
+    public const int MaxEnemiesPerSystem = 8;
+    public const int MinTradersPerSystem = 1;
+    public const int MaxTradersPerSystem = 4;
+    public const int MinPatrolsPerSystem = 0;
+    public const int MaxPatrolsPerSystem = 2;
+    public const float EnemyDetectRange = 500f;        // range to notice targets
+    public const float EnemyWeaponRange = 300f;        // range to start firing
+    public const float EnemyEngageDistance = 200f;      // preferred combat distance
+    public const float EnemyFleeHealthPercent = 0.2f;   // flee below 20% hull
+    public const float EnemyProjectileSpeed = 400f;     // slightly slower than player
+    public const float EnemyFireRate = 0.6f;            // seconds between shots
+    public const float TraderSpeed = 150f;              // trader max speed
+    public const float PirateSpeed = 300f;              // pirate max speed
+    public const float PatrolSpeed = 250f;              // patrol max speed
+
+    // Shields
+    public const float BaseShieldRegenRate = 5f;        // shield points per second
+    public const float ShieldRegenDelay = 3f;           // seconds after hit before regen
+
+    // Danger levels
+    public const int MinDangerLevel = 1;
+    public const int MaxDangerLevel = 5;
+
+    // Death penalty
+    public const float DeathHullPercent = 0.5f;         // respawn with 50% hull
+    public const float DeathCargoLossPercent = 0.25f;    // lose 25% of cargo
+    public const float DeathCreditsLossPercent = 0.10f;  // lose 10% of credits
+
+    // Loot
+    public const int BaseLootCredits = 50;              // base credits per kill
+    public const float ResourceDropChance = 0.5f;       // 50% chance to drop resources
+    public const float PartDropChance = 0.10f;          // 10% chance to drop a part
 }

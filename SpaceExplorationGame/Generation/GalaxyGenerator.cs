@@ -18,6 +18,7 @@ public class StarSystemData
     public byte StarB { get; set; }
     public int PlanetCount { get; set; }
     public bool HasSpaceStation { get; set; }
+    public int DangerLevel { get; set; }   // 1-5, determines enemy count/strength
 }
 
 /// <summary>
@@ -88,6 +89,9 @@ public static class GalaxyGenerator
                 _ => rng.NextInt(2, 6)
             };
 
+            // Danger level: seeded per-system (1-5)
+            int dangerLevel = rng.NextInt(Core.GameConfig.MinDangerLevel, Core.GameConfig.MaxDangerLevel + 1);
+
             systems.Add(new StarSystemData
             {
                 Index = i,
@@ -99,7 +103,8 @@ public static class GalaxyGenerator
                 StarG = g,
                 StarB = b,
                 PlanetCount = planetCount,
-                HasSpaceStation = rng.NextBool(0.75f)  // 75% chance of having a station
+                HasSpaceStation = rng.NextBool(0.75f),  // 75% chance of having a station
+                DangerLevel = dangerLevel
             });
         }
 

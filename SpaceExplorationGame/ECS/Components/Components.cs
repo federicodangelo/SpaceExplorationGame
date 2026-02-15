@@ -141,3 +141,105 @@ public struct Label
     public string Text;
     public int OffsetY;  // pixel offset below the entity
 }
+
+// ── Combat Components ──────────────────────────────────────────────
+
+/// <summary>Faction affiliation for combat entities (determines friend/foe).</summary>
+public enum Faction
+{
+    Player,
+    Pirate,      // Hostile — attacks player and traders
+    Trader,      // Friendly — attacked by pirates, can be defended
+    Patrol       // Neutral defender — attacks pirates, helps player
+}
+
+/// <summary>Health and shields for a combat-capable entity.</summary>
+public struct Health
+{
+    public float Hull;
+    public float MaxHull;
+    public float Shield;
+    public float MaxShield;
+    public float ShieldRegenRate;     // shield points restored per second
+    public float ShieldRegenDelay;     // seconds after last hit before regen starts
+    public float TimeSinceLastHit;     // tracks time since last damage for regen delay
+
+    public Health(float maxHull, float maxShield = 0f, float shieldRegenRate = 0f, float shieldRegenDelay = 2f)
+    {
+        Hull = maxHull;
+        MaxHull = maxHull;
+        Shield = maxShield;
+        MaxShield = maxShield;
+        ShieldRegenRate = shieldRegenRate;
+        ShieldRegenDelay = shieldRegenDelay;
+        TimeSinceLastHit = float.MaxValue; // allow immediate regen at start
+    }
+
+    /// <summary>Apply damage: shields absorb first, remainder goes to hull. Returns actual hull damage dealt.</summary>
+    public float TakeDamage(float damage)
+    {
+        TimeSinceLastHit = 0f;
+
+        // Shields absorb damage first
+        float shieldAbsorbed = MathF.Min(Shield, damage);
+        Shield -= shieldAbsorbed;
+        float remaining = damage - shieldAbsorbed;
+
+        // Remaining goes to hull
+        float hullDamage = MathF.Min(Hull, remaining);
+        Hull -= hullDamage;
+        return hullDamage;
+    }
+
+    public readonly bool IsDead => Hull <= 0f;
+    public readonly float HullPercent => MaxHull > 0 ? Hull / MaxHull : 0f;
+    public readonly float ShieldPercent => MaxShield > 0 ? Shield / MaxShield : 0f;
+}
+
+/// <summary>A projectile entity that travels in a direction and deals damage on hit.</summary>
+public struct Projectile
+{
+    public float Damage;
+    public float Speed;
+    public float Lifetime;           // seconds remaining before despawn
+    public float CollisionRadius;    // hit detection radius
+    public Faction OwnerFaction;     // who fired it (to avoid self-hits)
+    public byte R, G, B;            // projectile color
+}
+
+/// <summary>AI-controlled ship with combat behavior.</summary>
+public struct EnemyAI
+{
+    public Faction Faction;
+    public AIState State;
+    public float StateTimer;         // time in current state
+    public float FireCooldown;       // seconds until next shot
+    public float FireRate;           // seconds between shots
+    public float WeaponDamage;       // damage per projectile
+    public float WeaponRange;        // max firing range
+    public float DetectRange;        // range to detect targets
+    public float ProjectileSpeed;    // speed of fired projectiles
+    public int LootCredits;          // credits dropped on death
+    public float EngageDistance;     // preferred combat distance
+    public float FleeHealthPercent;  // flee when hull % drops below this
+}
+
+public enum AIState
+{
+    Idle,       // Stationary or slow drift
+    Patrol,     // Moving between waypoints
+    Chase,      // Pursuing a target
+    Attack,     // In weapons range, firing
+    Flee,       // Low health, running away
+    Defend      // Moving to defend a friendly (patrol/trader)
+}
+
+/// <summary>Loot table for an enemy entity — dropped on destruction.</summary>
+public struct LootDrop
+{
+    public int MinCredits;
+    public int MaxCredits;
+    public float ResourceDropChance;   // 0-1 chance to drop resources
+    public float PartDropChance;       // 0-1 chance to drop an equipment part
+    public int DangerLevel;            // used to determine loot quality
+}

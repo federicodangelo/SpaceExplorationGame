@@ -29,7 +29,7 @@ SpaceExplorationGame/
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
 ├── ECS/
 │   ├── Components/
-│   │   └── Components.cs          # All ECS component structs
+│   │   └── Components.cs          # All ECS component structs (incl. combat: Health, Projectile, EnemyAI, Faction, LootDrop)
 │   └── Systems/
 │       ├── OrbitSystem.cs          # Deterministic orbital position updates
 │       ├── VelocitySystem.cs       # Velocity → position integration with speed clamping
@@ -38,7 +38,10 @@ SpaceExplorationGame/
 │       ├── LabelRenderSystem.cs    # Centered text labels below entities
 │       ├── InteractionProximitySystem.cs  # Nearest interactable entity detection
 │       ├── VehicleMovementSystem.cs # Thrust/rotation physics for planet rover
-│       └── TileMapRenderer.cs      # Shared tilemap rendering utility
+│       ├── TileMapRenderer.cs      # Shared tilemap rendering utility
+│       ├── ProjectileSystem.cs     # Projectile movement, collision detection, damage application
+│       ├── ShieldRegenSystem.cs    # Shield regeneration after damage delay
+│       └── EnemyAISystem.cs        # AI state machine for NPC ships (pirate/trader/patrol)
 ├── Generation/
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
@@ -53,12 +56,14 @@ SpaceExplorationGame/
 │   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
 │   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
 │   ├── SpaceshipRenderer.cs       # Player ship textures & rendering (IDisposable, owns textures per type)
+│   ├── EnemyShipRenderer.cs       # NPC faction ship textures & rendering (IDisposable, pirate/trader/patrol)
 │   ├── StationRenderer.cs         # Space station texture & rendering (IDisposable, owns texture)
 │   ├── AsteroidRenderer.cs        # Asteroid texture & rendering (IDisposable, owns texture)
 │   ├── PlanetRenderer.cs          # Planet/moon texture factory & rendering (IDisposable, tracks textures)
 │   ├── StarRenderer.cs            # Star texture factory & rendering (IDisposable, tracks textures)
 │   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, HUD, panels)
 │   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements, HUD)
+│   ├── ProjectileRenderer.cs      # Projectile trail rendering, damage popups, explosion effects (static)
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels, minimap)
 │   └── SettlementRenderer.cs      # Settlement rendering helper
 ├── States/
@@ -118,7 +123,7 @@ The game uses a state machine pattern. Each state (`GameState` subclass) owns it
 
 States:
 - **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
-- **SolarSystemState**: Real-time flight. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, and InteractionProximitySystem.
+- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. Press Space to fire weapons (when not mining). NPC ships (pirates, traders, patrols) spawn based on per-system danger level. Pirates attack the player and traders; patrols hunt pirates and defend traders. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with hull/cargo/credit penalties. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, InteractionProximitySystem, ProjectileSystem, ShieldRegenSystem, and EnemyAISystem.
 - **GalaxyMapOverlay** (overlay, not a game state): Full-screen overlay drawn over SolarSystemState. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape.
 - **SpaceStationOverlay** (overlay, not a game state): Semi-transparent menu drawn over SolarSystemState when docked. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight.
 - **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
@@ -149,6 +154,12 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `PlayerControlled` — tag for player entity
 - `Label` — text displayed near entity
 - `Interactable` — landing/docking capability
+- `Health` — hull + shield HP, shield regen rate/delay, damage tracking
+- `Projectile` — damage, speed, lifetime, collision radius, owner faction, RGB color
+- `EnemyAI` — faction, AI state machine, fire rate, weapon stats, detection ranges
+- `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
+- `Faction` — enum: Player, Pirate, Trader, Patrol
+- `AIState` — enum: Idle, Patrol, Chase, Attack, Flee, Defend
 
 ### ECS Systems
 Systems live in `ECS/Systems/` and encapsulate reusable game logic, reducing duplication across states.
@@ -167,6 +178,9 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 | **InteractionProximitySystem** | Plain class (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
 | **VehicleMovementSystem** | Plain class (manual) | Single entity | PlanetSurfaceState |
 | **TileMapRenderer** | Static utility | N/A (callback-driven) | PlanetSurfaceState, InteriorState |
+| **ProjectileSystem** | Plain class (manual query) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState |
+| **ShieldRegenSystem** | `BaseSystem` (source gen) | `Health` | SolarSystemState |
+| **EnemyAISystem** | Plain class (manual query) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
 
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
 - **VelocitySystem**: Integrates velocity into position each frame with `MaxSpeed` clamping.
@@ -176,6 +190,9 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 - **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Implemented as a plain class with `FindNearest(Vector2)` because the source generator's `Update()` does not call `BeforeUpdate()`, which prevented per-frame distance reset.
 - **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Plain class with `Update(float dt)`, configurable physics params, and `CanMoveTo` collision delegate.
 - **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
+- **ProjectileSystem**: Plain class that moves projectiles, checks lifetime expiry, and detects collisions between projectiles and Health entities. Faction logic prevents friendly fire (same-faction projectiles don't hit). Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
+- **ShieldRegenSystem**: Source-generated system that regenerates shields after a configurable delay (`ShieldRegenDelay`) since last hit. Regen rate is per-second (`ShieldRegenRate`).
+- **EnemyAISystem**: Plain class implementing a state machine for NPC ships. Pirates patrol, chase, and attack the player (flee when low health). Traders cruise and flee from nearby pirates. Patrols hunt pirates and defend traders. Fires projectiles via a deferred spawn list to avoid mutation during iteration. Takes `Func<Vector2>` for player position and `Func<bool>` for player alive state.
 
 ### Rendering
 The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
@@ -191,6 +208,7 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 | **AvatarRenderer** | Singleton texture (16×16 humanoid) | `Render(renderer, camera, position)` |
 | **VehicleRenderer** | Singleton texture (20×20 rover) | `Render(renderer, camera, position, rotation, isMounted)` |
 | **SpaceshipRenderer** | Per-type solar + landed textures, flame texture | `RenderFlying(...)`, `RenderLanded(...)` |
+| **EnemyShipRenderer** | 3 faction textures (pirate/trader/patrol) + flame | `Render(renderer, camera, position, rotation, faction, isThrusting)`, `RenderHealthBar(...)` |
 | **StationRenderer** | Singleton texture (32×32 station) | `RenderStations(renderer, camera, ecsWorld, entities, globalTime)` |
 | **AsteroidRenderer** | Singleton texture (12×12 rock) | `RenderAsteroids(renderer, camera, asteroids, center, globalTime)` |
 | **PlanetRenderer** | Factory — tracks all created textures | `CreateTexture(size, r, g, b, seed)`, `RenderPlanetsAndMoons(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
@@ -198,6 +216,7 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 
 **Scene Renderers** are static helper classes that handle non-entity rendering (HUD, panels, background elements):
 - **SolarSystemRenderer** — background stars (parallax), orbit lines, HUD, interaction panels (planet/moon/station)
+- **ProjectileRenderer** — projectile trail rendering (colored elongated lines), floating damage numbers (blue=shield, yellow=hull), expanding explosion circles with particle sparks
 - **PlanetSurfaceRenderer** — terrain details, settlement markers, surface HUD
 - **InteriorRenderer** — tiles, room labels, NPCs, interactable markers, minimap
 - **SettlementRenderer** — settlement-specific rendering
@@ -212,6 +231,9 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 - **Asteroids**: Irregular rocky blobs with angular distortion
 - **Avatar**: Tiny humanoid in green suit with blue visor
 - **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
+- **Pirate ship**: 28px red/dark angular hull with spiky aggressive silhouette
+- **Trader ship**: 32px gold/warm-toned bulky freighter silhouette
+- **Patrol ship**: 30px blue/cyan sleek military hull
 
 ### Ship Types
 The game has multiple ship types defined in `ShipTypeCatalog`. Each `ShipType` record specifies the hull's available equipment slots, sprite size, weight multiplier, base hull/fuel values, and buy/sell pricing.
@@ -255,11 +277,11 @@ Players can equip and swap ship parts at space stations via the **ShipCustomizat
 | Acceleration | Engine | Ship thrust in SolarSystemState |
 | MaxSpeed | Engine | Ship speed cap in SolarSystemState |
 | RotationSpeed | Engine | Ship turning rate in SolarSystemState |
-| MaxHull | Armor | Hull capacity (future combat) |
+| MaxHull | Armor | Hull capacity (health pool in combat) |
 | MaxFuel | Utility | Fuel tank size, extends range |
 | FtlRange | FTL Drive | Maximum FTL jump distance in GalaxyMapOverlay |
-| ShieldStrength | Shield | Damage absorption (future combat) |
-| WeaponDamage | Weapon 1/2 | Attack power (future combat) |
+| ShieldStrength | Shield | Shield HP pool — absorbs damage before hull, regenerates after delay |
+| WeaponDamage | Weapon 1/2 | Projectile damage (also used as mining DPS) |
 | FuelEfficiency | Utility | Reduces fuel consumption per jump |
 | CargoCapacity | Utility | Bonus cargo capacity for mined resources |
 
@@ -364,6 +386,35 @@ All customization types and the ship dealer are also accessible from the **Space
 
 A built-in `MiniBitmapFont` renders text without requiring TTF files. All HUD panels use semi-transparent dark backgrounds for readability.
 
+### Combat System
+Real-time projectile combat in the solar system. Players fire weapons with Space (when not mining), and NPC ships behave according to their faction AI.
+
+**Factions**:
+| Faction | Behavior | Color |
+|---|---|---|
+| **Player** | Controlled by input, fires green projectiles | Green |
+| **Pirate** | Patrol → detect player/trader → chase → attack → flee when low HP | Red |
+| **Trader** | Cruise through system, flee from nearby pirates | Gold |
+| **Patrol** | Hunt pirates, defend traders, strong shields | Blue |
+
+**Danger Level**: Each star system has a seeded danger level (1–5) stored in `StarSystemData.DangerLevel`. Displayed on the galaxy map with color-coded stars (green 1–2, yellow 3, red 4–5). Higher danger = more pirates, stronger enemies, better loot.
+
+**NPC Spawning**: Pirates, traders, and patrols are spawned when entering a solar system. Counts scale with danger level. Pirates get hull and damage bonuses per danger level. Patrols have strong shields. Traders are unarmed and flee from threats.
+
+**Shield Mechanics**: Shields absorb damage before hull HP. Shields regenerate after a configurable delay since last hit (`ShieldRegenDelay = 3s`). Regen rate is constant (`ShieldRegenRate = 5 HP/s`). Shield HP pool comes from equipped Shield parts (`ShieldStrength` stat).
+
+**Loot Drops**: Destroyed enemies drop credits (scaled by danger level), with chances for resource drops and equipment part drops. Part tier scales with danger level. Loot is displayed as a combat message.
+
+**Player Death**: When hull reaches zero:
+- 3-second respawn timer with death screen overlay
+- Lose 10% of credits and 25% of cargo
+- Respawn at nearest station with 50% hull and full shields
+- NPC AI continues running during death (pirates keep fighting traders/patrols)
+
+**Combat HUD**: Hull bar (red→green gradient) and shield bar (blue) displayed below the cargo HUD. Danger level shown as colored text. Floating damage numbers appear at hit locations (blue = shield, yellow = hull). Expanding explosion circles on entity destruction.
+
+**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols.
+
 ### Camera
 The `Camera` class handles world-to-screen coordinate conversion with zoom support. Scrollable tilemaps render only visible tiles using `GetVisibleBounds()`.
 
@@ -380,7 +431,7 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - A/D or Left/Right: Rotate ship
 - S/Down: Brake
 - Mouse Scroll: Zoom
-- Space (hold): Fire mining laser at nearest asteroid
+- Space (hold): Fire weapons / mine nearest asteroid (mining takes priority when near an asteroid)
 - E: Interact (enter orbit view for planets / dock at station)
 - M: Return to galaxy map
 
@@ -418,7 +469,7 @@ dotnet run
 dotnet run -- 12345  # with specific galaxy seed
 ```
 
-## Current Status (v0.2 - Graphics & Polish)
+## Current Status (v0.3 - Combat)
 - [x] SDL3 window and game loop (fixed timestep 60fps)
 - [x] Arch ECS integration
 - [x] Camera with zoom and scrolling
@@ -445,13 +496,18 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Vehicle customization system (3 equipment slots, 3 tiers, dynamic vehicle physics)
 - [x] Customization terminals in station interiors (ship, avatar, vehicle)
 - [x] Asteroid mining (mining laser beam, named resources, cargo system, sell at stations/terminals)
+- [x] Space combat system (projectile weapons, shield/hull mechanics, enemy AI)
+- [x] NPC factions (pirates, traders, patrols) with faction-specific AI behaviors
+- [x] Per-system danger levels with galaxy map display
+- [x] Loot drops (credits, resources, equipment parts scaled by danger)
+- [x] Player death and respawn with penalties
 
-- [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, Station, Asteroid, Planet, Star renderers own their textures)
-- [x] Scene renderer extraction (SolarSystemRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
+- [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, EnemyShip, Station, Asteroid, Planet, Star renderers own their textures)
+- [x] Scene renderer extraction (SolarSystemRenderer, ProjectileRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
 
 ## TODO / Next Steps
+- [ ] Planet surface combat (hostile fauna + hostile NPCs)
 - [ ] Mission system (acceptance, tracking, completion)
-- [ ] Combat system
 - [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
