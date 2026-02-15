@@ -29,6 +29,31 @@ public class PlanetSurfaceData
     public (int X, int Y) LandingZone { get; set; }
 }
 
+/// <summary>A building within a settlement layout.</summary>
+public class SettlementBuilding
+{
+    public float X { get; set; } // world-space top-left
+    public float Y { get; set; }
+    public float W { get; set; } // world-space size
+    public float H { get; set; }
+    public byte R { get; set; }
+    public byte G { get; set; }
+    public byte B { get; set; }
+    public bool HasAntenna { get; set; }
+    public bool HasChimney { get; set; }
+    public int WindowRows { get; set; } // 0 = no windows
+    public int WindowCols { get; set; }
+}
+
+/// <summary>Pre-computed visual layout of a settlement.</summary>
+public class SettlementLayout
+{
+    public List<SettlementBuilding> Buildings { get; set; } = [];
+    public List<(float X, float Y, float W, float H)> Streets { get; set; } = [];
+    public List<(float X, float Y)> Lights { get; set; } = [];
+    public (float X, float Y, float W, float H) Perimeter { get; set; }
+}
+
 public class SettlementData
 {
     public string Name { get; set; } = "";
@@ -36,6 +61,7 @@ public class SettlementData
     public int TileY { get; set; }
     public int Width { get; set; } = 8;
     public int Height { get; set; } = 6;
+    public SettlementLayout Layout { get; set; } = null!;
 }
 
 /// <summary>
@@ -93,6 +119,9 @@ public static class PlanetSurfaceGenerator
                     Height = rng.NextInt(4, 8)
                 };
                 result.Settlements.Add(settlement);
+
+                // Generate building layout
+                settlement.Layout = GenerateSettlementLayout(rng, settlement);
 
                 // Ensure the settlement area and a 2-tile border are walkable
                 EnsureWalkableArea(tiles, width, height, settlement.TileX, settlement.TileY,
@@ -261,6 +290,122 @@ public static class PlanetSurfaceGenerator
                 }
             }
         }
+    }
+
+    /// <summary>Generates the visual layout (buildings, streets, lights) for a settlement.</summary>
+    private static SettlementLayout GenerateSettlementLayout(SeededRandom rng, SettlementData settlement)
+    {
+        var layout = new SettlementLayout();
+        float ts = GameConfig.TileSize;
+        float baseX = settlement.TileX * ts;
+        float baseY = settlement.TileY * ts;
+        float totalW = settlement.Width * ts;
+        float totalH = settlement.Height * ts;
+
+        // Perimeter
+        layout.Perimeter = (baseX, baseY, totalW, totalH);
+
+        // Street grid: one horizontal and one vertical street through the settlement
+        float streetWidth = ts * 0.6f;
+        float streetCenterX = baseX + totalW * (0.35f + rng.NextFloat() * 0.3f);
+        float streetCenterY = baseY + totalH * (0.35f + rng.NextFloat() * 0.3f);
+
+        // Vertical street
+        layout.Streets.Add((streetCenterX - streetWidth / 2, baseY, streetWidth, totalH));
+        // Horizontal street
+        layout.Streets.Add((baseX, streetCenterY - streetWidth / 2, totalW, streetWidth));
+
+        // Define building zones (quadrants around the street intersection)
+        var zones = new (float zx, float zy, float zw, float zh)[]
+        {
+            (baseX, baseY, streetCenterX - streetWidth / 2 - baseX, streetCenterY - streetWidth / 2 - baseY),
+            (streetCenterX + streetWidth / 2, baseY, baseX + totalW - streetCenterX - streetWidth / 2, streetCenterY - streetWidth / 2 - baseY),
+            (baseX, streetCenterY + streetWidth / 2, streetCenterX - streetWidth / 2 - baseX, baseY + totalH - streetCenterY - streetWidth / 2),
+            (streetCenterX + streetWidth / 2, streetCenterY + streetWidth / 2, baseX + totalW - streetCenterX - streetWidth / 2, baseY + totalH - streetCenterY - streetWidth / 2),
+        };
+
+        // Building color palettes (muted sci-fi tones)
+        var palettes = new (byte r, byte g, byte b)[]
+        {
+            (110, 115, 130), // blue-gray
+            (130, 110, 100), // warm gray
+            (100, 120, 110), // teal-gray
+            (125, 120, 135), // purple-gray
+            (140, 130, 110), // tan
+            (95,  105, 120), // steel blue
+            (120, 110, 95),  // brown-gray
+        };
+
+        // Place buildings in each zone
+        foreach (var (zx, zy, zw, zh) in zones)
+        {
+            if (zw < ts * 1.2f || zh < ts * 1.2f) continue; // zone too small
+
+            float margin = ts * 0.25f;
+            float cursorX = zx + margin;
+            float cursorY = zy + margin;
+
+            // Fill zone row by row with varied buildings
+            while (cursorY + ts < zy + zh - margin)
+            {
+                cursorX = zx + margin;
+                float rowH = ts * (0.8f + rng.NextFloat() * 0.6f);
+
+                while (cursorX + ts < zx + zw - margin)
+                {
+                    float bw = ts * (0.8f + rng.NextFloat() * 1.2f);
+                    float bh = rowH;
+
+                    // Clamp to zone bounds
+                    if (cursorX + bw > zx + zw - margin)
+                        bw = zx + zw - margin - cursorX;
+                    if (cursorY + bh > zy + zh - margin)
+                        bh = zy + zh - margin - cursorY;
+
+                    if (bw < ts * 0.5f || bh < ts * 0.5f)
+                    {
+                        cursorX += bw + margin * 0.5f;
+                        continue;
+                    }
+
+                    var pal = palettes[rng.NextInt(0, palettes.Length)];
+                    var building = new SettlementBuilding
+                    {
+                        X = cursorX,
+                        Y = cursorY,
+                        W = bw,
+                        H = bh,
+                        R = pal.r,
+                        G = pal.g,
+                        B = pal.b,
+                        HasAntenna = rng.NextFloat() < 0.2f,
+                        HasChimney = rng.NextFloat() < 0.15f,
+                        WindowRows = bh > ts * 0.6f ? rng.NextInt(1, 3) : 0,
+                        WindowCols = bw > ts * 0.6f ? rng.NextInt(2, 5) : 0,
+                    };
+                    layout.Buildings.Add(building);
+
+                    cursorX += bw + margin * 0.5f;
+                }
+
+                cursorY += rowH + margin * 0.5f;
+            }
+        }
+
+        // Lights along streets
+        float lightSpacing = ts * 1.5f;
+        for (float ly = baseY + lightSpacing; ly < baseY + totalH - lightSpacing; ly += lightSpacing)
+        {
+            layout.Lights.Add((streetCenterX - streetWidth / 2 - 4, ly));
+            layout.Lights.Add((streetCenterX + streetWidth / 2 + 4, ly));
+        }
+        for (float lx = baseX + lightSpacing; lx < baseX + totalW - lightSpacing; lx += lightSpacing)
+        {
+            layout.Lights.Add((lx, streetCenterY - streetWidth / 2 - 4));
+            layout.Lights.Add((lx, streetCenterY + streetWidth / 2 + 4));
+        }
+
+        return layout;
     }
 
     /// <summary>Returns the most natural walkable terrain for a given planet type.</summary>

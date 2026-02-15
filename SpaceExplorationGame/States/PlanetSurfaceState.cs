@@ -285,25 +285,7 @@ public class PlanetSurfaceState : GameState
             });
 
         // Draw settlements
-        foreach (var settlement in _surfaceData.Settlements)
-        {
-            for (int sx = settlement.TileX; sx < settlement.TileX + settlement.Width && sx < _surfaceData.Width; sx++)
-            {
-                for (int sy = settlement.TileY; sy < settlement.TileY + settlement.Height && sy < _surfaceData.Height; sy++)
-                {
-                    var worldPos = new Vector2(sx * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                                               sy * GameConfig.TileSize + GameConfig.TileSize / 2f);
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, 100, 100, 120);
-                }
-            }
-
-            // Settlement label
-            var labelPos = new Vector2(
-                (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize,
-                settlement.TileY * GameConfig.TileSize - 10
-            );
-            renderer.DrawText(camera, labelPos, settlement.Name, 255, 255, 200);
-        }
+        Rendering.SettlementRenderer.Render(renderer, camera, _surfaceData);
 
         // Draw ship with texture
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
