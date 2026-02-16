@@ -13,7 +13,7 @@ public class SeededRandom
     public SeededRandom(ulong seed)
     {
         Seed = seed;
-        _state = seed;
+        _state = seed == 0 ? 1 : seed; // Avoid zero state for xorshift
     }
 
     /// <summary>xorshift64 - fast deterministic PRNG</summary>

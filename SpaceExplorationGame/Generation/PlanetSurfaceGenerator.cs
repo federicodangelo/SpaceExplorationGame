@@ -111,7 +111,7 @@ public static class PlanetSurfaceGenerator
                     sx = rng.NextInt(20, width - 20);
                     sy = rng.NextInt(20, height - 20);
                     attempts++;
-                } while (tiles[sx, sy] is TerrainType.Water or TerrainType.Lava or TerrainType.Void && attempts < 50);
+                } while ((tiles[sx, sy] is TerrainType.Water or TerrainType.Lava or TerrainType.Void) && attempts < 50);
 
                 var settlement = new SettlementData
                 {

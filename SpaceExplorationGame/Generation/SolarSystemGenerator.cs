@@ -128,7 +128,7 @@ public static class SolarSystemGenerator
             };
 
             var moons = GenerateMoons(rng, moonCount, radius, name);
-            bool hasRings = planetType is PlanetType.GasGiant or PlanetType.IceGiant && rng.NextBool(0.4f);
+            bool hasRings = (planetType is PlanetType.GasGiant or PlanetType.IceGiant) && rng.NextBool(0.4f);
 
             planets.Add(new PlanetData
             {
