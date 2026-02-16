@@ -943,7 +943,7 @@ public class SolarSystemState : GameState
         }
 
         // Minimap (top-right)
-        HudRenderer.RenderSolarSystemMinimap(renderer, _planets, _planetEntities,
+        HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _planets, _planetEntities,
             _moonEntities, _stationEntities, _asteroidEntities, _enemyEntities,
             _playerShip, _starEntity, game.EcsWorld, _starSystem.StarRadius);
 

@@ -626,7 +626,7 @@ public class PlanetSurfaceState : GameState
         Vector2? vehiclePos = _vehicleDeployed && !_inVehicle
             ? game.EcsWorld.Get<Transform>(_vehicleEntity).Position
             : null;
-        HudRenderer.RenderPlanetSurfaceMinimap(renderer, _surfaceData,
+        HudMinimapRenderer.RenderPlanetSurfaceMinimap(renderer, _surfaceData,
             avatarTf.Position, shipTf.Position, vehiclePos, game.EcsWorld);
 
         // Off-screen settlement indicators

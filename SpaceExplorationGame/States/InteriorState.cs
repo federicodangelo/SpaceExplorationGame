@@ -351,7 +351,7 @@ public class InteriorState : GameState
         _inGameMenuOverlay.Render(game);
 
         // Minimap (top-right, unified style)
-        HudRenderer.RenderInteriorMinimap(renderer, _interior, avatarTf.Position);
+        HudMinimapRenderer.RenderInteriorMinimap(renderer, _interior, avatarTf.Position);
     }
 }
 
