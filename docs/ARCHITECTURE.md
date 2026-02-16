@@ -22,41 +22,44 @@ SpaceExplorationGame/
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   ├── PlayerData.cs              # Persistent player data across state changes
+│   ├── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── ShipParts.cs               # Ship types, equipment data model, stats, and part catalog
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   ├── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
 ├── ECS/
+│   ├── EntityFactory.cs           # Centralized entity creation (all component compositions)
 │   ├── Components/
 │   │   └── Components.cs          # All ECS component structs (incl. combat: Health, Projectile, EnemyAI, SurfaceAI, Faction, LootDrop)
 │   └── Systems/
 │       ├── OrbitSystem.cs          # Deterministic orbital position updates
 │       ├── VelocitySystem.cs       # Velocity → position + rotation integration with speed clamping
-│       ├── PlayerMovementSystem.cs  # WASD/arrow movement with pluggable collision
 │       ├── CameraFollowSystem.cs   # Smooth camera follow + mouse wheel zoom
-│       ├── ShipMovementSystem.cs   # Ship flight physics (thrust, rotation, braking, friction)
 │       ├── InteractionProximitySystem.cs  # Nearest interactable entity detection
-│       ├── VehicleMovementSystem.cs # Thrust/rotation physics for planet rover
-│       ├── TileMapRenderer.cs      # Shared tilemap rendering utility
-│       ├── ProjectileSystem.cs     # Projectile movement, collision detection, damage application
-│       ├── ShieldRegenSystem.cs    # Shield regeneration after damage delay
-│       ├── EnemyAISystem.cs        # AI state machine for NPC ships (pirate/trader/patrol)
-│       └── SurfaceEnemyAISystem.cs # AI state machine for surface enemies (fauna/bandits)
+│       ├── Movement/
+│       │   ├── PlayerMovementSystem.cs  # WASD/arrow movement with pluggable collision
+│       │   ├── ShipMovementSystem.cs    # Ship flight physics (thrust, rotation, braking, friction)
+│       │   └── VehicleMovementSystem.cs # Thrust/rotation physics for planet rover
+│       ├── Combat/
+│       │   ├── ProjectileSystem.cs      # Projectile movement, collision detection, damage application
+│       │   └── ShieldRegenSystem.cs     # Shield regeneration after damage delay
+│       └── AI/
+│           ├── EnemyAISystem.cs         # AI state machine for NPC ships (pirate/trader/patrol)
+│           └── SurfaceEnemyAISystem.cs  # AI state machine for surface enemies (fauna/bandits)
 ├── Generation/
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
 │   ├── GalaxyGenerator.cs         # Galaxy star system placement & properties
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
 │   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
-│   └── InteriorGenerator.cs       # Station/settlement interior layouts
-├── Core/
-│   └── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
+│   └── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum
 ├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
 │   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── TextureManager.cs          # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
 │   ├── MiniBitmapFont.cs          # Built-in 5x8 pixel font
+│   ├── TileMapRenderer.cs         # Shared tilemap rendering utility (hash-based brightness, detail callback)
 │   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
 │   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
 │   ├── SpaceshipRenderer.cs       # Player ship textures & rendering (IDisposable, owns textures per type)
@@ -72,23 +75,27 @@ SpaceExplorationGame/
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels, minimap)
 │   └── SettlementRenderer.cs      # Settlement rendering helper
 ├── States/
-│   ├── MainMenuState.cs           # Starting point selection menu
+│   ├── MainMenuState.cs           # Starting point selection menu (7 options)
 │   ├── SolarSystemState.cs        # Space flight within a solar system + overlays
-│   ├── PlanetLandingState.cs      # Orbital landing site selection
 │   ├── PlanetSurfaceState.cs      # Planet surface exploration (tilemap)
 │   └── InteriorState.cs           # Walkable station/settlement interiors
 └── UI/
-    ├── MenuWidget.cs              # Reusable scrollable menu widget
+    ├── MenuWidget.cs              # Reusable scrollable menu widget (generic over enum)
     └── Overlays/
+        ├── OverlayBase.cs             # Abstract base class for all overlays
         ├── GalaxyMapOverlay.cs        # Galaxy map overlay (rendered atop SolarSystem)
         ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
+        ├── PlanetLandingOverlay.cs    # Orbital landing site selection overlay (rendered atop SolarSystem)
+        ├── InGameMenuOverlay.cs       # Pause menu overlay (Resume / Main Menu)
         ├── RepairOverlay.cs           # Ship repair overlay
-        ├── MissionOverlay.cs          # Mission board overlay
-        ├── CustomizationOverlayBase.cs # Abstract base for all customization overlays
-        ├── ShipCustomizationOverlay.cs # Ship equipment management UI (dynamic slots per ship type)
-        ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in UI
-        ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
-        └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
+        ├── MissionOverlay.cs          # Mission board overlay (placeholder)
+        ├── SellCargoOverlay.cs        # Sell resources for credits overlay
+        ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in overlay
+        └── Customization/
+            ├── CustomizationOverlayBase.cs  # Abstract base for all customization overlays
+            ├── ShipCustomizationOverlay.cs  # Ship equipment management UI (dynamic slots per ship type)
+            ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
+            └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
 ```
 
 ## Command Line Options
@@ -102,15 +109,18 @@ dotnet run -- [seed] [--start <location>]
 | `seed` | Optional integer seed for deterministic world generation. If omitted, a random seed is used. |
 | `--start <location>` | Skip the main menu and jump directly to a game state. Useful for testing. |
 
-**Start locations** (name or number):
+**Start locations** (name):
 
-| Name | # | Description |
-|---|---|---|
-| `galaxy` | `0` | Galaxy Map — bird's-eye view of all star systems |
-| `system` | `1` | Star System — ship flight in a random solar system |
-| `planet` | `2` | Planet Surface — surface exploration on a random planet |
-| `station` | `3` | Space Station — menu interaction at a random station |
-| `settlement` | `4` | Settlement — planet surface spawned at a settlement |
+| Name | Description |
+|---|---|
+| `system` | Star System — ship flight in a random solar system |
+| `planet` | Planet Surface — surface exploration on a random planet |
+| `station` | Space Station — menu interaction at a random station |
+| `station-inside` | Inside Space Station — walk around inside a random station |
+| `settlement` | Settlement — planet surface spawned at a settlement |
+| `settlement-inside` | Inside Settlement — walk around inside a random settlement |
+
+> Note: Galaxy Map is accessed by starting in a Star System with the galaxy map overlay auto-opened (via the main menu's "Galaxy Map" option).
 
 **Examples:**
 ```
@@ -118,7 +128,7 @@ dotnet run                              # Random seed, main menu
 dotnet run -- 12345                     # Seed 12345, main menu
 dotnet run -- --start system            # Random seed, jump to star system
 dotnet run -- 42 --start settlement     # Seed 42, jump to settlement
-dotnet run -- --start 3                 # Random seed, jump to station (by number)
+dotnet run -- --start station-inside    # Random seed, walk inside a station
 ```
 
 ## Architecture Decisions
@@ -126,14 +136,38 @@ dotnet run -- --start 3                 # Random seed, jump to station (by numbe
 ### Game States
 The game uses a state machine pattern. Each state (`GameState` subclass) owns its logic and rendering. When switching states, all ECS entities are destroyed and recreated — this keeps things simple and avoids stale entity issues.
 
+`GameStateType` enum: `MainMenu`, `SolarSystem`, `PlanetSurface`, `Interior`
+
 States:
-- **MainMenuState**: Starting point selection. Animated starfield background, 5 options: Galaxy Map, Star System, Planet Surface, Space Station, Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts.
-- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. Press Space to fire weapons (when not mining). NPC ships (pirates, traders, patrols) spawn based on per-system danger level. Pirates attack the player and traders; patrols hunt pirates and defend traders. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with hull/cargo/credit penalties. When docking at a station, a **SpaceStationOverlay** opens on top of the solar system view (orbits keep animating in the background). Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderSystem, InteractionProximitySystem, ProjectileSystem, ShieldRegenSystem, and EnemyAISystem.
-- **GalaxyMapOverlay** (overlay, not a game state): Full-screen overlay drawn over SolarSystemState. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape.
-- **SpaceStationOverlay** (overlay, not a game state): Semi-transparent menu drawn over SolarSystemState when docked. Refuels ship on docking. Menu options: Repair, Missions, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Displays current ship type name in status area. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight.
-- **PlanetLandingState**: Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan, WASD cursor nudge. Cannot land on water/lava. Confirms with Enter/E, cancels with Escape.
-- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingState (or map center by default). Press E near ship to board, E near settlement to enter interior. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Uses PlayerMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, SurfaceEnemyAISystem, and TileMapRenderer.
-- **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards (placeholder), and customization terminals (ship, avatar, vehicle). Station docking bays have four terminals: exit door, ship customization, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
+- **MainMenuState**: Starting point selection. Animated starfield background with pulsing title glow. 7 options: Star System, Galaxy Map, Space Station, Inside Space Station, Planet Surface, Settlement, Inside Settlement. Mouse hover/click and keyboard navigation via `MenuWidget<StartOption>`. Picks random systems/planets/stations for non-galaxy-map starts. Supports auto-launch via constructor parameter (for CLI `--start` flag). Displays galaxy seed at the bottom.
+- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. Press Space to fire weapons (when not mining). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn based on per-system danger level. Pirates attack the player and traders; patrols hunt pirates and defend traders. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with hull/cargo/credit penalties. When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderer, InteractionProximitySystem, ShipMovementSystem, ProjectileSystem, ShieldRegenSystem, and EnemyAISystem. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
+- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default). Press E near ship to board, E near settlement to enter interior, E near vehicle to mount/dismount. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. Uses PlayerMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, SurfaceEnemyAISystem, and TileMapRenderer.
+- **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards, cargo terminals, and customization terminals (ship, ship dealer, avatar, vehicle). Station docking bays have five terminals: exit door, ship customization, ship dealer, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. No combat in interiors. No InGameMenuOverlay — Escape closes dialogues/overlays. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
+
+### Overlays
+Overlays are semi-transparent UI layers rendered on top of a game state. All overlays inherit from `OverlayBase`, which provides:
+- `IsOpen` property (protected set)
+- `UpdateInput(Game)` — returns `true` if the overlay consumed input (blocks parent state)
+- `Update(Game, float dt)` — fixed-timestep simulation
+- `Render(Game)` — abstract rendering
+- `Close()` — sets `IsOpen = false`
+
+Key overlays:
+- **GalaxyMapOverlay** (drawn over SolarSystemState): Full-screen overlay. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape. Saves/restores parent camera state on open/close. Creates and manages its own star textures.
+- **SpaceStationOverlay** (drawn over SolarSystemState): Semi-transparent menu drawn when docked. Refuels ship on docking. 9 menu options: Repair, Missions, Sell Cargo, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight. Hosts 7 sub-overlays.
+- **PlanetLandingOverlay** (drawn over SolarSystemState): Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan via mouse drag and WASD cursor nudge. Cannot land on water/lava/void. Confirms with Enter/E, cancels with Escape. Supports moon landing (tracks moon context for correct return). Ship is anchored to the orbiting body via the anchor system while the overlay is active.
+- **InGameMenuOverlay** (drawn over SolarSystemState and PlanetSurfaceState): Pause/escape menu toggled with Escape key. Two options: Resume (closes overlay), Main Menu (transitions to MainMenuState). Uses `MenuWidget<InGameMenuOption>`. Not used in InteriorState.
+- **RepairOverlay**: Ship hull repair interface. Cost: 2 credits per damage point (full repair only). Available from SpaceStationOverlay and interior RepairStation terminals.
+- **MissionOverlay**: Mission board interface. Currently a **placeholder** with 3 display-only missions marked "[COMING SOON]". No acceptance or completion logic.
+- **SellCargoOverlay**: Sell mined resources for credits. Lists cargo with amounts and values. Navigate with Up/Down, sell individual resources or "SELL ALL" with Enter. Available from SpaceStationOverlay and interior CargoTerminal.
+- **ShipDealerOverlay**: Buy/trade-in ship hulls. Two-column layout with ship list and detailed stat comparison. Trade-in pricing: net cost = buy price − current ship sell value. Slot comparison shows gained/lost slots. Triggers `SwitchShipType()`.
+- **CustomizationOverlayBase**: Abstract base for Ship/Avatar/Vehicle customization overlays. Provides two-column UI layout, input handling, equip/buy/sell logic, and rendering.
+- **ShipCustomizationOverlay**: Ship equipment management with dynamic slot list per ship type.
+- **AvatarCustomizationOverlay**: Avatar gear management (Suit, Helmet, Boots, Weapon).
+- **VehicleCustomizationOverlay**: Vehicle part management (Engine, Chassis, Lights).
+
+### Anchor System
+When an overlay opens in SolarSystemState (e.g., SpaceStationOverlay, PlanetLandingOverlay), the player ship is "anchored" to the target celestial body. This means the ship's position tracks the orbiting body's position while the overlay is displayed, so orbits keep animating and the ship stays visually attached to the station or planet. The anchor is cleared when the overlay closes.
 
 ### Procedural Generation Seed Hierarchy
 ```
@@ -153,43 +187,72 @@ Station interiors derive seeds from system seed + 2000 + station index. Settleme
 Components are plain structs defined in `Components.cs`. The game uses Arch's `World.Query()` with lambda syntax for ad-hoc iteration, plus dedicated **systems** for recurring logic. Key component types:
 - `Transform` — position + rotation
 - `Velocity` — linear movement (`Value`) plus rotation velocity (`RotationVelocity`, `MaxRotationSpeed`)
-- `Sprite` — rendering info (currently colored rects)
-- `CelestialBody` — star/planet/moon/station properties
-- `Orbit` — orbital mechanics (parent entity, radius, speed, angle)
+- `Sprite` — rendering info (texture or colored rect via `ColoredRect()` factory)
+- `CelestialBody` — star/planet/moon/station properties (type, name, radius, data index, has solid surface)
+- `Orbit` — orbital mechanics (parent entity, radius, speed, base angle, current angle)
+- `CircleCollider` — circular collision shape
 - `PlayerControlled` — tag for player entity
-- `Label` — text displayed near entity
-- `Interactable` — landing/docking capability
-- `Health` — hull + shield HP, shield regen rate/delay, damage tracking
+- `Label` — text displayed near entity (with Y offset)
+- `Interactable` — landing/docking capability (`InteractionType`: LandOnPlanet / DockAtStation)
+- `StarSystemMarker` — galaxy map marker (system index, name, star class)
+- `Health` — hull + shield HP, shield regen rate/delay, damage tracking; `TakeDamage()` absorbs shields first
 - `Projectile` — damage, speed, lifetime, collision radius, owner faction, RGB color
 - `EnemyAI` — mutable state (State, StateTimer, FireCooldown) + immutable `EnemyAIConfig` record (faction, detection ranges, weapon stats, MaxRotationSpeed)
-- `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
 - `SurfaceAI` — mutable state (State, StateTimer, FireCooldown, WanderTimer, WanderAngle) + immutable `SurfaceAIConfig` record (faction, detect/attack range, walk speed, fire rate)
+- `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
+- `AsteroidField` — mineable asteroid tag (resource type, amount, size)
 - `Faction` — enum: Player, Pirate, Trader, Patrol, Fauna, Bandit
 - `AIState` — enum: Idle, Patrol, Chase, Attack, Flee, Defend
 
+### Entity Factory
+`EntityFactory` (static class in `ECS/EntityFactory.cs`) centralizes all entity creation to ensure consistent component compositions:
+
+| Factory Method | Components Created |
+|---|---|
+| `CreateStar` | Transform, Sprite, CelestialBody, Label |
+| `CreatePlanet` | Transform, Sprite, CelestialBody, Orbit, Label, +Interactable if solid |
+| `CreateMoon` | Transform, Sprite, CelestialBody, Orbit, Label, Interactable |
+| `CreateStation` | Transform, Sprite, CelestialBody, Orbit, Label, Interactable |
+| `CreateAsteroid` | Transform, Sprite, Orbit, Health, AsteroidField |
+| `CreatePlayerShip` | Transform, Sprite, Velocity, PlayerControlled, Health |
+| `CreatePlayerAvatar` | Transform, Sprite, Velocity, PlayerControlled, +Health if on surface |
+| `CreateLandedShip` | Transform, Sprite, Label |
+| `CreateVehicle` | Transform, Sprite, Label |
+| `CreatePirateShip` | Transform, Sprite, Velocity, Health, EnemyAI, LootDrop (scaled by danger) |
+| `CreateTraderShip` | Transform, Sprite, Velocity, Health, EnemyAI (unarmed, flees) |
+| `CreatePatrolShip` | Transform, Sprite, Velocity, Health (shielded), EnemyAI (no flee, no loot) |
+| `CreateProjectile` | Transform, Velocity, Projectile |
+| `CreateFauna` | Transform, Sprite, Velocity, Health, SurfaceAI, LootDrop |
+| `CreateBandit` | Transform, Sprite, Velocity, Health, SurfaceAI, LootDrop |
+
 ### ECS Systems
-Systems live in `ECS/Systems/` and encapsulate reusable game logic, reducing duplication across states.
+Systems live in `ECS/Systems/` (organized into `Movement/`, `Combat/`, and `AI/` subdirectories) and encapsulate reusable game logic.
 
 Most systems extend `BaseSystem<World, float>` and use Arch's source generator via `[Query]` and `[All(typeof(T))]` attributes on partial methods. The source generator auto-implements `Update()` to iterate matching entities.
 
 > **Important**: The source generator overrides `Update()` without calling `BeforeUpdate()` / `AfterUpdate()`. Do not rely on those lifecycle hooks for per-frame state reset. Systems that need lifecycle control should be plain classes with manual `World.Query()` calls instead.
 
-| System | Base Class | Queries | Used By |
-|---|---|---|---|
-| **OrbitSystem** | `BaseSystem` (source gen) | `Transform + Orbit` | SolarSystemState |
-| **VelocitySystem** | `BaseSystem` (source gen) | `Transform + Velocity` | SolarSystemState, PlanetSurfaceState |
-| **PlayerMovementSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | PlanetSurfaceState, InteriorState |
-| **CameraFollowSystem** | `BaseSystem` (source gen) | `PlayerControlled + Transform` | SolarSystemState, PlanetSurfaceState, InteriorState |
-| **ShipMovementSystem** | `BaseSystem` (manual) | Single entity | SolarSystemState |
-| **InteractionProximitySystem** | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
-| **VehicleMovementSystem** | `BaseSystem` (manual) | Single entity | PlanetSurfaceState |
-| **TileMapRenderer** | Static utility | N/A (callback-driven) | PlanetSurfaceState, InteriorState |
-| **ProjectileSystem** | `BaseSystem` (source gen) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState |
-| **ShieldRegenSystem** | `BaseSystem` (source gen) | `Health` | SolarSystemState |
-| **EnemyAISystem** | `BaseSystem` (source gen) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
-| **SurfaceEnemyAISystem** | `BaseSystem` (source gen) | `Transform + Velocity + SurfaceAI + Health` | PlanetSurfaceState |
-| **LabelRenderer** | Plain class (Rendering/) | `Transform + Label` | SolarSystemState |
+| System | Location | Base Class | Queries | Used By |
+|---|---|---|---|---|
+| **OrbitSystem** | `Systems/` | `BaseSystem` (source gen) | `Transform + Orbit` | SolarSystemState |
+| **VelocitySystem** | `Systems/` | `BaseSystem` (source gen) | `Transform + Velocity` | SolarSystemState, PlanetSurfaceState |
+| **CameraFollowSystem** | `Systems/` | `BaseSystem` (source gen) | `PlayerControlled + Transform` | SolarSystemState, PlanetSurfaceState, InteriorState |
+| **InteractionProximitySystem** | `Systems/` | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable` | SolarSystemState |
+| **PlayerMovementSystem** | `Systems/Movement/` | `BaseSystem` (source gen) | `PlayerControlled + Transform` | PlanetSurfaceState, InteriorState |
+| **ShipMovementSystem** | `Systems/Movement/` | `BaseSystem` (manual) | Single entity | SolarSystemState |
+| **VehicleMovementSystem** | `Systems/Movement/` | `BaseSystem` (manual) | Single entity | PlanetSurfaceState |
+| **ProjectileSystem** | `Systems/Combat/` | `BaseSystem` (source gen) | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState |
+| **ShieldRegenSystem** | `Systems/Combat/` | `BaseSystem` (source gen) | `Health` | SolarSystemState |
+| **EnemyAISystem** | `Systems/AI/` | `BaseSystem` (source gen) | `Transform + Velocity + EnemyAI + Health` | SolarSystemState |
+| **SurfaceEnemyAISystem** | `Systems/AI/` | `BaseSystem` (source gen) | `Transform + Velocity + SurfaceAI + Health` | PlanetSurfaceState |
 
+Rendering helpers (not ECS systems but query ECS data):
+| Helper | Location | Description |
+|---|---|---|
+| **LabelRenderer** | `Rendering/` | Queries `Transform + Label` and draws centered text below entities |
+| **TileMapRenderer** | `Rendering/` | Static utility for visible tilemap rendering with hash-based brightness and detail callback |
+
+System details:
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
 - **VelocitySystem**: Integrates velocity into position each frame with `MaxSpeed` clamping. Also applies `RotationVelocity` to `Transform.Rotation` (clamped by `MaxRotationSpeed`).
 - **PlayerMovementSystem**: Handles WASD/arrow input with configurable speed. Exposes a `Func<Vector2, bool>? CanMoveTo` delegate for collision checking (terrain, walls).
@@ -197,13 +260,11 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 - **ShipMovementSystem**: Handles ship flight physics — A/D rotation, W thrust, S braking, friction. Extends `BaseSystem<World, float>` with manual `Update()`. Reads equipped ship stats (acceleration, maxSpeed, rotationSpeed) from `PlayerData`.
 - **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Extends `BaseSystem<World, float>` with a static cached `QueryDescription` and manual iteration via `FindNearest(Vector2)`.
 - **VehicleMovementSystem**: Handles vehicle physics — thrust along facing direction, A/D rotation, braking, friction. Extends `BaseSystem<World, float>` with manual `Update()`, configurable physics params, and `CanMoveTo` collision delegate.
-- **TileMapRenderer**: Static helper that renders visible tilemap tiles with hash-based brightness variation and an optional per-tile detail callback.
 - **ProjectileSystem**: Extends `BaseSystem<World, float>` with source-generated iteration over `Transform + Velocity + Projectile`. Uses a `HashSet<Entity>` for O(1) expired-entity tracking and a static cached `QueryDescription` for health collision queries. Faction logic prevents friendly fire (same-faction projectiles don't hit; fauna/bandit projectiles don't hit each other). Recognizes both `EnemyAI` and `SurfaceAI` components for faction detection. Exposes `DestroyedThisFrame` and `DamageEventsThisFrame` lists for the state to process loot drops, explosions, and damage popups.
 - **ShieldRegenSystem**: Source-generated system that regenerates shields after a configurable delay (`ShieldRegenDelay`) since last hit. Regen rate is per-second (`ShieldRegenRate`).
 - **EnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `EnemyAIConfig` records (shared across entities of the same faction) to separate immutable configuration from mutable AI state. Implements smooth rotation via `TurnToward()`/`TurnTowardDirection()` helpers that set `Velocity.RotationVelocity` (consumed by VelocitySystem) instead of instant rotation. MaxRotationSpeed per faction: Pirates=180°/s, Traders=90°/s, Patrols=150°/s. Pirates patrol, chase, and attack the player (flee when low health). Traders cruise and flee from nearby pirates. Patrols hunt pirates and defend traders. Fires projectiles via a deferred spawn list.
 - **SurfaceEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `SurfaceAIConfig` records. Sets `Velocity.Value` for desired movement (consumed by VelocitySystem) instead of modifying position directly, with a pre-check collision helper (`SetVelocityWithCollision`). Fauna wander randomly, chase the player when detected, and attack with fast short-range melee projectiles. Bandits patrol, chase, fire ranged projectiles, strafe in combat, and flee when critically low on health.
-- **LabelRenderer**: Plain class in `Rendering/` (not a system). Queries `Transform + Label` entities and draws centered text labels below them using the bitmap font. Uses a static cached `QueryDescription`.
-- **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemState and PlanetSurfaceState.
+- **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemState and PlanetSurfaceState. Part drops are gated by `enablePartDrops` flag (space combat only) and tier is capped by danger level. Won't drop parts already owned or equipped.
 
 ### Rendering
 The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
@@ -385,7 +446,7 @@ Shared UI features:
 ### Customization Terminals in Interiors
 Both station docking bays and settlement landing pads contain customization terminals:
 
-**Station docking bays** — four terminals near the landing pad:
+**Station docking bays** — five terminals near the landing pad:
 | Terminal | Color (world) | Color (minimap) | InteractableType |
 |---|---|---|---|
 | Exit Door | Green | Green | ExitDoor |
@@ -465,11 +526,17 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 
 ## Controls
 
-### Galaxy Map
+### Main Menu
+- Up/Down or W/S: Navigate options
+- Enter/E: Select option
+- Mouse: Hover to highlight, click to select
+
+### Galaxy Map (Overlay)
 - WASD/Arrows/Mouse Drag: Pan camera
 - Mouse Scroll: Zoom
 - Click: Select star system
 - Double-Click/Enter: Travel to selected system
+- M/Escape: Close overlay
 
 ### Solar System
 - W/Up: Thrust forward
@@ -477,10 +544,11 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - S/Down: Brake
 - Mouse Scroll: Zoom
 - Space (hold): Fire weapons / mine nearest asteroid (mining takes priority when near an asteroid)
-- E: Interact (enter orbit view for planets / dock at station)
-- M: Return to galaxy map
+- E: Interact (open landing overlay for planets / dock at station)
+- M: Open galaxy map overlay
+- Escape: Open in-game menu (Resume / Main Menu)
 
-### Planet Landing (Orbital View)
+### Planet Landing (Overlay)
 - Click: Select landing site
 - WASD/Arrows: Nudge cursor
 - Mouse Scroll: Zoom map
@@ -488,10 +556,10 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - Enter/E: Confirm landing
 - Escape: Cancel (return to solar system)
 
-### Space Station
+### Space Station (Overlay)
 - Up/Down or W/S: Navigate menu
 - Enter: Confirm selection
-- Escape: Exit station
+- Escape: Exit station / close sub-overlay
 
 ### Planet Surface
 - WASD/Arrows: Move avatar / drive vehicle
@@ -499,7 +567,7 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - Space (hold): Fire weapon (in movement direction)
 - Left Mouse (hold): Fire weapon (toward cursor)
 - E: Board ship (when near, on foot) / Enter settlement (when near, on foot) / Mount/dismount vehicle
-- Escape: Menu
+- Escape: Open in-game menu (Resume / Main Menu)
 
 ### Interior (Station / Settlement)
 - WASD/Arrows: Move avatar
@@ -530,7 +598,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Global time for deterministic orbit positions across state changes
 - [x] Moon landing support (moons are fully explorable surfaces)
 - [x] Unified nearest-center interaction detection
-- [x] Orbital landing site selection (planet overview map with terrain, settlements, cursor)
+- [x] Orbital landing site selection overlay (planet overview map with terrain, settlements, cursor)
 - [x] Procedural pixel art textures (ships, planets, stars, stations, avatar, asteroids)
 - [x] HUD backgrounds for readability
 - [x] Terrain tile variation with detail sprites
@@ -538,19 +606,22 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Player vehicle for planet surface exploration (mount/dismount, 3x speed)
 - [x] Ship customization system (dynamic equipment slots per ship type, 3 tiers, dynamic ship stats)
 - [x] Multiple ship types (Scout, Fighter, Freighter, Explorer) with ship dealer UI
-- [x] Avatar customization system (3 equipment slots, 3 tiers, dynamic walk speed)
+- [x] Avatar customization system (4 equipment slots, 3 tiers, dynamic walk speed)
 - [x] Vehicle customization system (3 equipment slots, 3 tiers, dynamic vehicle physics)
-- [x] Customization terminals in station interiors (ship, avatar, vehicle)
+- [x] Customization terminals in station interiors (ship, ship dealer, avatar, vehicle, cargo)
 - [x] Asteroid mining (mining laser beam, named resources, cargo system, sell at stations/terminals)
 - [x] Space combat system (projectile weapons, shield/hull mechanics, enemy AI)
 - [x] NPC factions (pirates, traders, patrols) with faction-specific AI behaviors
 - [x] Per-system danger levels with galaxy map display
 - [x] Loot drops (credits, resources, equipment parts scaled by danger)
 - [x] Player death and respawn with penalties
-
 - [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, EnemyShip, Station, Asteroid, Planet, Star renderers own their textures)
 - [x] Scene renderer extraction (SolarSystemRenderer, ProjectileRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
 - [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health)
+- [x] In-game menu overlay (Resume / Main Menu) for SolarSystem and PlanetSurface states
+- [x] Main menu with 7 start options (including Inside Station and Inside Settlement)
+- [x] Anchor system for ship tracking during overlays
+- [x] Centralized entity creation via EntityFactory
 
 ## TODO / Next Steps
 - [ ] Mission system (acceptance, tracking, completion)
