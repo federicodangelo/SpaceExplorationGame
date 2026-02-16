@@ -197,16 +197,14 @@ public class MainMenuState : GameState
 
     private StarSystemData PickRandomSystem(Game game)
     {
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var systems = game.GalaxyData;
         var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 1));
         return systems[rng.NextInt(0, systems.Count)];
     }
 
     private SystemPlanet PickRandomPlanet(Game game)
     {
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var systems = game.GalaxyData;
         var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 2));
 
         // Try to find a system with a solid-surface planet
@@ -232,8 +230,7 @@ public class MainMenuState : GameState
 
     private SystemStation PickRandomStation(Game game)
     {
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var systems = game.GalaxyData;
         var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 3));
 
         // Find a system with a station
@@ -269,8 +266,7 @@ public class MainMenuState : GameState
 
     private SystemPlanet PickRandomSettlement(Game game)
     {
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var systems = game.GalaxyData;
         var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 4));
 
         // Find a planet with settlements
@@ -293,8 +289,7 @@ public class MainMenuState : GameState
 
     private SystemPlanetSettlement PickRandomSettlementWithData(Game game)
     {
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        var systems = GalaxyGenerator.Generate(galaxyRng);
+        var systems = game.GalaxyData;
         var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 6));
 
         // Find a planet with settlements and return the settlement data

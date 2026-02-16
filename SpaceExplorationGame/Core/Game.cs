@@ -36,6 +36,9 @@ public class Game : IDisposable
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
 
+    /// <summary>Cached galaxy data — generated once from the galaxy seed, reused everywhere.</summary>
+    public List<StarSystemData> GalaxyData { get; private set; } = null!;
+
     // Game state
     private GameState? _currentState;
     private GameState? _pendingState;
@@ -94,6 +97,9 @@ public class Game : IDisposable
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
+
+        // Generate and cache galaxy data once
+        GalaxyData = GalaxyGenerator.Generate(Seeds.GetGalaxyRandom());
 
         IsRunning = true;
     }

@@ -31,9 +31,8 @@ public class MissionOverlay : OverlayBase
         _boardSeed = boardSeed;
 
         // Generate available missions for this board
-        var galaxySystems = GalaxyGenerator.Generate(game.Seeds.GetGalaxyRandom());
         var allMissions = MissionGenerator.GenerateBoardMissions(
-            game.Seeds, boardSeed, currentSystem, galaxySystems);
+            game.Seeds, boardSeed, currentSystem, game.GalaxyData);
 
         // Filter out missions already claimed by the player
         _availableMissions = allMissions

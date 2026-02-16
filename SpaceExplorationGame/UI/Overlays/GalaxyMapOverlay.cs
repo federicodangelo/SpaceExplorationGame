@@ -49,9 +49,8 @@ public class GalaxyMapOverlay : OverlayBase
         _savedCameraPos = game.Camera.Position;
         _savedCameraZoom = game.Camera.Zoom;
 
-        // Generate galaxy data
-        var galaxyRng = game.Seeds.GetGalaxyRandom();
-        _starSystems = GalaxyGenerator.Generate(galaxyRng);
+        // Use cached galaxy data
+        _starSystems = game.GalaxyData;
 
         // Generate background stars
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xDEADBEEF);
