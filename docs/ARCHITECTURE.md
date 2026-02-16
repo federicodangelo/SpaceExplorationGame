@@ -68,11 +68,11 @@ SpaceExplorationGame/
 │   ├── AsteroidRenderer.cs        # Asteroid texture & rendering (IDisposable, owns texture)
 │   ├── PlanetRenderer.cs          # Planet/moon texture factory & rendering (IDisposable, tracks textures)
 │   ├── StarRenderer.cs            # Star texture factory & rendering (IDisposable, tracks textures)
-│   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, HUD, panels)
-│   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements, HUD)
+│   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, panels)
+│   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements)
 │   ├── ProjectileRenderer.cs      # Projectile trail rendering, damage popups, explosion effects (static)
-│   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars, minimap dots)
-│   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels, minimap)
+│   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars)
+│   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels)
 │   └── SettlementRenderer.cs      # Settlement rendering helper
 ├── States/
 │   ├── MainMenuState.cs           # Starting point selection menu (7 options)
@@ -81,6 +81,9 @@ SpaceExplorationGame/
 │   └── InteriorState.cs           # Walkable station/settlement interiors
 └── UI/
     ├── MenuWidget.cs              # Reusable scrollable menu widget (generic over enum)
+    ├── Hud/
+    │   ├── HudRenderer.cs             # Unified HUD: location info, stats, health bars, prompts, offscreen indicators
+    │   └── HudMinimapRenderer.cs      # Unified minimap: data-driven renderer with markers, areas, player dot
     └── Overlays/
         ├── OverlayBase.cs             # Abstract base class for all overlays
         ├── GalaxyMapOverlay.cs        # Galaxy map overlay (rendered atop SolarSystem)
@@ -288,12 +291,16 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 | **PlanetRenderer** | Factory — tracks all created textures | `CreateTexture(size, r, g, b, seed)`, `RenderPlanetsAndMoons(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
 | **StarRenderer** | Factory — tracks all created textures | `CreateTexture(size, r, g, b)`, `Render(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
 
-**Scene Renderers** are static helper classes that handle non-entity rendering (HUD, panels, background elements):
-- **SolarSystemRenderer** — background stars (parallax), orbit lines, HUD, interaction panels (planet/moon/station)
+**HUD Renderers** are static helper classes providing a unified HUD shared across all game states:
+- **HudRenderer** — unified top-left HUD (location info, credits/cargo, health/shield bars, danger level), bottom-center interaction prompts (planet/station panels, board ship, enter settlement, NPC dialogue), and offscreen edge indicators (NPC ships, star, settlements). Used by SolarSystemState, PlanetSurfaceState, and InteriorState.
+- **HudMinimapRenderer** — unified data-driven minimap renderer (top-right). Accepts `MinimapMarker[]` (point entities) and `MinimapArea[]` (rectangular regions) in world coordinates. Supports player-centered scrolling view (solar system, planet surface) and full-map view (interiors). Types: `MinimapMarkerShape` (Rect/Circle), `MinimapMarker` record struct (WorldPos, RGBA, Size, Shape), `MinimapArea` record struct (WorldX/Y/W/H, RGBA). Three public entry points: `RenderSolarSystemMinimap`, `RenderPlanetSurfaceMinimap`, `RenderInteriorMinimap`.
+
+**Scene Renderers** are static helper classes that handle non-entity rendering (panels, background elements):
+- **SolarSystemRenderer** — background stars (parallax), orbit lines, interaction panels (planet/moon/station)
 - **ProjectileRenderer** — projectile trail rendering (colored elongated lines), floating damage numbers (blue=shield, yellow=hull), expanding explosion circles with particle sparks
-- **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead, minimap dots (red=fauna, orange=bandit)
-- **PlanetSurfaceRenderer** — terrain details, settlement markers, surface HUD
-- **InteriorRenderer** — tiles, room labels, NPCs, interactable markers, minimap
+- **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead
+- **PlanetSurfaceRenderer** — terrain details, settlement markers
+- **InteriorRenderer** — tiles, room labels, NPCs, interactable markers
 - **SettlementRenderer** — settlement-specific rendering
 
 **Procedural texture descriptions:**
@@ -619,6 +626,9 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Player death and respawn with penalties
 - [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, EnemyShip, Station, Asteroid, Planet, Star renderers own their textures)
 - [x] Scene renderer extraction (SolarSystemRenderer, ProjectileRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
+- [x] Unified HUD renderer (HudRenderer: location info, stats, health bars, prompts, offscreen indicators across all states)
+- [x] Unified minimap renderer (HudMinimapRenderer: data-driven markers/areas, player-centered scrolling, settlement/room areas)
+- [x] Offscreen edge indicators (NPC ships, star, settlements with distance labels)
 - [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health)
 - [x] In-game menu overlay (Resume / Main Menu) for SolarSystem and PlanetSurface states
 - [x] Main menu with 7 start options (including Inside Station and Inside Settlement)

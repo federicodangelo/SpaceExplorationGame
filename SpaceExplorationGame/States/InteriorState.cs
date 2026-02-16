@@ -8,6 +8,7 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.ECS.Systems.Movement;

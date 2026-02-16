@@ -11,6 +11,7 @@ using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays;
 
 namespace SpaceExplorationGame.States;

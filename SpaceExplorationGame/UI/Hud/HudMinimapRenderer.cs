@@ -4,8 +4,9 @@ using Arch.Core.Extensions;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.Rendering;
+namespace SpaceExplorationGame.UI.Hud;
 
 /// <summary>Minimap marker shape.</summary>
 public enum MinimapMarkerShape { Rect, Circle }
