@@ -351,6 +351,9 @@ public class SolarSystemState : GameState
         game.Camera.Position = shipStartPos;
         game.Camera.Zoom = 1f;
 
+        // Notify mission system that we entered this star system
+        game.Player.NotifySystemEntered(_starSystem.Index);
+
         // Auto-open station overlay if we were asked to (e.g. returning from interior)
         if (_autoOpenStation != null)
         {
@@ -717,6 +720,9 @@ public class SolarSystemState : GameState
                     {
                         _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
                         _miningMessageTimer = 2.5f;
+
+                        // Track resource mining for missions
+                        game.Player.NotifyResourceMined(asteroid.Resource, added);
                     }
                     else
                     {
@@ -752,6 +758,12 @@ public class SolarSystemState : GameState
                     _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng,
                         resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);
                     _combatMessageTimer = 3f;
+                }
+
+                // Track pirate kills for bounty missions
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate)
+                {
+                    game.Player.NotifyPirateKilled();
                 }
 
                 // Destroy the entity

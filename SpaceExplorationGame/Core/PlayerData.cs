@@ -281,4 +281,130 @@ public class PlayerData
         }
         return new VehiclePartStats(accel, maxSpd, rot, friction, vis);
     }
+
+    // ── Missions ──
+
+    /// <summary>Maximum number of missions the player can have active at once.</summary>
+    public const int MaxActiveMissions = 3;
+
+    /// <summary>Currently active missions (accepted by the player).</summary>
+    public List<Mission> ActiveMissions { get; set; } = new();
+
+    /// <summary>IDs of missions that have been accepted or completed (prevents re-offering).</summary>
+    public HashSet<int> ClaimedMissionIds { get; set; } = new();
+
+    /// <summary>Total missions completed (lifetime stat).</summary>
+    public int MissionsCompleted { get; set; }
+
+    /// <summary>Accept a mission from the board. Returns false if at max capacity.</summary>
+    public bool AcceptMission(Mission mission)
+    {
+        if (ActiveMissions.Count >= MaxActiveMissions) return false;
+        mission.Status = MissionStatus.Active;
+        ActiveMissions.Add(mission);
+        ClaimedMissionIds.Add(mission.Id);
+        return true;
+    }
+
+    /// <summary>Abandon an active mission. The mission ID stays claimed so it won't reappear.</summary>
+    public void AbandonMission(Mission mission)
+    {
+        ActiveMissions.Remove(mission);
+    }
+
+    /// <summary>Turn in a completed mission and collect the reward. Returns credits earned.</summary>
+    public int TurnInMission(Mission mission)
+    {
+        if (mission.Status != MissionStatus.Completed) return 0;
+        Credits += mission.CreditReward;
+        ActiveMissions.Remove(mission);
+        MissionsCompleted++;
+        return mission.CreditReward;
+    }
+
+    /// <summary>Notify: player entered a star system. Checks patrol/delivery missions.</summary>
+    public void NotifySystemEntered(int systemIndex)
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.TargetSystemIndex == systemIndex)
+            {
+                if (m.Type == MissionType.Patrol)
+                {
+                    m.CurrentAmount = 1;
+                    m.Status = MissionStatus.Completed;
+                }
+            }
+        }
+    }
+
+    /// <summary>Notify: player docked at a station. Checks delivery missions.</summary>
+    public void NotifyStationDocked(int systemIndex)
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.TargetSystemIndex == systemIndex)
+            {
+                if (m.Type == MissionType.Delivery)
+                {
+                    m.CurrentAmount = 1;
+                    m.Status = MissionStatus.Completed;
+                }
+            }
+        }
+    }
+
+    /// <summary>Notify: player landed on a planet. Checks exploration missions.</summary>
+    public void NotifyPlanetLanded(int systemIndex, int planetIndex)
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.Type == MissionType.Exploration
+                && m.TargetSystemIndex == systemIndex && m.TargetPlanetIndex == planetIndex)
+            {
+                m.CurrentAmount = 1;
+                m.Status = MissionStatus.Completed;
+            }
+        }
+    }
+
+    /// <summary>Notify: a pirate was killed by the player. Checks bounty missions.</summary>
+    public void NotifyPirateKilled()
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.Type == MissionType.BountyHunt)
+            {
+                m.CurrentAmount++;
+                if (m.CurrentAmount >= m.RequiredAmount)
+                    m.Status = MissionStatus.Completed;
+            }
+        }
+    }
+
+    /// <summary>Notify: resources were mined. Checks mining missions.</summary>
+    public void NotifyResourceMined(ResourceType resource, int amount)
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.Type == MissionType.Mining
+                && m.TargetResource == resource)
+            {
+                m.CurrentAmount += amount;
+                if (m.CurrentAmount >= m.RequiredAmount)
+                    m.Status = MissionStatus.Completed;
+            }
+        }
+    }
+
+    /// <summary>Check whether there are any completed missions ready to turn in.</summary>
+    public bool HasCompletedMissions => ActiveMissions.Any(m => m.Status == MissionStatus.Completed);
+
+    /// <summary>Gets a short summary of the most urgent active mission for HUD display.</summary>
+    public Mission? GetTrackedMission()
+    {
+        // Prefer completed missions (need turn-in), then the first active
+        return ActiveMissions.FirstOrDefault(m => m.Status == MissionStatus.Completed)
+            ?? ActiveMissions.FirstOrDefault(m => m.Status == MissionStatus.Active);
+    }
 }

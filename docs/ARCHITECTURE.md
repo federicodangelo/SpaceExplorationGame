@@ -21,8 +21,9 @@ SpaceExplorationGame/
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
-│   ├── PlayerData.cs              # Persistent player data across state changes
+│   ├── PlayerData.cs              # Persistent player data across state changes (includes mission tracking)
 │   ├── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
+│   ├── Missions.cs                # Mission data model (MissionType, MissionStatus, Mission class)
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── ShipParts.cs               # Ship types, equipment data model, stats, and part catalog
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
@@ -53,8 +54,7 @@ SpaceExplorationGame/
 │   ├── GalaxyGenerator.cs         # Galaxy star system placement & properties
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
 │   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
-│   └── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum
-├── Rendering/
+│   └── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum│   ├── MissionGenerator.cs        # Deterministic mission generation per station/settlement board├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
 │   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── TextureManager.cs          # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
@@ -163,7 +163,7 @@ Key overlays:
 - **InGameMenuOverlay** (drawn over SolarSystemState and PlanetSurfaceState): Pause/escape menu toggled with Escape key. Two options: Resume (closes overlay), Main Menu (transitions to MainMenuState). Uses `MenuWidget<InGameMenuOption>`. Not used in InteriorState.
 - **StarshipMenuOverlay** (drawn over PlanetSurfaceState): Shown when landing on a planet or boarding the starship on the surface. Three options: Fly to Space (return to orbit), Disembark on Foot (exit ship walking), Disembark on Vehicle (deploy vehicle and drive). Vehicle option is disabled if the player has no vehicle. Uses `MenuWidget<StarshipMenuOption>`.
 - **RepairOverlay**: Ship hull repair interface. Cost: 2 credits per damage point (full repair only). Available from SpaceStationOverlay and interior RepairStation terminals.
-- **MissionOverlay**: Mission board interface. Currently a **placeholder** with 3 display-only missions marked "[COMING SOON]". No acceptance or completion logic.
+- **MissionOverlay**: Mission board interface with two tabs (Available / Active). Available tab shows missions generated for the current station/settlement board; Active tab shows the player's accepted missions. Accept missions with Enter/E (max 3 active), turn in completed missions with Enter, abandon missions with X, switch tabs with A/D. Missions are generated deterministically per board using seeded RNG; accepted/completed missions are filtered out so they won't re-appear.
 - **SellCargoOverlay**: Sell mined resources for credits. Lists cargo with amounts and values. Navigate with Up/Down, sell individual resources or "SELL ALL" with Enter. Available from SpaceStationOverlay and interior CargoTerminal.
 - **ShipDealerOverlay**: Buy/trade-in ship hulls. Two-column layout with ship list and detailed stat comparison. Trade-in pricing: net cost = buy price − current ship sell value. Slot comparison shows gained/lost slots. Triggers `SwitchShipType()`.
 - **CustomizationOverlayBase**: Abstract base for Ship/Avatar/Vehicle customization overlays. Provides two-column UI layout, input handling, equip/buy/sell logic, and rendering.
@@ -452,6 +452,53 @@ Shared UI features:
 - Controls: Enter = equip/buy, X = sell owned unequipped part, Escape = close, Arrow keys = navigate
 - Each overlay is opened by pressing E near the corresponding terminal in an interior, or from the station menu
 
+### Mission System
+Players can accept, track, and complete missions from mission boards at space stations and settlements. The system supports 5 mission types with deterministic generation, automatic progress tracking, and credit rewards.
+
+**Mission Types**:
+| Type | Objective | Completion Trigger | Reward Range |
+|---|---|---|---|
+| Delivery | Dock at a target station in another system | `NotifyStationDocked(targetSystem)` | 300–1500 credits |
+| Mining | Mine X units of a specific resource | `NotifyResourceMined(resource, amount)` | 200–800 credits |
+| Bounty Hunt | Destroy X pirate ships | `NotifyPirateKilled()` | 500–2000 credits |
+| Exploration | Land on a specific planet in another system | `NotifyPlanetLanded(system, planet)` | 300–1000 credits |
+| Patrol | Travel to a specific star system | `NotifySystemEntered(system)` | 200–600 credits |
+
+**Mission Generation** (`MissionGenerator`):
+- Each mission board (station or settlement) generates 5 candidate missions using a deterministic seed derived from the board's location
+- Board seed for stations: `SeedManager.GetStarSystemRandom(systemIndex)` combined with station index
+- Board seed for settlements: derived from planet surface seed + settlement position hash
+- Missions reference real systems/planets from the galaxy data
+- Weighted random type selection: Delivery 25%, Mining 20%, Bounty 20%, Exploration 20%, Patrol 15%
+- Rewards scale with distance to the target system (minimum 1 system away)
+
+**Mission Lifecycle**:
+1. Visit a mission board → see available missions (filtered by already-claimed IDs)
+2. Accept a mission (up to 3 active at a time)
+3. Progress is tracked automatically via `PlayerData.Notify*` methods called from game states
+4. When all objectives are met, mission status changes to `Completed`
+5. Visit any mission board → turn in completed missions for credit rewards
+6. Missions can be abandoned at any time (no penalty)
+
+**Integration Points**:
+- `SolarSystemState.Enter()` → `NotifySystemEntered()` (Patrol missions)
+- `SpaceStationOverlay.Open()` → `NotifyStationDocked()` (Delivery missions)
+- `PlanetSurfaceState.Enter()` → `NotifyPlanetLanded()` (Exploration missions)
+- `SolarSystemState.UpdateCombat()` → `NotifyPirateKilled()` (Bounty missions)
+- `SolarSystemState.UpdateCombat()` + `PlanetSurfaceState` → `NotifyResourceMined()` (Mining missions)
+
+**HUD Mission Tracker**: The most urgent active mission is displayed in the top-left HUD area (below health bars) with a colored type badge, title, progress text, and completion indicator. If the player has multiple active missions, a "+N MORE" count is shown.
+
+**Data Model** (`Missions.cs`):
+- `MissionType` enum: Delivery, Mining, BountyHunt, Exploration, Patrol
+- `MissionStatus` enum: Available, Active, Completed
+- `Mission` class: Id, Title, Description, Type, Status, target info (system/planet/resource), progress (CurrentAmount/RequiredAmount), CreditReward, origin info
+
+**PlayerData Mission Fields**:
+- `ActiveMissions` — list of accepted missions (max 3)
+- `ClaimedMissionIds` — HashSet of all accepted/completed mission IDs (prevents re-offering)
+- `MissionsCompleted` — lifetime counter
+
 ### Customization Terminals in Interiors
 Both station docking bays and settlement landing pads contain customization terminals:
 
@@ -636,7 +683,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Centralized entity creation via EntityFactory
 
 ## TODO / Next Steps
-- [ ] Mission system (acceptance, tracking, completion)
+- [x] Mission system (5 types: Delivery, Mining, BountyHunt, Exploration, Patrol; deterministic generation, accept/track/complete/abandon, HUD tracker)
 - [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game

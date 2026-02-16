@@ -44,6 +44,10 @@ public static class HudRenderer
 
         // Line 3: Health / shields
         RenderShipHealthBars(renderer, y, player, ecsWorld, playerShip);
+
+        // Mission tracker (below health bars)
+        float missionY = y + LineHeight + 4 + (player.GetCombinedStats().ShieldStrength > 0 ? LineHeight + 4 : 0) + 4;
+        RenderMissionTracker(renderer, missionY, player);
     }
 
     /// <summary>Render the unified top-left HUD for the planet surface state.</summary>
@@ -68,7 +72,11 @@ public static class HudRenderer
             var health = ecsWorld.Get<Health>(playerAvatar);
             RenderHealthBar(renderer, y, "HP", health.Hull, health.MaxHull,
                 HPBarColor(health.HullPercent), null, null);
+            y += LineHeight + 8;
         }
+
+        // Mission tracker
+        RenderMissionTracker(renderer, y, player);
     }
 
     /// <summary>Render the unified top-left HUD for the interior state.</summary>
@@ -90,6 +98,10 @@ public static class HudRenderer
         RenderHealthBar(renderer, y, "HP", player.AvatarHealth, player.AvatarMaxHealth,
             HPBarColor(player.AvatarMaxHealth > 0 ? player.AvatarHealth / player.AvatarMaxHealth : 1f),
             null, null);
+        y += LineHeight + 8;
+
+        // Mission tracker
+        RenderMissionTracker(renderer, y, player);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -176,6 +188,48 @@ public static class HudRenderer
 
     /// <summary>Format danger level with color-coded text.</summary>
     private static string FormatDanger(int dangerLevel) => $"DANGER LV.{dangerLevel}";
+
+    /// <summary>Render a compact mission tracker showing the most urgent active mission.</summary>
+    private static void RenderMissionTracker(SpriteRenderer renderer, float y, PlayerData player)
+    {
+        var tracked = player.GetTrackedMission();
+        if (tracked == null) return;
+
+        bool completed = tracked.Status == MissionStatus.Completed;
+
+        // Build mission text
+        string statusIcon = completed ? ">> " : "* ";
+        string missionText = $"{statusIcon}[{tracked.TypeLabel}] {tracked.Title}";
+        string progressText = tracked.ProgressText;
+        if (completed) progressText += " - TURN IN AT MISSION BOARD";
+
+        // Measure and draw background
+        float textW1 = renderer.MeasureText(missionText, TextScale);
+        float textW2 = renderer.MeasureText(progressText, TextScale);
+        float bgW = Math.Max(Math.Max(textW1, textW2) + Padding * 2, 300f);
+
+        renderer.DrawRectScreen(0, y, bgW, LineHeight * 2 + 4, new Color4(0, 0, 0, BgAlpha));
+
+        // Mission title
+        renderer.DrawTextScreen(Padding, y + 2, missionText,
+            completed ? new Color3(100, 255, 100) : tracked.TypeColor, TextScale);
+
+        // Progress
+        renderer.DrawTextScreen(Padding + 10, y + LineHeight + 2, progressText,
+            completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), TextScale);
+
+        // Extra missions indicator
+        int totalActive = player.ActiveMissions.Count;
+        if (totalActive > 1)
+        {
+            int completedCount = player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
+            string extra = completedCount > 0
+                ? $"+{totalActive - 1} MORE ({completedCount} READY)"
+                : $"+{totalActive - 1} MORE";
+            renderer.DrawTextScreen(Padding, y + LineHeight * 2 + 4, extra,
+                new Color3(120, 120, 150), 1.2f);
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  INTERACTION PROMPTS (bottom-center)

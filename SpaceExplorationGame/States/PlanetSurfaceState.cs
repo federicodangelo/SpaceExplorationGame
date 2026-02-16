@@ -177,6 +177,9 @@ public class PlanetSurfaceState : GameState
         // Place ship
         _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, shipX, shipY);
 
+        // Notify mission system of planet landing
+        game.Player.NotifyPlanetLanded(_starSystem.Index, _planet.Index);
+
         // Deploy vehicle if it was deployed before entering settlement
         if (_vehicleDeployed)
         {
@@ -567,6 +570,9 @@ public class PlanetSurfaceState : GameState
                     {
                         _combatMessage = $"+{added} {resInfo.Name.ToUpper()}";
                         _combatMessageTimer = 2.5f;
+
+                        // Track resource mining for missions
+                        game.Player.NotifyResourceMined(rock.Resource, added);
                     }
                     else
                     {

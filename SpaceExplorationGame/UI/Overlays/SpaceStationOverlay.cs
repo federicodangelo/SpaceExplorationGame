@@ -71,6 +71,9 @@ public class SpaceStationOverlay : OverlayBase
 
         // Refuel when docking
         game.Player.Refuel(GameConfig.StationRefuelAmount);
+
+        // Notify mission system of station docking
+        game.Player.NotifyStationDocked(starSystem.Index);
     }
 
     public override void Close()
@@ -117,7 +120,10 @@ public class SpaceStationOverlay : OverlayBase
                     _healthStationOverlay.Open();
                     break;
                 case StationMenuOption.Missions:
-                    _missionOverlay.Open();
+                    {
+                        var boardSeed = MissionGenerator.GetStationBoardSeed(game.Seeds, _starSystem.Index, _station.Index);
+                        _missionOverlay.Open(game, _starSystem, boardSeed);
+                    }
                     break;
                 case StationMenuOption.SellCargo:
                     _sellCargo.Open();
