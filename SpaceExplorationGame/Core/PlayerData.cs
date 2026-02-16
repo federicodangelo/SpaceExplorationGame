@@ -296,6 +296,9 @@ public class PlayerData
     /// <summary>Total missions completed (lifetime stat).</summary>
     public int MissionsCompleted { get; set; }
 
+    /// <summary>Index into ActiveMissions for the player's preferred tracked mission (-1 = auto).</summary>
+    public int TrackedMissionIndex { get; set; } = -1;
+
     /// <summary>Accept a mission from the board. Returns false if at max capacity.</summary>
     public bool AcceptMission(Mission mission)
     {
@@ -310,6 +313,7 @@ public class PlayerData
     public void AbandonMission(Mission mission)
     {
         ActiveMissions.Remove(mission);
+        ClampTrackedIndex();
     }
 
     /// <summary>Turn in a completed mission and collect the reward. Returns credits earned.</summary>
@@ -319,6 +323,7 @@ public class PlayerData
         Credits += mission.CreditReward;
         ActiveMissions.Remove(mission);
         MissionsCompleted++;
+        ClampTrackedIndex();
         return mission.CreditReward;
     }
 
@@ -400,11 +405,33 @@ public class PlayerData
     /// <summary>Check whether there are any completed missions ready to turn in.</summary>
     public bool HasCompletedMissions => ActiveMissions.Any(m => m.Status == MissionStatus.Completed);
 
-    /// <summary>Gets a short summary of the most urgent active mission for HUD display.</summary>
+    /// <summary>Gets the mission currently tracked in the HUD. Respects player's chosen index.</summary>
     public Mission? GetTrackedMission()
     {
-        // Prefer completed missions (need turn-in), then the first active
+        if (ActiveMissions.Count == 0) return null;
+
+        // If player has explicitly chosen a mission, show that one
+        if (TrackedMissionIndex >= 0 && TrackedMissionIndex < ActiveMissions.Count)
+            return ActiveMissions[TrackedMissionIndex];
+
+        // Auto: prefer completed missions (need turn-in), then the first active
         return ActiveMissions.FirstOrDefault(m => m.Status == MissionStatus.Completed)
             ?? ActiveMissions.FirstOrDefault(m => m.Status == MissionStatus.Active);
+    }
+
+    /// <summary>Cycle to the next active mission for HUD tracking.</summary>
+    public void CycleTrackedMission()
+    {
+        if (ActiveMissions.Count <= 1) return;
+        TrackedMissionIndex = ((TrackedMissionIndex < 0 ? 0 : TrackedMissionIndex) + 1) % ActiveMissions.Count;
+    }
+
+    /// <summary>Clamp the tracked index after mission list changes.</summary>
+    private void ClampTrackedIndex()
+    {
+        if (ActiveMissions.Count == 0)
+            TrackedMissionIndex = -1;
+        else if (TrackedMissionIndex >= ActiveMissions.Count)
+            TrackedMissionIndex = ActiveMissions.Count - 1;
     }
 }

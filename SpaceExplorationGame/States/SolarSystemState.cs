@@ -936,6 +936,9 @@ public class SolarSystemState : GameState
         // Labels
         _labelRenderer.Render();
 
+        // Mission target markers (pulsing indicators on target planets/stations)
+        RenderMissionTargetMarkers(game, renderer, camera);
+
         // NPC ships (enemies, traders, patrols)
         SolarSystemRenderer.RenderNPCShips(renderer, camera, game.EcsWorld,
             _enemyEntities, game.EnemyShipRenderer);
@@ -1018,5 +1021,63 @@ public class SolarSystemState : GameState
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
+    }
+
+    /// <summary>
+    /// Draws pulsing mission target markers on planets and stations in this system
+    /// that are objectives of the player's active missions.
+    /// </summary>
+    private void RenderMissionTargetMarkers(Game game, SpriteRenderer renderer, Camera camera)
+    {
+        var missions = game.Player.ActiveMissions;
+        if (missions.Count == 0) return;
+
+        int sysIndex = _starSystem.Index;
+        float pulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
+        byte ringAlpha = (byte)(80 + (int)(pulse * 175));
+
+        foreach (var mission in missions)
+        {
+            if (mission.TargetSystemIndex != sysIndex) continue;
+
+            var mc = mission.TypeColor;
+            var ringColor = new Color4(mc.R, mc.G, mc.B, ringAlpha);
+            var glowColor = new Color4(mc.R, mc.G, mc.B, (byte)(30 + (int)(pulse * 40)));
+
+            switch (mission.Type)
+            {
+                case MissionType.Delivery:
+                    // Highlight all stations in this system (player must dock at one)
+                    for (int s = 0; s < _stationEntities.Count; s++)
+                    {
+                        if (!game.EcsWorld.IsAlive(_stationEntities[s])) continue;
+                        var pos = game.EcsWorld.Get<Transform>(_stationEntities[s]).Position;
+                        float markerRadius = 24 + pulse * 6;
+                        renderer.DrawCircle(camera, pos, markerRadius, ringColor);
+                        renderer.DrawCircle(camera, pos, markerRadius + 3, glowColor);
+                        renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 12),
+                            $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                    }
+                    break;
+
+                case MissionType.Exploration:
+                    // Highlight the specific target planet
+                    if (mission.TargetPlanetIndex >= 0 && mission.TargetPlanetIndex < _planetEntities.Count)
+                    {
+                        var planetEntity = _planetEntities[mission.TargetPlanetIndex];
+                        if (game.EcsWorld.IsAlive(planetEntity))
+                        {
+                            var pos = game.EcsWorld.Get<Transform>(planetEntity).Position;
+                            float planetRadius = _planets[mission.TargetPlanetIndex].Radius;
+                            float markerRadius = planetRadius + 8 + pulse * 4;
+                            renderer.DrawCircle(camera, pos, markerRadius, ringColor);
+                            renderer.DrawCircle(camera, pos, markerRadius + 3, glowColor);
+                            renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 12),
+                                $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                        }
+                    }
+                    break;
+            }
+        }
     }
 }

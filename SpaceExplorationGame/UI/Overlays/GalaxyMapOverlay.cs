@@ -403,6 +403,37 @@ public class GalaxyMapOverlay : OverlayBase
                 sys.Name, new Color3(labelBright, labelBright, labelBright), textScale);
         }
 
+        // Draw mission target markers (pulsing rings on target systems)
+        float pulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
+        byte missionAlpha = (byte)(100 + (int)(pulse * 155));
+        foreach (var mission in game.Player.ActiveMissions)
+        {
+            if (mission.TargetSystemIndex >= 0 && mission.TargetSystemIndex < _starSystems.Count)
+            {
+                var targetSys = _starSystems[mission.TargetSystemIndex];
+                var mc = mission.TypeColor;
+                float markerRadius = targetSys.StarRadius + 8;
+
+                // Pulsing outer ring
+                renderer.DrawCircle(camera, targetSys.GalaxyPosition, markerRadius,
+                    new Color4(mc.R, mc.G, mc.B, missionAlpha));
+
+                // Small diamond icon offset above the star
+                var iconPos = targetSys.GalaxyPosition + new Vector2(0, -(targetSys.StarRadius + 16));
+                float diamondSize = 4f;
+                var screenIcon = camera.WorldToScreen(iconPos);
+                if (screenIcon.X >= -20 && screenIcon.X < GameConfig.WindowWidth + 20 &&
+                    screenIcon.Y >= -20 && screenIcon.Y < GameConfig.WindowHeight + 20)
+                {
+                    float ds = diamondSize * Math.Max(1f, camera.Zoom * 0.5f);
+                    renderer.DrawLineScreen(screenIcon.X, screenIcon.Y - ds, screenIcon.X + ds, screenIcon.Y, new Color4(mc.R, mc.G, mc.B, missionAlpha));
+                    renderer.DrawLineScreen(screenIcon.X + ds, screenIcon.Y, screenIcon.X, screenIcon.Y + ds, new Color4(mc.R, mc.G, mc.B, missionAlpha));
+                    renderer.DrawLineScreen(screenIcon.X, screenIcon.Y + ds, screenIcon.X - ds, screenIcon.Y, new Color4(mc.R, mc.G, mc.B, missionAlpha));
+                    renderer.DrawLineScreen(screenIcon.X - ds, screenIcon.Y, screenIcon.X, screenIcon.Y - ds, new Color4(mc.R, mc.G, mc.B, missionAlpha));
+                }
+            }
+        }
+
         // Draw player location marker
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
         {
@@ -434,8 +465,13 @@ public class GalaxyMapOverlay : OverlayBase
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
-            float panelY = GameConfig.WindowHeight - 180;
-            renderer.DrawRectScreen(0, panelY, 420, 180, new Color4(10, 10, 30, 200));
+            // Check for active missions targeting this system
+            var missionsHere = game.Player.ActiveMissions.Where(m => m.TargetSystemIndex == _selectedSystemIndex).ToList();
+            int missionExtraHeight = missionsHere.Count > 0 ? (missionsHere.Count * 18 + 5) : 0;
+
+            float panelHeight = 180 + missionExtraHeight;
+            float panelY = GameConfig.WindowHeight - panelHeight;
+            renderer.DrawRectScreen(0, panelY, 420, panelHeight, new Color4(10, 10, 30, 200));
             renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", new Color3(255, 255, 255), 2f);
             renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
             renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
@@ -448,25 +484,39 @@ public class GalaxyMapOverlay : OverlayBase
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
             renderer.DrawTextScreen(10, panelY + 95, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
 
+            // Mission markers for this system
+            float infoY = panelY + 115;
+            if (missionsHere.Count > 0)
+            {
+                foreach (var m in missionsHere)
+                {
+                    var mc = m.TypeColor;
+                    string statusTag = m.Status == MissionStatus.Completed ? " [DONE]" : "";
+                    renderer.DrawTextScreen(10, infoY, $"[!] {m.TypeLabel}: {m.Title}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.5f);
+                    infoY += 18;
+                }
+                infoY += 5;
+            }
+
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(10, panelY + 115, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
-                renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
+                renderer.DrawTextScreen(10, infoY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(10, infoY + 20, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
             }
             else
             {
-                renderer.DrawTextScreen(10, panelY + 115, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
+                renderer.DrawTextScreen(10, infoY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(10, panelY + 135, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
+                renderer.DrawTextScreen(10, infoY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(10, panelY + 155, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(10, infoY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(10, panelY + 155, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(10, infoY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
                 else
-                    renderer.DrawTextScreen(10, panelY + 155, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
+                    renderer.DrawTextScreen(10, infoY + 40, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
             }
         }
 
