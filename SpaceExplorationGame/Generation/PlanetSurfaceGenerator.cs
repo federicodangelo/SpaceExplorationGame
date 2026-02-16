@@ -62,10 +62,7 @@ public class SettlementLayout
 public class SettlementData
 {
     public string Name { get; set; } = "";
-    public int TileX { get; set; }
-    public int TileY { get; set; }
-    public int Width { get; set; } = 8;
-    public int Height { get; set; } = 6;
+    public TileRect TileRect { get; set; } = new(0, 0, 8, 6);
     public SettlementLayout Layout { get; set; } = null!;
 }
 
@@ -118,10 +115,7 @@ public static class PlanetSurfaceGenerator
                 var settlement = new SettlementData
                 {
                     Name = $"Outpost {(char)('A' + i)}{rng.NextInt(1, 100)}",
-                    TileX = sx,
-                    TileY = sy,
-                    Width = rng.NextInt(6, 12),
-                    Height = rng.NextInt(4, 8)
+                    TileRect = new TileRect(sx, sy, rng.NextInt(6, 12), rng.NextInt(4, 8))
                 };
                 result.Settlements.Add(settlement);
 
@@ -129,8 +123,8 @@ public static class PlanetSurfaceGenerator
                 settlement.Layout = GenerateSettlementLayout(rng, settlement);
 
                 // Ensure the settlement area and a 2-tile border are walkable
-                EnsureWalkableArea(tiles, width, height, settlement.TileX, settlement.TileY,
-                    settlement.Width, settlement.Height, margin: 2, planet.Type);
+                EnsureWalkableArea(tiles, width, height, settlement.TileRect.X, settlement.TileRect.Y,
+                    settlement.TileRect.Width, settlement.TileRect.Height, margin: 2, planet.Type);
             }
         }
 
@@ -387,8 +381,8 @@ public static class PlanetSurfaceGenerator
             bool tooCloseToSettlement = false;
             foreach (var s in data.Settlements)
             {
-                float sx = (s.TileX + s.Width / 2f) * ts;
-                float sy = (s.TileY + s.Height / 2f) * ts;
+                float sx = (s.TileRect.X + s.TileRect.Width / 2f) * ts;
+                float sy = (s.TileRect.Y + s.TileRect.Height / 2f) * ts;
                 if (MathF.Sqrt((worldX - sx) * (worldX - sx) + (worldY - sy) * (worldY - sy)) < 4 * ts)
                 {
                     tooCloseToSettlement = true;
@@ -436,10 +430,10 @@ public static class PlanetSurfaceGenerator
     {
         var layout = new SettlementLayout();
         float ts = GameConfig.TileSize;
-        float baseX = settlement.TileX * ts;
-        float baseY = settlement.TileY * ts;
-        float totalW = settlement.Width * ts;
-        float totalH = settlement.Height * ts;
+        float baseX = settlement.TileRect.X * ts;
+        float baseY = settlement.TileRect.Y * ts;
+        float totalW = settlement.TileRect.Width * ts;
+        float totalH = settlement.TileRect.Height * ts;
 
         // Perimeter
         layout.Perimeter = new FloatRect(baseX, baseY, totalW, totalH);

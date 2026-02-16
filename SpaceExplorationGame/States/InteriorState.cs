@@ -80,7 +80,7 @@ public class InteriorState : GameState
                 game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(2000 + (_station?.Index ?? 0))),
             InteriorOrigin.Settlement => new SeededRandom(
                 game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet?.Index ?? 0)
-                    .DeriveChildSeed(3000 + (_settlement?.TileX ?? 0) * 100 + (_settlement?.TileY ?? 0))),
+                    .DeriveChildSeed(3000 + (_settlement?.TileRect.X ?? 0) * 100 + (_settlement?.TileRect.Y ?? 0))),
             _ => new SeededRandom(12345)
         };
 
@@ -235,8 +235,8 @@ public class InteriorState : GameState
         float nearestNpcDist = float.MaxValue;
         foreach (var npc in _interior.Npcs)
         {
-            float dx = npc.TileX - playerTileX;
-            float dy = npc.TileY - playerTileY;
+            float dx = npc.TilePos.X - playerTileX;
+            float dy = npc.TilePos.Y - playerTileY;
             float dist = MathF.Sqrt(dx * dx + dy * dy);
             if (dist < InteractionRadius && dist < nearestNpcDist)
             {
@@ -249,8 +249,8 @@ public class InteriorState : GameState
         float nearestIntDist = float.MaxValue;
         foreach (var interactable in _interior.Interactables)
         {
-            float dx = interactable.TileX - playerTileX;
-            float dy = interactable.TileY - playerTileY;
+            float dx = interactable.TilePos.X - playerTileX;
+            float dy = interactable.TilePos.Y - playerTileY;
             float dist = MathF.Sqrt(dx * dx + dy * dy);
             if (dist < InteractionRadius && dist < nearestIntDist)
             {
@@ -307,8 +307,8 @@ public class InteriorState : GameState
                 // Return to planet surface at the settlement location
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = _planet!.Index;
-                int landX = _settlement!.TileX + _settlement.Width / 2;
-                int landY = _settlement!.TileY + _settlement.Height / 2;
+                int landX = _settlement!.TileRect.X + _settlement.TileRect.Width / 2;
+                int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height / 2;
                 game.ChangeState(new PlanetSurfaceState(_starSystem, _planet, landX, landY));
                 break;
         }

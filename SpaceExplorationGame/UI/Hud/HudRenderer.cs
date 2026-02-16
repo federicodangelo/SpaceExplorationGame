@@ -358,8 +358,8 @@ public static class HudRenderer
         foreach (var s in settlements)
         {
             // Point toward the center of the settlement
-            float cx = (s.TileX + s.Width / 2f) * GameConfig.TileSize;
-            float cy = (s.TileY + s.Height / 2f) * GameConfig.TileSize;
+            float cx = (s.TileRect.X + s.TileRect.Width / 2f) * GameConfig.TileSize;
+            float cy = (s.TileRect.Y + s.TileRect.Height / 2f) * GameConfig.TileSize;
             RenderOffscreenIndicator(renderer, camera, new Vector2(cx, cy),
                 200, 180, 80, prefix: s.Name + " ", dotRadius: 3f, arrowSize: 8f);
         }

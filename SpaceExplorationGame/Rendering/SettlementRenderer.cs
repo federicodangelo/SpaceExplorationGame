@@ -24,9 +24,9 @@ public static class SettlementRenderer
         var (px, py, pw, ph) = layout.Perimeter;
 
         // Ground/plaza (slightly lighter base)
-        for (int sx = settlement.TileX; sx < settlement.TileX + settlement.Width && sx < surfaceData.Width; sx++)
+        for (int sx = settlement.TileRect.X; sx < settlement.TileRect.X + settlement.TileRect.Width && sx < surfaceData.Width; sx++)
         {
-            for (int sy = settlement.TileY; sy < settlement.TileY + settlement.Height && sy < surfaceData.Height; sy++)
+            for (int sy = settlement.TileRect.Y; sy < settlement.TileRect.Y + settlement.TileRect.Height && sy < surfaceData.Height; sy++)
             {
                 var worldPos = new Vector2(sx * GameConfig.TileSize + GameConfig.TileSize / 2f,
                                            sy * GameConfig.TileSize + GameConfig.TileSize / 2f);
@@ -88,8 +88,8 @@ public static class SettlementRenderer
 
         // Settlement label (above gate)
         var labelPos = new Vector2(
-            (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize,
-            settlement.TileY * GameConfig.TileSize - 18
+            (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize,
+            settlement.TileRect.Y * GameConfig.TileSize - 18
         );
         renderer.DrawText(camera, labelPos, settlement.Name, new Color3(255, 255, 200));
     }

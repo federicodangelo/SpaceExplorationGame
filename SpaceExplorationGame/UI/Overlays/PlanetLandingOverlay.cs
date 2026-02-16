@@ -246,10 +246,10 @@ public class PlanetLandingOverlay : OverlayBase
         // Draw settlement markers
         foreach (var settlement in _surfaceData.Settlements)
         {
-            float sx = mapX + (settlement.TileX + settlement.Width / 2f) * tileToScreenX;
-            float sy = mapY + (settlement.TileY + settlement.Height / 2f) * tileToScreenY;
-            float sw = settlement.Width * tileToScreenX;
-            float sh = settlement.Height * tileToScreenY;
+            float sx = mapX + (settlement.TileRect.X + settlement.TileRect.Width / 2f) * tileToScreenX;
+            float sy = mapY + (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * tileToScreenY;
+            float sw = settlement.TileRect.Width * tileToScreenX;
+            float sh = settlement.TileRect.Height * tileToScreenY;
 
             // Settlement outline
             renderer.DrawRectScreen(sx - sw / 2f - 1, sy - sh / 2f - 1, sw + 2, sh + 2, new Color4(255, 220, 100, 180));
@@ -298,8 +298,8 @@ public class PlanetLandingOverlay : OverlayBase
             string? nearSettlement = null;
             foreach (var s in _surfaceData.Settlements)
             {
-                if (_cursorTile.X >= s.TileX && _cursorTile.X < s.TileX + s.Width &&
-                    _cursorTile.Y >= s.TileY && _cursorTile.Y < s.TileY + s.Height)
+                if (_cursorTile.X >= s.TileRect.X && _cursorTile.X < s.TileRect.X + s.TileRect.Width &&
+                    _cursorTile.Y >= s.TileRect.Y && _cursorTile.Y < s.TileRect.Y + s.TileRect.Height)
                 {
                     nearSettlement = s.Name;
                     break;
@@ -403,9 +403,9 @@ public class PlanetLandingOverlay : OverlayBase
         // Mark settlement tiles brighter
         foreach (var s in _surfaceData.Settlements)
         {
-            for (int sx = s.TileX; sx < s.TileX + s.Width && sx < w; sx++)
+            for (int sx = s.TileRect.X; sx < s.TileRect.X + s.TileRect.Width && sx < w; sx++)
             {
-                for (int sy = s.TileY; sy < s.TileY + s.Height && sy < h; sy++)
+                for (int sy = s.TileRect.Y; sy < s.TileRect.Y + s.TileRect.Height && sy < h; sy++)
                 {
                     int idx = (sy * w + sx) * 4;
                     pixels[idx + 0] = 100;

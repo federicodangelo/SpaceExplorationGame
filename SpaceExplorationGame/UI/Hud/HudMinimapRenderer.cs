@@ -133,8 +133,8 @@ public static class HudMinimapRenderer
         foreach (var s in surfaceData.Settlements)
         {
             areas.Add(new MinimapArea(
-                s.TileX * GameConfig.TileSize, s.TileY * GameConfig.TileSize,
-                s.Width * GameConfig.TileSize, s.Height * GameConfig.TileSize,
+                s.TileRect.X * GameConfig.TileSize, s.TileRect.Y * GameConfig.TileSize,
+                s.TileRect.Width * GameConfig.TileSize, s.TileRect.Height * GameConfig.TileSize,
                 new Color3(200, 180, 80)));
         }
 
@@ -173,8 +173,8 @@ public static class HudMinimapRenderer
         {
             var room = interior.Rooms[i];
             areas[i] = new MinimapArea(
-                room.X * GameConfig.TileSize, room.Y * GameConfig.TileSize,
-                room.Width * GameConfig.TileSize, room.Height * GameConfig.TileSize,
+                room.TileRect.X * GameConfig.TileSize, room.TileRect.Y * GameConfig.TileSize,
+                room.TileRect.Width * GameConfig.TileSize, room.TileRect.Height * GameConfig.TileSize,
                 new Color3(50, 50, 60));
         }
 
@@ -183,14 +183,14 @@ public static class HudMinimapRenderer
         foreach (var npc in interior.Npcs)
         {
             markers.Add(new MinimapMarker(
-                new Vector2(npc.TileX * GameConfig.TileSize, npc.TileY * GameConfig.TileSize),
+                new Vector2(npc.TilePos.X * GameConfig.TileSize, npc.TilePos.Y * GameConfig.TileSize),
                 npc.Color));
         }
         foreach (var interactable in interior.Interactables)
         {
             var (ir, ig, ib) = InteriorRenderer.GetInteractableColor(interactable.Type);
             markers.Add(new MinimapMarker(
-                new Vector2(interactable.TileX * GameConfig.TileSize, interactable.TileY * GameConfig.TileSize),
+                new Vector2(interactable.TilePos.X * GameConfig.TileSize, interactable.TilePos.Y * GameConfig.TileSize),
                 new Color3(ir, ig, ib)));
         }
 

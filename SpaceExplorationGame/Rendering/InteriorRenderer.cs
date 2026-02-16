@@ -206,8 +206,8 @@ public static class InteriorRenderer
         {
             float roomLabelW = renderer.MeasureText(room.Name, 3f) / 2f / camera.Zoom;
             var labelPos = new Vector2(
-                (room.X + room.Width / 2f) * GameConfig.TileSize - roomLabelW,
-                room.Y * GameConfig.TileSize - 8
+                (room.TileRect.X + room.TileRect.Width / 2f) * GameConfig.TileSize - roomLabelW,
+                room.TileRect.Y * GameConfig.TileSize - 8
             );
             renderer.DrawText(camera, labelPos, room.Name, new Color3(120, 120, 160), 3f);
         }
@@ -219,8 +219,8 @@ public static class InteriorRenderer
         foreach (var npc in interior.Npcs)
         {
             var npcPos = new Vector2(
-                npc.TileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                npc.TileY * GameConfig.TileSize + GameConfig.TileSize / 2f
+                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
             // Shadow beneath feet
@@ -254,8 +254,8 @@ public static class InteriorRenderer
         foreach (var interactable in interior.Interactables)
         {
             var intPos = new Vector2(
-                interactable.TileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                interactable.TileY * GameConfig.TileSize + GameConfig.TileSize / 2f
+                interactable.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                interactable.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
             float bob = MathF.Sin((float)globalTime * 2f) * 3f;

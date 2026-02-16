@@ -172,8 +172,8 @@ public class MainMenuState : GameState
                 if (surfaceData.Settlements.Count > 0)
                 {
                     var s = surfaceData.Settlements[0];
-                    lx = s.TileX + s.Width / 2;
-                    ly = s.TileY + s.Height / 2;
+                    lx = s.TileRect.X + s.TileRect.Width / 2;
+                    ly = s.TileRect.Y + s.TileRect.Height / 2;
                 }
                 game.ChangeState(new PlanetSurfaceState(system, planet, lx, ly));
                 break;

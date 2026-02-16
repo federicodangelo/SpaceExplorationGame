@@ -32,6 +32,16 @@ public readonly record struct ColoredRadius(Color3 Color, float Radius);
 /// <summary>An integer 2D position (tile coordinates).</summary>
 public readonly record struct TilePos(int X, int Y);
 
+/// <summary>An integer size in tiles.</summary>
+public readonly record struct TileSize(int Width, int Height);
+
+/// <summary>An integer axis-aligned rectangle (position + size in tile coordinates).</summary>
+public readonly record struct TileRect(int X, int Y, int Width, int Height)
+{
+    public int CenterX => X + Width / 2;
+    public int CenterY => Y + Height / 2;
+}
+
 /// <summary>A float 2D position.</summary>
 public readonly record struct FloatPos(float X, float Y);
 

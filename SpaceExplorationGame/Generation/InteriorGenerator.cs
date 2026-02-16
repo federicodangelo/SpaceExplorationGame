@@ -32,12 +32,9 @@ public class InteriorRoom
 {
     public string Name { get; set; } = "";
     public RoomFunction Function { get; set; }
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public int CenterX => X + Width / 2;
-    public int CenterY => Y + Height / 2;
+    public TileRect TileRect { get; set; }
+    public int CenterX => TileRect.CenterX;
+    public int CenterY => TileRect.CenterY;
 }
 
 public enum RoomFunction
@@ -65,8 +62,7 @@ public class InteriorNpc
 {
     public string Name { get; set; } = "";
     public string Role { get; set; } = "";
-    public int TileX { get; set; }
-    public int TileY { get; set; }
+    public TilePos TilePos { get; set; }
     public string[] DialogueLines { get; set; } = [];
     public Color3 Color { get; set; } = new(100, 200, 255);
 }
@@ -78,8 +74,7 @@ public class InteriorInteractable
 {
     public string Name { get; set; } = "";
     public InteractableType Type { get; set; }
-    public int TileX { get; set; }
-    public int TileY { get; set; }
+    public TilePos TilePos { get; set; }
 }
 
 public enum InteractableType
@@ -199,12 +194,12 @@ public static class InteriorGenerator
                 data.Tiles[x, y] = InteriorTileType.Void;
 
         // Generate rooms
-        var docking = new InteriorRoom { Name = "DOCKING BAY", Function = RoomFunction.DockingBay, X = 2, Y = StationHeight / 2 - 5, Width = 10, Height = 10 };
-        var command = new InteriorRoom { Name = "COMMAND CENTER", Function = RoomFunction.CommandCenter, X = StationWidth - 14, Y = 2, Width = 12, Height = 8 };
-        var trading = new InteriorRoom { Name = "TRADING POST", Function = RoomFunction.TradingPost, X = StationWidth / 2 - 6, Y = 2, Width = 12, Height = 8 };
-        var medbay = new InteriorRoom { Name = "MEDBAY", Function = RoomFunction.Medbay, X = StationWidth - 14, Y = StationHeight - 10, Width = 12, Height = 8 };
-        var quarters = new InteriorRoom { Name = "CREW QUARTERS", Function = RoomFunction.CrewQuarters, X = StationWidth / 2 - 6, Y = StationHeight - 10, Width = 12, Height = 8 };
-        var cargo = new InteriorRoom { Name = "CARGO BAY", Function = RoomFunction.CargoBay, X = 2, Y = 2, Width = 10, Height = 8 };
+        var docking = new InteriorRoom { Name = "DOCKING BAY", Function = RoomFunction.DockingBay, TileRect = new(2, StationHeight / 2 - 5, 10, 10) };
+        var command = new InteriorRoom { Name = "COMMAND CENTER", Function = RoomFunction.CommandCenter, TileRect = new(StationWidth - 14, 2, 12, 8) };
+        var trading = new InteriorRoom { Name = "TRADING POST", Function = RoomFunction.TradingPost, TileRect = new(StationWidth / 2 - 6, 2, 12, 8) };
+        var medbay = new InteriorRoom { Name = "MEDBAY", Function = RoomFunction.Medbay, TileRect = new(StationWidth - 14, StationHeight - 10, 12, 8) };
+        var quarters = new InteriorRoom { Name = "CREW QUARTERS", Function = RoomFunction.CrewQuarters, TileRect = new(StationWidth / 2 - 6, StationHeight - 10, 12, 8) };
+        var cargo = new InteriorRoom { Name = "CARGO BAY", Function = RoomFunction.CargoBay, TileRect = new(2, 2, 10, 8) };
 
         data.Rooms.AddRange([docking, command, trading, medbay, quarters, cargo]);
 
@@ -222,8 +217,8 @@ public static class InteriorGenerator
         ConnectRooms(data, command, medbay);
 
         // Mark docking bay floor as landing pad
-        for (int x = docking.X + 2; x < docking.X + docking.Width - 2; x++)
-            for (int y = docking.Y + 2; y < docking.Y + docking.Height - 2; y++)
+        for (int x = docking.TileRect.X + 2; x < docking.TileRect.X + docking.TileRect.Width - 2; x++)
+            for (int y = docking.TileRect.Y + 2; y < docking.TileRect.Y + docking.TileRect.Height - 2; y++)
                 data.Tiles[x, y] = InteriorTileType.LandingPad;
 
         // Add decorative crates in cargo bay
@@ -233,8 +228,8 @@ public static class InteriorGenerator
         PlaceConsoles(data, command, 1);
 
         // Add accent floors in trading post
-        for (int x = trading.X + 2; x < trading.X + trading.Width - 2; x++)
-            for (int y = trading.Y + 2; y < trading.Y + trading.Height - 2; y++)
+        for (int x = trading.TileRect.X + 2; x < trading.TileRect.X + trading.TileRect.Width - 2; x++)
+            for (int y = trading.TileRect.Y + 2; y < trading.TileRect.Y + trading.TileRect.Height - 2; y++)
                 if (data.Tiles[x, y] == InteriorTileType.Floor)
                     data.Tiles[x, y] = InteriorTileType.FloorAccent;
 
@@ -246,35 +241,31 @@ public static class InteriorGenerator
         {
             Name = "CARGO TERMINAL",
             Type = InteractableType.CargoTerminal,
-            TileX = trading.CenterX,
-            TileY = trading.Y + 1
+            TilePos = new(trading.CenterX, trading.TileRect.Y + 1)
         });
-        data.Tiles[trading.CenterX, trading.Y + 1] = InteriorTileType.Console;
+        data.Tiles[trading.CenterX, trading.TileRect.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "HEALTH STATION",
             Type = InteractableType.HealthStation,
-            TileX = medbay.CenterX - 2,
-            TileY = medbay.Y + 1
+            TilePos = new(medbay.CenterX - 2, medbay.TileRect.Y + 1)
         });
-        data.Tiles[medbay.CenterX - 2, medbay.Y + 1] = InteriorTileType.Console;
+        data.Tiles[medbay.CenterX - 2, medbay.TileRect.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "MISSION BOARD",
             Type = InteractableType.MissionBoard,
-            TileX = command.CenterX,
-            TileY = command.Y + 1
+            TilePos = new(command.CenterX, command.TileRect.Y + 1)
         });
-        data.Tiles[command.CenterX, command.Y + 1] = InteriorTileType.Console;
+        data.Tiles[command.CenterX, command.TileRect.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "EXIT",
             Type = InteractableType.ExitDoor,
-            TileX = docking.X + docking.Width / 2,
-            TileY = docking.Y + docking.Height - 1
+            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2, docking.TileRect.Y + docking.TileRect.Height - 1)
         });
 
         // Repair station in docking bay (next to landing pad)
@@ -282,50 +273,45 @@ public static class InteriorGenerator
         {
             Name = "REPAIR STATION",
             Type = InteractableType.RepairStation,
-            TileX = docking.X + 1,
-            TileY = docking.CenterY
+            TilePos = new(docking.TileRect.X + 1, docking.CenterY)
         });
-        data.Tiles[docking.X + 1, docking.CenterY] = InteriorTileType.Console;
+        data.Tiles[docking.TileRect.X + 1, docking.CenterY] = InteriorTileType.Console;
 
         // Ship customization terminal next to landing pad
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "SHIP CUSTOMIZATION",
             Type = InteractableType.ShipCustomization,
-            TileX = docking.X + docking.Width / 2 + 2,
-            TileY = docking.Y + docking.Height - 2
+            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + docking.TileRect.Height - 2)
         });
-        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + docking.Height - 2] = InteriorTileType.Console;
+        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + docking.TileRect.Height - 2] = InteriorTileType.Console;
 
         // Avatar customization terminal (top of docking room)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "AVATAR CUSTOMIZATION",
             Type = InteractableType.AvatarCustomization,
-            TileX = docking.X + docking.Width / 2 - 2,
-            TileY = docking.Y + 1
+            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + 1)
         });
-        data.Tiles[docking.X + docking.Width / 2 - 2, docking.Y + 1] = InteriorTileType.Console;
+        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Vehicle customization terminal (top of docking room)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "VEHICLE CUSTOMIZATION",
             Type = InteractableType.VehicleCustomization,
-            TileX = docking.X + docking.Width / 2 + 2,
-            TileY = docking.Y + 1
+            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + 1)
         });
-        data.Tiles[docking.X + docking.Width / 2 + 2, docking.Y + 1] = InteriorTileType.Console;
+        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Ship dealer terminal (left side of docking room)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "SHIP DEALER",
             Type = InteractableType.ShipDealer,
-            TileX = docking.X + docking.Width / 2 - 2,
-            TileY = docking.Y + docking.Height - 2
+            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2)
         });
-        data.Tiles[docking.X + docking.Width / 2 - 2, docking.Y + docking.Height - 2] = InteriorTileType.Console;
+        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceStationNpcs(data, rng);
@@ -353,12 +339,12 @@ public static class InteriorGenerator
                 data.Tiles[x, y] = InteriorTileType.Void;
 
         // Generate settlement layout: central street with buildings on either side
-        var landing = new InteriorRoom { Name = "LANDING PAD", Function = RoomFunction.LandingPad, X = SettlementWidth / 2 - 4, Y = SettlementHeight - 9, Width = 9, Height = 7 };
-        var market = new InteriorRoom { Name = "MARKET", Function = RoomFunction.Market, X = 2, Y = 4, Width = 10, Height = 8 };
-        var cantina = new InteriorRoom { Name = "CANTINA", Function = RoomFunction.Cantina, X = SettlementWidth - 12, Y = 4, Width = 10, Height = 8 };
-        var housing1 = new InteriorRoom { Name = "HOUSING A", Function = RoomFunction.Housing, X = 2, Y = 16, Width = 8, Height = 6 };
-        var housing2 = new InteriorRoom { Name = "HOUSING B", Function = RoomFunction.Housing, X = SettlementWidth - 10, Y = 16, Width = 8, Height = 6 };
-        var comms = new InteriorRoom { Name = "COMMS CENTER", Function = RoomFunction.CommsCenter, X = SettlementWidth / 2 - 5, Y = 2, Width = 10, Height = 6 };
+        var landing = new InteriorRoom { Name = "LANDING PAD", Function = RoomFunction.LandingPad, TileRect = new(SettlementWidth / 2 - 4, SettlementHeight - 9, 9, 7) };
+        var market = new InteriorRoom { Name = "MARKET", Function = RoomFunction.Market, TileRect = new(2, 4, 10, 8) };
+        var cantina = new InteriorRoom { Name = "CANTINA", Function = RoomFunction.Cantina, TileRect = new(SettlementWidth - 12, 4, 10, 8) };
+        var housing1 = new InteriorRoom { Name = "HOUSING A", Function = RoomFunction.Housing, TileRect = new(2, 16, 8, 6) };
+        var housing2 = new InteriorRoom { Name = "HOUSING B", Function = RoomFunction.Housing, TileRect = new(SettlementWidth - 10, 16, 8, 6) };
+        var comms = new InteriorRoom { Name = "COMMS CENTER", Function = RoomFunction.CommsCenter, TileRect = new(SettlementWidth / 2 - 5, 2, 10, 6) };
 
         data.Rooms.AddRange([landing, market, cantina, housing1, housing2, comms]);
 
@@ -377,13 +363,13 @@ public static class InteriorGenerator
         ConnectWithStreet(data, comms, cantina);
 
         // Landing pad marking
-        for (int x = landing.X + 1; x < landing.X + landing.Width - 1; x++)
-            for (int y = landing.Y + 1; y < landing.Y + landing.Height - 1; y++)
+        for (int x = landing.TileRect.X + 1; x < landing.TileRect.X + landing.TileRect.Width - 1; x++)
+            for (int y = landing.TileRect.Y + 1; y < landing.TileRect.Y + landing.TileRect.Height - 1; y++)
                 data.Tiles[x, y] = InteriorTileType.LandingPad;
 
         // Market accent floor
-        for (int x = market.X + 2; x < market.X + market.Width - 2; x++)
-            for (int y = market.Y + 2; y < market.Y + market.Height - 2; y++)
+        for (int x = market.TileRect.X + 2; x < market.TileRect.X + market.TileRect.Width - 2; x++)
+            for (int y = market.TileRect.Y + 2; y < market.TileRect.Y + market.TileRect.Height - 2; y++)
                 if (data.Tiles[x, y] == InteriorTileType.Floor)
                     data.Tiles[x, y] = InteriorTileType.FloorAccent;
 
@@ -400,26 +386,23 @@ public static class InteriorGenerator
         {
             Name = "CARGO TERMINAL",
             Type = InteractableType.CargoTerminal,
-            TileX = market.CenterX,
-            TileY = market.Y + 1
+            TilePos = new(market.CenterX, market.TileRect.Y + 1)
         });
-        data.Tiles[market.CenterX, market.Y + 1] = InteriorTileType.Console;
+        data.Tiles[market.CenterX, market.TileRect.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "MISSION BOARD",
             Type = InteractableType.MissionBoard,
-            TileX = comms.CenterX,
-            TileY = comms.Y + 1
+            TilePos = new(comms.CenterX, comms.TileRect.Y + 1)
         });
-        data.Tiles[comms.CenterX, comms.Y + 1] = InteriorTileType.Console;
+        data.Tiles[comms.CenterX, comms.TileRect.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "EXIT",
             Type = InteractableType.ExitDoor,
-            TileX = landing.CenterX,
-            TileY = landing.Y + landing.Height - 1
+            TilePos = new(landing.CenterX, landing.TileRect.Y + landing.TileRect.Height - 1)
         });
 
         // Ship customization terminal next to landing pad
@@ -427,60 +410,54 @@ public static class InteriorGenerator
         {
             Name = "SHIP CUSTOMIZATION",
             Type = InteractableType.ShipCustomization,
-            TileX = landing.CenterX + 2,
-            TileY = landing.Y + landing.Height - 2
+            TilePos = new(landing.CenterX + 2, landing.TileRect.Y + landing.TileRect.Height - 2)
         });
-        data.Tiles[landing.CenterX + 2, landing.Y + landing.Height - 2] = InteriorTileType.Console;
+        data.Tiles[landing.CenterX + 2, landing.TileRect.Y + landing.TileRect.Height - 2] = InteriorTileType.Console;
 
         // Repair station at the landing pad
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "REPAIR STATION",
             Type = InteractableType.RepairStation,
-            TileX = landing.X + 1,
-            TileY = landing.CenterY
+            TilePos = new(landing.TileRect.X + 1, landing.CenterY)
         });
-        data.Tiles[landing.X + 1, landing.CenterY] = InteriorTileType.Console;
+        data.Tiles[landing.TileRect.X + 1, landing.CenterY] = InteriorTileType.Console;
 
         // Health station in the cantina (serves as settlement medbay)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "HEALTH STATION",
             Type = InteractableType.HealthStation,
-            TileX = cantina.CenterX - 2,
-            TileY = cantina.Y + 1
+            TilePos = new(cantina.CenterX - 2, cantina.TileRect.Y + 1)
         });
-        data.Tiles[cantina.CenterX- 2, cantina.Y + 1] = InteriorTileType.Console;
+        data.Tiles[cantina.CenterX- 2, cantina.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Avatar customization terminal (top of landing pad)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "AVATAR CUSTOMIZATION",
             Type = InteractableType.AvatarCustomization,
-            TileX = landing.CenterX - 2,
-            TileY = landing.Y + 1
+            TilePos = new(landing.CenterX - 2, landing.TileRect.Y + 1)
         });
-        data.Tiles[landing.CenterX - 2, landing.Y + 1] = InteriorTileType.Console;
+        data.Tiles[landing.CenterX - 2, landing.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Vehicle customization terminal (top of landing pad)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "VEHICLE CUSTOMIZATION",
             Type = InteractableType.VehicleCustomization,
-            TileX = landing.CenterX + 2,
-            TileY = landing.Y + 1
+            TilePos = new(landing.CenterX + 2, landing.TileRect.Y + 1)
         });
-        data.Tiles[landing.CenterX + 2, landing.Y + 1] = InteriorTileType.Console;
+        data.Tiles[landing.CenterX + 2, landing.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Ship dealer terminal (left side of landing pad)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "SHIP DEALER",
             Type = InteractableType.ShipDealer,
-            TileX = landing.CenterX - 2,
-            TileY = landing.Y + landing.Height - 2
+            TilePos = new(landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2)
         });
-        data.Tiles[landing.CenterX - 2, landing.Y + landing.Height - 2] = InteriorTileType.Console;
+        data.Tiles[landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2] = InteriorTileType.Console;
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);
@@ -518,12 +495,13 @@ public static class InteriorGenerator
 
     private static void CarveRoom(InteriorData data, InteriorRoom room)
     {
-        for (int x = room.X; x < room.X + room.Width && x < data.Width; x++)
+        var r = room.TileRect;
+        for (int x = r.X; x < r.X + r.Width && x < data.Width; x++)
         {
-            for (int y = room.Y; y < room.Y + room.Height && y < data.Height; y++)
+            for (int y = r.Y; y < r.Y + r.Height && y < data.Height; y++)
             {
-                bool isEdge = x == room.X || x == room.X + room.Width - 1 ||
-                              y == room.Y || y == room.Y + room.Height - 1;
+                bool isEdge = x == r.X || x == r.X + r.Width - 1 ||
+                              y == r.Y || y == r.Y + r.Height - 1;
 
                 data.Tiles[x, y] = isEdge ? InteriorTileType.Wall : InteriorTileType.Floor;
             }
@@ -656,10 +634,11 @@ public static class InteriorGenerator
 
     private static void PlaceCrates(InteriorData data, SeededRandom rng, InteriorRoom room, int count)
     {
+        var r = room.TileRect;
         for (int i = 0; i < count; i++)
         {
-            int cx = rng.NextInt(room.X + 2, room.X + room.Width - 2);
-            int cy = rng.NextInt(room.Y + 2, room.Y + room.Height - 2);
+            int cx = rng.NextInt(r.X + 2, r.X + r.Width - 2);
+            int cy = rng.NextInt(r.Y + 2, r.Y + r.Height - 2);
             if (tx_InBounds(data, cx, cy) && data.Tiles[cx, cy] == InteriorTileType.Floor)
                 data.Tiles[cx, cy] = InteriorTileType.Crate;
         }
@@ -667,13 +646,14 @@ public static class InteriorGenerator
 
     private static void PlaceConsoles(InteriorData data, InteriorRoom room, int count)
     {
+        var r = room.TileRect;
         // Place consoles along the top wall of the room
-        int startX = room.X + 2;
-        int spacing = Math.Max(1, (room.Width - 4) / (count + 1));
+        int startX = r.X + 2;
+        int spacing = Math.Max(1, (r.Width - 4) / (count + 1));
         for (int i = 0; i < count; i++)
         {
             int cx = startX + spacing * (i + 1);
-            int cy = room.Y + 1;
+            int cy = r.Y + 1;
             if (tx_InBounds(data, cx, cy))
                 data.Tiles[cx, cy] = InteriorTileType.Console;
         }
@@ -697,7 +677,7 @@ public static class InteriorGenerator
         var dockingRoom = data.Rooms.Find(r => r.Function == RoomFunction.DockingBay);
         if (dockingRoom != null)
         {
-            data.Npcs.Add(CreateNpc(rng, "MECHANIC", dockingRoom.X + 2, dockingRoom.CenterY + 1,
+            data.Npcs.Add(CreateNpc(rng, "MECHANIC", dockingRoom.TileRect.X + 2, dockingRoom.CenterY + 1,
                 MechanicDialogue, new Color3(200, 150, 100)));
         }
 
@@ -722,8 +702,8 @@ public static class InteriorGenerator
         for (int i = 0; i < civilianCount; i++)
         {
             var room = rng.Pick(data.Rooms);
-            int nx = rng.NextInt(room.X + 2, room.X + room.Width - 2);
-            int ny = rng.NextInt(room.Y + 2, room.Y + room.Height - 2);
+            int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
+            int ny = rng.NextInt(room.TileRect.Y + 2, room.TileRect.Y + room.TileRect.Height - 2);
 
             if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
@@ -747,7 +727,7 @@ public static class InteriorGenerator
         var cantinaRoom = data.Rooms.Find(r => r.Function == RoomFunction.Cantina);
         if (cantinaRoom != null)
         {
-            data.Npcs.Add(CreateNpc(rng, "BARTENDER", cantinaRoom.CenterX, cantinaRoom.Y + 1,
+            data.Npcs.Add(CreateNpc(rng, "BARTENDER", cantinaRoom.CenterX, cantinaRoom.TileRect.Y + 1,
                 [
                     "What'll it be? We've got synthesized drinks.",
                     "You look like you've had a long journey.",
@@ -773,8 +753,8 @@ public static class InteriorGenerator
         for (int i = 0; i < civilianCount; i++)
         {
             var room = rng.Pick(data.Rooms);
-            int nx = rng.NextInt(room.X + 2, room.X + room.Width - 2);
-            int ny = rng.NextInt(room.Y + 2, room.Y + room.Height - 2);
+            int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
+            int ny = rng.NextInt(room.TileRect.Y + 2, room.TileRect.Y + room.TileRect.Height - 2);
 
             if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
@@ -797,8 +777,7 @@ public static class InteriorGenerator
         {
             Name = $"{firstName} {lastName}",
             Role = role,
-            TileX = x,
-            TileY = y,
+            TilePos = new(x, y),
             DialogueLines = lines,
             Color = color
         };

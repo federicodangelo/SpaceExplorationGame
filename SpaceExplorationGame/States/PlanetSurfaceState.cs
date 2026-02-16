@@ -432,10 +432,10 @@ public class PlanetSurfaceState : GameState
         _nearSettlement = null;
         foreach (var settlement in _surfaceData.Settlements)
         {
-            float sx = (settlement.TileX + settlement.Width / 2f) * GameConfig.TileSize;
-            float sy = (settlement.TileY + settlement.Height / 2f) * GameConfig.TileSize;
+            float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
+            float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
             float distToSettlement = Vector2.Distance(avatarTransform.Position, new Vector2(sx, sy));
-            float settlementRadius = Math.Max(settlement.Width, settlement.Height) * GameConfig.TileSize / 2f + 20f;
+            float settlementRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * GameConfig.TileSize / 2f + 20f;
             if (distToSettlement < settlementRadius)
             {
                 _nearSettlement = settlement;
