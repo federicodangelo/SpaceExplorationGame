@@ -705,21 +705,24 @@ public class SolarSystemState : GameState
         {
             if (destroyed.Asteroid.HasValue)
             {
-                // Asteroid destroyed — collect resources
+                // Asteroid destroyed — collect resources only if player mined it
                 var asteroid = destroyed.Asteroid.Value;
                 _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
 
-                int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
-                var resInfo = ResourceCatalog.Get(asteroid.Resource);
-                if (added > 0)
+                if (destroyed.KillerFaction == Faction.Player)
                 {
-                    _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
-                    _miningMessageTimer = 2.5f;
-                }
-                else
-                {
-                    _miningMessage = "CARGO FULL!";
-                    _miningMessageTimer = 2.5f;
+                    int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
+                    var resInfo = ResourceCatalog.Get(asteroid.Resource);
+                    if (added > 0)
+                    {
+                        _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
+                        _miningMessageTimer = 2.5f;
+                    }
+                    else
+                    {
+                        _miningMessage = "CARGO FULL!";
+                        _miningMessageTimer = 2.5f;
+                    }
                 }
 
                 // Clear mining HUD since asteroid is gone
@@ -738,13 +741,13 @@ public class SolarSystemState : GameState
             }
             else
             {
-                // Enemy died — create explosion and drop loot
+                // Enemy died — create explosion and drop loot only if player killed it
                 byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
                 byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
                 byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
                 _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
 
-                if (destroyed.Loot.HasValue)
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng,
                         resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);

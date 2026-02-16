@@ -555,21 +555,24 @@ public class PlanetSurfaceState : GameState
         {
             if (destroyed.Asteroid.HasValue)
             {
-                // Mineable rock destroyed — collect resources
+                // Mineable rock destroyed — collect resources only if player mined it
                 var rock = destroyed.Asteroid.Value;
                 _explosions.Add(new Explosion(destroyed.Position, 12f, new Color3(140, 120, 100), 0.4f));
 
-                int added = game.Player.AddCargo(rock.Resource, rock.ResourceAmount);
-                var resInfo = ResourceCatalog.Get(rock.Resource);
-                if (added > 0)
+                if (destroyed.KillerFaction == Faction.Player)
                 {
-                    _combatMessage = $"+{added} {resInfo.Name.ToUpper()}";
-                    _combatMessageTimer = 2.5f;
-                }
-                else
-                {
-                    _combatMessage = "CARGO FULL!";
-                    _combatMessageTimer = 2.5f;
+                    int added = game.Player.AddCargo(rock.Resource, rock.ResourceAmount);
+                    var resInfo = ResourceCatalog.Get(rock.Resource);
+                    if (added > 0)
+                    {
+                        _combatMessage = $"+{added} {resInfo.Name.ToUpper()}";
+                        _combatMessageTimer = 2.5f;
+                    }
+                    else
+                    {
+                        _combatMessage = "CARGO FULL!";
+                        _combatMessageTimer = 2.5f;
+                    }
                 }
 
                 if (game.EcsWorld.IsAlive(destroyed.Entity))
@@ -589,7 +592,7 @@ public class PlanetSurfaceState : GameState
                         destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
                         destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50), 0.6f));
 
-                if (destroyed.Loot.HasValue)
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng);
                     _combatMessageTimer = 3f;

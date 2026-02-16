@@ -8,13 +8,13 @@ using SpaceExplorationGame.ECS.Components;
 namespace SpaceExplorationGame.ECS.Systems.Combat;
 
 /// <summary>A projectile hit event: which projectile hit which target and for how much damage.</summary>
-public readonly record struct ProjectileHit(Entity Projectile, Entity Target, float Damage);
+public readonly record struct ProjectileHit(Entity Projectile, Entity Target, float Damage, Faction OwnerFaction);
 
 /// <summary>Per-frame snapshot of a live projectile's state for collision checking.</summary>
 public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position, Projectile Proj);
 
 /// <summary>An entity destroyed by projectile damage this frame.</summary>
-public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid);
+public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction);
 
 /// <summary>A damage event from a projectile hit (for visual effects).</summary>
 public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target);
@@ -109,7 +109,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
                 if (dist < proj.CollisionRadius + targetRadius)
                 {
-                    _hits.Add(new ProjectileHit(projEntity, target, proj.Damage));
+                    _hits.Add(new ProjectileHit(projEntity, target, proj.Damage, proj.OwnerFaction));
                 }
             });
         }
@@ -162,7 +162,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                     faction = Faction.Player;
                 }
 
-                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid));
+                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid, hit.OwnerFaction));
             }
         }
 
