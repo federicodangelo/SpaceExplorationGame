@@ -35,8 +35,9 @@ public class TextureManager : IDisposable
                 if (texture == nint.Zero)
                     throw new Exception($"Failed to create texture: {SDL.GetError()}");
 
-                // Enable alpha blending on the texture
+                // Enable alpha blending and linear filtering on the texture
                 SDL.SetTextureBlendMode(texture, SDL.BlendMode.Blend);
+                SDL.SetTextureScaleMode(texture, SDL.ScaleMode.Linear);
 
                 return texture;
             }
