@@ -37,7 +37,7 @@ public class SpaceStationOverlay : OverlayBase
     private readonly ShipDealerOverlay _shipDealer = new();
     private readonly SellCargoOverlay _sellCargo = new();
 
-    private static readonly MenuOption<StationMenuOption>[] StationMenuOptions =
+    private static MenuOption<StationMenuOption>[] CreateStationMenuOptions() =>
     [
         new(StationMenuOption.Repair, "REPAIR SHIP"),
         new(StationMenuOption.RestoreHealth, "RESTORE HEALTH"),
@@ -51,7 +51,7 @@ public class SpaceStationOverlay : OverlayBase
         new(StationMenuOption.ExitStation, "EXIT SPACE STATION")
     ];
 
-    private readonly MenuWidget<StationMenuOption> _menu = new(StationMenuOptions)
+    private readonly MenuWidget<StationMenuOption> _menu = new(CreateStationMenuOptions())
     {
         ItemHeight = 50f,
         SelectedScale = 2.5f,
@@ -155,12 +155,35 @@ public class SpaceStationOverlay : OverlayBase
         return true;
     }
 
+    private void UpdateMenuOptionStates(Game game)
+    {
+        var options = _menu.Options;
+        for (int i = 0; i < options.Count; i++)
+        {
+            var opt = options[i];
+            switch (opt.Value)
+            {
+                case StationMenuOption.Repair:
+                    bool shipFull = game.Player.ShipHealth >= game.Player.ShipMaxHealth;
+                    _menu.SetOption(i, opt with { Enabled = !shipFull, DisabledHint = shipFull ? "HULL AT FULL INTEGRITY" : null });
+                    break;
+                case StationMenuOption.RestoreHealth:
+                    bool healthFull = game.Player.AvatarHealth >= game.Player.AvatarMaxHealth;
+                    _menu.SetOption(i, opt with { Enabled = !healthFull, DisabledHint = healthFull ? "HEALTH IS FULL" : null });
+                    break;
+            }
+        }
+    }
+
     /// <summary>
     /// Fixed timestep update — delegates to sub-overlays that need dt.
     /// </summary>
     public override void Update(Game game, float dt)
     {
         if (!IsOpen) return;
+
+        // Update menu option enabled state based on player status
+        UpdateMenuOptionStates(game);
 
         // Sub-overlays that need dt for status message timers
         _shipCustomization.Update(game, dt);

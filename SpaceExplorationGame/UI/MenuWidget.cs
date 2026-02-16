@@ -31,6 +31,9 @@ public class MenuWidget<T> where T : struct, Enum
     public IReadOnlyList<MenuOption<T>> Options => _options;
     public bool IsSelected(T value) => EqualityComparer<T>.Default.Equals(_options[_selected].Value, value);
 
+    /// <summary>Replace a menu option at the given index (e.g. to toggle Enabled/DisabledHint).</summary>
+    public void SetOption(int index, MenuOption<T> option) => _options[index] = option;
+
     // ── Styling (set via init properties) ─────────────────────────
     public float ItemHeight { get; init; } = 50f;
     public float SelectedScale { get; init; } = 2.5f;
