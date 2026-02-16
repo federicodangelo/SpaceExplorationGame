@@ -66,7 +66,7 @@ public class SolarSystemState : GameState
     private readonly PlanetData? _autoOpenPlanet;
 
     // In-game menu overlay
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.SolarSystem };
 
     // Anchor: keeps the ship at a fixed offset from a target while overlays are open
     private Entity _anchorEntity;
@@ -996,8 +996,7 @@ public class SolarSystemState : GameState
             SolarSystemRenderer.RenderStationPanel(renderer, _stations[_nearbyStationIndex].Name);
         }
 
-        // Controls
-        SolarSystemRenderer.RenderControls(renderer);
+
 
         // Overlays drawn on top of everything
         _stationOverlay.Render(game);

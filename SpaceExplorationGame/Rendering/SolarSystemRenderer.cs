@@ -100,19 +100,6 @@ public static class SolarSystemRenderer
         renderer.DrawTextScreen(tx, GameConfig.WindowHeight - 60, text, 100, 200, 255, 2f);
     }
 
-    /// <summary>Renders the controls help box.</summary>
-    public static void RenderControls(SpriteRenderer renderer)
-    {
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 290, 5, 290, 150, 0, 0, 0, 160);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 10, "W/UP: THRUST", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 30, "A/D: ROTATE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 50, "S/DOWN: BRAKE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 70, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 90, "M: GALAXY MAP", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 110, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 280, 130, "SPACE: SHOOT", 180, 180, 180, 1.5f);
-    }
-
     /// <summary>Renders cargo info below the system HUD.</summary>
     public static void RenderCargoHud(SpriteRenderer renderer, PlayerData player)
     {

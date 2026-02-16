@@ -69,7 +69,7 @@ public class PlanetSurfaceState : GameState
     private bool _nearVehicle;
 
     // In-game menu overlay
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.PlanetSurface };
 
     // Starship menu overlay (shown on landing and when boarding)
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
@@ -640,8 +640,7 @@ public class PlanetSurfaceState : GameState
         float mapH = _surfaceData.Height * GameConfig.TileSize;
         SurfaceEnemyRenderer.RenderMinimapDots(renderer, game.EcsWorld, mmX, mmY, mmSize, mapW, mapH);
 
-        // Controls
-        PlanetSurfaceRenderer.RenderControls(renderer);
+
 
         // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);

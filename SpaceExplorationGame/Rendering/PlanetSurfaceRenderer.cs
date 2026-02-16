@@ -126,15 +126,4 @@ public static class PlanetSurfaceRenderer
         }
     }
 
-    /// <summary>Renders the controls help box.</summary>
-    public static void RenderControls(SpriteRenderer renderer)
-    {
-        float mmSize = 150;
-        float mmY = 10;
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 260, mmY + mmSize + 15, 260, 100, 0, 0, 0, 160);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 20, "WASD: MOVE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 40, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 60, "E: INTERACT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 250, mmY + mmSize + 80, "ESC: MENU", 180, 180, 180, 1.5f);
-    }
 }

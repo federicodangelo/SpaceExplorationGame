@@ -409,15 +409,7 @@ public static class InteriorRenderer
             }
         }
 
-        // Controls help (when no overlay)
-        if (!anyOverlayOpen)
-        {
-            renderer.DrawRectScreen(w - 200, h - 110, 195, 100, 0, 0, 0, 160);
-            renderer.DrawTextScreen(w - 190, h - 105, "WASD: MOVE", 160, 160, 160, 1.5f);
-            renderer.DrawTextScreen(w - 190, h - 85, "SCROLL: ZOOM", 160, 160, 160, 1.5f);
-            renderer.DrawTextScreen(w - 190, h - 65, "E: INTERACT", 160, 160, 160, 1.5f);
-            renderer.DrawTextScreen(w - 190, h - 45, "ESC: EXIT", 160, 160, 160, 1.5f);
-        }
+
     }
 
     /// <summary>Returns the color associated with an interactable type.</summary>

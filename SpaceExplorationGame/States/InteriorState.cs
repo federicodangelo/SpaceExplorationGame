@@ -48,7 +48,7 @@ public class InteriorState : GameState
     private int _dialogueLine;
 
     // In-game menu overlay
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.Interior };
 
     // Service overlays (repair, missions)
     private readonly RepairOverlay _repairOverlay = new();

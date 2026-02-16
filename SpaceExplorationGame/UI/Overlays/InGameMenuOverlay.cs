@@ -6,22 +6,30 @@ using SpaceExplorationGame.States;
 namespace SpaceExplorationGame.UI.Overlays;
 
 /// <summary>
-/// Overlay for the in-game menu. Provides Resume and Main Menu options.
+/// Overlay for the in-game menu. Provides Resume, Controls, and Main Menu options.
 /// Can be reused by any game state that needs an escape menu.
+/// Shows context-appropriate controls based on the current game state.
 /// </summary>
 public class InGameMenuOverlay : OverlayBase
 {
     private enum InGameMenuOption
     {
         Resume,
+        Controls,
         MainMenu
     }
 
     private static readonly MenuOption<InGameMenuOption>[] InGameMenuOptions =
     [
         new(InGameMenuOption.Resume, "RESUME"),
+        new(InGameMenuOption.Controls, "CONTROLS"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
     ];
+
+    /// <summary>The current game state type, used to show context-appropriate controls.</summary>
+    public GameStateType StateType { get; set; }
+
+    private bool _showingControls;
 
     private readonly MenuWidget<InGameMenuOption> _menu = new(InGameMenuOptions)
     {
@@ -38,6 +46,7 @@ public class InGameMenuOverlay : OverlayBase
     public void Open()
     {
         _menu.SelectedIndex = 0;
+        _showingControls = false;
         IsOpen = true;
     }
 
@@ -68,9 +77,22 @@ public class InGameMenuOverlay : OverlayBase
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
         float menuW = 300f;
 
+        if (_showingControls)
+        {
+            // Any key/click dismisses the controls view
+            if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E)
+                || input.IsKeyPressed(SDL.Scancode.Space) || input.IsKeyPressed(SDL.Scancode.Escape))
+            {
+                _showingControls = false;
+            }
+            return true;
+        }
+
         var confirmed = _menu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
         if (confirmed == InGameMenuOption.Resume)
             Close();
+        else if (confirmed == InGameMenuOption.Controls)
+            _showingControls = true;
         else if (confirmed == InGameMenuOption.MainMenu)
             game.ChangeState(new MainMenuState());
 
@@ -87,9 +109,15 @@ public class InGameMenuOverlay : OverlayBase
         // Dim background
         renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 160);
 
+        if (_showingControls)
+        {
+            RenderControlsPanel(renderer);
+            return;
+        }
+
         // Panel
         float panelW = 360;
-        float panelH = 160;
+        float panelH = 240;
         float panelX = GameConfig.WindowWidth / 2f - panelW / 2f;
         float panelY = GameConfig.WindowHeight / 2f - panelH / 2f - 20;
         renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 10, 12, 30, 220);
@@ -105,5 +133,71 @@ public class InGameMenuOverlay : OverlayBase
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
         float menuW = 300f;
         _menu.Render(renderer, GameConfig.WindowWidth / 2f - menuW / 2f, menuStartY, menuW);
+    }
+
+    /// <summary>Renders the controls help panel with context-appropriate key bindings.</summary>
+    private void RenderControlsPanel(SpriteRenderer renderer)
+    {
+        // Build controls list based on state
+        string[] controls = StateType switch
+        {
+            GameStateType.SolarSystem =>
+            [
+                "W / UP ............. THRUST",
+                "A / D .............. ROTATE",
+                "S / DOWN ........... BRAKE",
+                "SCROLL ............. ZOOM",
+                "E .................. INTERACT",
+                "M .................. GALAXY MAP",
+                "SPACE .............. SHOOT",
+                "ESC ................ MENU"
+            ],
+            GameStateType.PlanetSurface =>
+            [
+                "WASD / ARROWS ...... MOVE",
+                "SCROLL ............. ZOOM",
+                "E .................. INTERACT",
+                "SPACE / LMB ........ SHOOT",
+                "ESC ................ MENU"
+            ],
+            GameStateType.Interior =>
+            [
+                "WASD / ARROWS ...... MOVE",
+                "SCROLL ............. ZOOM",
+                "E .................. INTERACT",
+                "ESC ................ MENU"
+            ],
+            _ => ["ESC ................ MENU"]
+        };
+
+        float lineH = 22f;
+        float panelW = 380;
+        float panelH = 60 + controls.Length * lineH + 30;
+        float panelX = GameConfig.WindowWidth / 2f - panelW / 2f;
+        float panelY = GameConfig.WindowHeight / 2f - panelH / 2f;
+
+        // Background
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 10, 12, 30, 220);
+        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, 20, 24, 50, 200);
+
+        // Title
+        string title = "CONTROLS";
+        float ptScale = 3f;
+        float ptW = renderer.MeasureText(title, ptScale);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, 200, 210, 255, ptScale);
+
+        // Control lines
+        float cy = panelY + 50;
+        foreach (var line in controls)
+        {
+            float lw = renderer.MeasureText(line, 1.5f);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - lw / 2f, cy, line, 180, 180, 200, 1.5f);
+            cy += lineH;
+        }
+
+        // Dismiss hint
+        string hint = "PRESS ANY KEY TO CLOSE";
+        float hw = renderer.MeasureText(hint, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - hw / 2f, cy + 8, hint, 120, 120, 140, 1.5f);
     }
 }
