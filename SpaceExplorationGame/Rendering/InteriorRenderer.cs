@@ -322,7 +322,6 @@ public static class InteriorRenderer
     /// <summary>Returns the color associated with an interactable type.</summary>
     public static (byte R, byte G, byte B) GetInteractableColor(InteractableType type) => type switch
     {
-        InteractableType.TradeTerminal => (255, 220, 80),
         InteractableType.RepairStation => (100, 255, 100),
         InteractableType.MissionBoard => (100, 180, 255),
         InteractableType.ShipCustomization => (100, 220, 255),

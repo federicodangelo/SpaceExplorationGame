@@ -84,7 +84,6 @@ public class InteriorInteractable
 
 public enum InteractableType
 {
-    TradeTerminal,
     RepairStation,
     MissionBoard,
     ExitDoor,
@@ -233,17 +232,7 @@ public static class InteriorGenerator
         // Spawn point
         data.SpawnPoint = (docking.CenterX, docking.CenterY);
 
-        // Place interactables
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "TRADE TERMINAL",
-            Type = InteractableType.TradeTerminal,
-            TileX = trading.CenterX,
-            TileY = trading.Y + 1
-        });
-        data.Tiles[trading.CenterX, trading.Y + 1] = InteriorTileType.Console;
-
-        // Cargo terminal (sell mined resources) - next to trade terminal
+        // Cargo terminal (sell mined resources)
         data.Interactables.Add(new InteriorInteractable
         {
             Name = "CARGO TERMINAL",
@@ -387,15 +376,6 @@ public static class InteriorGenerator
         data.SpawnPoint = (landing.CenterX, landing.CenterY);
 
         // Place interactables
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "TRADE TERMINAL",
-            Type = InteractableType.TradeTerminal,
-            TileX = market.CenterX,
-            TileY = market.Y + 1
-        });
-        data.Tiles[market.CenterX, market.Y + 1] = InteriorTileType.Console;
-
         // Cargo terminal (sell mining resources)
         data.Interactables.Add(new InteriorInteractable
         {

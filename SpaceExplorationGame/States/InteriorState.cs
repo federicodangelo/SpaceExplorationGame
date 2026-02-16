@@ -128,10 +128,6 @@ public class InteriorState : GameState
 
     public override void UpdateInput(Game game)
     {
-        // In-game menu overlay (handles Escape toggle + menu navigation)
-        if (_inGameMenuOverlay.UpdateInput(game))
-            return;
-
         var input = game.Input;
 
         // Handle overlay interactions first
@@ -175,6 +171,10 @@ public class InteriorState : GameState
             return;
         }
 
+        // In-game menu overlay (handles Escape toggle + menu navigation)
+        if (_inGameMenuOverlay.UpdateInput(game))
+            return;
+            
         // Interact
         if (input.IsKeyPressed(SDL.Scancode.E))
         {
