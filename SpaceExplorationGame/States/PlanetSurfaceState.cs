@@ -738,6 +738,8 @@ public class PlanetSurfaceState : GameState
             HudRenderer.RenderSettlementOffscreenIndicators(renderer, camera,
                 _surfaceData.Settlements);
             HudRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
+            HudRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
+                game.Player, _starSystem.Index, _planet.Index, _surfaceData.Settlements);
         }
 
 

@@ -434,6 +434,87 @@ public static class HudRenderer
         }
     }
 
+    /// <summary>Render off-screen indicators pointing to mission target planets/stations in a solar system.</summary>
+    public static void RenderSolarSystemMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+        PlayerData player, int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
+        List<PlanetData> planets, World ecsWorld)
+    {
+        var missions = player.ActiveMissions;
+        if (missions.Count == 0) return;
+
+        foreach (var mission in missions)
+        {
+            // Incomplete missions — point to objective
+            if (mission.Target.IsSystem(systemIndex) && mission.Status != MissionStatus.Completed)
+            {
+                var mc = mission.TypeColor;
+                switch (mission.Type)
+                {
+                    case MissionType.Delivery:
+                        for (int s = 0; s < stationEntities.Count; s++)
+                        {
+                            if (!ecsWorld.IsAlive(stationEntities[s])) continue;
+                            var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
+                            RenderOffscreenIndicator(renderer, camera, pos,
+                                mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                        }
+                        break;
+
+                    case MissionType.Exploration:
+                    case MissionType.SettlementDelivery:
+                        if (mission.Target.HasPlanet && mission.Target.PlanetIndex < planetEntities.Count)
+                        {
+                            var planetEntity = planetEntities[mission.Target.PlanetIndex];
+                            if (ecsWorld.IsAlive(planetEntity))
+                            {
+                                var pos = ecsWorld.Get<Transform>(planetEntity).Position;
+                                RenderOffscreenIndicator(renderer, camera, pos,
+                                    mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                            }
+                        }
+                        break;
+                }
+            }
+
+            // Completed missions — point to turn-in station
+            if (mission.Status == MissionStatus.Completed && mission.TurnIn.IsSystem(systemIndex))
+            {
+                for (int s = 0; s < stationEntities.Count; s++)
+                {
+                    if (!ecsWorld.IsAlive(stationEntities[s])) continue;
+                    var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
+                    RenderOffscreenIndicator(renderer, camera, pos,
+                        100, 255, 100, prefix: "TURN IN ", dotRadius: 4f, arrowSize: 10f);
+                }
+            }
+        }
+    }
+
+    /// <summary>Render off-screen indicators pointing to mission target settlements on a planet surface.</summary>
+    public static void RenderPlanetSurfaceMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+        PlayerData player, int systemIndex, int planetIndex, List<SettlementData> settlements)
+    {
+        var missions = player.ActiveMissions;
+        if (missions.Count == 0 || settlements.Count == 0) return;
+
+        foreach (var mission in missions)
+        {
+            if (mission.Status != MissionStatus.Completed
+                && mission.Type == MissionType.SettlementDelivery
+                && mission.Target.IsPlanet(systemIndex, planetIndex))
+            {
+                var mc = mission.TypeColor;
+                foreach (var settlement in settlements)
+                {
+                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
+                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
+                    RenderOffscreenIndicator(renderer, camera, new Vector2(sx, sy),
+                        mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                }
+            }
+        }
+    }
+
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
     private static void RenderOffscreenIndicator(SpriteRenderer renderer, Camera camera,
         Vector2 worldPos, byte cr, byte cg, byte cb, string? prefix = null,
