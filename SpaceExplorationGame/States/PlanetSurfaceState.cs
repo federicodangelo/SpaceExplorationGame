@@ -648,7 +648,9 @@ public class PlanetSurfaceState : GameState
         SettlementRenderer.Render(renderer, camera, _surfaceData);
 
         // Draw mission markers on settlements
-        RenderSettlementMissionMarkers(game, renderer, camera);
+        HudRenderer.RenderPlanetSurfaceMissionMarkers(renderer, camera,
+            game.Player, (float)game.GlobalTime, _starSystem.Index, _planet.Index,
+            _surfaceData.Settlements);
 
         // Draw ship
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
@@ -791,40 +793,4 @@ public class PlanetSurfaceState : GameState
         _combatMessageTimer = RespawnDelay;
     }
 
-    /// <summary>
-    /// Draw pulsing markers on settlements that are mission targets or turn-in locations.
-    /// </summary>
-    private void RenderSettlementMissionMarkers(Game game, SpriteRenderer renderer, Camera camera)
-    {
-        var missions = game.Player.ActiveMissions;
-        if (missions.Count == 0 || _surfaceData.Settlements.Count == 0) return;
-
-        int sysIndex = _starSystem.Index;
-        int planetIndex = _planet.Index;
-        float pulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
-        byte ringAlpha = (byte)(80 + (int)(pulse * 175));
-
-        foreach (var mission in missions)
-        {
-            // Settlement delivery targets on this planet
-            if (mission.Status != MissionStatus.Completed
-                && mission.Type == MissionType.SettlementDelivery
-                && mission.Target.IsPlanet(sysIndex, planetIndex))
-            {
-                var mc = mission.TypeColor;
-                var ringColor = new Color4(mc.R, mc.G, mc.B, ringAlpha);
-
-                foreach (var settlement in _surfaceData.Settlements)
-                {
-                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
-                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
-                    var pos = new Vector2(sx, sy);
-                    float markerRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * GameConfig.TileSize / 2f + 8 + pulse * 4;
-                    renderer.DrawCircle(camera, pos, markerRadius, ringColor);
-                    renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 10),
-                        $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
-                }
-            }
-        }
-    }
 }

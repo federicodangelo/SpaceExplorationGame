@@ -496,6 +496,129 @@ public static class HudRenderer
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  MISSION MARKERS (world-space indicators on targets)
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Draws pulsing mission target markers on planets and stations in a solar system
+    /// that are objectives or turn-in locations of the player's active missions.
+    /// </summary>
+    public static void RenderSolarSystemMissionMarkers(SpriteRenderer renderer, Camera camera,
+        PlayerData player, float globalTime,
+        int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
+        List<PlanetData> planets, World ecsWorld)
+    {
+        var missions = player.ActiveMissions;
+        if (missions.Count == 0) return;
+
+        float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));
+        byte ringAlpha = (byte)(80 + (int)(pulse * 175));
+
+        foreach (var mission in missions)
+        {
+            // Show objective markers for incomplete missions in this system
+            if (mission.Target.IsSystem(systemIndex) && mission.Status != MissionStatus.Completed)
+            {
+                var mc = mission.TypeColor;
+                var ringColor = new Color4(mc.R, mc.G, mc.B, ringAlpha);
+                var glowColor = new Color4(mc.R, mc.G, mc.B, (byte)(30 + (int)(pulse * 40)));
+
+                switch (mission.Type)
+                {
+                    case MissionType.Delivery:
+                        // Highlight all stations in this system (player must dock at one)
+                        for (int s = 0; s < stationEntities.Count; s++)
+                        {
+                            if (!ecsWorld.IsAlive(stationEntities[s])) continue;
+                            var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
+                            float markerRadius = 24 + pulse * 6;
+                            renderer.DrawCircle(camera, pos, markerRadius, ringColor);
+                            renderer.DrawCircle(camera, pos, markerRadius + 3, glowColor);
+                            renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 12),
+                                $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                        }
+                        break;
+
+                    case MissionType.Exploration:
+                    case MissionType.SettlementDelivery:
+                        // Highlight the specific target planet
+                        if (mission.Target.HasPlanet && mission.Target.PlanetIndex < planetEntities.Count)
+                        {
+                            var planetEntity = planetEntities[mission.Target.PlanetIndex];
+                            if (ecsWorld.IsAlive(planetEntity))
+                            {
+                                var pos = ecsWorld.Get<Transform>(planetEntity).Position;
+                                float planetRadius = planets[mission.Target.PlanetIndex].Radius;
+                                float markerRadius = planetRadius + 8 + pulse * 4;
+                                renderer.DrawCircle(camera, pos, markerRadius, ringColor);
+                                renderer.DrawCircle(camera, pos, markerRadius + 3, glowColor);
+                                renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 12),
+                                    $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                            }
+                        }
+                        break;
+                }
+            }
+
+            // Show turn-in markers on stations for completed missions in this system
+            if (mission.Status == MissionStatus.Completed && mission.TurnIn.IsSystem(systemIndex))
+            {
+                var turnInRing = new Color4(100, 255, 100, ringAlpha);
+                var turnInGlow = new Color4(100, 255, 100, (byte)(30 + (int)(pulse * 40)));
+
+                for (int s = 0; s < stationEntities.Count; s++)
+                {
+                    if (!ecsWorld.IsAlive(stationEntities[s])) continue;
+                    var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
+                    float markerRadius = 24 + pulse * 6;
+                    renderer.DrawCircle(camera, pos, markerRadius, turnInRing);
+                    renderer.DrawCircle(camera, pos, markerRadius + 3, turnInGlow);
+                    renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 12),
+                        "[TURN IN]", new Color3(100, 255, 100).WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Draws pulsing mission markers on settlements on a planet surface
+    /// that are objectives of the player's active SettlementDelivery missions.
+    /// </summary>
+    public static void RenderPlanetSurfaceMissionMarkers(SpriteRenderer renderer, Camera camera,
+        PlayerData player, float globalTime,
+        int systemIndex, int planetIndex, List<SettlementData> settlements)
+    {
+        var missions = player.ActiveMissions;
+        if (missions.Count == 0 || settlements.Count == 0) return;
+
+        float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));
+        byte ringAlpha = (byte)(80 + (int)(pulse * 175));
+
+        foreach (var mission in missions)
+        {
+            // Settlement delivery targets on this planet
+            if (mission.Status != MissionStatus.Completed
+                && mission.Type == MissionType.SettlementDelivery
+                && mission.Target.IsPlanet(systemIndex, planetIndex))
+            {
+                var mc = mission.TypeColor;
+                var ringColor = new Color4(mc.R, mc.G, mc.B, ringAlpha);
+
+                foreach (var settlement in settlements)
+                {
+                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
+                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
+                    var pos = new Vector2(sx, sy);
+                    float markerRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * GameConfig.TileSize / 2f + 8 + pulse * 4;
+                    renderer.DrawCircle(camera, pos, markerRadius, ringColor);
+                    renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 10),
+                        $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));
+                }
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  LANDING / TAKEOFF ANIMATION HUD
     // ─────────────────────────────────────────────────────────────
 
