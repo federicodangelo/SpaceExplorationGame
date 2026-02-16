@@ -47,6 +47,9 @@ public class InteriorState : GameState
     private InteriorNpc? _dialogueNpc;
     private int _dialogueLine;
 
+    // In-game menu overlay
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new();
+
     // Service overlays (repair, missions)
     private readonly RepairOverlay _repairOverlay = new();
     private readonly MissionOverlay _missionOverlay = new();
@@ -125,6 +128,10 @@ public class InteriorState : GameState
 
     public override void UpdateInput(Game game)
     {
+        // In-game menu overlay (handles Escape toggle + menu navigation)
+        if (_inGameMenuOverlay.UpdateInput(game))
+            return;
+
         var input = game.Input;
 
         // Handle overlay interactions first
@@ -202,7 +209,7 @@ public class InteriorState : GameState
         _sellCargo.Update(game, dt);
 
         // Skip simulation when overlays or dialogue are active
-        if (_repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
+        if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
             return;
@@ -312,7 +319,7 @@ public class InteriorState : GameState
         // --- HUD ---
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
-        bool anyOverlayOpen = _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
+        bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen;
 
@@ -335,6 +342,9 @@ public class InteriorState : GameState
         _vehicleCustomization.Render(game);
         _shipDealer.Render(game);
         _sellCargo.Render(game);
+
+        // In-game menu overlay drawn on top of everything
+        _inGameMenuOverlay.Render(game);
 
         // Minimap
         InteriorRenderer.RenderMinimap(renderer, _interior, avatarTf.Position, w);
