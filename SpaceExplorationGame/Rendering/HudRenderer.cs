@@ -298,6 +298,7 @@ public static class HudRenderer
             {
                 InteractableType.ExitDoor => "[E] EXIT",
                 InteractableType.RepairStation => "[E] REPAIR",
+                InteractableType.HealthStation => "[E] HEALTH STATION",
                 InteractableType.MissionBoard => "[E] MISSIONS",
                 InteractableType.ShipCustomization => "[E] SHIP CUSTOMIZATION",
                 InteractableType.AvatarCustomization => "[E] AVATAR CUSTOMIZATION",

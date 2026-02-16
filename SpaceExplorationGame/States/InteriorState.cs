@@ -58,6 +58,7 @@ public class InteriorState : GameState
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
     private readonly SellCargoOverlay _sellCargo = new();
+    private readonly HealthStationOverlay _healthStationOverlay = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -132,6 +133,8 @@ public class InteriorState : GameState
 
         // Handle overlay interactions first
         if (_repairOverlay.UpdateInput(game))
+            return;
+        if (_healthStationOverlay.UpdateInput(game))
             return;
         if (_missionOverlay.UpdateInput(game))
             return;
@@ -284,6 +287,9 @@ public class InteriorState : GameState
             case InteractableType.CargoTerminal:
                 _sellCargo.Open();
                 break;
+            case InteractableType.HealthStation:
+                _healthStationOverlay.Open();
+                break;
         }
     }
 
@@ -321,7 +327,7 @@ public class InteriorState : GameState
         int h = GameConfig.WindowHeight;
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen;
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen;
 
         // Unified HUD (top-left: location, player info, health)
         HudRenderer.RenderInteriorHud(renderer, game.Player, _interior, _starSystem);
@@ -340,6 +346,7 @@ public class InteriorState : GameState
 
         // Overlays
         _repairOverlay.Render(game);
+        _healthStationOverlay.Render(game);
         _missionOverlay.Render(game);
         _shipCustomization.Render(game);
         _avatarCustomization.Render(game);

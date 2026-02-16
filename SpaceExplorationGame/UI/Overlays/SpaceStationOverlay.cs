@@ -9,6 +9,7 @@ namespace SpaceExplorationGame.UI.Overlays.Customization;
 public enum StationMenuOption
 {
     Repair,
+    RestoreHealth,
     Missions,
     SellCargo,
     ShipCustomization,
@@ -28,6 +29,7 @@ public class SpaceStationOverlay : OverlayBase
     private StarSystemData _starSystem = null!;
     private SpaceStationData _station = null!;
     private readonly RepairOverlay _repairOverlay = new();
+    private readonly HealthStationOverlay _healthStationOverlay = new();
     private readonly MissionOverlay _missionOverlay = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
@@ -37,7 +39,8 @@ public class SpaceStationOverlay : OverlayBase
 
     private static readonly MenuOption<StationMenuOption>[] StationMenuOptions =
     [
-        new(StationMenuOption.Repair, "REPAIR"),
+        new(StationMenuOption.Repair, "REPAIR SHIP"),
+        new(StationMenuOption.RestoreHealth, "RESTORE HEALTH"),
         new(StationMenuOption.Missions, "MISSIONS"),
         new(StationMenuOption.SellCargo, "SELL CARGO"),
         new(StationMenuOption.ShipCustomization, "SHIP CUSTOMIZATION"),
@@ -87,6 +90,8 @@ public class SpaceStationOverlay : OverlayBase
         // Sub-overlays take priority
         if (_repairOverlay.UpdateInput(game))
             return true;
+        if (_healthStationOverlay.UpdateInput(game))
+            return true;
         if (_missionOverlay.UpdateInput(game))
             return true;
         if (_shipCustomization.UpdateInput(game))
@@ -107,6 +112,9 @@ public class SpaceStationOverlay : OverlayBase
             {
                 case StationMenuOption.Repair:
                     _repairOverlay.Open();
+                    break;
+                case StationMenuOption.RestoreHealth:
+                    _healthStationOverlay.Open();
                     break;
                 case StationMenuOption.Missions:
                     _missionOverlay.Open();
@@ -230,6 +238,7 @@ public class SpaceStationOverlay : OverlayBase
 
         // Sub-overlays drawn on top
         _repairOverlay.Render(game);
+        _healthStationOverlay.Render(game);
         _missionOverlay.Render(game);
         _shipCustomization.Render(game);
         _avatarCustomization.Render(game);

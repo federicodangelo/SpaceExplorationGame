@@ -91,7 +91,8 @@ public enum InteractableType
     AvatarCustomization,
     VehicleCustomization,
     ShipDealer,
-    CargoTerminal
+    CargoTerminal,
+    HealthStation
 }
 
 /// <summary>
@@ -150,6 +151,14 @@ public static class InteriorGenerator
         "I can patch that hull up. For the right price.",
         "Standard repair or full overhaul? Your call.",
         "I've fixed worse. Much worse. You should see the other guy."
+    ];
+
+    private static readonly string[] MedicDialogue =
+    [
+        "You don't look so good. Let me take a look.",
+        "I've patched up worse. Hold still.",
+        "The health station can fix you right up. Step on over.",
+        "Stay out of firefights if you can. Prevention is the best medicine."
     ];
 
     private static readonly string[] CommanderDialogue =
@@ -237,19 +246,19 @@ public static class InteriorGenerator
         {
             Name = "CARGO TERMINAL",
             Type = InteractableType.CargoTerminal,
-            TileX = trading.CenterX + 2,
+            TileX = trading.CenterX,
             TileY = trading.Y + 1
         });
-        data.Tiles[trading.CenterX + 2, trading.Y + 1] = InteriorTileType.Console;
+        data.Tiles[trading.CenterX, trading.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
-            Name = "REPAIR STATION",
-            Type = InteractableType.RepairStation,
-            TileX = medbay.CenterX,
+            Name = "HEALTH STATION",
+            Type = InteractableType.HealthStation,
+            TileX = medbay.CenterX - 2,
             TileY = medbay.Y + 1
         });
-        data.Tiles[medbay.CenterX, medbay.Y + 1] = InteriorTileType.Console;
+        data.Tiles[medbay.CenterX - 2, medbay.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
@@ -267,6 +276,16 @@ public static class InteriorGenerator
             TileX = docking.X + docking.Width / 2,
             TileY = docking.Y + docking.Height - 1
         });
+
+        // Repair station in docking bay (next to landing pad)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "REPAIR STATION",
+            Type = InteractableType.RepairStation,
+            TileX = docking.X + 1,
+            TileY = docking.CenterY
+        });
+        data.Tiles[docking.X + 1, docking.CenterY] = InteriorTileType.Console;
 
         // Ship customization terminal next to landing pad
         data.Interactables.Add(new InteriorInteractable
@@ -381,10 +400,10 @@ public static class InteriorGenerator
         {
             Name = "CARGO TERMINAL",
             Type = InteractableType.CargoTerminal,
-            TileX = market.CenterX + 2,
+            TileX = market.CenterX,
             TileY = market.Y + 1
         });
-        data.Tiles[market.CenterX + 2, market.Y + 1] = InteriorTileType.Console;
+        data.Tiles[market.CenterX, market.Y + 1] = InteriorTileType.Console;
 
         data.Interactables.Add(new InteriorInteractable
         {
@@ -412,6 +431,26 @@ public static class InteriorGenerator
             TileY = landing.Y + landing.Height - 2
         });
         data.Tiles[landing.CenterX + 2, landing.Y + landing.Height - 2] = InteriorTileType.Console;
+
+        // Repair station at the landing pad
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "REPAIR STATION",
+            Type = InteractableType.RepairStation,
+            TileX = landing.X + 1,
+            TileY = landing.CenterY
+        });
+        data.Tiles[landing.X + 1, landing.CenterY] = InteriorTileType.Console;
+
+        // Health station in the cantina (serves as settlement medbay)
+        data.Interactables.Add(new InteriorInteractable
+        {
+            Name = "HEALTH STATION",
+            Type = InteractableType.HealthStation,
+            TileX = cantina.CenterX - 2,
+            TileY = cantina.Y + 1
+        });
+        data.Tiles[cantina.CenterX- 2, cantina.Y + 1] = InteriorTileType.Console;
 
         // Avatar customization terminal (top of landing pad)
         data.Interactables.Add(new InteriorInteractable
@@ -654,12 +693,20 @@ public static class InteriorGenerator
                 TraderDialogue, 255, 220, 80));
         }
 
-        // Mechanic in medbay
+        // Mechanic in docking bay
+        var dockingRoom = data.Rooms.Find(r => r.Function == RoomFunction.DockingBay);
+        if (dockingRoom != null)
+        {
+            data.Npcs.Add(CreateNpc(rng, "MECHANIC", dockingRoom.X + 2, dockingRoom.CenterY + 1,
+                MechanicDialogue, 200, 150, 100));
+        }
+
+        // Medic in medbay
         var medbayRoom = data.Rooms.Find(r => r.Function == RoomFunction.Medbay);
         if (medbayRoom != null)
         {
-            data.Npcs.Add(CreateNpc(rng, "MECHANIC", medbayRoom.CenterX + 1, medbayRoom.CenterY,
-                MechanicDialogue, 200, 150, 100));
+            data.Npcs.Add(CreateNpc(rng, "MEDIC", medbayRoom.CenterX + 1, medbayRoom.CenterY,
+                MedicDialogue, 100, 220, 200));
         }
 
         // Commander in command center

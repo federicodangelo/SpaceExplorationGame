@@ -323,6 +323,7 @@ public static class InteriorRenderer
     public static (byte R, byte G, byte B) GetInteractableColor(InteractableType type) => type switch
     {
         InteractableType.RepairStation => (100, 255, 100),
+        InteractableType.HealthStation => (100, 200, 255),
         InteractableType.MissionBoard => (100, 180, 255),
         InteractableType.ShipCustomization => (100, 220, 255),
         InteractableType.AvatarCustomization => (100, 255, 180),
