@@ -351,6 +351,13 @@ public static class HudRenderer
         RenderOffscreenIndicator(renderer, camera, starCenter, 255, 220, 80, prefix: "* ", dotRadius: 4f, arrowSize: 10f);
     }
 
+    /// <summary>Render an off-screen indicator pointing toward the player's landed spaceship.</summary>
+    public static void RenderShipOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+        Vector2 shipWorldPos)
+    {
+        RenderOffscreenIndicator(renderer, camera, shipWorldPos, 120, 200, 255, prefix: "SHIP ", dotRadius: 4f, arrowSize: 10f);
+    }
+
     /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
     public static void RenderSettlementOffscreenIndicators(SpriteRenderer renderer, Camera camera,
         List<SettlementData> settlements)
