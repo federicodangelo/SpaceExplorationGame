@@ -15,7 +15,7 @@ public enum StationMenuOption
     ShipDealer,
     AvatarCustomization,
     VehicleCustomization,
-    WalkStation,
+    Disembark,
     ExitStation
 }
 
@@ -44,7 +44,7 @@ public class SpaceStationOverlay : OverlayBase
         new(StationMenuOption.ShipDealer, "SHIP DEALER"),
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
-        new(StationMenuOption.WalkStation, "WALK STATION"),
+        new(StationMenuOption.Disembark, "DISEMBARK"),
         new(StationMenuOption.ExitStation, "EXIT SPACE STATION")
     ];
 
@@ -126,7 +126,7 @@ public class SpaceStationOverlay : OverlayBase
                 case StationMenuOption.VehicleCustomization:
                     _vehicleCustomization.Open();
                     break;
-                case StationMenuOption.WalkStation:
+                case StationMenuOption.Disembark:
                     game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                     game.Player.ReturnStationIndex = _station.Index;
                     Close();
