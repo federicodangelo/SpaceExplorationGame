@@ -101,8 +101,8 @@ public static class HudRenderer
     {
         float textW = renderer.MeasureText(text, TextScale);
         float bgW = Math.Max(textW + Padding * 2, 300f);
-        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, 0, 0, 0, BgAlpha);
-        renderer.DrawTextScreen(Padding, y + 2, text, 200, 200, 255, TextScale);
+        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, new Color4(0, 0, 0, BgAlpha));
+        renderer.DrawTextScreen(Padding, y + 2, text, new Color3(200, 200, 255), TextScale);
         return y + LineHeight + 6;
     }
 
@@ -112,8 +112,8 @@ public static class HudRenderer
         string info = $"CREDITS: {player.Credits}  |  CARGO: {player.CargoUsed}/{player.MaxCargo}  |  FUEL: {player.ShipFuel:F0}/{player.ShipMaxFuel:F0}";
         float textW = renderer.MeasureText(info, TextScale);
         float bgW = Math.Max(textW + Padding * 2, 300f);
-        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, 0, 0, 0, BgAlpha);
-        renderer.DrawTextScreen(Padding, y + 2, info, 255, 220, 80, TextScale);
+        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, new Color4(0, 0, 0, BgAlpha));
+        renderer.DrawTextScreen(Padding, y + 2, info, new Color3(255, 220, 80), TextScale);
         return y + LineHeight + 6;
     }
 
@@ -148,22 +148,22 @@ public static class HudRenderer
 
         float labelW = renderer.MeasureText(label, TextScale) + 8;
         float totalW = labelW + BarWidth + 80;
-        renderer.DrawRectScreen(0, y, totalW, BarHeight + 8, 0, 0, 0, BgAlpha);
+        renderer.DrawRectScreen(0, y, totalW, BarHeight + 8, new Color4(0, 0, 0, BgAlpha));
 
         // Label
-        renderer.DrawTextScreen(Padding, y + 2, label, lc.R, lc.G, lc.B, TextScale);
+        renderer.DrawTextScreen(Padding, y + 2, label, lc, TextScale);
 
         // Bar background
         float barX = Padding + labelW;
-        renderer.DrawRectScreen(barX, y + 4, BarWidth, BarHeight, 40, 40, 40);
+        renderer.DrawRectScreen(barX, y + 4, BarWidth, BarHeight, new Color3(40, 40, 40));
 
         // Bar fill
         float pct = max > 0 ? current / max : 0;
-        renderer.DrawRectScreen(barX, y + 4, BarWidth * pct, BarHeight, fillColor.R, fillColor.G, fillColor.B);
+        renderer.DrawRectScreen(barX, y + 4, BarWidth * pct, BarHeight, fillColor);
 
         // Numeric
         renderer.DrawTextScreen(barX + BarWidth + 5, y + 2,
-            $"{(int)current}/{(int)max}", tc.R, tc.G, tc.B, TextScale);
+            $"{(int)current}/{(int)max}", tc, TextScale);
     }
 
     /// <summary>Calculate the hull bar color based on current percentage.</summary>
@@ -188,8 +188,8 @@ public static class HudRenderer
         float tw = renderer.MeasureText(text, TitleScale);
         float w = GameConfig.WindowWidth;
         float h = GameConfig.WindowHeight;
-        renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
-        renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, text, r, g, b, TitleScale);
+        renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, new Color4(0, 0, 0, 180));
+        renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, text, new Color3(r, g, b), TitleScale);
     }
 
     /// <summary>Render a multi-line interaction panel centered at the bottom of the screen.</summary>
@@ -214,17 +214,17 @@ public static class HudRenderer
         float panelH = 28 + (lines.Length - 1) * 18 + 10;
         float px = w / 2f - panelW / 2f;
         float py = h - panelH - 15;
-        renderer.DrawRectScreen(px, py, panelW, panelH, 0, 0, 0, 180);
+        renderer.DrawRectScreen(px, py, panelW, panelH, new Color4(0, 0, 0, 180));
 
         // First line (action) at title scale
         var c0 = colors[0];
-        renderer.DrawTextScreen(px + 10, py + 6, lines[0], c0.R, c0.G, c0.B, TitleScale);
+        renderer.DrawTextScreen(px + 10, py + 6, lines[0], c0, TitleScale);
 
         // Remaining lines at text scale
         for (int i = 1; i < lines.Length; i++)
         {
             var c = i < colors.Length ? colors[i] : new Color3(150, 150, 150);
-            renderer.DrawTextScreen(px + 10, py + 6 + 24 + (i - 1) * 18, lines[i], c.R, c.G, c.B, TextScale);
+            renderer.DrawTextScreen(px + 10, py + 6 + 24 + (i - 1) * 18, lines[i], c, TextScale);
         }
     }
 
@@ -405,14 +405,14 @@ public static class HudRenderer
         float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
         float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
 
-        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, cr, cg, cb, 255);
-        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, cr, cg, cb, 255);
-        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, cr, cg, cb, 255);
-        renderer.DrawLineScreen(ix, iy, tipX, tipY, cr, cg, cb, 255);
-        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, cr, cg, cb, 200);
-        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, cr, cg, cb, 200);
+        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, new Color4(cr, cg, cb, 255));
+        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, new Color4(cr, cg, cb, 255));
+        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, new Color4(cr, cg, cb, 255));
+        renderer.DrawLineScreen(ix, iy, tipX, tipY, new Color4(cr, cg, cb, 255));
+        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, new Color4(cr, cg, cb, 200));
+        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, new Color4(cr, cg, cb, 200));
 
-        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, cr, cg, cb, 220);
+        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, new Color4(cr, cg, cb, 220));
 
         // Distance label: world distance from screen edge to target
         float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
@@ -423,6 +423,6 @@ public static class HudRenderer
         float labelW = renderer.MeasureText(label, 1f);
         float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
         float labelOffY = -MathF.Sin(angle) * 16f - 4f;
-        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, cr, cg, cb, 1f);
+        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, new Color3(cr, cg, cb), 1f);
     }
 }

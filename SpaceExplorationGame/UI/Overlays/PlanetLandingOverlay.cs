@@ -223,7 +223,7 @@ public class PlanetLandingOverlay : OverlayBase
         int h = GameConfig.WindowHeight;
 
         // Semi-transparent dark overlay so the solar system is visible behind
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 180);
+        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 180));
 
         // Draw the terrain map
         float displayW = MapDisplaySize * _mapZoom;
@@ -233,7 +233,7 @@ public class PlanetLandingOverlay : OverlayBase
         float mapY = mapCenter.Y - displayH / 2f + _mapOffset.Y;
 
         // Map border
-        renderer.DrawRectScreen(mapX - 2, mapY - 2, displayW + 4, displayH + 4, 60, 80, 120, 180);
+        renderer.DrawRectScreen(mapX - 2, mapY - 2, displayW + 4, displayH + 4, new Color4(60, 80, 120, 180));
 
         // Terrain texture
         var dstRect = new SDL.FRect { X = mapX, Y = mapY, W = displayW, H = displayH };
@@ -252,13 +252,13 @@ public class PlanetLandingOverlay : OverlayBase
             float sh = settlement.Height * tileToScreenY;
 
             // Settlement outline
-            renderer.DrawRectScreen(sx - sw / 2f - 1, sy - sh / 2f - 1, sw + 2, sh + 2, 255, 220, 100, 180);
+            renderer.DrawRectScreen(sx - sw / 2f - 1, sy - sh / 2f - 1, sw + 2, sh + 2, new Color4(255, 220, 100, 180));
 
             // Settlement label
             float labelScale = Math.Max(1f, _mapZoom * 0.8f);
             float textW = renderer.MeasureText(settlement.Name, labelScale);
-            renderer.DrawRectScreen(sx - textW / 2f - 2, sy - sh / 2f - 14 * labelScale, textW + 4, 12 * labelScale, 0, 0, 0, 160);
-            renderer.DrawTextScreen(sx - textW / 2f, sy - sh / 2f - 13 * labelScale, settlement.Name, 255, 220, 100, labelScale);
+            renderer.DrawRectScreen(sx - textW / 2f - 2, sy - sh / 2f - 14 * labelScale, textW + 4, 12 * labelScale, new Color4(0, 0, 0, 160));
+            renderer.DrawTextScreen(sx - textW / 2f, sy - sh / 2f - 13 * labelScale, settlement.Name, new Color3(255, 220, 100), labelScale);
         }
 
         // Draw landing cursor
@@ -271,23 +271,23 @@ public class PlanetLandingOverlay : OverlayBase
 
             // Outer reticle
             byte alpha = (byte)(180 + 40 * MathF.Sin(_cursorPulse));
-            renderer.DrawRectScreen(cx - outerSize, cy - 1, outerSize * 2, 2, 100, 255, 100, alpha);
-            renderer.DrawRectScreen(cx - 1, cy - outerSize, 2, outerSize * 2, 100, 255, 100, alpha);
+            renderer.DrawRectScreen(cx - outerSize, cy - 1, outerSize * 2, 2, new Color4(100, 255, 100, alpha));
+            renderer.DrawRectScreen(cx - 1, cy - outerSize, 2, outerSize * 2, new Color4(100, 255, 100, alpha));
 
             // Corner brackets
             float bLen = 5f;
             // Top-left
-            renderer.DrawRectScreen(cx - outerSize, cy - outerSize, bLen, 2, 200, 255, 200, 255);
-            renderer.DrawRectScreen(cx - outerSize, cy - outerSize, 2, bLen, 200, 255, 200, 255);
+            renderer.DrawRectScreen(cx - outerSize, cy - outerSize, bLen, 2, new Color3(200, 255, 200));
+            renderer.DrawRectScreen(cx - outerSize, cy - outerSize, 2, bLen, new Color3(200, 255, 200));
             // Top-right
-            renderer.DrawRectScreen(cx + outerSize - bLen, cy - outerSize, bLen, 2, 200, 255, 200, 255);
-            renderer.DrawRectScreen(cx + outerSize, cy - outerSize, 2, bLen, 200, 255, 200, 255);
+            renderer.DrawRectScreen(cx + outerSize - bLen, cy - outerSize, bLen, 2, new Color3(200, 255, 200));
+            renderer.DrawRectScreen(cx + outerSize, cy - outerSize, 2, bLen, new Color3(200, 255, 200));
             // Bottom-left
-            renderer.DrawRectScreen(cx - outerSize, cy + outerSize, bLen, 2, 200, 255, 200, 255);
-            renderer.DrawRectScreen(cx - outerSize, cy + outerSize - bLen, 2, bLen, 200, 255, 200, 255);
+            renderer.DrawRectScreen(cx - outerSize, cy + outerSize, bLen, 2, new Color3(200, 255, 200));
+            renderer.DrawRectScreen(cx - outerSize, cy + outerSize - bLen, 2, bLen, new Color3(200, 255, 200));
             // Bottom-right
-            renderer.DrawRectScreen(cx + outerSize - bLen, cy + outerSize, bLen, 2, 200, 255, 200, 255);
-            renderer.DrawRectScreen(cx + outerSize, cy + outerSize - bLen, 2, bLen, 200, 255, 200, 255);
+            renderer.DrawRectScreen(cx + outerSize - bLen, cy + outerSize, bLen, 2, new Color3(200, 255, 200));
+            renderer.DrawRectScreen(cx + outerSize, cy + outerSize - bLen, 2, bLen, new Color3(200, 255, 200));
 
             // Terrain info at cursor
             var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
@@ -316,48 +316,48 @@ public class PlanetLandingOverlay : OverlayBase
             if (infoPanelX + panelW > GameConfig.WindowWidth - 10) infoPanelX = cx - panelW - 15;
             if (infoPanelY + panelH > GameConfig.WindowHeight - 10) infoPanelY = cy - panelH - 15;
 
-            renderer.DrawRectScreen(infoPanelX - 4, infoPanelY - 4, panelW, panelH, 0, 0, 0, 180);
+            renderer.DrawRectScreen(infoPanelX - 4, infoPanelY - 4, panelW, panelH, new Color4(0, 0, 0, 180));
 
             byte tr = canLand ? (byte)100 : (byte)255;
             byte tg = canLand ? (byte)255 : (byte)80;
             byte tb = canLand ? (byte)100 : (byte)80;
-            renderer.DrawTextScreen(infoPanelX, infoPanelY, $"TERRAIN: {terrainName}", tr, tg, tb, 1.5f);
+            renderer.DrawTextScreen(infoPanelX, infoPanelY, $"TERRAIN: {terrainName}", new Color3(tr, tg, tb), 1.5f);
             renderer.DrawTextScreen(infoPanelX, infoPanelY + 16,
-                $"POS: ({_cursorTile.X}, {_cursorTile.Y})", 150, 150, 150, 1.3f);
+                $"POS: ({_cursorTile.X}, {_cursorTile.Y})", new Color3(150, 150, 150), 1.3f);
 
             if (nearSettlement != null)
             {
-                renderer.DrawTextScreen(infoPanelX, infoPanelY + 32, nearSettlement, 255, 220, 100, 1.5f);
+                renderer.DrawTextScreen(infoPanelX, infoPanelY + 32, nearSettlement, new Color3(255, 220, 100), 1.5f);
             }
         }
 
         // --- HUD ---
         // Title
         float titleBgW = 500;
-        renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - titleBgW / 2f, 8, titleBgW, 32, 0, 0, 0, 180);
+        renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - titleBgW / 2f, 8, titleBgW, 32, new Color4(0, 0, 0, 180));
         string title = $"ORBITAL VIEW - {_planet.Name.ToUpper()}";
         float titleW = renderer.MeasureText(title, 2.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, 14, title, 180, 200, 255, 2.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, 14, title, new Color3(180, 200, 255), 2.5f);
 
         // Planet info
-        renderer.DrawRectScreen(10, 50, 240, 68, 0, 0, 0, 180);
-        renderer.DrawTextScreen(16, 56, $"TYPE: {_planet.Type.ToString().ToUpper()}", 150, 150, 150, 1.5f);
-        renderer.DrawTextScreen(16, 74, $"SIZE: {_surfaceData.Width}x{_surfaceData.Height} TILES", 150, 150, 150, 1.5f);
+        renderer.DrawRectScreen(10, 50, 240, 68, new Color4(0, 0, 0, 180));
+        renderer.DrawTextScreen(16, 56, $"TYPE: {_planet.Type.ToString().ToUpper()}", new Color3(150, 150, 150), 1.5f);
+        renderer.DrawTextScreen(16, 74, $"SIZE: {_surfaceData.Width}x{_surfaceData.Height} TILES", new Color3(150, 150, 150), 1.5f);
         int settlementCount = _surfaceData.Settlements.Count;
         string settText = settlementCount > 0 ? $"SETTLEMENTS: {settlementCount}" : "NO SETTLEMENTS";
         byte settR = settlementCount > 0 ? (byte)255 : (byte)120;
         byte settG = settlementCount > 0 ? (byte)220 : (byte)120;
         byte settB = settlementCount > 0 ? (byte)100 : (byte)120;
-        renderer.DrawTextScreen(16, 92, settText, settR, settG, settB, 1.5f);
+        renderer.DrawTextScreen(16, 92, settText, new Color3(settR, settG, settB), 1.5f);
 
         // Controls
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, GameConfig.WindowHeight - 130, 310, 125, 0, 0, 0, 180);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 124, "CLICK: SELECT LANDING SITE", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 104, "WASD/ARROWS: NUDGE CURSOR", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 84, "SCROLL: ZOOM MAP", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 64, "LEFT-DRAG: PAN MAP", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 44, "DBLCLICK/ENTER: LAND", 100, 255, 100, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 24, "ESC: CANCEL", 255, 150, 150, 1.5f);
+        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, GameConfig.WindowHeight - 130, 310, 125, new Color4(0, 0, 0, 180));
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 124, "CLICK: SELECT LANDING SITE", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 104, "WASD/ARROWS: NUDGE CURSOR", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 84, "SCROLL: ZOOM MAP", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 64, "LEFT-DRAG: PAN MAP", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 44, "DBLCLICK/ENTER: LAND", new Color3(100, 255, 100), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 24, "ESC: CANCEL", new Color3(255, 150, 150), 1.5f);
 
         // Landing prompt
         if (_hasCursor)
@@ -369,8 +369,8 @@ public class PlanetLandingOverlay : OverlayBase
             byte pg = canLand ? (byte)255 : (byte)80;
             byte pb = canLand ? (byte)100 : (byte)80;
             float promptW = renderer.MeasureText(prompt, 2f);
-            renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - promptW / 2f - 6, GameConfig.WindowHeight - 50, promptW + 12, 28, 0, 0, 0, 180);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - promptW / 2f, GameConfig.WindowHeight - 45, prompt, pr, pg, pb, 2f);
+            renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - promptW / 2f - 6, GameConfig.WindowHeight - 50, promptW + 12, 28, new Color4(0, 0, 0, 180));
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - promptW / 2f, GameConfig.WindowHeight - 45, prompt, new Color3(pr, pg, pb), 2f);
         }
     }
 

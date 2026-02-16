@@ -490,7 +490,7 @@ public class PlanetSurfaceState : GameState
                 var spawnPos = avatarTransform.Position + aimDir * 14f;
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, aimDir,
                     weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
-                    100, 255, 100, GameConfig.AvatarProjectileLifetime);
+                    new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime);
             }
 
             // Surface enemy AI
@@ -511,7 +511,7 @@ public class PlanetSurfaceState : GameState
             {
                 // Mineable rock destroyed — collect resources
                 var rock = destroyed.Asteroid.Value;
-                _explosions.Add(new Explosion(destroyed.Position, 12f, 140, 120, 100, 0.4f));
+                _explosions.Add(new Explosion(destroyed.Position, 12f, new Color3(140, 120, 100), 0.4f));
 
                 int added = game.Player.AddCargo(rock.Resource, rock.ResourceAmount);
                 var resInfo = ResourceCatalog.Get(rock.Resource);
@@ -538,9 +538,10 @@ public class PlanetSurfaceState : GameState
             {
                 // Enemy died
                 _explosions.Add(new Explosion(destroyed.Position, 15f,
-                    destroyed.Faction == Faction.Fauna ? (byte)200 : (byte)255,
-                    destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
-                    destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50, 0.6f));
+                    new Color3(
+                        destroyed.Faction == Faction.Fauna ? (byte)200 : (byte)255,
+                        destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
+                        destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50), 0.6f));
 
                 if (destroyed.Loot.HasValue)
                 {
@@ -641,14 +642,14 @@ public class PlanetSurfaceState : GameState
         // Combat message
         if (_combatMessage != null)
         {
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, -40, 255, 220, 80, 2f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, -40, new Color3(255, 220, 80), 2f);
         }
 
         // Death message
         if (_playerDead)
         {
-            SolarSystemRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, 255, 80, 80, 3f);
-            SolarSystemRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, 200, 200, 200, 1.5f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, new Color3(255, 80, 80), 3f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, new Color3(200, 200, 200), 1.5f);
         }
 
         // Minimap (top-right, unified style)
@@ -696,7 +697,7 @@ public class PlanetSurfaceState : GameState
     {
         _playerDead = true;
         _respawnTimer = RespawnDelay;
-        _explosions.Add(new Explosion(deathPos, 25f, 255, 120, 80, 1.2f));
+        _explosions.Add(new Explosion(deathPos, 25f, new Color3(255, 120, 80), 1.2f));
 
         // Apply death penalties — lose some credits
         int creditsLost = (int)(game.Player.Credits * 0.1f);

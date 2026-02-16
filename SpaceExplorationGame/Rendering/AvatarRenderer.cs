@@ -23,7 +23,7 @@ public class AvatarRenderer : IDisposable
     {
         // Shadow beneath feet
         var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1);
-        renderer.DrawRect(camera, shadowPos, 16, 4, 0, 0, 0, 60);
+        renderer.DrawRect(camera, shadowPos, 16, 4, new Color4(0, 0, 0, 60));
 
         renderer.DrawTexture(camera, _texture, position, AvatarSize, AvatarSize);
     }
@@ -34,17 +34,17 @@ public class AvatarRenderer : IDisposable
         var pixels = new byte[size * size * 4];
 
         // Tiny humanoid sprite
-        TextureManager.SetPixelBlock(pixels, size, 6, 1, 4, 3, 200, 180, 150, 255);   // Head
-        TextureManager.SetPixelBlock(pixels, size, 6, 4, 4, 1, 60, 180, 100, 255);    // Neck
-        TextureManager.SetPixelBlock(pixels, size, 5, 5, 6, 4, 60, 180, 100, 255);    // Torso (green suit)
-        TextureManager.SetPixelBlock(pixels, size, 3, 6, 2, 3, 60, 180, 100, 255);    // Left arm
-        TextureManager.SetPixelBlock(pixels, size, 11, 6, 2, 3, 60, 180, 100, 255);   // Right arm
-        TextureManager.SetPixelBlock(pixels, size, 6, 9, 2, 4, 50, 50, 140, 255);     // Left leg
-        TextureManager.SetPixelBlock(pixels, size, 8, 9, 2, 4, 50, 50, 140, 255);     // Right leg
-        TextureManager.SetPixelBlock(pixels, size, 5, 13, 3, 1, 80, 60, 40, 255);     // Left boot
-        TextureManager.SetPixelBlock(pixels, size, 8, 13, 3, 1, 80, 60, 40, 255);     // Right boot
+        TextureManager.SetPixelBlock(pixels, size, 6, 1, 4, 3, new Color4(200, 180, 150, 255));   // Head
+        TextureManager.SetPixelBlock(pixels, size, 6, 4, 4, 1, new Color4(60, 180, 100, 255));    // Neck
+        TextureManager.SetPixelBlock(pixels, size, 5, 5, 6, 4, new Color4(60, 180, 100, 255));    // Torso (green suit)
+        TextureManager.SetPixelBlock(pixels, size, 3, 6, 2, 3, new Color4(60, 180, 100, 255));    // Left arm
+        TextureManager.SetPixelBlock(pixels, size, 11, 6, 2, 3, new Color4(60, 180, 100, 255));   // Right arm
+        TextureManager.SetPixelBlock(pixels, size, 6, 9, 2, 4, new Color4(50, 50, 140, 255));     // Left leg
+        TextureManager.SetPixelBlock(pixels, size, 8, 9, 2, 4, new Color4(50, 50, 140, 255));     // Right leg
+        TextureManager.SetPixelBlock(pixels, size, 5, 13, 3, 1, new Color4(80, 60, 40, 255));     // Left boot
+        TextureManager.SetPixelBlock(pixels, size, 8, 13, 3, 1, new Color4(80, 60, 40, 255));     // Right boot
         // Visor
-        TextureManager.SetPixelBlock(pixels, size, 7, 2, 2, 1, 100, 180, 255, 255);
+        TextureManager.SetPixelBlock(pixels, size, 7, 2, 2, 1, new Color4(100, 180, 255, 255));
 
         return textures.CreateTextureFromPixels(pixels, size, size);
     }

@@ -158,7 +158,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
         int h = GameConfig.WindowHeight;
 
         // Dim background
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 180);
+        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 180));
 
         // Main panel
         float panelW = 900;
@@ -166,14 +166,14 @@ public abstract class CustomizationOverlayBase : OverlayBase
         float panelX = w / 2f - panelW / 2f;
         float panelY = h / 2f - panelH / 2f;
 
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 15, 15, 35, 245);
+        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
 
         // Title
         var tc = TitleColor;
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, Title, tc.R, tc.G, tc.B, 2.5f);
-        renderer.DrawTextScreen(panelX + panelW - 200, panelY + 10, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
-        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, 60, 60, 100);
+        renderer.DrawTextScreen(panelX + 15, panelY + 10, Title, tc, 2.5f);
+        renderer.DrawTextScreen(panelX + panelW - 200, panelY + 10, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
+        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, new Color3(60, 60, 100));
 
         // Two-column layout
         float leftW = 300;
@@ -182,10 +182,10 @@ public abstract class CustomizationOverlayBase : OverlayBase
         float contentY = panelY + 55;
 
         // Column separator
-        renderer.DrawLineScreen(panelX + leftW + 5, contentY, panelX + leftW + 5, panelY + panelH - 40, 40, 40, 70);
+        renderer.DrawLineScreen(panelX + leftW + 5, contentY, panelX + leftW + 5, panelY + panelH - 40, new Color3(40, 40, 70));
 
         // ── Left column: Slot list ──
-        renderer.DrawTextScreen(panelX + 15, contentY, "EQUIPMENT SLOTS", 180, 180, 220, 1.8f);
+        renderer.DrawTextScreen(panelX + 15, contentY, "EQUIPMENT SLOTS", new Color3(180, 180, 220), 1.8f);
         float slotY = contentY + 30;
         var player = game.Player;
 
@@ -199,7 +199,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
             if (selected)
             {
                 byte bgA = active ? (byte)180 : (byte)100;
-                renderer.DrawRectScreen(panelX + 5, slotY - 3, leftW - 5, itemH, 30, 40, 70, bgA);
+                renderer.DrawRectScreen(panelX + 5, slotY - 3, leftW - 5, itemH, new Color4(30, 40, 70, bgA));
             }
 
             string slotName = GetSlotName(i);
@@ -208,21 +208,21 @@ public abstract class CustomizationOverlayBase : OverlayBase
             byte nB = active ? (byte)200 : selected ? (byte)240 : (byte)180;
 
             string prefix = active ? "> " : "  ";
-            renderer.DrawTextScreen(panelX + 15, slotY, $"{prefix}{slotName}", nR, nG, nB, 1.8f);
+            renderer.DrawTextScreen(panelX + 15, slotY, $"{prefix}{slotName}", new Color3(nR, nG, nB), 1.8f);
 
             // Show equipped part name with tier-based color
             string partName = equipped?.Name ?? "(Empty)";
             byte pR = equipped?.Tier switch { 3 => 255, 2 => 100, _ => 130 };
             byte pG = equipped?.Tier switch { 3 => 180, 2 => 220, _ => 130 };
             byte pB = equipped?.Tier switch { 3 => 80, 2 => 255, _ => 150 };
-            renderer.DrawTextScreen(panelX + 30, slotY + 22, partName, pR, pG, pB, 1.5f);
+            renderer.DrawTextScreen(panelX + 30, slotY + 22, partName, new Color3(pR, pG, pB), 1.5f);
 
             slotY += itemH;
         }
 
         // ── Right column: Available parts ──
         renderer.DrawTextScreen(rightX + 5, contentY,
-            $"PARTS: {GetSlotName(_selectedSlot)}", 180, 180, 220, 1.8f);
+            $"PARTS: {GetSlotName(_selectedSlot)}", new Color3(180, 180, 220), 1.8f);
 
         var currentEquipped = GetEquippedPart(player, _selectedSlot);
 
@@ -237,7 +237,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
 
             float itemH = 65;
             if (selected)
-                renderer.DrawRectScreen(rightX, partY - 3, rightW, itemH, 30, 40, 70, 180);
+                renderer.DrawRectScreen(rightX, partY - 3, rightW, itemH, new Color4(30, 40, 70, 180));
 
             // Part name
             byte tr = selected ? (byte)255 : (byte)180;
@@ -245,27 +245,28 @@ public abstract class CustomizationOverlayBase : OverlayBase
             byte tb = selected ? (byte)200 : (byte)200;
             string tag = isEquipped ? " [EQUIPPED]" : inInventory ? " [OWNED]" : "";
             renderer.DrawTextScreen(rightX + 5, partY,
-                $"{(selected ? "> " : "  ")}{part.Name}{tag}", tr, tg, tb, 1.8f);
+                $"{(selected ? "> " : "  ")}{part.Name}{tag}", new Color3(tr, tg, tb), 1.8f);
 
             // Description
-            renderer.DrawTextScreen(rightX + 20, partY + 22, part.Description, 130, 130, 150, 1.3f);
+            renderer.DrawTextScreen(rightX + 20, partY + 22, part.Description, new Color3(130, 130, 150), 1.3f);
 
             // Cost / status indicator
             if (isEquipped)
             {
-                renderer.DrawTextScreen(rightX + rightW - 130, partY + 2, "IN USE", 100, 180, 255, 1.5f);
+                renderer.DrawTextScreen(rightX + rightW - 130, partY + 2, "IN USE", new Color3(100, 180, 255), 1.5f);
             }
             else if (owned)
             {
-                renderer.DrawTextScreen(rightX + rightW - 130, partY + 2, "FREE", 100, 255, 100, 1.5f);
+                renderer.DrawTextScreen(rightX + rightW - 130, partY + 2, "FREE", new Color3(100, 255, 100), 1.5f);
             }
             else if (part.BuyCost > 0)
             {
                 bool canAfford = player.Credits >= part.BuyCost;
                 renderer.DrawTextScreen(rightX + rightW - 130, partY + 2, $"{part.BuyCost} CR",
-                    canAfford ? (byte)255 : (byte)255,
-                    canAfford ? (byte)220 : (byte)80,
-                    canAfford ? (byte)80 : (byte)80, 1.5f);
+                    new Color3(
+                        canAfford ? (byte)255 : (byte)255,
+                        canAfford ? (byte)220 : (byte)80,
+                        canAfford ? (byte)80 : (byte)80), 1.5f);
             }
 
             // Stat comparison
@@ -281,11 +282,12 @@ public abstract class CustomizationOverlayBase : OverlayBase
         {
             bool isGood = _statusMessage.StartsWith("EQUIPPED") || _statusMessage.StartsWith("PURCHASED")
                           || _statusMessage.StartsWith("SOLD");
-            renderer.DrawRectScreen(panelX + 15, panelY + panelH - 55, panelW - 30, 22, 0, 0, 0, 200);
+            renderer.DrawRectScreen(panelX + 15, panelY + panelH - 55, panelW - 30, 22, new Color4(0, 0, 0, 200));
             renderer.DrawTextScreen(panelX + 20, panelY + panelH - 53, _statusMessage,
-                isGood ? (byte)100 : (byte)255,
-                isGood ? (byte)255 : (byte)150,
-                isGood ? (byte)100 : (byte)80, 1.5f);
+                new Color3(
+                    isGood ? (byte)100 : (byte)255,
+                    isGood ? (byte)255 : (byte)150,
+                    isGood ? (byte)100 : (byte)80), 1.5f);
         }
 
         // Controls
@@ -293,7 +295,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
             _activeColumn == Column.Slots
                 ? "UP/DOWN: SELECT SLOT  ENTER/RIGHT: BROWSE PARTS  ESC: CLOSE"
                 : "UP/DOWN: SELECT  ENTER: EQUIP/BUY  X: SELL  LEFT/ESC: BACK",
-            100, 100, 130, 1.3f);
+            new Color3(100, 100, 130), 1.3f);
     }
 
     // ── Private helpers ──
@@ -381,9 +383,10 @@ public abstract class CustomizationOverlayBase : OverlayBase
         {
             string text = $"{label}{(diff > 0 ? "+" : "")}{diff:F0} ";
             renderer.DrawTextScreen(cx, y, text,
-                diff > 0 ? (byte)80 : (byte)255,
-                diff > 0 ? (byte)255 : (byte)80,
-                (byte)80, 1.2f);
+                new Color3(
+                    diff > 0 ? (byte)80 : (byte)255,
+                    diff > 0 ? (byte)255 : (byte)80,
+                    (byte)80), 1.2f);
             cx += text.Length * 7;
         }
     }

@@ -45,9 +45,9 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
         ProcessSurfaceAIQuery(World);
 
         // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, faction, r, g, b, lifetime) in _pendingProjectiles)
+        foreach (var (pos, dir, damage, speed, faction, color, lifetime) in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, r, g, b, lifetime);
+            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime);
         }
     }
 
@@ -92,7 +92,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Fauna, 200, 60, 60, 0.1f));
+                    ai.Config.ProjectileSpeed, Faction.Fauna, new Color3(200, 60, 60), 0.1f));
             }
         }
         else
@@ -152,7 +152,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Bandit, 255, 150, 50, GameConfig.AvatarProjectileLifetime));
+                    ai.Config.ProjectileSpeed, Faction.Bandit, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime));
             }
         }
         else

@@ -22,17 +22,17 @@ public static class ResourceCatalog
         ResourceType Type,
         string Name,
         int ValuePerUnit,    // credits per unit when sold
-        byte R, byte G, byte B  // display color
+        Color3 Color         // display color
     );
 
     public static readonly ResourceInfo[] AllResources =
     [
-        new(ResourceType.Iron,     "Iron",     5,   180, 140, 100),
-        new(ResourceType.Nickel,   "Nickel",   8,   160, 170, 170),
-        new(ResourceType.Gold,     "Gold",     20,  255, 220, 80),
-        new(ResourceType.Platinum, "Platinum", 35,  210, 220, 240),
-        new(ResourceType.Crystal,  "Crystal",  50,  120, 200, 255),
-        new(ResourceType.Ice,      "Ice",      3,   200, 230, 255),
+        new(ResourceType.Iron,     "Iron",     5,   new(180, 140, 100)),
+        new(ResourceType.Nickel,   "Nickel",   8,   new(160, 170, 170)),
+        new(ResourceType.Gold,     "Gold",     20,  new(255, 220, 80)),
+        new(ResourceType.Platinum, "Platinum", 35,  new(210, 220, 240)),
+        new(ResourceType.Crystal,  "Crystal",  50,  new(120, 200, 255)),
+        new(ResourceType.Ice,      "Ice",      3,   new(200, 230, 255)),
     ];
 
     public static ResourceInfo Get(ResourceType type) =>

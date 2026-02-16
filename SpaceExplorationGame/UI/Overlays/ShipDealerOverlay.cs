@@ -77,7 +77,7 @@ public class ShipDealerOverlay : OverlayBase
         var player = game.Player;
 
         // Dim background
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 180);
+        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 180));
 
         // Main panel
         float panelW = 900;
@@ -85,23 +85,23 @@ public class ShipDealerOverlay : OverlayBase
         float panelX = w / 2f - panelW / 2f;
         float panelY = h / 2f - panelH / 2f;
 
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 15, 15, 35, 245);
+        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
 
         // Title
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, "SHIP DEALER", 255, 200, 80, 2.5f);
-        renderer.DrawTextScreen(panelX + panelW - 200, panelY + 10, $"CREDITS: {player.Credits}", 255, 220, 80, 2f);
-        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, 60, 60, 100);
+        renderer.DrawTextScreen(panelX + 15, panelY + 10, "SHIP DEALER", new Color3(255, 200, 80), 2.5f);
+        renderer.DrawTextScreen(panelX + panelW - 200, panelY + 10, $"CREDITS: {player.Credits}", new Color3(255, 220, 80), 2f);
+        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, new Color3(60, 60, 100));
 
         // Current ship info
         renderer.DrawTextScreen(panelX + 15, panelY + 52,
-            $"CURRENT SHIP: {player.CurrentShipType.Name.ToUpper()}", 100, 220, 255, 1.8f);
+            $"CURRENT SHIP: {player.CurrentShipType.Name.ToUpper()}", new Color3(100, 220, 255), 1.8f);
 
         float tradeInValue = player.CurrentShipType.SellValue;
         renderer.DrawTextScreen(panelX + panelW - 250, panelY + 52,
-            $"TRADE-IN VALUE: {tradeInValue} CR", 180, 220, 80, 1.5f);
+            $"TRADE-IN VALUE: {tradeInValue} CR", new Color3(180, 220, 80), 1.5f);
 
-        renderer.DrawLineScreen(panelX + 15, panelY + 78, panelX + panelW - 15, panelY + 78, 40, 40, 70);
+        renderer.DrawLineScreen(panelX + 15, panelY + 78, panelX + panelW - 15, panelY + 78, new Color3(40, 40, 70));
 
         // Two-column layout
         float leftW = 320;
@@ -111,10 +111,10 @@ public class ShipDealerOverlay : OverlayBase
 
         // Column separator
         renderer.DrawLineScreen(panelX + leftW + 5, contentY,
-            panelX + leftW + 5, panelY + panelH - 40, 40, 40, 70);
+            panelX + leftW + 5, panelY + panelH - 40, new Color3(40, 40, 70));
 
         // ── Left column: Ship list ──
-        renderer.DrawTextScreen(panelX + 15, contentY, "AVAILABLE SHIPS", 180, 180, 220, 1.8f);
+        renderer.DrawTextScreen(panelX + 15, contentY, "AVAILABLE SHIPS", new Color3(180, 180, 220), 1.8f);
         float itemY = contentY + 30;
 
         for (int i = 0; i < _ships.Length; i++)
@@ -125,7 +125,7 @@ public class ShipDealerOverlay : OverlayBase
 
             float itemH = 70;
             if (selected)
-                renderer.DrawRectScreen(panelX + 5, itemY - 3, leftW - 5, itemH, 30, 40, 70, 180);
+                renderer.DrawRectScreen(panelX + 5, itemY - 3, leftW - 5, itemH, new Color4(30, 40, 70, 180));
 
             // Ship name
             byte nR = selected ? (byte)255 : (byte)160;
@@ -133,21 +133,21 @@ public class ShipDealerOverlay : OverlayBase
             byte nB = selected ? (byte)200 : (byte)180;
             string tag = isCurrent ? " [YOUR SHIP]" : "";
             string prefix = selected ? "> " : "  ";
-            renderer.DrawTextScreen(panelX + 15, itemY, $"{prefix}{ship.Name.ToUpper()}{tag}", nR, nG, nB, 1.8f);
+            renderer.DrawTextScreen(panelX + 15, itemY, $"{prefix}{ship.Name.ToUpper()}{tag}", new Color3(nR, nG, nB), 1.8f);
 
             // Quick stats line
             renderer.DrawTextScreen(panelX + 30, itemY + 22,
                 $"SLOTS: {ship.AvailableSlots.Length}  HULL: {ship.BaseHull:F0}  FUEL: {ship.BaseFuel:F0}  CARGO: {ship.BaseCargo:F0}",
-                100, 140, 160, 1.3f);
+                new Color3(100, 140, 160), 1.3f);
 
             // Price
             if (isCurrent)
             {
-                renderer.DrawTextScreen(panelX + 30, itemY + 42, "CURRENT", 100, 200, 255, 1.4f);
+                renderer.DrawTextScreen(panelX + 30, itemY + 42, "CURRENT", new Color3(100, 200, 255), 1.4f);
             }
             else if (ship.BuyCost <= 0)
             {
-                renderer.DrawTextScreen(panelX + 30, itemY + 42, "FREE", 100, 255, 100, 1.4f);
+                renderer.DrawTextScreen(panelX + 30, itemY + 42, "FREE", new Color3(100, 255, 100), 1.4f);
             }
             else
             {
@@ -155,9 +155,10 @@ public class ShipDealerOverlay : OverlayBase
                 bool canAfford = netCost <= player.Credits;
                 string costText = $"COST: {ship.BuyCost} CR (NET: {netCost} CR)";
                 renderer.DrawTextScreen(panelX + 30, itemY + 42, costText,
-                    canAfford ? (byte)255 : (byte)255,
-                    canAfford ? (byte)220 : (byte)80,
-                    canAfford ? (byte)80 : (byte)80, 1.4f);
+                    new Color3(
+                        canAfford ? (byte)255 : (byte)255,
+                        canAfford ? (byte)220 : (byte)80,
+                        canAfford ? (byte)80 : (byte)80), 1.4f);
             }
 
             itemY += itemH;
@@ -167,15 +168,15 @@ public class ShipDealerOverlay : OverlayBase
         var sel = _ships[_selectedIndex];
         bool selIsCurrent = sel.Id == player.CurrentShipType.Id;
 
-        renderer.DrawTextScreen(rightX + 5, contentY, sel.Name.ToUpper(), 255, 220, 100, 2.2f);
+        renderer.DrawTextScreen(rightX + 5, contentY, sel.Name.ToUpper(), new Color3(255, 220, 100), 2.2f);
 
         float detailY = contentY + 35;
 
         // Description
-        renderer.DrawTextScreen(rightX + 5, detailY, sel.Description, 160, 160, 180, 1.5f);
+        renderer.DrawTextScreen(rightX + 5, detailY, sel.Description, new Color3(160, 160, 180), 1.5f);
         detailY += 25;
 
-        renderer.DrawLineScreen(rightX + 5, detailY, rightX + rightW - 5, detailY, 40, 40, 70);
+        renderer.DrawLineScreen(rightX + 5, detailY, rightX + rightW - 5, detailY, new Color3(40, 40, 70));
         detailY += 10;
 
         // Stats table
@@ -188,11 +189,11 @@ public class ShipDealerOverlay : OverlayBase
         RenderStatRow(renderer, rightX + 5, ref detailY, "SIZE", sel.SpriteSize, cur.SpriteSize, selIsCurrent);
 
         detailY += 5;
-        renderer.DrawLineScreen(rightX + 5, detailY, rightX + rightW - 5, detailY, 40, 40, 70);
+        renderer.DrawLineScreen(rightX + 5, detailY, rightX + rightW - 5, detailY, new Color3(40, 40, 70));
         detailY += 10;
 
         // Slot breakdown
-        renderer.DrawTextScreen(rightX + 5, detailY, "AVAILABLE SLOTS:", 160, 180, 220, 1.5f);
+        renderer.DrawTextScreen(rightX + 5, detailY, "AVAILABLE SLOTS:", new Color3(160, 180, 220), 1.5f);
         detailY += 22;
         foreach (var slot in sel.AvailableSlots)
         {
@@ -202,7 +203,7 @@ public class ShipDealerOverlay : OverlayBase
             byte sG = selIsCurrent ? (byte)150 : curHasSlot ? (byte)150 : (byte)255;
             byte sB = selIsCurrent ? (byte)170 : curHasSlot ? (byte)170 : (byte)80;
             string marker = selIsCurrent ? "  " : curHasSlot ? "  " : "+ ";
-            renderer.DrawTextScreen(rightX + 15, detailY, $"{marker}{slotName}", sR, sG, sB, 1.4f);
+            renderer.DrawTextScreen(rightX + 15, detailY, $"{marker}{slotName}", new Color3(sR, sG, sB), 1.4f);
             detailY += 18;
         }
 
@@ -214,7 +215,7 @@ public class ShipDealerOverlay : OverlayBase
                 if (!Array.Exists(sel.AvailableSlots, s => s == slot))
                 {
                     string slotName = ShipPartCatalog.GetSlotName(slot);
-                    renderer.DrawTextScreen(rightX + 15, detailY, $"- {slotName}", 255, 80, 80, 1.4f);
+                    renderer.DrawTextScreen(rightX + 15, detailY, $"- {slotName}", new Color3(255, 80, 80), 1.4f);
                     detailY += 18;
                 }
             }
@@ -224,37 +225,39 @@ public class ShipDealerOverlay : OverlayBase
         detailY += 10;
         if (selIsCurrent)
         {
-            renderer.DrawTextScreen(rightX + 5, detailY, "THIS IS YOUR CURRENT SHIP", 100, 200, 255, 1.5f);
+            renderer.DrawTextScreen(rightX + 5, detailY, "THIS IS YOUR CURRENT SHIP", new Color3(100, 200, 255), 1.5f);
         }
         else
         {
-            renderer.DrawTextScreen(rightX + 5, detailY, $"BUY PRICE: {sel.BuyCost} CR", 255, 220, 80, 1.5f);
+            renderer.DrawTextScreen(rightX + 5, detailY, $"BUY PRICE: {sel.BuyCost} CR", new Color3(255, 220, 80), 1.5f);
             detailY += 20;
-            renderer.DrawTextScreen(rightX + 5, detailY, $"TRADE-IN: -{cur.SellValue} CR", 80, 220, 80, 1.5f);
+            renderer.DrawTextScreen(rightX + 5, detailY, $"TRADE-IN: -{cur.SellValue} CR", new Color3(80, 220, 80), 1.5f);
             detailY += 20;
             int net = sel.BuyCost - cur.SellValue;
             bool canAfford = net <= player.Credits;
             renderer.DrawTextScreen(rightX + 5, detailY, $"NET COST: {net} CR",
-                canAfford ? (byte)100 : (byte)255,
-                canAfford ? (byte)255 : (byte)100,
-                canAfford ? (byte)100 : (byte)100, 1.8f);
+                new Color3(
+                    canAfford ? (byte)100 : (byte)255,
+                    canAfford ? (byte)255 : (byte)100,
+                    canAfford ? (byte)100 : (byte)100), 1.8f);
         }
 
         // Status message
         if (_statusMessage != null)
         {
             bool isGood = _statusMessage.StartsWith("PURCHASED") || _statusMessage.StartsWith("SWITCHED");
-            renderer.DrawRectScreen(panelX + 15, panelY + panelH - 55, panelW - 30, 22, 0, 0, 0, 200);
+            renderer.DrawRectScreen(panelX + 15, panelY + panelH - 55, panelW - 30, 22, new Color4(0, 0, 0, 200));
             renderer.DrawTextScreen(panelX + 20, panelY + panelH - 53, _statusMessage,
-                isGood ? (byte)100 : (byte)255,
-                isGood ? (byte)255 : (byte)150,
-                isGood ? (byte)100 : (byte)80, 1.5f);
+                new Color3(
+                    isGood ? (byte)100 : (byte)255,
+                    isGood ? (byte)255 : (byte)150,
+                    isGood ? (byte)100 : (byte)80), 1.5f);
         }
 
         // Controls
         renderer.DrawTextScreen(panelX + 15, panelY + panelH - 28,
             "UP/DOWN: SELECT  ENTER: BUY SHIP  ESC: CLOSE",
-            100, 100, 130, 1.3f);
+            new Color3(100, 100, 130), 1.3f);
     }
 
     private void TryBuyShip(Game game)
@@ -290,8 +293,8 @@ public class ShipDealerOverlay : OverlayBase
     private static void RenderStatRow(SpriteRenderer renderer, float x, ref float y,
         string label, float newVal, float curVal, bool isCurrent, bool lowerIsBetter = false)
     {
-        renderer.DrawTextScreen(x, y, $"{label}:", 140, 140, 160, 1.4f);
-        renderer.DrawTextScreen(x + 140, y, $"{newVal:G4}", 200, 200, 220, 1.4f);
+        renderer.DrawTextScreen(x, y, $"{label}:", new Color3(140, 140, 160), 1.4f);
+        renderer.DrawTextScreen(x + 140, y, $"{newVal:G4}", new Color3(200, 200, 220), 1.4f);
 
         if (!isCurrent)
         {
@@ -301,9 +304,10 @@ public class ShipDealerOverlay : OverlayBase
                 bool good = lowerIsBetter ? diff < 0 : diff > 0;
                 string diffText = $"({(diff > 0 ? "+" : "")}{diff:G3})";
                 renderer.DrawTextScreen(x + 230, y, diffText,
-                    good ? (byte)80 : (byte)255,
-                    good ? (byte)255 : (byte)80,
-                    (byte)80, 1.4f);
+                    new Color3(
+                        good ? (byte)80 : (byte)255,
+                        good ? (byte)255 : (byte)80,
+                        (byte)80), 1.4f);
             }
         }
 

@@ -43,9 +43,7 @@ public class SettlementBuilding
     public float Y { get; set; }
     public float W { get; set; } // world-space size
     public float H { get; set; }
-    public byte R { get; set; }
-    public byte G { get; set; }
-    public byte B { get; set; }
+    public Color3 Color { get; set; }
     public bool HasAntenna { get; set; }
     public bool HasChimney { get; set; }
     public int WindowRows { get; set; } // 0 = no windows
@@ -516,9 +514,7 @@ public static class PlanetSurfaceGenerator
                         Y = cursorY,
                         W = bw,
                         H = bh,
-                        R = pal.R,
-                        G = pal.G,
-                        B = pal.B,
+                        Color = pal,
                         HasAntenna = rng.NextFloat() < 0.2f,
                         HasChimney = rng.NextFloat() < 0.15f,
                         WindowRows = bh > ts * 0.6f ? rng.NextInt(1, 3) : 0,

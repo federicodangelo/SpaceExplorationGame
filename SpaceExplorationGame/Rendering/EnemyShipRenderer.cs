@@ -65,18 +65,18 @@ public class EnemyShipRenderer : IDisposable
         float h = barHeight * zoom;
 
         // Background
-        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w, h, 40, 40, 40, 180);
+        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w, h, new Color4(40, 40, 40, 180));
         // Hull fill
         byte hullR = hullPercent > 0.5f ? (byte)(255 * (1 - hullPercent) * 2) : (byte)255;
         byte hullG = hullPercent > 0.5f ? (byte)255 : (byte)(255 * hullPercent * 2);
-        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w * hullPercent, h, hullR, hullG, 0, 200);
+        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w * hullPercent, h, new Color4(hullR, hullG, 0, 200));
 
         // Shield bar (if has shields)
         if (maxShield > 0)
         {
             float shieldY = screenPos.Y - h - 1;
-            renderer.DrawRectScreen(screenPos.X, shieldY, w, h, 40, 40, 60, 180);
-            renderer.DrawRectScreen(screenPos.X, shieldY, w * shieldPercent, h, 80, 160, 255, 200);
+            renderer.DrawRectScreen(screenPos.X, shieldY, w, h, new Color4(40, 40, 60, 180));
+            renderer.DrawRectScreen(screenPos.X, shieldY, w * shieldPercent, h, new Color4(80, 160, 255, 200));
         }
     }
 
@@ -113,19 +113,19 @@ public class EnemyShipRenderer : IDisposable
                     if (MathF.Abs(ny) > widthAtX * 0.6f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(120 * shade), (byte)(30 * shade), (byte)(30 * shade), 255);
+                            new Color4((byte)(120 * shade), (byte)(30 * shade), (byte)(30 * shade), 255));
                     }
                     // Cockpit
                     else if (nx > 0.5f && MathF.Abs(ny) < 0.2f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            255, (byte)(80 * shade), (byte)(40 * shade), 255);
+                            new Color4(255, (byte)(80 * shade), (byte)(40 * shade), 255));
                     }
                     // Hull
                     else
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(160 * shade), (byte)(50 * shade), (byte)(50 * shade), 255);
+                            new Color4((byte)(160 * shade), (byte)(50 * shade), (byte)(50 * shade), 255));
                     }
                 }
             }
@@ -160,19 +160,19 @@ public class EnemyShipRenderer : IDisposable
                     if (nx > -0.5f && nx < 0.3f && MathF.Abs(ny) < 0.7f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(200 * shade), (byte)(160 * shade), (byte)(80 * shade), 255);
+                            new Color4((byte)(200 * shade), (byte)(160 * shade), (byte)(80 * shade), 255));
                     }
                     // Cockpit
                     else if (nx > 0.4f && MathF.Abs(ny) < 0.3f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(100 * shade), (byte)(200 * shade), (byte)(220 * shade), 255);
+                            new Color4((byte)(100 * shade), (byte)(200 * shade), (byte)(220 * shade), 255));
                     }
                     // Hull frame
                     else
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(160 * shade), (byte)(130 * shade), (byte)(70 * shade), 255);
+                            new Color4((byte)(160 * shade), (byte)(130 * shade), (byte)(70 * shade), 255));
                     }
                 }
             }
@@ -209,19 +209,19 @@ public class EnemyShipRenderer : IDisposable
                     if (MathF.Abs(ny) > widthAtX * 0.5f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(60 * shade), (byte)(100 * shade), (byte)(200 * shade), 255);
+                            new Color4((byte)(60 * shade), (byte)(100 * shade), (byte)(200 * shade), 255));
                     }
                     // Cockpit
                     else if (nx > 0.5f && MathF.Abs(ny) < 0.2f)
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(200 * shade), (byte)(220 * shade), (byte)(255 * shade), 255);
+                            new Color4((byte)(200 * shade), (byte)(220 * shade), (byte)(255 * shade), 255));
                     }
                     // Hull
                     else
                     {
                         TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            (byte)(80 * shade), (byte)(140 * shade), (byte)(220 * shade), 255);
+                            new Color4((byte)(80 * shade), (byte)(140 * shade), (byte)(220 * shade), 255));
                     }
                 }
             }
@@ -251,7 +251,7 @@ public class EnemyShipRenderer : IDisposable
                     byte g = (byte)(180 * intensity);
                     byte b = (byte)(40 * intensity * intensity);
                     byte a = (byte)(200 * intensity);
-                    TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1, r, g, b, a);
+                    TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1, new Color4(r, g, b, a));
                 }
             }
         }

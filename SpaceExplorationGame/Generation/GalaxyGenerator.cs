@@ -14,9 +14,7 @@ public class StarSystemData
     public Vector2 GalaxyPosition { get; set; }  // position on galaxy map in world pixels
     public StarClass StarClass { get; set; }
     public float StarRadius { get; set; }
-    public byte StarR { get; set; }
-    public byte StarG { get; set; }
-    public byte StarB { get; set; }
+    public Color3 StarColor { get; set; }
     public int PlanetCount { get; set; }
     public bool HasSpaceStation { get; set; }
     public int DangerLevel { get; set; }   // 1-5, determines enemy count/strength
@@ -75,7 +73,7 @@ public static class GalaxyGenerator
 
             // Determine star class (weighted distribution)
             var starClass = GenerateStarClass(rng);
-            var (r, g, b, radius) = GetStarProperties(starClass, rng);
+            var (color, radius) = GetStarProperties(starClass, rng);
 
             // Planet count (correlates somewhat with star class)
             int planetCount = starClass switch
@@ -100,9 +98,7 @@ public static class GalaxyGenerator
                 GalaxyPosition = new Vector2(x, y),
                 StarClass = starClass,
                 StarRadius = radius,
-                StarR = r,
-                StarG = g,
-                StarB = b,
+                StarColor = color,
                 PlanetCount = planetCount,
                 HasSpaceStation = rng.NextBool(0.75f),  // 75% chance of having a station
                 DangerLevel = dangerLevel
@@ -132,14 +128,14 @@ public static class GalaxyGenerator
     {
         return starClass switch
         {
-            StarClass.O => new(100, 140, 255, rng.NextFloat(20, 30)),   // Blue
-            StarClass.B => new(150, 180, 255, rng.NextFloat(16, 24)),   // Blue-white
-            StarClass.A => new(220, 220, 255, rng.NextFloat(14, 20)),   // White
-            StarClass.F => new(255, 255, 220, rng.NextFloat(12, 18)),   // Yellow-white
-            StarClass.G => new(255, 255, 100, rng.NextFloat(10, 16)),   // Yellow
-            StarClass.K => new(255, 180, 80, rng.NextFloat(10, 14)),    // Orange
-            StarClass.M => new(255, 100, 60, rng.NextFloat(8, 12)),     // Red
-            _ => new(255, 255, 255, 12)
+            StarClass.O => new(new Color3(100, 140, 255), rng.NextFloat(20, 30)),   // Blue
+            StarClass.B => new(new Color3(150, 180, 255), rng.NextFloat(16, 24)),   // Blue-white
+            StarClass.A => new(new Color3(220, 220, 255), rng.NextFloat(14, 20)),   // White
+            StarClass.F => new(new Color3(255, 255, 220), rng.NextFloat(12, 18)),   // Yellow-white
+            StarClass.G => new(new Color3(255, 255, 100), rng.NextFloat(10, 16)),   // Yellow
+            StarClass.K => new(new Color3(255, 180, 80), rng.NextFloat(10, 14)),    // Orange
+            StarClass.M => new(new Color3(255, 100, 60), rng.NextFloat(8, 12)),     // Red
+            _ => new(new Color3(255, 255, 255), 12)
         };
     }
 }

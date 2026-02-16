@@ -15,11 +15,11 @@ public static class EntityFactory
 
     /// <summary>Create a star entity at the center of a solar system.</summary>
     public static Entity CreateStar(World world, Vector2 position, float displayRadius,
-        string name, byte r, byte g, byte b, int dataIndex)
+        string name, Color3 color, int dataIndex)
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(displayRadius * 2), (int)(displayRadius * 2), r, g, b),
+            Sprite.ColoredRect((int)(displayRadius * 2), (int)(displayRadius * 2), color),
             new CelestialBody
             {
                 Type = CelestialType.Star,
@@ -33,13 +33,13 @@ public static class EntityFactory
 
     /// <summary>Create a planet entity orbiting a star.</summary>
     public static Entity CreatePlanet(World world, Vector2 position, Entity starEntity,
-        string name, float radius, byte r, byte g, byte b,
+        string name, float radius, Color3 color,
         float orbitRadius, float orbitSpeed, float startAngle,
         int dataIndex, bool hasSolidSurface)
     {
         var entity = world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), r, g, b),
+            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), color),
             new CelestialBody
             {
                 Type = CelestialType.Planet,
@@ -66,12 +66,12 @@ public static class EntityFactory
 
     /// <summary>Create a moon entity orbiting a planet.</summary>
     public static Entity CreateMoon(World world, Vector2 position, Entity parentPlanet,
-        string name, float radius, byte r, byte g, byte b,
+        string name, float radius, Color3 color,
         float orbitRadius, float orbitSpeed, float startAngle, int dataIndex)
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), r, g, b),
+            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), color),
             new CelestialBody
             {
                 Type = CelestialType.Moon,
@@ -96,7 +96,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(24, 24, 200, 200, 255),
+            Sprite.ColoredRect(24, 24, new Color3(200, 200, 255)),
             new CelestialBody
             {
                 Type = CelestialType.SpaceStation,
@@ -123,7 +123,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(Vector2.Zero), // OrbitSystem will compute position
-            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), 140, 120, 100),
+            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), new Color3(140, 120, 100)),
             new Orbit(starEntity, orbitRadius, orbitSpeed, baseAngle),
             new Health(hp, 0f, 0f, 0f),
             new AsteroidField
@@ -141,7 +141,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(spriteSize, spriteSize, 100, 255, 100),
+            Sprite.ColoredRect(spriteSize, spriteSize, new Color3(100, 255, 100)),
             new Velocity(maxSpeed),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
@@ -159,7 +159,7 @@ public static class EntityFactory
     {
         var entity = world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(12, 12, 100, 255, 100),
+            Sprite.ColoredRect(12, 12, new Color3(100, 255, 100)),
             new Velocity(speed),
             new PlayerControlled()
         );
@@ -178,7 +178,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(20, 16, 150, 150, 200),
+            Sprite.ColoredRect(20, 16, new Color3(150, 150, 200)),
             new Label { Text = "SHIP", OffsetY = 14 }
         );
     }
@@ -188,7 +188,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(16, 16, 180, 140, 80),
+            Sprite.ColoredRect(16, 16, new Color3(180, 140, 80)),
             new Label { Text = "VEHICLE", OffsetY = 14 }
         );
     }
@@ -201,13 +201,13 @@ public static class EntityFactory
     {
         // Tint color based on resource type
         var resInfo = ResourceCatalog.Get(resource);
-        byte r = (byte)Math.Clamp(resInfo.R * 0.6f + 50, 0, 255);
-        byte g = (byte)Math.Clamp(resInfo.G * 0.6f + 40, 0, 255);
-        byte b = (byte)Math.Clamp(resInfo.B * 0.6f + 30, 0, 255);
+        byte r = (byte)Math.Clamp(resInfo.Color.R * 0.6f + 50, 0, 255);
+        byte g = (byte)Math.Clamp(resInfo.Color.G * 0.6f + 40, 0, 255);
+        byte b = (byte)Math.Clamp(resInfo.Color.B * 0.6f + 30, 0, 255);
 
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), r, g, b),
+            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), new Color3(r, g, b)),
             new Health(hp, 0f, 0f, 0f),
             new AsteroidField
             {
@@ -230,7 +230,7 @@ public static class EntityFactory
 
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(28, 28, 255, 80, 80),
+            Sprite.ColoredRect(28, 28, new Color3(255, 80, 80)),
             new Velocity(GameConfig.PirateSpeed),
             new Health(baseHull * hullMultiplier, baseShield,
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
@@ -266,7 +266,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(32, 32, 200, 160, 80),
+            Sprite.ColoredRect(32, 32, new Color3(200, 160, 80)),
             new Velocity(GameConfig.TraderSpeed),
             new Health(80f, 0f, 0f, 0f),
             new EnemyAI
@@ -293,7 +293,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(30, 30, 80, 140, 220),
+            Sprite.ColoredRect(30, 30, new Color3(80, 140, 220)),
             new Velocity(GameConfig.PatrolSpeed),
             new Health(120f, 50f, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
@@ -319,7 +319,7 @@ public static class EntityFactory
 
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Vector2 position, Vector2 direction,
-        float damage, float speed, Faction ownerFaction, byte r, byte g, byte b,
+        float damage, float speed, Faction ownerFaction, Color3 color,
         float lifetime = GameConfig.ProjectileLifetime)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
@@ -333,7 +333,7 @@ public static class EntityFactory
                 Lifetime = lifetime,
                 CollisionRadius = GameConfig.ProjectileRadius,
                 OwnerFaction = ownerFaction,
-                R = r, G = g, B = b
+                Color = color
             }
         );
     }
@@ -346,7 +346,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(14, 14, 180, 60, 60),
+            Sprite.ColoredRect(14, 14, new Color3(180, 60, 60)),
             new Velocity(GameConfig.FaunaSpeed),
             new Health(GameConfig.FaunaBaseHull * hullMultiplier),
             new SurfaceAI
@@ -381,7 +381,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(12, 12, 200, 100, 60),
+            Sprite.ColoredRect(12, 12, new Color3(200, 100, 60)),
             new Velocity(GameConfig.BanditSpeed),
             new Health(GameConfig.BanditBaseHull * hullMultiplier),
             new SurfaceAI

@@ -94,21 +94,21 @@ public class StarshipMenuOverlay : OverlayBase
         var renderer = game.SpriteRenderer;
 
         // Dim background
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 160);
+        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 160));
 
         // Panel
         float panelW = 500;
         float panelH = 320;
         float panelX = GameConfig.WindowWidth / 2f - panelW / 2f;
         float panelY = GameConfig.WindowHeight / 2f - panelH / 2f - 20;
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 10, 12, 30, 220);
-        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, 20, 24, 50, 200);
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(10, 12, 30, 220));
+        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, new Color4(20, 24, 50, 200));
 
         // Title
         string title = "STARSHIP";
         float titleScale = 3f;
         float titleW = renderer.MeasureText(title, titleScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, panelY + 15, title, 100, 200, 255, titleScale);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, panelY + 15, title, new Color3(100, 200, 255), titleScale);
 
         // Menu
         float menuCenterX = GameConfig.WindowWidth / 2f;

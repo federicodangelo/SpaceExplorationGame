@@ -28,17 +28,17 @@ public static class ProjectileRenderer
                 var trailEnd = pos - dir * 8f;
 
                 // Main beam
-                renderer.DrawLine(camera, trailEnd, pos, proj.R, proj.G, proj.B, 255);
+                renderer.DrawLine(camera, trailEnd, pos, proj.Color);
 
                 // Glow core (brighter, slightly offset lines)
                 var perp = new Vector2(-dir.Y, dir.X) * 0.8f;
-                renderer.DrawLine(camera, trailEnd + perp, pos + perp, proj.R, proj.G, proj.B, 140);
-                renderer.DrawLine(camera, trailEnd - perp, pos - perp, proj.R, proj.G, proj.B, 140);
+                renderer.DrawLine(camera, trailEnd + perp, pos + perp, proj.Color.WithAlpha(140));
+                renderer.DrawLine(camera, trailEnd - perp, pos - perp, proj.Color.WithAlpha(140));
             }
             else
             {
                 // Slow/stationary projectile: just a dot
-                renderer.DrawFilledCircle(camera, pos, 2f, proj.R, proj.G, proj.B, 255);
+                renderer.DrawFilledCircle(camera, pos, 2f, proj.Color);
             }
         });
     }
@@ -69,11 +69,11 @@ public static class ProjectileRenderer
 
             if (popup.ShieldHit)
             {
-                renderer.DrawText(camera, popup.Position, text, 80, 160, 255, 1.5f);
+                renderer.DrawText(camera, popup.Position, text, new Color3(80, 160, 255), 1.5f);
             }
             else
             {
-                renderer.DrawText(camera, popup.Position, text, 255, 200, 80, 1.5f);
+                renderer.DrawText(camera, popup.Position, text, new Color3(255, 200, 80), 1.5f);
             }
         }
     }
@@ -105,11 +105,11 @@ public static class ProjectileRenderer
 
             // Outer glow
             renderer.DrawFilledCircle(camera, explosion.Position, radius,
-                explosion.R, explosion.G, explosion.B, (byte)(alpha / 2));
+                explosion.Color.WithAlpha((byte)(alpha / 2)));
 
             // Inner core
             renderer.DrawFilledCircle(camera, explosion.Position, radius * 0.5f,
-                255, 255, 200, alpha);
+                new Color4(255, 255, 200, alpha));
 
             // Sparks
             if (progress < 0.5f)
@@ -123,7 +123,7 @@ public static class ProjectileRenderer
                         MathF.Cos(angle) * sparkRadius * progress,
                         MathF.Sin(angle) * sparkRadius * progress);
                     renderer.DrawFilledCircle(camera, sparkPos, 2f,
-                        255, (byte)(200 * (1 - progress)), 50, alpha);
+                        new Color4(255, (byte)(200 * (1 - progress)), 50, alpha));
                 }
             }
         }
@@ -156,14 +156,14 @@ public class Explosion
     public float Radius;
     public float Timer;
     public float MaxTime;
-    public byte R, G, B;
+    public Color3 Color;
 
-    public Explosion(Vector2 position, float radius, byte r, byte g, byte b, float duration = 0.6f)
+    public Explosion(Vector2 position, float radius, Color3 color, float duration = 0.6f)
     {
         Position = position;
         Radius = radius;
         Timer = duration;
         MaxTime = duration;
-        R = r; G = g; B = b;
+        Color = color;
     }
 }

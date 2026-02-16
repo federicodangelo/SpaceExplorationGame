@@ -76,9 +76,10 @@ public class GalaxyMapOverlay : OverlayBase
                 nebRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
                 nebRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
                 nebRng.NextFloat(200, 600),
-                ci == 0 ? choices[0] : (byte)10,
-                ci == 1 ? choices[1] : (byte)10,
-                ci == 2 ? choices[2] : (byte)15
+                new Color3(
+                    ci == 0 ? choices[0] : (byte)10,
+                    ci == 1 ? choices[1] : (byte)10,
+                    ci == 2 ? choices[2] : (byte)15)
             ));
         }
 
@@ -89,7 +90,7 @@ public class GalaxyMapOverlay : OverlayBase
         {
             int texSize = Math.Max(12, (int)(system.StarRadius * 4));
             _starTextures.Add(game.StarRenderer.CreateTexture(
-                texSize, system.StarR, system.StarG, system.StarB));
+                texSize, system.StarColor));
         }
 
         // Select current system and center camera on it
@@ -318,7 +319,7 @@ public class GalaxyMapOverlay : OverlayBase
         var camera = game.Camera;
 
         // Dark background to cover the solar system
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 240);
+        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 240));
 
         // Draw background stars
         foreach (var (x, y, brightness) in _backgroundStars)
@@ -329,16 +330,16 @@ public class GalaxyMapOverlay : OverlayBase
             {
                 renderer.DrawRectScreen(screenPos.X, screenPos.Y,
                     Math.Max(1, camera.Zoom), Math.Max(1, camera.Zoom),
-                    brightness, brightness, brightness);
+                    new Color3(brightness, brightness, brightness));
             }
         }
 
         // Draw nebula clouds
-        foreach (var (nx, ny, nr, nrr, ng, nb) in _nebulae)
+        foreach (var (nx, ny, nr, nColor) in _nebulae)
         {
-            renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nrr, ng, nb, 20);
-            renderer.DrawFilledCircle(camera, new Vector2(nx + nr * 0.3f, ny - nr * 0.2f), nr * 0.7f, nrr, ng, nb, 15);
-            renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nrr, ng, nb, 10);
+            renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nColor.WithAlpha(20));
+            renderer.DrawFilledCircle(camera, new Vector2(nx + nr * 0.3f, ny - nr * 0.2f), nr * 0.7f, nColor.WithAlpha(15));
+            renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nColor.WithAlpha(10));
         }
 
         // Draw FTL range circle around player's current system
@@ -348,12 +349,12 @@ public class GalaxyMapOverlay : OverlayBase
             var playerPos = _starSystems[currentSys].GalaxyPosition;
             float ftlRange = GetFtlRange(game);
             renderer.DrawCircle(camera, playerPos, ftlRange,
-                40, 80, 40, 200, 64);
+                new Color4(40, 80, 40, 200), 64);
             float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
             if (fuelRange < ftlRange)
             {
                 renderer.DrawCircle(camera, playerPos, fuelRange,
-                    80, 160, 200, 80);
+                    new Color4(80, 160, 200, 80));
             }
         }
 
@@ -384,7 +385,7 @@ public class GalaxyMapOverlay : OverlayBase
             if (inRange && !reachable && !isCurrentSystem)
             {
                 renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f,
-                    255, 40, 40, 60);
+                    new Color4(255, 40, 40, 60));
             }
 
             if (isSelected)
@@ -392,14 +393,14 @@ public class GalaxyMapOverlay : OverlayBase
                 byte ringR = reachable || isCurrentSystem ? (byte)255 : (byte)255;
                 byte ringG = reachable || isCurrentSystem ? (byte)255 : (byte)80;
                 byte ringB = reachable || isCurrentSystem ? (byte)255 : (byte)80;
-                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, ringR, ringG, ringB);
+                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, new Color3(ringR, ringG, ringB));
             }
 
             float textScale = Math.Max(1f, camera.Zoom);
             byte labelBright = (byte)(inRange ? 200 : 80);
             renderer.DrawText(camera,
                 sys.GalaxyPosition + new Vector2(0, radius + 12),
-                sys.Name, labelBright, labelBright, labelBright, textScale);
+                sys.Name, new Color3(labelBright, labelBright, labelBright), textScale);
         }
 
         // Draw player location marker
@@ -407,22 +408,22 @@ public class GalaxyMapOverlay : OverlayBase
         {
             var playerSys = _starSystems[game.Player.CurrentStarSystemIndex];
             renderer.DrawCircle(camera, playerSys.GalaxyPosition,
-                playerSys.StarRadius + 10, 0, 255, 100);
+                playerSys.StarRadius + 10, new Color3(0, 255, 100));
         }
 
         // HUD background
-        renderer.DrawRectScreen(0, 0, 260, 115, 0, 0, 0, 160);
+        renderer.DrawRectScreen(0, 0, 260, 115, new Color4(0, 0, 0, 160));
 
         // HUD
-        renderer.DrawTextScreen(10, 10, "GALAXY MAP", 200, 200, 255, 2f);
-        renderer.DrawTextScreen(10, 35, $"SEED: {game.Seeds.GalaxySeed}", 150, 150, 150, 1.5f);
-        renderer.DrawTextScreen(10, 55, $"SYSTEMS: {_starSystems.Count}", 150, 150, 150, 1.5f);
+        renderer.DrawTextScreen(10, 10, "GALAXY MAP", new Color3(200, 200, 255), 2f);
+        renderer.DrawTextScreen(10, 35, $"SEED: {game.Seeds.GalaxySeed}", new Color3(150, 150, 150), 1.5f);
+        renderer.DrawTextScreen(10, 55, $"SYSTEMS: {_starSystems.Count}", new Color3(150, 150, 150), 1.5f);
 
         // Fuel gauge
-        renderer.DrawTextScreen(10, 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", 100, 200, 255, 1.5f);
+        renderer.DrawTextScreen(10, 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
         float fuelBarW = 200;
-        renderer.DrawRectScreen(10, 95, fuelBarW, 10, 40, 40, 40);
-        renderer.DrawRectScreen(10, 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, 100, 200, 255);
+        renderer.DrawRectScreen(10, 95, fuelBarW, 10, new Color3(40, 40, 40));
+        renderer.DrawRectScreen(10, 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, new Color3(100, 200, 255));
 
         if (_selectedSystemIndex >= 0)
         {
@@ -434,49 +435,49 @@ public class GalaxyMapOverlay : OverlayBase
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
             float panelY = GameConfig.WindowHeight - 180;
-            renderer.DrawRectScreen(0, panelY, 420, 180, 10, 10, 30, 200);
-            renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", 255, 255, 255, 2f);
-            renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", 200, 200, 200, 1.5f);
-            renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", 200, 200, 200, 1.5f);
-            renderer.DrawTextScreen(10, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", 200, 200, 200, 1.5f);
+            renderer.DrawRectScreen(0, panelY, 420, 180, new Color4(10, 10, 30, 200));
+            renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", new Color3(255, 255, 255), 2f);
+            renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(10, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", new Color3(200, 200, 200), 1.5f);
 
             // Danger level with color coding
             string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)} ({sys.DangerLevel}/5)";
             byte dangerR = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)255 : (byte)255;
             byte dangerG = sys.DangerLevel <= 2 ? (byte)255 : sys.DangerLevel <= 3 ? (byte)200 : (byte)80;
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
-            renderer.DrawTextScreen(10, panelY + 95, dangerText, dangerR, dangerG, dangerB, 1.5f);
+            renderer.DrawTextScreen(10, panelY + 95, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
 
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(10, panelY + 115, "YOU ARE HERE", 100, 255, 200, 1.5f);
-                renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] CLOSE MAP", 100, 255, 100, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(10, panelY + 135, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
             }
             else
             {
-                renderer.DrawTextScreen(10, panelY + 115, $"DISTANCE: {distance:F0}", 200, 200, 200, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 115, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(10, panelY + 135, $"FUEL COST: {fuelCost:F1}", fuelR, fuelG, fuelB, 1.5f);
+                renderer.DrawTextScreen(10, panelY + 135, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(10, panelY + 155, "OUT OF FTL RANGE", 255, 80, 80, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(10, panelY + 155, "NOT ENOUGH FUEL", 255, 80, 80, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
                 else
-                    renderer.DrawTextScreen(10, panelY + 155, "[ENTER/DBLCLICK] TRAVEL", 100, 255, 100, 1.5f);
+                    renderer.DrawTextScreen(10, panelY + 155, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
             }
         }
 
         // Controls help background
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, 5, 310, 110, 0, 0, 0, 160);
+        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, 5, 310, 110, new Color4(0, 0, 0, 160));
 
         // Controls help
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 10, "WASD/ARROWS/DRAG: PAN", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", 180, 180, 180, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "M/ESC: CLOSE MAP", 180, 180, 180, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 10, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "M/ESC: CLOSE MAP", new Color3(180, 180, 180), 1.5f);
     }
 }

@@ -41,13 +41,13 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a filled rectangle in world space (transformed by camera).</summary>
-    public void DrawRect(Camera camera, Vector2 worldPos, int width, int height, byte r, byte g, byte b, byte a = 255)
+    public void DrawRect(Camera camera, Vector2 worldPos, int width, int height, Color4 color)
     {
         var screenPos = camera.WorldToScreen(worldPos);
         var scaledW = width * camera.Zoom;
         var scaledH = height * camera.Zoom;
 
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         var rect = new SDL.FRect
         {
             X = screenPos.X - scaledW / 2f,
@@ -59,20 +59,20 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a filled rectangle directly in screen space.</summary>
-    public void DrawRectScreen(float x, float y, float w, float h, byte r, byte g, byte b, byte a = 255)
+    public void DrawRectScreen(float x, float y, float w, float h, Color4 color)
     {
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         var rect = new SDL.FRect { X = x, Y = y, W = w, H = h };
         SDL.RenderFillRect(_renderer, in rect);
     }
 
     /// <summary>Draw a circle outline in world space (using line segments).</summary>
-    public void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, byte r, byte g, byte b, byte a = 255, int segments = 32)
+    public void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
     {
         var center = camera.WorldToScreen(worldCenter);
         var radius = worldRadius * camera.Zoom;
 
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
 
         float angleStep = MathF.PI * 2f / segments;
         for (int i = 0; i < segments; i++)
@@ -88,12 +88,12 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a filled circle in world space.</summary>
-    public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius, byte r, byte g, byte b, byte a = 255)
+    public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color)
     {
         var center = camera.WorldToScreen(worldCenter);
         var radius = worldRadius * camera.Zoom;
 
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
 
         // Simple scanline fill
         for (int y = (int)(-radius); y <= (int)radius; y++)
@@ -106,32 +106,32 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a line in world space.</summary>
-    public void DrawLine(Camera camera, Vector2 worldStart, Vector2 worldEnd, byte r, byte g, byte b, byte a = 255)
+    public void DrawLine(Camera camera, Vector2 worldStart, Vector2 worldEnd, Color4 color)
     {
         var start = camera.WorldToScreen(worldStart);
         var end = camera.WorldToScreen(worldEnd);
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         SDL.RenderLine(_renderer, start.X, start.Y, end.X, end.Y);
     }
 
     /// <summary>Draw a line directly in screen space.</summary>
-    public void DrawLineScreen(float x1, float y1, float x2, float y2, byte r, byte g, byte b, byte a = 255)
+    public void DrawLineScreen(float x1, float y1, float x2, float y2, Color4 color)
     {
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         SDL.RenderLine(_renderer, x1, y1, x2, y2);
     }
 
     /// <summary>Draw text as simple pixel blocks (very basic bitmap font).</summary>
-    public void DrawText(Camera camera, Vector2 worldPos, string text, byte r, byte g, byte b, float scale = 1f)
+    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f)
     {
         var screenPos = camera.WorldToScreen(worldPos);
-        DrawTextScreen(screenPos.X, screenPos.Y, text, r, g, b, scale);
+        DrawTextScreen(screenPos.X, screenPos.Y, text, color, scale);
     }
 
     /// <summary>Draw text in screen space using a minimal built-in pixel font.</summary>
-    public void DrawTextScreen(float x, float y, string text, byte r, byte g, byte b, float scale = 1f)
+    public void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f)
     {
-        SDL.SetRenderDrawColor(_renderer, r, g, b, 255);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         float cursorX = x;
         float charWidth = 6 * scale;
         float charHeight = 8 * scale;
@@ -240,9 +240,9 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a filled circle in screen space.</summary>
-    public void DrawFilledCircleScreen(float cx, float cy, float radius, byte r, byte g, byte b, byte a = 255)
+    public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color)
     {
-        SDL.SetRenderDrawColor(_renderer, r, g, b, a);
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         for (int y = (int)(-radius); y <= (int)radius; y++)
         {
             float x = MathF.Sqrt(radius * radius - y * y);

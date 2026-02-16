@@ -49,9 +49,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         ProcessEnemyAIQuery(World);
 
         // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, faction, r, g, b) in _pendingProjectiles)
+        foreach (var (pos, dir, damage, speed, faction, color) in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, r, g, b);
+            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color);
         }
     }
 
@@ -361,7 +361,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         var spawnPos = origin + direction * 20f;
 
         // Color by faction
-        var (r, g, b) = faction switch
+        var color = faction switch
         {
             Faction.Pirate => new Color3(255, 80, 80),     // Red
             Faction.Patrol => new Color3(80, 200, 255),    // Blue
@@ -369,7 +369,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             _ => new Color3(255, 255, 255)
         };
 
-        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, faction, r, g, b));
+        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, faction, color));
     }
 
     private void ClampToMap(ref Transform transform)

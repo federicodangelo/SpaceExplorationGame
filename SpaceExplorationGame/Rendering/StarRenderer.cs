@@ -19,8 +19,9 @@ public class StarRenderer : IDisposable
     }
 
     /// <summary>Creates a star texture with glow gradient. The texture is tracked for later cleanup.</summary>
-    public nint CreateTexture(int size, byte r, byte g, byte b)
+    public nint CreateTexture(int size, Color3 color)
     {
+        var (r, g, b) = color;
         var pixels = new byte[size * size * 4];
         float center = size / 2f;
         float coreRadius = size * 0.2f;

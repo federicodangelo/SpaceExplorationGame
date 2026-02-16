@@ -26,7 +26,7 @@ public static class PlanetSurfaceRenderer
                     byte dg = (byte)Math.Clamp(g + 30, 0, 255);
                     byte db = (byte)Math.Clamp(b - 10, 0, 255);
                     renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
-                        6, 6, dr, dg, db);
+                        6, 6, new Color3(dr, dg, db));
                 }
                 else if (terrain == TerrainType.Rock && (hash & 0xF) == 0)
                 {
@@ -34,7 +34,7 @@ public static class PlanetSurfaceRenderer
                     byte dg = (byte)Math.Clamp(g + 15, 0, 255);
                     byte db = (byte)Math.Clamp(b + 10, 0, 255);
                     renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 8) & 0xF) - 8, ((hash >> 12) & 0xF) - 8),
-                        4, 4, dr, dg, db);
+                        4, 4, new Color3(dr, dg, db));
                 }
                 else if (terrain == TerrainType.Water && (hash & 0x3) == 0)
                 {
@@ -42,7 +42,7 @@ public static class PlanetSurfaceRenderer
                     byte wg = (byte)Math.Clamp(g + 30, 0, 255);
                     byte wb = (byte)Math.Clamp(b + 40, 0, 255);
                     renderer.DrawRect(camera, worldPos + new Vector2(((hash >> 4) & 0xF) - 8, ((hash >> 8) & 0x7) - 4),
-                        8, 2, wr, wg, wb, 100);
+                        8, 2, new Color4(wr, wg, wb, 100));
                 }
             });
     }

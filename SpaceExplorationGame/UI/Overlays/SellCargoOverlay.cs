@@ -93,7 +93,7 @@ public class SellCargoOverlay : OverlayBase
         int h = GameConfig.WindowHeight;
 
         // Semi-transparent background
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 150);
+        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 150));
 
         var cargoKeys = GetCargoKeys(game.Player);
         int itemCount = cargoKeys.Length;
@@ -104,24 +104,24 @@ public class SellCargoOverlay : OverlayBase
         float panelY = h / 2f - panelH / 2f;
 
         // Panel border
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 15, 15, 35, 245);
+        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
 
         // Title
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, "CARGO TERMINAL", 255, 220, 80, 2.5f);
-        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, 60, 60, 100);
+        renderer.DrawTextScreen(panelX + 15, panelY + 10, "CARGO TERMINAL", new Color3(255, 220, 80), 2.5f);
+        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, new Color3(60, 60, 100));
 
         // Credits
-        renderer.DrawTextScreen(panelX + 15, panelY + 55, $"CREDITS: {game.Player.Credits}", 255, 220, 80, 2f);
-        renderer.DrawTextScreen(panelX + 15, panelY + 80, $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", 200, 180, 100, 1.5f);
+        renderer.DrawTextScreen(panelX + 15, panelY + 55, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
+        renderer.DrawTextScreen(panelX + 15, panelY + 80, $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(200, 180, 100), 1.5f);
 
-        renderer.DrawLineScreen(panelX + 15, panelY + 100, panelX + panelW - 15, panelY + 100, 60, 60, 100);
+        renderer.DrawLineScreen(panelX + 15, panelY + 100, panelX + panelW - 15, panelY + 100, new Color3(60, 60, 100));
 
         float listY = panelY + 110;
 
         if (itemCount == 0)
         {
-            renderer.DrawTextScreen(panelX + 20, listY, "CARGO HOLD EMPTY", 120, 120, 150, 2f);
+            renderer.DrawTextScreen(panelX + 20, listY, "CARGO HOLD EMPTY", new Color3(120, 120, 150), 2f);
         }
         else
         {
@@ -134,18 +134,18 @@ public class SellCargoOverlay : OverlayBase
 
                 bool selected = i == _selectedIndex;
                 if (selected)
-                    renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 24, 40, 40, 80, 200);
+                    renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 24, new Color4(40, 40, 80, 200));
 
-                byte tr = selected ? (byte)255 : resInfo.R;
-                byte tg = selected ? (byte)255 : resInfo.G;
-                byte tb = selected ? (byte)255 : resInfo.B;
+                byte tr = selected ? (byte)255 : resInfo.Color.R;
+                byte tg = selected ? (byte)255 : resInfo.Color.G;
+                byte tb = selected ? (byte)255 : resInfo.Color.B;
 
-                renderer.DrawTextScreen(panelX + 20, listY + 2, $"{resInfo.Name.ToUpper()}", tr, tg, tb, 1.8f);
-                renderer.DrawTextScreen(panelX + 180, listY + 2, $"x{amount}", 200, 200, 200, 1.8f);
-                renderer.DrawTextScreen(panelX + 280, listY + 2, $"= {value} CR", 255, 220, 80, 1.8f);
+                renderer.DrawTextScreen(panelX + 20, listY + 2, $"{resInfo.Name.ToUpper()}", new Color3(tr, tg, tb), 1.8f);
+                renderer.DrawTextScreen(panelX + 180, listY + 2, $"x{amount}", new Color3(200, 200, 200), 1.8f);
+                renderer.DrawTextScreen(panelX + 280, listY + 2, $"= {value} CR", new Color3(255, 220, 80), 1.8f);
 
                 if (selected)
-                    renderer.DrawTextScreen(panelX + panelW - 80, listY + 2, "[SELL]", 100, 255, 100, 1.5f);
+                    renderer.DrawTextScreen(panelX + panelW - 80, listY + 2, "[SELL]", new Color3(100, 255, 100), 1.5f);
 
                 listY += 26;
             }
@@ -154,7 +154,7 @@ public class SellCargoOverlay : OverlayBase
             listY += 10;
             bool sellAllSelected = _selectedIndex == itemCount;
             if (sellAllSelected)
-                renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 28, 40, 60, 40, 200);
+                renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 28, new Color4(40, 60, 40, 200));
 
             int totalValue = 0;
             foreach (var (resource, amount) in game.Player.Cargo)
@@ -163,18 +163,18 @@ public class SellCargoOverlay : OverlayBase
             byte sr = sellAllSelected ? (byte)100 : (byte)180;
             byte sg = sellAllSelected ? (byte)255 : (byte)180;
             byte sb = sellAllSelected ? (byte)100 : (byte)180;
-            renderer.DrawTextScreen(panelX + 20, listY + 2, $"SELL ALL ({totalValue} CREDITS)", sr, sg, sb, 2f);
+            renderer.DrawTextScreen(panelX + 20, listY + 2, $"SELL ALL ({totalValue} CREDITS)", new Color3(sr, sg, sb), 2f);
         }
 
         // Status message
         if (_statusMessage != null)
         {
             float smY = panelY + panelH - 50;
-            renderer.DrawTextScreen(panelX + 20, smY, _statusMessage, 100, 255, 100, 2f);
+            renderer.DrawTextScreen(panelX + 20, smY, _statusMessage, new Color3(100, 255, 100), 2f);
         }
 
         // Close hint
-        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "UP/DOWN: SELECT  ENTER: SELL  ESC: CLOSE", 100, 100, 130, 1.5f);
+        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "UP/DOWN: SELECT  ENTER: SELL  ESC: CLOSE", new Color3(100, 100, 130), 1.5f);
     }
 
     private static ResourceType[] GetCargoKeys(PlayerData player)

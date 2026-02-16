@@ -61,7 +61,7 @@ public class MissionOverlay : OverlayBase
         int h = GameConfig.WindowHeight;
 
         // Semi-transparent background
-        renderer.DrawRectScreen(0, 0, w, h, 0, 0, 0, 150);
+        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 150));
 
         float panelW = 500;
         float panelH = 400;
@@ -69,13 +69,13 @@ public class MissionOverlay : OverlayBase
         float panelY = h / 2f - panelH / 2f;
 
         // Panel border
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 15, 15, 35, 245);
+        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
 
         // Title
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, "MISSION BOARD", 100, 180, 255, 2.5f);
+        renderer.DrawTextScreen(panelX + 15, panelY + 10, "MISSION BOARD", new Color3(100, 180, 255), 2.5f);
 
-        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, 60, 60, 100);
+        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, new Color3(60, 60, 100));
 
         var options = _missionMenu.Options;
         for (int i = 0; i < options.Count; i++)
@@ -84,19 +84,20 @@ public class MissionOverlay : OverlayBase
             bool selected = _missionMenu.IsSelected(options[i].Value);
 
             if (selected)
-                renderer.DrawRectScreen(panelX + 5, optY - 5, panelW - 10, 60, 40, 40, 70);
+                renderer.DrawRectScreen(panelX + 5, optY - 5, panelW - 10, 60, new Color3(40, 40, 70));
 
             renderer.DrawTextScreen(panelX + 20, optY,
                 selected ? $"> {options[i].Label}" : $"  {options[i].Label}",
-                selected ? (byte)255 : (byte)180,
-                selected ? (byte)255 : (byte)180,
-                selected ? (byte)200 : (byte)200, 2f);
+                new Color3(
+                    selected ? (byte)255 : (byte)180,
+                    selected ? (byte)255 : (byte)180,
+                    selected ? (byte)200 : (byte)200), 2f);
 
-            renderer.DrawTextScreen(panelX + 30, optY + 25, options[i].Description ?? "", 130, 130, 150, 1.5f);
-            renderer.DrawTextScreen(panelX + 30, optY + 43, "[COMING SOON]", 100, 100, 120, 1.2f);
+            renderer.DrawTextScreen(panelX + 30, optY + 25, options[i].Description ?? "", new Color3(130, 130, 150), 1.5f);
+            renderer.DrawTextScreen(panelX + 30, optY + 43, "[COMING SOON]", new Color3(100, 100, 120), 1.2f);
         }
 
         // Close hint
-        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "ESC: CLOSE", 100, 100, 130, 1.5f);
+        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "ESC: CLOSE", new Color3(100, 100, 130), 1.5f);
     }
 }

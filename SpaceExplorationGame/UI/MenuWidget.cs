@@ -143,12 +143,12 @@ public class MenuWidget<T> where T : struct, Enum
             bool sel = i == _selected;
             bool enabled = _options[i].Enabled;
             float scale = sel ? SelectedScale : NormalScale;
-            var (cr, cg, cb) = !enabled ? DisabledColor : sel ? SelectedColor : NormalColor;
+            var c = !enabled ? DisabledColor : sel ? SelectedColor : NormalColor;
             string label = _options[i].Label;
 
             // Selection highlight (only for enabled items)
             if (sel && enabled)
-                renderer.DrawRectScreen(x, optY - 5, width, ItemHeight - 10, HighlightBg.R, HighlightBg.G, HighlightBg.B, HighlightAlpha);
+                renderer.DrawRectScreen(x, optY - 5, width, ItemHeight - 10, HighlightBg.WithAlpha(HighlightAlpha));
 
             if (CenterAlign)
             {
@@ -157,13 +157,13 @@ public class MenuWidget<T> where T : struct, Enum
                 {
                     float textW = renderer.MeasureText(label, scale);
                     float textX = x + width / 2f - textW / 2f;
-                    renderer.DrawTextScreen(textX - renderer.MeasureText("> ", scale), optY, ">", cr, cg, cb, scale);
-                    renderer.DrawTextScreen(textX, optY, label, cr, cg, cb, scale);
+                    renderer.DrawTextScreen(textX - renderer.MeasureText("> ", scale), optY, ">", c, scale);
+                    renderer.DrawTextScreen(textX, optY, label, c, scale);
                 }
                 else
                 {
                     float textW = renderer.MeasureText(label, scale);
-                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, optY, label, cr, cg, cb, scale);
+                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, optY, label, c, scale);
                 }
             }
             else
@@ -171,7 +171,7 @@ public class MenuWidget<T> where T : struct, Enum
                 // Left-aligned with > prefix
                 string displayLabel = sel ? $"> {label}" : label;
                 float textX = sel ? x + 10 : x + 20;
-                renderer.DrawTextScreen(textX, optY, displayLabel, cr, cg, cb, scale);
+                renderer.DrawTextScreen(textX, optY, displayLabel, c, scale);
             }
 
             // Disabled hint text (shown below the label within the same item area)
@@ -182,12 +182,12 @@ public class MenuWidget<T> where T : struct, Enum
                 {
                     float hintW = renderer.MeasureText(hint, DisabledHintScale);
                     renderer.DrawTextScreen(x + width / 2f - hintW / 2f, optY + scale * 8 + 4, hint,
-                        DisabledHintColor.R, DisabledHintColor.G, DisabledHintColor.B, DisabledHintScale);
+                        DisabledHintColor, DisabledHintScale);
                 }
                 else
                 {
                     renderer.DrawTextScreen(x + 20, optY + scale * 8 + 4, hint,
-                        DisabledHintColor.R, DisabledHintColor.G, DisabledHintColor.B, DisabledHintScale);
+                        DisabledHintColor, DisabledHintScale);
                 }
             }
         }
@@ -200,12 +200,12 @@ public class MenuWidget<T> where T : struct, Enum
             if (CenterAlign)
             {
                 float descW = renderer.MeasureText(description, DescriptionScale);
-                renderer.DrawRectScreen(x + width / 2f - descW / 2f - 8, descY - 4, descW + 16, 22, 0, 0, 0, 160);
-                renderer.DrawTextScreen(x + width / 2f - descW / 2f, descY, description, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
+                renderer.DrawRectScreen(x + width / 2f - descW / 2f - 8, descY - 4, descW + 16, 22, new Color4(0, 0, 0, 160));
+                renderer.DrawTextScreen(x + width / 2f - descW / 2f, descY, description, DescriptionColor, DescriptionScale);
             }
             else
             {
-                renderer.DrawTextScreen(x + 20, descY, description, DescriptionColor.R, DescriptionColor.G, DescriptionColor.B, DescriptionScale);
+                renderer.DrawTextScreen(x + 20, descY, description, DescriptionColor, DescriptionScale);
             }
         }
     }

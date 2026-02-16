@@ -68,9 +68,7 @@ public class InteriorNpc
     public int TileX { get; set; }
     public int TileY { get; set; }
     public string[] DialogueLines { get; set; } = [];
-    public byte R { get; set; } = 100;
-    public byte G { get; set; } = 200;
-    public byte B { get; set; } = 255;
+    public Color3 Color { get; set; } = new(100, 200, 255);
 }
 
 /// <summary>
@@ -692,7 +690,7 @@ public static class InteriorGenerator
         if (tradingRoom != null)
         {
             data.Npcs.Add(CreateNpc(rng, "TRADER", tradingRoom.CenterX - 1, tradingRoom.CenterY,
-                TraderDialogue, 255, 220, 80));
+                TraderDialogue, new Color3(255, 220, 80)));
         }
 
         // Mechanic in docking bay
@@ -700,7 +698,7 @@ public static class InteriorGenerator
         if (dockingRoom != null)
         {
             data.Npcs.Add(CreateNpc(rng, "MECHANIC", dockingRoom.X + 2, dockingRoom.CenterY + 1,
-                MechanicDialogue, 200, 150, 100));
+                MechanicDialogue, new Color3(200, 150, 100)));
         }
 
         // Medic in medbay
@@ -708,7 +706,7 @@ public static class InteriorGenerator
         if (medbayRoom != null)
         {
             data.Npcs.Add(CreateNpc(rng, "MEDIC", medbayRoom.CenterX + 1, medbayRoom.CenterY,
-                MedicDialogue, 100, 220, 200));
+                MedicDialogue, new Color3(100, 220, 200)));
         }
 
         // Commander in command center
@@ -716,7 +714,7 @@ public static class InteriorGenerator
         if (commandRoom != null)
         {
             data.Npcs.Add(CreateNpc(rng, "COMMANDER", commandRoom.CenterX, commandRoom.CenterY + 1,
-                CommanderDialogue, 100, 200, 255));
+                CommanderDialogue, new Color3(100, 200, 255)));
         }
 
         // 2-4 random civilians in various rooms
@@ -730,7 +728,7 @@ public static class InteriorGenerator
             if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
                 data.Npcs.Add(CreateNpc(rng, "CIVILIAN", nx, ny,
-                    CivilianDialogue, (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220)));
+                    CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));
             }
         }
     }
@@ -742,7 +740,7 @@ public static class InteriorGenerator
         if (marketRoom != null)
         {
             data.Npcs.Add(CreateNpc(rng, "TRADER", marketRoom.CenterX - 1, marketRoom.CenterY,
-                TraderDialogue, 255, 220, 80));
+                TraderDialogue, new Color3(255, 220, 80)));
         }
 
         // Bartender in cantina
@@ -755,7 +753,7 @@ public static class InteriorGenerator
                     "You look like you've had a long journey.",
                     "The local brew is... an acquired taste.",
                     "Take a seat. Or don't. I get paid either way."
-                ], 200, 100, 150));
+                ], new Color3(200, 100, 150)));
         }
 
         // Comms officer
@@ -767,7 +765,7 @@ public static class InteriorGenerator
                     "Signals are weak out here. Atmospheric interference.",
                     "I monitor all frequencies. Nothing gets past me.",
                     "We got a distress call last week. Turned out to be nothing."
-                ], 100, 255, 200));
+                ], new Color3(100, 255, 200)));
         }
 
         // Random civilians
@@ -781,13 +779,13 @@ public static class InteriorGenerator
             if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
                 data.Npcs.Add(CreateNpc(rng, "SETTLER", nx, ny,
-                    CivilianDialogue, (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220)));
+                    CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));
             }
         }
     }
 
     private static InteriorNpc CreateNpc(SeededRandom rng, string role, int x, int y,
-        string[] dialoguePool, byte r, byte g, byte b)
+        string[] dialoguePool, Color3 color)
     {
         string firstName = rng.Pick(FirstNames);
         string lastName = rng.Pick(LastNames);
@@ -802,7 +800,7 @@ public static class InteriorGenerator
             TileX = x,
             TileY = y,
             DialogueLines = lines,
-            R = r, G = g, B = b
+            Color = color
         };
     }
 

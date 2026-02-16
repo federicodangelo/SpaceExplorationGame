@@ -52,7 +52,7 @@ public static class TileMapRenderer
                     x * GameConfig.TileSize + GameConfig.TileSize / 2f,
                     y * GameConfig.TileSize + GameConfig.TileSize / 2f);
 
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, vr, vg, vb);
+                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, new Color3(vr, vg, vb));
 
                 renderDetail?.Invoke(x, y, worldPos, hash);
             }

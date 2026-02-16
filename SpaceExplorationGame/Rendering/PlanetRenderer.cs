@@ -23,8 +23,9 @@ public class PlanetRenderer : IDisposable
     }
 
     /// <summary>Creates a planet texture with shading and surface detail. The texture is tracked for later cleanup.</summary>
-    public nint CreateTexture(int size, byte r, byte g, byte b, uint detailSeed)
+    public nint CreateTexture(int size, Color3 color, uint detailSeed)
     {
+        var (r, g, b) = color;
         var pixels = new byte[size * size * 4]; // RGBA
         float center = size / 2f;
         float radius = size / 2f - 1;
@@ -133,22 +134,22 @@ public class PlanetRenderer : IDisposable
             if (p.HasSettlement)
             {
                 var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
-                renderer.DrawFilledCircle(camera, indicatorPos, 3f, 255, 210, 200, 220);
+                renderer.DrawFilledCircle(camera, indicatorPos, 3f, new Color4(255, 210, 200, 220));
             }
 
             // Rings
             if (p.HasRings)
             {
                 renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.5f,
-                    p.R, p.G, p.B, 120, 48);
+                    p.Color.WithAlpha(120), 48);
                 renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.8f,
-                    p.R, p.G, p.B, 80, 48);
+                    p.Color.WithAlpha(80), 48);
             }
 
             // Moon orbit lines
             foreach (var moon in p.Moons)
             {
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, 20, 20, 40, 255, 24);
+                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, new Color3(20, 20, 40), 24);
             }
 
             // Moon textures

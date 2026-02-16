@@ -128,7 +128,7 @@ public class SolarSystemState : GameState
         // Create star entity (doubled for solar system view)
         float starDisplayRadius = _starSystem.StarRadius * 2f;
         _starEntity = EntityFactory.CreateStar(game.EcsWorld, center, starDisplayRadius,
-            _starSystem.Name, _starSystem.StarR, _starSystem.StarG, _starSystem.StarB, _starSystem.Index);
+            _starSystem.Name, _starSystem.StarColor, _starSystem.Index);
 
         // Create planet entities — compute positions from global time
         _planetEntities.Clear();
@@ -143,7 +143,7 @@ public class SolarSystemState : GameState
             );
 
             var planetEntity = EntityFactory.CreatePlanet(game.EcsWorld, pos, _starEntity,
-                planet.Name, planet.Radius, planet.R, planet.G, planet.B,
+                planet.Name, planet.Radius, planet.Color,
                 planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle,
                 i, planet.HasSolidSurface);
 
@@ -160,7 +160,7 @@ public class SolarSystemState : GameState
                 );
 
                 var moonEntity = EntityFactory.CreateMoon(game.EcsWorld, moonPos, planetEntity,
-                    moon.Name, moon.Radius, moon.R, moon.G, moon.B,
+                    moon.Name, moon.Radius, moon.Color,
                     moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
                 moons.Add(moonEntity);
             }
@@ -287,7 +287,7 @@ public class SolarSystemState : GameState
         int starTexSize = (int)(_starSystem.StarRadius * 6);
         _starTexture = game.StarRenderer.CreateTexture(
             Math.Max(16, starTexSize),
-            _starSystem.StarR, _starSystem.StarG, _starSystem.StarB);
+            _starSystem.StarColor);
 
         _planetTextures.Clear();
         _moonTextures.Clear();
@@ -296,7 +296,7 @@ public class SolarSystemState : GameState
             var p = _planets[i];
             int texSize = Math.Max(8, (int)(p.Radius * 2) + 4);
             _planetTextures.Add(game.PlanetRenderer.CreateTexture(
-                texSize, p.R, p.G, p.B, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 7919))));
+                texSize, p.Color, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 7919))));
 
             var moonTexList = new List<nint>();
             for (int m = 0; m < p.Moons.Count; m++)
@@ -304,7 +304,7 @@ public class SolarSystemState : GameState
                 var moon = p.Moons[m];
                 int mTexSize = Math.Max(6, (int)(moon.Radius * 2) + 2);
                 moonTexList.Add(game.PlanetRenderer.CreateTexture(
-                    mTexSize, moon.R, moon.G, moon.B, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 1000 + m * 31))));
+                    mTexSize, moon.Color, (uint)(game.Seeds.GalaxySeed ^ (ulong)(i * 1000 + m * 31))));
             }
             _moonTextures.Add(moonTexList);
         }
@@ -672,7 +672,7 @@ public class SolarSystemState : GameState
                 var spawnPos = shipT.Position + dir * 20f;
 
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                    weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, 100, 255, 100);
+                    weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100));
             }
         }
 
@@ -707,7 +707,7 @@ public class SolarSystemState : GameState
             {
                 // Asteroid destroyed — collect resources
                 var asteroid = destroyed.Asteroid.Value;
-                _explosions.Add(new Explosion(destroyed.Position, 15f, 140, 120, 100, 0.5f));
+                _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
 
                 int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
                 var resInfo = ResourceCatalog.Get(asteroid.Resource);
@@ -742,7 +742,7 @@ public class SolarSystemState : GameState
                 byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
                 byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
                 byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
-                _explosions.Add(new Explosion(destroyed.Position, 30f, expR, expG, expB));
+                _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
 
                 if (destroyed.Loot.HasValue)
                 {
@@ -772,7 +772,7 @@ public class SolarSystemState : GameState
     {
         _playerDead = true;
         _respawnTimer = RespawnDelay;
-        _explosions.Add(new Explosion(deathPos, 50f, 255, 200, 80, 1.5f));
+        _explosions.Add(new Explosion(deathPos, 50f, new Color3(255, 200, 80), 1.5f));
 
         // Destroy the old player ship entity so CameraFollowSystem doesn't track it
         if (game.EcsWorld.IsAlive(_playerShip))
@@ -985,11 +985,11 @@ public class SolarSystemState : GameState
 
         // Mining feedback message
         if (_miningMessage != null)
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, 255, 220, 80, 2.5f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, new Color3(255, 220, 80), 2.5f);
 
         // Combat feedback message
         if (_combatMessage != null)
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, 255, 200, 80, 2f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, new Color3(255, 200, 80), 2f);
 
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,

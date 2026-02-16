@@ -26,7 +26,7 @@ public class VehicleRenderer : IDisposable
         renderer.DrawTexture(camera, _texture, position, VehicleSize, VehicleSize, rotation + 90f);
         if (!isMounted)
         {
-            renderer.DrawText(camera, position + new Vector2(-20, 14), "VEHICLE", 180, 160, 100);
+            renderer.DrawText(camera, position + new Vector2(-20, 14), "VEHICLE", new Color3(180, 160, 100));
         }
     }
 

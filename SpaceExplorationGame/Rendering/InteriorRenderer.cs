@@ -60,7 +60,7 @@ public static class InteriorRenderer
         Vector2 bgCenter, float bgW, float bgH, float bgLeft, float bgTop, float bgRight, float bgBottom)
     {
         // Space background: dark blue-black
-        renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, 4, 4, 12);
+        renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, new Color3(4, 4, 12));
 
         // Deterministic stars based on visible area
         int starGridSize = 60;
@@ -85,7 +85,7 @@ public static class InteriorRenderer
                 byte sb = (byte)Math.Min(255, bright + ((h >> 8) & 0x2F));
 
                 int starSize = ((h >> 20) & 1) == 0 ? 2 : 1;
-                renderer.DrawRect(camera, new Vector2(px, py), starSize, starSize, sr, sg, sb);
+                renderer.DrawRect(camera, new Vector2(px, py), starSize, starSize, new Color3(sr, sg, sb));
             }
         }
     }
@@ -94,11 +94,11 @@ public static class InteriorRenderer
         Vector2 bgCenter, float bgW, float bgH, float bgLeft, float bgTop, float bgRight, float bgBottom,
         PlanetData? planet)
     {
-        byte tr = (byte)((planet?.R ?? 80) * 0.4f);
-        byte tg = (byte)((planet?.G ?? 120) * 0.4f);
-        byte tb = (byte)((planet?.B ?? 60) * 0.4f);
+        byte tr = (byte)((planet?.Color.R ?? 80) * 0.4f);
+        byte tg = (byte)((planet?.Color.G ?? 120) * 0.4f);
+        byte tb = (byte)((planet?.Color.B ?? 60) * 0.4f);
 
-        renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, tr, tg, tb);
+        renderer.DrawRect(camera, bgCenter, (int)bgW, (int)bgH, new Color3(tr, tg, tb));
 
         // Terrain detail: scattered dots for ground texture
         int detailGridSize = 40;
@@ -122,7 +122,7 @@ public static class InteriorRenderer
                 byte dg = (byte)Math.Clamp(tg + var_, 0, 255);
                 byte db = (byte)Math.Clamp(tb + var_, 0, 255);
 
-                renderer.DrawRect(camera, new Vector2(px, py), 3, 3, dr, dg, db);
+                renderer.DrawRect(camera, new Vector2(px, py), 3, 3, new Color3(dr, dg, db));
             }
         }
     }
@@ -140,10 +140,11 @@ public static class InteriorRenderer
         byte lg = interior.Type == InteriorType.Station ? (byte)50 : (byte)45;
         byte lb = interior.Type == InteriorType.Station ? (byte)80 : (byte)35;
 
-        renderer.DrawLine(camera, tl, tr, lr, lg, lb);
-        renderer.DrawLine(camera, tr, br, lr, lg, lb);
-        renderer.DrawLine(camera, br, bl, lr, lg, lb);
-        renderer.DrawLine(camera, bl, tl, lr, lg, lb);
+        var lineColor = new Color3(lr, lg, lb);
+        renderer.DrawLine(camera, tl, tr, lineColor);
+        renderer.DrawLine(camera, tr, br, lineColor);
+        renderer.DrawLine(camera, br, bl, lineColor);
+        renderer.DrawLine(camera, bl, tl, lineColor);
     }
 
     /// <summary>Renders tiles using TileMapRenderer with interior-specific detail overlays.</summary>
@@ -167,7 +168,7 @@ public static class InteriorRenderer
                 {
                     var topEdge = new Vector2(x * GameConfig.TileSize + GameConfig.TileSize / 2f,
                                               y * GameConfig.TileSize + 2);
-                    renderer.DrawRect(camera, topEdge, GameConfig.TileSize, 2, 55, 55, 65);
+                    renderer.DrawRect(camera, topEdge, GameConfig.TileSize, 2, new Color3(55, 55, 65));
                 }
 
                 // Console glow
@@ -177,14 +178,14 @@ public static class InteriorRenderer
                     byte gr = (byte)(40 * pulse);
                     byte gg = (byte)(120 * pulse);
                     byte gb = (byte)(180 * pulse);
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 8, GameConfig.TileSize - 8, gr, gg, gb);
+                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 8, GameConfig.TileSize - 8, new Color3(gr, gg, gb));
                 }
 
                 // Crate detail: cross pattern
                 if (tile == InteriorTileType.Crate)
                 {
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 6, 2, 120, 100, 60);
-                    renderer.DrawRect(camera, worldPos, 2, GameConfig.TileSize - 6, 120, 100, 60);
+                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 6, 2, new Color3(120, 100, 60));
+                    renderer.DrawRect(camera, worldPos, 2, GameConfig.TileSize - 6, new Color3(120, 100, 60));
                 }
 
                 // Landing pad markings
@@ -192,7 +193,7 @@ public static class InteriorRenderer
                 {
                     if ((x + y) % 2 == 0)
                     {
-                        renderer.DrawRect(camera, worldPos, 4, 4, 80, 80, 40);
+                        renderer.DrawRect(camera, worldPos, 4, 4, new Color3(80, 80, 40));
                     }
                 }
             });
@@ -208,7 +209,7 @@ public static class InteriorRenderer
                 (room.X + room.Width / 2f) * GameConfig.TileSize - roomLabelW,
                 room.Y * GameConfig.TileSize - 8
             );
-            renderer.DrawText(camera, labelPos, room.Name, 120, 120, 160, 3f);
+            renderer.DrawText(camera, labelPos, room.Name, new Color3(120, 120, 160), 3f);
         }
     }
 
@@ -224,25 +225,25 @@ public static class InteriorRenderer
 
             // Shadow beneath feet
             var shadowPos = npcPos + new Vector2(0, 8);
-            renderer.DrawRect(camera, shadowPos, 12, 3, 0, 0, 0, 60);
+            renderer.DrawRect(camera, shadowPos, 12, 3, new Color4(0, 0, 0, 60));
 
             // Body
-            renderer.DrawRect(camera, npcPos, 10, 14, npc.R, npc.G, npc.B);
+            renderer.DrawRect(camera, npcPos, 10, 14, npc.Color);
 
             // Head circle approximation
             var headPos = npcPos - new Vector2(0, 8);
-            renderer.DrawRect(camera, headPos, 8, 8, (byte)Math.Min(npc.R + 30, 255),
-                (byte)Math.Min(npc.G + 30, 255), (byte)Math.Min(npc.B + 30, 255));
+            renderer.DrawRect(camera, headPos, 8, 8, new Color3((byte)Math.Min(npc.Color.R + 30, 255),
+                (byte)Math.Min(npc.Color.G + 30, 255), (byte)Math.Min(npc.Color.B + 30, 255)));
 
             // Nametag (centered)
             float nameW = renderer.MeasureText(npc.Name, 1.5f) / 2f / camera.Zoom;
             var namePos = npcPos - new Vector2(nameW, 18);
-            renderer.DrawText(camera, namePos, npc.Name, 200, 200, 200, 1.5f);
+            renderer.DrawText(camera, namePos, npc.Name, new Color3(200, 200, 200), 1.5f);
 
             // Role tag (centered)
             float roleW = renderer.MeasureText(npc.Role, 1.5f) / 2f / camera.Zoom;
             var rolePos = npcPos + new Vector2(-roleW, 12);
-            renderer.DrawText(camera, rolePos, npc.Role, npc.R, npc.G, npc.B, 1.5f);
+            renderer.DrawText(camera, rolePos, npc.Role, npc.Color, 1.5f);
         }
     }
 
@@ -260,11 +261,11 @@ public static class InteriorRenderer
             float bob = MathF.Sin((float)globalTime * 2f) * 3f;
             var indicatorPos = intPos - new Vector2(0, 20 + bob);
 
-            var (ir, ig, ib) = GetInteractableColor(interactable.Type);
+            var intColor = GetInteractableColor(interactable.Type);
 
-            renderer.DrawRect(camera, indicatorPos, 6, 6, ir, ig, ib);
+            renderer.DrawRect(camera, indicatorPos, 6, 6, intColor);
             float intLabelW = renderer.MeasureText(interactable.Name, 1.5f) / 2f / camera.Zoom;
-            renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10), interactable.Name, ir, ig, ib, 1.5f);
+            renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10), interactable.Name, intColor, 1.5f);
         }
     }
 
@@ -285,14 +286,14 @@ public static class InteriorRenderer
         float boxY = h - boxH - 20;
 
         // Background
-        renderer.DrawRectScreen(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 60, 60, 100, 200);
-        renderer.DrawRectScreen(boxX, boxY, boxW, boxH, 15, 15, 35, 240);
+        renderer.DrawRectScreen(boxX - 2, boxY - 2, boxW + 4, boxH + 4, new Color4(60, 60, 100, 200));
+        renderer.DrawRectScreen(boxX, boxY, boxW, boxH, new Color4(15, 15, 35, 240));
 
         // NPC name and role
         renderer.DrawTextScreen(boxX + 15, boxY + 10, npc.Name.ToUpper(),
-            npc.R, npc.G, npc.B, 2f);
+            npc.Color, 2f);
         renderer.DrawTextScreen(boxX + 15 + renderer.MeasureText(npc.Name + "  ", 2f), boxY + 10,
-            npc.Role, 120, 120, 150, 1.5f);
+            npc.Role, new Color3(120, 120, 150), 1.5f);
 
         // Dialogue line
         if (dialogueLine < npc.DialogueLines.Length)
@@ -311,7 +312,7 @@ public static class InteriorRenderer
                     if (lastSpace > i) end = lastSpace + 1;
                 }
                 string segment = line[i..end].TrimEnd();
-                renderer.DrawTextScreen(boxX + 15, boxY + 40 + lineY * 18, segment, 200, 200, 200, 1.5f);
+                renderer.DrawTextScreen(boxX + 15, boxY + 40 + lineY * 18, segment, new Color3(200, 200, 200), 1.5f);
                 lineY++;
             }
         }
@@ -319,7 +320,7 @@ public static class InteriorRenderer
         // Continue prompt
         string continueText = dialogueLine < npc.DialogueLines.Length - 1
             ? "[ENTER] CONTINUE" : "[ENTER] CLOSE";
-        renderer.DrawTextScreen(boxX + boxW - 200, boxY + boxH - 25, continueText, 100, 200, 100, 1.5f);
+        renderer.DrawTextScreen(boxX + boxW - 200, boxY + boxH - 25, continueText, new Color3(100, 200, 100), 1.5f);
     }
 
 

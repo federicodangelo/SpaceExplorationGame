@@ -107,7 +107,7 @@ public class InGameMenuOverlay : OverlayBase
         var renderer = game.SpriteRenderer;
 
         // Dim background
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, 0, 0, 0, 160);
+        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 160));
 
         if (_showingControls)
         {
@@ -120,14 +120,14 @@ public class InGameMenuOverlay : OverlayBase
         float panelH = 240;
         float panelX = GameConfig.WindowWidth / 2f - panelW / 2f;
         float panelY = GameConfig.WindowHeight / 2f - panelH / 2f - 20;
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 10, 12, 30, 220);
-        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, 20, 24, 50, 200);
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(10, 12, 30, 220));
+        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, new Color4(20, 24, 50, 200));
 
         // Title
         string title = "MENU";
         float ptScale = 3f;
         float ptW = renderer.MeasureText(title, ptScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, 200, 210, 255, ptScale);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, new Color3(200, 210, 255), ptScale);
 
         // Options
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
@@ -177,27 +177,27 @@ public class InGameMenuOverlay : OverlayBase
         float panelY = GameConfig.WindowHeight / 2f - panelH / 2f;
 
         // Background
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, 10, 12, 30, 220);
-        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, 20, 24, 50, 200);
+        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(10, 12, 30, 220));
+        renderer.DrawRectScreen(panelX + 2, panelY + 2, panelW - 4, panelH - 4, new Color4(20, 24, 50, 200));
 
         // Title
         string title = "CONTROLS";
         float ptScale = 3f;
         float ptW = renderer.MeasureText(title, ptScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, 200, 210, 255, ptScale);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - ptW / 2f, panelY + 14, title, new Color3(200, 210, 255), ptScale);
 
         // Control lines
         float cy = panelY + 50;
         foreach (var line in controls)
         {
             float lw = renderer.MeasureText(line, 1.5f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - lw / 2f, cy, line, 180, 180, 200, 1.5f);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - lw / 2f, cy, line, new Color3(180, 180, 200), 1.5f);
             cy += lineH;
         }
 
         // Dismiss hint
         string hint = "PRESS ANY KEY TO CLOSE";
         float hw = renderer.MeasureText(hint, 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - hw / 2f, cy + 8, hint, 120, 120, 140, 1.5f);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - hw / 2f, cy + 8, hint, new Color3(120, 120, 140), 1.5f);
     }
 }

@@ -334,7 +334,7 @@ public class MainMenuState : GameState
         foreach (var (x, y, brightness, speed) in _bgStars)
         {
             float blink = (byte)Math.Clamp(brightness + 30 * MathF.Sin(_animTimer * speed * 2f + x), 20, 200);
-            renderer.DrawRectScreen(x, y, 2, 2, (byte)blink, (byte)blink, (byte)(blink * 0.9f));
+            renderer.DrawRectScreen(x, y, 2, 2, new Color3((byte)blink, (byte)blink, (byte)(blink * 0.9f)));
         }
 
         // Title
@@ -351,14 +351,14 @@ public class MainMenuState : GameState
         byte glowR = (byte)(120 + 40 * MathF.Sin(_animTimer * 0.8f));
         byte glowG = (byte)(150 + 40 * MathF.Sin(_animTimer * 0.8f + 0.5f));
         byte glowB = (byte)(220 + 35 * MathF.Sin(_animTimer * 0.8f + 1f));
-        renderer.DrawTextScreen(titleX, titleY, title, glowR, glowG, glowB, titleScale);
+        renderer.DrawTextScreen(titleX, titleY, title, new Color3(glowR, glowG, glowB), titleScale);
 
         // Subtitle
         string subtitle = "CHOOSE YOUR STARTING POINT";
         float subtitleScale = 1.8f;
         float subtitleW = renderer.MeasureText(subtitle, subtitleScale);
         renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - subtitleW / 2f, titleY + 50,
-            subtitle, 120, 120, 140, subtitleScale);
+            subtitle, new Color3(120, 120, 140), subtitleScale);
 
         // Menu options
         float centerX = GameConfig.WindowWidth / 2f;
@@ -369,13 +369,13 @@ public class MainMenuState : GameState
         // Bottom info
         string seedInfo = $"SEED: {game.Seeds.GalaxySeed}";
         float seedScale = 1.3f;
-        renderer.DrawTextScreen(10, GameConfig.WindowHeight - 25, seedInfo, 80, 80, 100, seedScale);
+        renderer.DrawTextScreen(10, GameConfig.WindowHeight - 25, seedInfo, new Color3(80, 80, 100), seedScale);
 
         // Controls hint
         string controls = "UP/DOWN: SELECT   ENTER: CONFIRM";
         float ctrlScale = 1.3f;
         float ctrlW = renderer.MeasureText(controls, ctrlScale);
         renderer.DrawTextScreen(GameConfig.WindowWidth - ctrlW - 10, GameConfig.WindowHeight - 25,
-            controls, 80, 80, 100, ctrlScale);
+            controls, new Color3(80, 80, 100), ctrlScale);
     }
 }

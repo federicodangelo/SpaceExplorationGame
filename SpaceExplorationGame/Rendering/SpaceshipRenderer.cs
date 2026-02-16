@@ -69,7 +69,7 @@ public class SpaceshipRenderer : IDisposable
         var shipTexture = GetLandedTexture(shipTypeId);
         int landedSize = (int)(spriteSize * 1.5f);
         renderer.DrawTexture(camera, shipTexture, position, landedSize, landedSize);
-        renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", 180, 180, 200);
+        renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", new Color3(180, 180, 200));
     }
 
     // ──── Texture generation ────────────────────────────────────────

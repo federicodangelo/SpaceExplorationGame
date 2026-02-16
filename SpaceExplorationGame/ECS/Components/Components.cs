@@ -49,16 +49,16 @@ public struct Sprite
     public int SrcX, SrcY;     // source rect in spritesheet
     public int SrcW, SrcH;
     public int Width, Height;  // render size in world pixels
-    public byte R, G, B, A;   // color tint (for procedural colored rects)
+    public Color4 Color;       // color tint (for procedural colored rects)
     public bool UseColor;      // if true, render as colored rect instead of texture
 
-    public static Sprite ColoredRect(int width, int height, byte r, byte g, byte b, byte a = 255)
+    public static Sprite ColoredRect(int width, int height, Color4 color)
     {
         return new Sprite
         {
             Width = width,
             Height = height,
-            R = r, G = g, B = b, A = a,
+            Color = color,
             UseColor = true
         };
     }
@@ -211,7 +211,7 @@ public struct Projectile
     public float Lifetime;           // seconds remaining before despawn
     public float CollisionRadius;    // hit detection radius
     public Faction OwnerFaction;     // who fired it (to avoid self-hits)
-    public byte R, G, B;            // projectile color
+    public Color3 Color;             // projectile color
 }
 
 /// <summary>Immutable configuration shared across enemies of the same type.</summary>

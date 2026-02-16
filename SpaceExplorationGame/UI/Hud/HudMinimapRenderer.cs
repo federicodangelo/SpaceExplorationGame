@@ -13,13 +13,13 @@ public enum MinimapMarkerShape { Rect, Circle }
 
 /// <summary>A single point marker on the minimap.</summary>
 public readonly record struct MinimapMarker(
-    Vector2 WorldPos, byte R, byte G, byte B, byte A = 255,
+    Vector2 WorldPos, Color4 Color,
     float Size = 3f, MinimapMarkerShape Shape = MinimapMarkerShape.Rect);
 
 /// <summary>A rectangular area on the minimap (e.g. rooms, settlements).</summary>
 public readonly record struct MinimapArea(
     float WorldX, float WorldY, float WorldW, float WorldH,
-    byte R, byte G, byte B, byte A = 255);
+    Color4 Color);
 
 /// <summary>
 /// Unified minimap renderer used by HudRenderer across all game states.
@@ -60,7 +60,7 @@ public static class HudMinimapRenderer
         if (ecsWorld.IsAlive(starEntity))
         {
             var pos = ecsWorld.Get<Transform>(starEntity).Position;
-            markers.Add(new MinimapMarker(pos, 255, 220, 80, Size: 6f, Shape: MinimapMarkerShape.Circle));
+            markers.Add(new MinimapMarker(pos, new Color3(255, 220, 80), Size: 6f, Shape: MinimapMarkerShape.Circle));
         }
 
         // Asteroids (dim grey, tiny)
@@ -68,18 +68,18 @@ public static class HudMinimapRenderer
         {
             if (!ecsWorld.IsAlive(entity)) continue;
             if (ecsWorld.Has<Health>(entity) && ecsWorld.Get<Health>(entity).IsDead) continue;
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, 80, 80, 80, Size: 1f));
+            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(80, 80, 80), Size: 1f));
         }
 
         // Planets (colored circles) and moons
         for (int i = 0; i < planetEntities.Count; i++)
         {
             if (!ecsWorld.IsAlive(planetEntities[i])) continue;
-            byte pr = i < planets.Count ? planets[i].R : (byte)180;
-            byte pg = i < planets.Count ? planets[i].G : (byte)180;
-            byte pb = i < planets.Count ? planets[i].B : (byte)180;
+            byte pr = i < planets.Count ? planets[i].Color.R : (byte)180;
+            byte pg = i < planets.Count ? planets[i].Color.G : (byte)180;
+            byte pb = i < planets.Count ? planets[i].Color.B : (byte)180;
             markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(planetEntities[i]).Position,
-                pr, pg, pb, A: 220, Size: 4f, Shape: MinimapMarkerShape.Circle));
+                new Color4(pr, pg, pb, 220), Size: 4f, Shape: MinimapMarkerShape.Circle));
 
             if (i < moonEntities.Count)
             {
@@ -87,7 +87,7 @@ public static class HudMinimapRenderer
                 {
                     if (!ecsWorld.IsAlive(moonEntity)) continue;
                     markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(moonEntity).Position,
-                        160, 160, 180, Size: 2f));
+                        new Color3(160, 160, 180), Size: 2f));
                 }
             }
         }
@@ -96,7 +96,7 @@ public static class HudMinimapRenderer
         foreach (var entity in stationEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, 100, 200, 255));
+            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(100, 200, 255)));
         }
 
         // Enemies (faction-colored)
@@ -112,7 +112,7 @@ public static class HudMinimapRenderer
                 Faction.Patrol => new Color3(80, 160, 255),
                 _ => new Color3(200, 200, 200)
             };
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, er, eg, eb));
+            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(er, eg, eb)));
         }
 
         RenderMinimap(renderer, viewOrigin, viewSize,
@@ -135,18 +135,18 @@ public static class HudMinimapRenderer
             areas.Add(new MinimapArea(
                 s.TileX * GameConfig.TileSize, s.TileY * GameConfig.TileSize,
                 s.Width * GameConfig.TileSize, s.Height * GameConfig.TileSize,
-                200, 180, 80));
+                new Color3(200, 180, 80)));
         }
 
         // Markers
         var markers = new List<MinimapMarker>();
 
         // Ship (blue-ish)
-        markers.Add(new MinimapMarker(shipPos, 150, 150, 200, Size: 4f));
+        markers.Add(new MinimapMarker(shipPos, new Color3(150, 150, 200), Size: 4f));
 
         // Vehicle (orange)
         if (vehiclePos.HasValue)
-            markers.Add(new MinimapMarker(vehiclePos.Value, 180, 140, 80, Size: 4f));
+            markers.Add(new MinimapMarker(vehiclePos.Value, new Color3(180, 140, 80), Size: 4f));
 
         // Surface enemies
         CollectSurfaceEnemyMarkers(ecsWorld, markers);
@@ -175,7 +175,7 @@ public static class HudMinimapRenderer
             areas[i] = new MinimapArea(
                 room.X * GameConfig.TileSize, room.Y * GameConfig.TileSize,
                 room.Width * GameConfig.TileSize, room.Height * GameConfig.TileSize,
-                50, 50, 60);
+                new Color3(50, 50, 60));
         }
 
         // Markers (NPCs + interactables)
@@ -184,14 +184,14 @@ public static class HudMinimapRenderer
         {
             markers.Add(new MinimapMarker(
                 new Vector2(npc.TileX * GameConfig.TileSize, npc.TileY * GameConfig.TileSize),
-                npc.R, npc.G, npc.B));
+                npc.Color));
         }
         foreach (var interactable in interior.Interactables)
         {
             var (ir, ig, ib) = InteriorRenderer.GetInteractableColor(interactable.Type);
             markers.Add(new MinimapMarker(
                 new Vector2(interactable.TileX * GameConfig.TileSize, interactable.TileY * GameConfig.TileSize),
-                ir, ig, ib));
+                new Color3(ir, ig, ib)));
         }
 
         RenderMinimap(renderer, viewOrigin, viewSize,
@@ -216,8 +216,8 @@ public static class HudMinimapRenderer
         float mmY = MinimapMargin;
 
         // Border + background
-        renderer.DrawRectScreen(mmX - 1, mmY - 1, MinimapSize + 2, MinimapSize + 2, 60, 60, 100);
-        renderer.DrawRectScreen(mmX, mmY, MinimapSize, MinimapSize, 10, 10, 15, 220);
+        renderer.DrawRectScreen(mmX - 1, mmY - 1, MinimapSize + 2, MinimapSize + 2, new Color3(60, 60, 100));
+        renderer.DrawRectScreen(mmX, mmY, MinimapSize, MinimapSize, new Color4(10, 10, 15, 220));
 
         float scaleX = MinimapSize / viewSize.X;
         float scaleY = MinimapSize / viewSize.Y;
@@ -230,7 +230,7 @@ public static class HudMinimapRenderer
             float sw = a.WorldW * scaleX;
             float sh = a.WorldH * scaleY;
             if (sx + sw < mmX || sx > mmX + MinimapSize || sy + sh < mmY || sy > mmY + MinimapSize) continue;
-            renderer.DrawRectScreen(sx, sy, Math.Max(sw, 3), Math.Max(sh, 3), a.R, a.G, a.B, a.A);
+            renderer.DrawRectScreen(sx, sy, Math.Max(sw, 3), Math.Max(sh, 3), a.Color);
         }
 
         // Point markers
@@ -242,9 +242,9 @@ public static class HudMinimapRenderer
 
             float half = m.Size / 2f;
             if (m.Shape == MinimapMarkerShape.Circle)
-                renderer.DrawFilledCircleScreen(sx, sy, half, m.R, m.G, m.B, m.A);
+                renderer.DrawFilledCircleScreen(sx, sy, half, m.Color);
             else
-                renderer.DrawRectScreen(sx - half, sy - half, m.Size, m.Size, m.R, m.G, m.B, m.A);
+                renderer.DrawRectScreen(sx - half, sy - half, m.Size, m.Size, m.Color);
         }
 
         // Player dot (green, always on top)
@@ -259,7 +259,7 @@ public static class HudMinimapRenderer
             px = mmX + (playerWorldPos.X - viewOrigin.X) * scaleX;
             py = mmY + (playerWorldPos.Y - viewOrigin.Y) * scaleY;
         }
-        renderer.DrawRectScreen(px - 2, py - 2, 4, 4, 100, 255, 100);
+        renderer.DrawRectScreen(px - 2, py - 2, 4, 4, new Color3(100, 255, 100));
     }
 
     /// <summary>Computes the player-centered view for scrolling minimaps.</summary>
@@ -286,7 +286,7 @@ public static class HudMinimapRenderer
             byte r = ai.Config.Faction == Faction.Fauna ? (byte)200 : (byte)255;
             byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
             byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
-            markers.Add(new MinimapMarker(transform.Position, r, g, b));
+            markers.Add(new MinimapMarker(transform.Position, new Color3(r, g, b)));
         });
     }
 
@@ -299,10 +299,10 @@ public static class HudMinimapRenderer
             if (health.IsDead) return;
             var resInfo = ResourceCatalog.Get(rock.Resource);
             // Show rocks as small brownish dots with a hint of resource color
-            byte r = (byte)Math.Clamp((resInfo.R + 140) / 2, 0, 255);
-            byte g = (byte)Math.Clamp((resInfo.G + 120) / 2, 0, 255);
-            byte b = (byte)Math.Clamp((resInfo.B + 100) / 2, 0, 255);
-            markers.Add(new MinimapMarker(transform.Position, r, g, b, Size: 2f));
+            byte r = (byte)Math.Clamp((resInfo.Color.R + 140) / 2, 0, 255);
+            byte g = (byte)Math.Clamp((resInfo.Color.G + 120) / 2, 0, 255);
+            byte b = (byte)Math.Clamp((resInfo.Color.B + 100) / 2, 0, 255);
+            markers.Add(new MinimapMarker(transform.Position, new Color3(r, g, b), Size: 2f));
         });
     }
 }

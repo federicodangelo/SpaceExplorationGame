@@ -34,7 +34,7 @@ public class LabelRenderer
             float textScale = Math.Max(1, _camera.Zoom);
             float textWidth = _renderer.MeasureText(label.Text, textScale);
             _renderer.DrawText(_camera, textPos - new Vector2(textWidth / (2 * _camera.Zoom), 0),
-                label.Text, 180, 180, 180, textScale);
+                label.Text, new Color3(180, 180, 180), textScale);
         });
     }
 }

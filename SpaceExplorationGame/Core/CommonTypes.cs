@@ -8,10 +8,24 @@ namespace SpaceExplorationGame.Core;
 // ── Color ────────────────────────────────────────────────────────
 
 /// <summary>An RGB color with byte components.</summary>
-public readonly record struct Color3(byte R, byte G, byte B);
+public readonly record struct Color3(byte R, byte G, byte B)
+{
+    /// <summary>Creates a <see cref="Color4"/> from this color with the specified alpha.</summary>
+    public Color4 WithAlpha(byte a) => new(R, G, B, a);
+}
+
+/// <summary>An RGBA color with byte components.</summary>
+public readonly record struct Color4(byte R, byte G, byte B, byte A)
+{
+    /// <summary>Implicit conversion from <see cref="Color3"/> to <see cref="Color4"/> with full opacity (A = 255).</summary>
+    public static implicit operator Color4(Color3 c) => new(c.R, c.G, c.B, 255);
+
+    /// <summary>Returns the RGB portion of this color.</summary>
+    public Color3 Rgb => new(R, G, B);
+}
 
 /// <summary>An RGB color paired with a radius value, used for celestial body visuals.</summary>
-public readonly record struct ColoredRadius(byte R, byte G, byte B, float Radius);
+public readonly record struct ColoredRadius(Color3 Color, float Radius);
 
 // ── 2D positions / rectangles ────────────────────────────────────
 
@@ -41,7 +55,7 @@ public readonly record struct BackgroundStar(float X, float Y, byte Brightness);
 public readonly record struct AnimatedStar(float X, float Y, byte Brightness, float Speed);
 
 /// <summary>A cosmetic nebula cloud with position, radius, and color.</summary>
-public readonly record struct NebulaCloud(float X, float Y, float Radius, byte R, byte G, byte B);
+public readonly record struct NebulaCloud(float X, float Y, float Radius, Color3 Color);
 
 // ── Stat comparison ──────────────────────────────────────────────
 
@@ -73,12 +87,12 @@ public readonly record struct SystemPlanetSettlement(
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed,
-    Faction Faction, byte R, byte G, byte B);
+    Faction Faction, Color3 Color);
 
 /// <summary>Pending projectile spawn data for surface combat AI (includes lifetime).</summary>
 public readonly record struct SurfaceProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed,
-    Faction Faction, byte R, byte G, byte B, float Lifetime);
+    Faction Faction, Color3 Color, float Lifetime);
 
 /// <summary>Result of an AI target search.</summary>
 public readonly record struct TargetInfo(Vector2 Position, bool HasTarget, Entity? Entity);

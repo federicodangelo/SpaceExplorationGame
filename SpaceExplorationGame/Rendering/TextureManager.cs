@@ -1,4 +1,5 @@
 using SDL3;
+using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -44,7 +45,7 @@ public class TextureManager : IDisposable
 
     /// <summary>Fills a rectangular block of pixels in a pixel array.</summary>
     public static void SetPixelBlock(byte[] pixels, int stride, int x, int y, int w, int h,
-        byte r, byte g, byte b, byte a)
+        Color4 color)
     {
         for (int py = y; py < y + h; py++)
         {
@@ -53,10 +54,10 @@ public class TextureManager : IDisposable
                 if (px >= 0 && px < stride && py >= 0 && py < stride)
                 {
                     int idx = (py * stride + px) * 4;
-                    pixels[idx + 0] = r;
-                    pixels[idx + 1] = g;
-                    pixels[idx + 2] = b;
-                    pixels[idx + 3] = a;
+                    pixels[idx + 0] = color.R;
+                    pixels[idx + 1] = color.G;
+                    pixels[idx + 2] = color.B;
+                    pixels[idx + 3] = color.A;
                 }
             }
         }
