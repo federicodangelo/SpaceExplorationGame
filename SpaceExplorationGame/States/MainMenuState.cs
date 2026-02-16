@@ -65,6 +65,9 @@ public class MainMenuState : GameState
 
     public override void Enter(Game game)
     {
+        // Reset player data for a fresh start
+        game.Player.Reset();
+
         // Auto-launch if requested (from command line)
         if (_autoLaunchOption != StartOption.None)
         {

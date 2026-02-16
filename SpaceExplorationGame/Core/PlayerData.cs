@@ -18,6 +18,53 @@ public class PlayerData
     /// <summary>Parts the player owns but are not currently equipped (inventory).</summary>
     public List<ShipPart> OwnedParts { get; set; } = new();
 
+    /// <summary>Reset all player data to initial values (new game).</summary>
+    public void Reset()
+    {
+        // Ship
+        CurrentShipType = ShipTypeCatalog.StarterShip;
+        ShipHealth = ShipTypeCatalog.StarterShip.BaseHull;
+        ShipMaxHealth = ShipTypeCatalog.StarterShip.BaseHull;
+        ShipFuel = ShipTypeCatalog.StarterShip.BaseFuel;
+        ShipMaxFuel = ShipTypeCatalog.StarterShip.BaseFuel;
+        EquippedParts = ShipPartCatalog.GetStarterLoadout(ShipTypeCatalog.StarterShip);
+        OwnedParts.Clear();
+
+        // Location
+        CurrentStarSystemIndex = -1;
+        CurrentPlanetIndex = -1;
+        SolarSystemReturnContext = ReturnContext.Default;
+        ReturnStationIndex = -1;
+        ReturnPlanetIndex = -1;
+        ReturnMoonPlanetIndex = -1;
+        ReturnMoonIndex = -1;
+        ClearSavedSurfacePositions();
+
+        // Economy
+        Credits = 10000;
+        Cargo.Clear();
+
+        // Vehicle
+        HasVehicle = true;
+        InVehicle = false;
+
+        // Avatar
+        AvatarHealth = 100f;
+        AvatarMaxHealth = 100f;
+        EquippedAvatarParts = AvatarPartCatalog.GetStarterLoadout();
+        OwnedAvatarParts.Clear();
+
+        // Vehicle equipment
+        EquippedVehicleParts = VehiclePartCatalog.GetStarterLoadout();
+        OwnedVehicleParts.Clear();
+
+        // Missions
+        ActiveMissions.Clear();
+        ClaimedMissionIds.Clear();
+        MissionsCompleted = 0;
+        TrackedMissionIndex = -1;
+    }
+
     /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>
     public void RecalculateShipStats()
     {
