@@ -42,11 +42,8 @@ public readonly record struct TileRect(int X, int Y, int Width, int Height)
     public int CenterY => Y + Height / 2;
 }
 
-/// <summary>A float 2D position.</summary>
-public readonly record struct FloatPos(float X, float Y);
-
 /// <summary>A float axis-aligned rectangle (position + size).</summary>
-public readonly record struct FloatRect(float X, float Y, float W, float H);
+public readonly record struct Rect(float X, float Y, float W, float H);
 
 // ── Camera / view ────────────────────────────────────────────────
 

@@ -66,9 +66,8 @@ public static class SettlementRenderer
         }
 
         // Street lights (small yellow dots with glow)
-        foreach (var (lx, ly) in layout.Lights)
+        foreach (var lightPos in layout.Lights)
         {
-            var lightPos = new Vector2(lx, ly);
             renderer.DrawRect(camera, lightPos, 6, 6, new Color3(60, 60, 65)); // post
             renderer.DrawRect(camera, lightPos + new Vector2(0, -2), 4, 4, new Color4(255, 230, 140, 140)); // glow
             renderer.DrawRect(camera, lightPos + new Vector2(0, -2), 2, 2, new Color3(255, 245, 180)); // bulb

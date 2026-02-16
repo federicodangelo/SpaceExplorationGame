@@ -1,3 +1,4 @@
+using System.Numerics;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.Generation;
@@ -54,9 +55,9 @@ public class SettlementBuilding
 public class SettlementLayout
 {
     public List<SettlementBuilding> Buildings { get; set; } = [];
-    public List<FloatRect> Streets { get; set; } = [];
-    public List<FloatPos> Lights { get; set; } = [];
-    public FloatRect Perimeter { get; set; }
+    public List<Rect> Streets { get; set; } = [];
+    public List<Vector2> Lights { get; set; } = [];
+    public Rect Perimeter { get; set; }
 }
 
 public class SettlementData
@@ -436,7 +437,7 @@ public static class PlanetSurfaceGenerator
         float totalH = settlement.TileRect.Height * ts;
 
         // Perimeter
-        layout.Perimeter = new FloatRect(baseX, baseY, totalW, totalH);
+        layout.Perimeter = new Rect(baseX, baseY, totalW, totalH);
 
         // Street grid: one horizontal and one vertical street through the settlement
         float streetWidth = ts * 0.6f;
@@ -444,12 +445,12 @@ public static class PlanetSurfaceGenerator
         float streetCenterY = baseY + totalH * (0.35f + rng.NextFloat() * 0.3f);
 
         // Vertical street
-        layout.Streets.Add(new FloatRect(streetCenterX - streetWidth / 2, baseY, streetWidth, totalH));
+        layout.Streets.Add(new Rect(streetCenterX - streetWidth / 2, baseY, streetWidth, totalH));
         // Horizontal street
-        layout.Streets.Add(new FloatRect(baseX, streetCenterY - streetWidth / 2, totalW, streetWidth));
+        layout.Streets.Add(new Rect(baseX, streetCenterY - streetWidth / 2, totalW, streetWidth));
 
         // Define building zones (quadrants around the street intersection)
-        var zones = new FloatRect[]
+        var zones = new Rect[]
         {
             new(baseX, baseY, streetCenterX - streetWidth / 2 - baseX, streetCenterY - streetWidth / 2 - baseY),
             new(streetCenterX + streetWidth / 2, baseY, baseX + totalW - streetCenterX - streetWidth / 2, streetCenterY - streetWidth / 2 - baseY),
@@ -527,13 +528,13 @@ public static class PlanetSurfaceGenerator
         float lightSpacing = ts * 1.5f;
         for (float ly = baseY + lightSpacing; ly < baseY + totalH - lightSpacing; ly += lightSpacing)
         {
-            layout.Lights.Add(new FloatPos(streetCenterX - streetWidth / 2 - 4, ly));
-            layout.Lights.Add(new FloatPos(streetCenterX + streetWidth / 2 + 4, ly));
+            layout.Lights.Add(new Vector2(streetCenterX - streetWidth / 2 - 4, ly));
+            layout.Lights.Add(new Vector2(streetCenterX + streetWidth / 2 + 4, ly));
         }
         for (float lx = baseX + lightSpacing; lx < baseX + totalW - lightSpacing; lx += lightSpacing)
         {
-            layout.Lights.Add(new FloatPos(lx, streetCenterY - streetWidth / 2 - 4));
-            layout.Lights.Add(new FloatPos(lx, streetCenterY + streetWidth / 2 + 4));
+            layout.Lights.Add(new Vector2(lx, streetCenterY - streetWidth / 2 - 4));
+            layout.Lights.Add(new Vector2(lx, streetCenterY + streetWidth / 2 + 4));
         }
 
         return layout;
