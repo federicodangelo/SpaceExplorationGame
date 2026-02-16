@@ -222,6 +222,10 @@ public static class InteriorRenderer
                 npc.TileY * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
+            // Shadow beneath feet
+            var shadowPos = npcPos + new Vector2(0, 8);
+            renderer.DrawRect(camera, shadowPos, 12, 3, 0, 0, 0, 60);
+
             // Body
             renderer.DrawRect(camera, npcPos, 10, 14, npc.R, npc.G, npc.B);
 

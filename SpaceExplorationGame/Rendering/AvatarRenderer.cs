@@ -21,6 +21,10 @@ public class AvatarRenderer : IDisposable
     /// <summary>Renders the avatar at its world position (planet surface or interior).</summary>
     public void Render(SpriteRenderer renderer, Camera camera, Vector2 position)
     {
+        // Shadow beneath feet
+        var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1);
+        renderer.DrawRect(camera, shadowPos, 16, 4, 0, 0, 0, 60);
+
         renderer.DrawTexture(camera, _texture, position, AvatarSize, AvatarSize);
     }
 

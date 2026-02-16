@@ -52,6 +52,9 @@ public static class SurfaceEnemyRenderer
     /// <summary>Render a fauna creature — simple 4-legged creature shape.</summary>
     private static void RenderFauna(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
+        // Shadow beneath feet
+        renderer.DrawRect(camera, pos + new Vector2(0, 8), 14, 4, 0, 0, 0, 60);
+
         // Body (reddish-brown oval)
         renderer.DrawRect(camera, pos - new Vector2(7, 5), 14, 10, 180, 60, 60);
 
@@ -72,6 +75,9 @@ public static class SurfaceEnemyRenderer
     /// <summary>Render a bandit NPC — hostile humanoid shape.</summary>
     private static void RenderBandit(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
+        // Shadow beneath feet
+        renderer.DrawRect(camera, pos + new Vector2(0, 9), 10, 3, 0, 0, 0, 60);
+
         // Head (tan)
         renderer.DrawRect(camera, pos - new Vector2(3, 8), 6, 5, 200, 160, 120);
 
