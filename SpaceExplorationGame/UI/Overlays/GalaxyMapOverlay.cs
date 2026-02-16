@@ -82,12 +82,14 @@ public class GalaxyMapOverlay : OverlayBase
             ));
         }
 
-        // Create star textures
+        // Create star textures — use small sizes for the galaxy map since stars
+        // appear tiny at galaxy-scale zoom (full-resolution textures are unnecessary
+        // and very expensive to generate for 40-80 stars).
         foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
         _starTextures.Clear();
         foreach (var system in _starSystems)
         {
-            int texSize = Math.Max(12, (int)(system.StarRadius * 4));
+            int texSize = Math.Clamp((int)(system.StarRadius * 0.5f), 32, 128);
             _starTextures.Add(game.StarRenderer.CreateTexture(
                 texSize, system.StarColor));
         }
