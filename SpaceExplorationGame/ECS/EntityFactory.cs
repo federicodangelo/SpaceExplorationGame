@@ -101,11 +101,11 @@ public static class EntityFactory
             {
                 Type = CelestialType.SpaceStation,
                 Name = name,
-                Radius = 12,
+                Radius = 120,
                 DataIndex = dataIndex
             },
             new Orbit(parent, orbitRadius, orbitSpeed, startAngle),
-            new Label { Text = name, OffsetY = 28 },
+            new Label { Text = name, OffsetY = 280 },
             new Interactable
             {
                 Type = InteractionType.DockAtStation,

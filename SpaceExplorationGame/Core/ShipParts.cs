@@ -116,15 +116,15 @@ public static class ShipPartCatalog
         // ── Engines ──────────────────────────────────────────────
         new("engine_basic",    "Basic Thruster",     ShipSlotType.Engine, 1, 0,   25,
             "Standard issue thruster. Gets the job done.",
-            new ShipPartStats(Acceleration: 200f, MaxSpeed: 400f, RotationSpeed: 180f)),
+            new ShipPartStats(Acceleration: 200f, MaxSpeed: 800f, RotationSpeed: 180f)),
 
         new("engine_improved", "Ion Drive",          ShipSlotType.Engine, 2, 300, 150,
             "Efficient ion propulsion with better thrust.",
-            new ShipPartStats(Acceleration: 280f, MaxSpeed: 500f, RotationSpeed: 200f)),
+            new ShipPartStats(Acceleration: 280f, MaxSpeed: 1000f, RotationSpeed: 200f)),
 
         new("engine_advanced", "Plasma Thruster",    ShipSlotType.Engine, 3, 800, 400,
             "High-performance plasma drive. Fast and agile.",
-            new ShipPartStats(Acceleration: 380f, MaxSpeed: 650f, RotationSpeed: 240f)),
+            new ShipPartStats(Acceleration: 380f, MaxSpeed: 1300f, RotationSpeed: 240f)),
 
         // ── Armor ────────────────────────────────────────────────
         new("armor_basic",     "Light Plating",      ShipSlotType.Armor,  1, 0,   20,
@@ -155,15 +155,15 @@ public static class ShipPartCatalog
         // ── FTL Drives ───────────────────────────────────────────
         new("ftl_basic",       "Warp Coil Mk I",    ShipSlotType.FtlDrive, 1, 0,   40,
             "Entry-level FTL drive. Short range jumps.",
-            new ShipPartStats(FtlRange: 2500f, MaxFuel: 100f)),
+            new ShipPartStats(FtlRange: 2500f * 5.0f, MaxFuel: 100f)),
 
         new("ftl_improved",    "Warp Coil Mk II",   ShipSlotType.FtlDrive, 2, 400, 200,
             "Extended range with better fuel capacity.",
-            new ShipPartStats(FtlRange: 4000f, MaxFuel: 160f)),
+            new ShipPartStats(FtlRange: 4000f * 5.0f, MaxFuel: 160f)),
 
         new("ftl_advanced",    "Hyperdrive",         ShipSlotType.FtlDrive, 3, 1200, 600,
             "Top-tier FTL system. Galaxy-spanning range.",
-            new ShipPartStats(FtlRange: 6000f, MaxFuel: 250f)),
+            new ShipPartStats(FtlRange: 6000f * 5.0f, MaxFuel: 250f)),
 
         // ── Weapons ──────────────────────────────────────────────
         new("weapon_none",     "(Empty)",            ShipSlotType.Weapon1, 0, 0, 0,

@@ -21,7 +21,6 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
     public float MaxSpeed { get; set; } = GameConfig.ShipMaxSpeed;
     public float RotationSpeed { get; set; } = GameConfig.ShipRotationSpeed;
     public float Acceleration { get; set; } = GameConfig.ShipAcceleration;
-    public float Friction { get; set; } = GameConfig.ShipFriction;
     public float BrakeMultiplier { get; set; } = 0.95f;
 
     public ShipMovementSystem(World world, InputManager input, Entity entity) : base(world)
@@ -57,8 +56,5 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
         {
             velocity.Value *= BrakeMultiplier;
         }
-
-        // Apply friction
-        velocity.Value *= Friction;
     }
 }

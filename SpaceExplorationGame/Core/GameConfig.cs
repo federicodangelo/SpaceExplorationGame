@@ -19,19 +19,19 @@ public static class GameConfig
     public const int MaxFrameSkip = 5;
 
     // Camera
-    public const float CameraZoomMin = 0.25f;
+    public const float CameraZoomMin = 0.025f;
     public const float CameraZoomMax = 4.0f;
     public const float CameraZoomSpeed = 0.1f;
 
     // Galaxy
-    public const int GalaxyWidth = 200;   // in tiles
-    public const int GalaxyHeight = 200;
+    public const int GalaxyWidth = 2000;   // in tiles
+    public const int GalaxyHeight = 2000;
     public const int MinStarSystems = 40;
     public const int MaxStarSystems = 80;
 
     // Solar System
-    public const int SolarSystemWidth = 100;  // in tiles
-    public const int SolarSystemHeight = 100;
+    public const int SolarSystemWidth = 1000;  // in tiles
+    public const int SolarSystemHeight = 1000;
     public const int MinPlanets = 2;
     public const int MaxPlanets = 10;
 
@@ -42,12 +42,11 @@ public static class GameConfig
     // Player Ship
     public const float ShipAcceleration = 200f;     // pixels/sec^2
     public const float ShipMaxSpeed = 400f;          // pixels/sec
-    public const float ShipFriction = 0.98f;
     public const float ShipRotationSpeed = 180f;     // degrees/sec
 
     // FTL Travel
-    public const float FuelPerDistanceUnit = 0.02f;  // fuel cost per world-pixel of distance
-    public const float FtlMaxRange = 2500f;          // max FTL jump range in world-pixels
+    public const float FuelPerDistanceUnit = 0.002f; // fuel cost per world-pixel of distance
+    public const float FtlMaxRange = 25000f;         // max FTL jump range in world-pixels
     public const float StationRefuelAmount = 50f;    // fuel restored when docking at a station
 
     // Planet Vehicle
@@ -67,20 +66,20 @@ public static class GameConfig
 
     // Enemy ships
     public const int MinEnemiesPerSystem = 0;
-    public const int MaxEnemiesPerSystem = 2;
-    public const int MinTradersPerSystem = 1;
-    public const int MaxTradersPerSystem = 4;
+    public const int MaxEnemiesPerSystem = 20;
+    public const int MinTradersPerSystem = 10;
+    public const int MaxTradersPerSystem = 40;
     public const int MinPatrolsPerSystem = 0;
-    public const int MaxPatrolsPerSystem = 2;
+    public const int MaxPatrolsPerSystem = 20;
     public const float EnemyDetectRange = 300f;        // range to notice targets
     public const float EnemyWeaponRange = 300f;        // range to start firing
     public const float EnemyEngageDistance = 200f;      // preferred combat distance
     public const float EnemyFleeHealthPercent = 0.2f;   // flee below 20% hull
     public const float EnemyProjectileSpeed = 300f;     // slightly slower than player
     public const float EnemyFireRate = 1.4f;            // seconds between shots
-    public const float TraderSpeed = 150f;              // trader max speed
-    public const float PirateSpeed = 300f;              // pirate max speed
-    public const float PatrolSpeed = 250f;              // patrol max speed
+    public const float TraderSpeed = 150f * 3.0f;              // trader max speed
+    public const float PirateSpeed = 300f * 3.0f;              // pirate max speed
+    public const float PatrolSpeed = 250f * 3.0f;              // patrol max speed
 
     // Shields
     public const float BaseShieldRegenRate = 5f;        // shield points per second

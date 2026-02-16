@@ -199,7 +199,7 @@ public class SolarSystemState : GameState
         {
             for (int i = 0; i < belt.AsteroidCount; i++)
             {
-                float size = asteroidRng.NextFloat(4, 10);
+                float size = asteroidRng.NextFloat(40, 100);
                 float hp = size * 5f; // bigger asteroids have more HP
 
                 // Pick resource type based on weighted probabilities
@@ -250,7 +250,7 @@ public class SolarSystemState : GameState
         else
         {
             // Default: start near the star
-            shipStartPos = center + new Vector2(400, 0);
+            shipStartPos = center + new Vector2(4000, 0);
         }
 
         // Clear return context
@@ -585,7 +585,7 @@ public class SolarSystemState : GameState
         float maxOrbit = 0f;
         foreach (var planet in _planets)
             maxOrbit = MathF.Max(maxOrbit, planet.OrbitRadius);
-        float spawnRadius = MathF.Max(maxOrbit + 400f, 800f); // at least 800px, or outermost orbit + 400
+        float spawnRadius = MathF.Max(maxOrbit + 4000f, 8000f); // at least 8000px, or outermost orbit + 4000
 
         // Scale enemy count and stats by danger level
         int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
@@ -966,7 +966,7 @@ public class SolarSystemState : GameState
         if (!_playerDead)
         {
             HudRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
-                _enemyEntities);
+                _enemyEntities, _playerShip, 5000f);
             HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
         }
 

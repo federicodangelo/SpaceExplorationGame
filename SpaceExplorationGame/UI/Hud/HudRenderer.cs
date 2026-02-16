@@ -318,10 +318,14 @@ public static class HudRenderer
 
     // ── Off-screen indicators ──────────────────────────────────────────
 
-    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships.</summary>
+    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships within range.</summary>
     public static void RenderOffscreenIndicators(SpriteRenderer renderer, Camera camera, World ecsWorld,
-        List<Entity> enemyEntities)
+        List<Entity> enemyEntities, Entity playerShip, float maxDistance = float.MaxValue)
     {
+        Vector2 playerPos = ecsWorld.IsAlive(playerShip)
+            ? ecsWorld.Get<Transform>(playerShip).Position
+            : camera.Position;
+
         foreach (var entity in enemyEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
@@ -330,6 +334,11 @@ public static class HudRenderer
             if (health.IsDead) continue;
 
             ref var transform = ref ecsWorld.Get<Transform>(entity);
+
+            // Skip ships beyond max distance
+            float dist = Vector2.Distance(playerPos, transform.Position);
+            if (dist > maxDistance) continue;
+
             var ai = ecsWorld.Get<EnemyAI>(entity);
 
             var (cr, cg, cb) = ai.Config.Faction switch

@@ -27,7 +27,7 @@ public class StationRenderer : IDisposable
         {
             var stTransform = ecsWorld.Get<Transform>(stationEntities[i]);
             float stRotation = (float)(globalTime * 10) % 360f;
-            renderer.DrawTexture(camera, _texture, stTransform.Position, 28, 28, stRotation);
+            renderer.DrawTexture(camera, _texture, stTransform.Position, 280, 280, stRotation);
         }
     }
 
