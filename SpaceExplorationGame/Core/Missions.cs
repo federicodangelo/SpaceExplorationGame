@@ -32,7 +32,7 @@ public enum MissionStatus
     /// <summary>Accepted by the player, objectives in progress.</summary>
     Active,
 
-    /// <summary>All objectives met, ready to turn in at any mission board.</summary>
+    /// <summary>All objectives met, ready to turn in at the designated station.</summary>
     Completed
 }
 
@@ -87,6 +87,14 @@ public class Mission
     /// <summary>Credits awarded on turn-in.</summary>
     public int CreditReward { get; init; }
 
+    // ── Turn-in ──
+
+    /// <summary>Star system index where the mission must be turned in.</summary>
+    public int TurnInSystemIndex { get; init; }
+
+    /// <summary>Name of the system where the mission must be turned in.</summary>
+    public string TurnInSystemName { get; init; } = "";
+
     // ── Origin ──
 
     /// <summary>System index where this mission was picked up.</summary>
@@ -98,15 +106,24 @@ public class Mission
     // ── Helpers ──
 
     /// <summary>Formatted progress string for display.</summary>
-    public string ProgressText => Type switch
+    public string ProgressText
     {
-        MissionType.Mining => $"{CurrentAmount}/{RequiredAmount} {ResourceCatalog.Get(TargetResource).Name.ToUpper()}",
-        MissionType.BountyHunt => $"{CurrentAmount}/{RequiredAmount} PIRATES",
-        MissionType.Delivery => Status == MissionStatus.Completed ? "DELIVERED" : $"GO TO {TargetSystemName.ToUpper()}",
-        MissionType.Exploration => Status == MissionStatus.Completed ? "EXPLORED" : $"LAND ON {TargetPlanetName?.ToUpper() ?? "?"}",
-        MissionType.Patrol => Status == MissionStatus.Completed ? "VISITED" : $"GO TO {TargetSystemName.ToUpper()}",
-        _ => ""
-    };
+        get
+        {
+            if (Status == MissionStatus.Completed)
+                return $"TURN IN AT {TurnInSystemName.ToUpper()}";
+
+            return Type switch
+            {
+                MissionType.Mining => $"{CurrentAmount}/{RequiredAmount} {ResourceCatalog.Get(TargetResource).Name.ToUpper()}",
+                MissionType.BountyHunt => $"{CurrentAmount}/{RequiredAmount} PIRATES",
+                MissionType.Delivery => $"GO TO {TargetSystemName.ToUpper()}",
+                MissionType.Exploration => $"LAND ON {TargetPlanetName?.ToUpper() ?? "?"}",
+                MissionType.Patrol => $"GO TO {TargetSystemName.ToUpper()}",
+                _ => ""
+            };
+        }
+    }
 
     /// <summary>Short type label for display.</summary>
     public string TypeLabel => Type switch

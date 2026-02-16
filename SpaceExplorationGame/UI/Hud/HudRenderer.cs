@@ -201,7 +201,6 @@ public static class HudRenderer
         string statusIcon = completed ? ">> " : "* ";
         string missionText = $"{statusIcon}[{tracked.TypeLabel}] {tracked.Title}";
         string progressText = tracked.ProgressText;
-        if (completed) progressText += " - TURN IN AT MISSION BOARD";
 
         // Measure and draw background
         float textW1 = renderer.MeasureText(missionText, TextScale);

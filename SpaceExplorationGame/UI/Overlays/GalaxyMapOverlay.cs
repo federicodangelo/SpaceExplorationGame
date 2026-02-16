@@ -408,7 +408,9 @@ public class GalaxyMapOverlay : OverlayBase
         byte missionAlpha = (byte)(100 + (int)(pulse * 155));
         foreach (var mission in game.Player.ActiveMissions)
         {
-            if (mission.TargetSystemIndex >= 0 && mission.TargetSystemIndex < _starSystems.Count)
+            // Target system marker (for incomplete missions)
+            if (mission.Status != MissionStatus.Completed &&
+                mission.TargetSystemIndex >= 0 && mission.TargetSystemIndex < _starSystems.Count)
             {
                 var targetSys = _starSystems[mission.TargetSystemIndex];
                 var mc = mission.TypeColor;
@@ -419,18 +421,25 @@ public class GalaxyMapOverlay : OverlayBase
                     new Color4(mc.R, mc.G, mc.B, missionAlpha));
 
                 // Small diamond icon offset above the star
-                var iconPos = targetSys.GalaxyPosition + new Vector2(0, -(targetSys.StarRadius + 16));
-                float diamondSize = 4f;
-                var screenIcon = camera.WorldToScreen(iconPos);
-                if (screenIcon.X >= -20 && screenIcon.X < GameConfig.WindowWidth + 20 &&
-                    screenIcon.Y >= -20 && screenIcon.Y < GameConfig.WindowHeight + 20)
-                {
-                    float ds = diamondSize * Math.Max(1f, camera.Zoom * 0.5f);
-                    renderer.DrawLineScreen(screenIcon.X, screenIcon.Y - ds, screenIcon.X + ds, screenIcon.Y, new Color4(mc.R, mc.G, mc.B, missionAlpha));
-                    renderer.DrawLineScreen(screenIcon.X + ds, screenIcon.Y, screenIcon.X, screenIcon.Y + ds, new Color4(mc.R, mc.G, mc.B, missionAlpha));
-                    renderer.DrawLineScreen(screenIcon.X, screenIcon.Y + ds, screenIcon.X - ds, screenIcon.Y, new Color4(mc.R, mc.G, mc.B, missionAlpha));
-                    renderer.DrawLineScreen(screenIcon.X - ds, screenIcon.Y, screenIcon.X, screenIcon.Y - ds, new Color4(mc.R, mc.G, mc.B, missionAlpha));
-                }
+                DrawMissionDiamond(renderer, camera, targetSys.GalaxyPosition,
+                    targetSys.StarRadius, mc, missionAlpha);
+            }
+
+            // Turn-in system marker (for completed missions)
+            if (mission.Status == MissionStatus.Completed &&
+                mission.TurnInSystemIndex >= 0 && mission.TurnInSystemIndex < _starSystems.Count)
+            {
+                var turnInSys = _starSystems[mission.TurnInSystemIndex];
+                float markerRadius = turnInSys.StarRadius + 8;
+
+                // Green pulsing ring for turn-in
+                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, markerRadius,
+                    new Color4(100, 255, 100, missionAlpha));
+                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, markerRadius + 3,
+                    new Color4(100, 255, 100, (byte)(missionAlpha / 3)));
+
+                DrawMissionDiamond(renderer, camera, turnInSys.GalaxyPosition,
+                    turnInSys.StarRadius, new Color3(100, 255, 100), missionAlpha);
             }
         }
 
@@ -465,8 +474,10 @@ public class GalaxyMapOverlay : OverlayBase
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
-            // Check for active missions targeting this system
-            var missionsHere = game.Player.ActiveMissions.Where(m => m.TargetSystemIndex == _selectedSystemIndex).ToList();
+            // Check for active missions targeting this system or needing turn-in here
+            var missionsHere = game.Player.ActiveMissions.Where(m =>
+                m.TargetSystemIndex == _selectedSystemIndex ||
+                (m.Status == MissionStatus.Completed && m.TurnInSystemIndex == _selectedSystemIndex)).ToList();
             int missionExtraHeight = missionsHere.Count > 0 ? (missionsHere.Count * 18 + 5) : 0;
 
             float panelHeight = 180 + missionExtraHeight;
@@ -529,5 +540,23 @@ public class GalaxyMapOverlay : OverlayBase
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", new Color3(180, 180, 180), 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", new Color3(180, 180, 180), 1.5f);
         renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "M/ESC: CLOSE MAP", new Color3(180, 180, 180), 1.5f);
+    }
+
+    private static void DrawMissionDiamond(SpriteRenderer renderer, Camera camera,
+        Vector2 starPos, float starRadius, Color3 color, byte alpha)
+    {
+        var iconPos = starPos + new Vector2(0, -(starRadius + 16));
+        float diamondSize = 4f;
+        var screenIcon = camera.WorldToScreen(iconPos);
+        if (screenIcon.X >= -20 && screenIcon.X < GameConfig.WindowWidth + 20 &&
+            screenIcon.Y >= -20 && screenIcon.Y < GameConfig.WindowHeight + 20)
+        {
+            float ds = diamondSize * Math.Max(1f, camera.Zoom * 0.5f);
+            var c = new Color4(color.R, color.G, color.B, alpha);
+            renderer.DrawLineScreen(screenIcon.X, screenIcon.Y - ds, screenIcon.X + ds, screenIcon.Y, c);
+            renderer.DrawLineScreen(screenIcon.X + ds, screenIcon.Y, screenIcon.X, screenIcon.Y + ds, c);
+            renderer.DrawLineScreen(screenIcon.X, screenIcon.Y + ds, screenIcon.X - ds, screenIcon.Y, c);
+            renderer.DrawLineScreen(screenIcon.X - ds, screenIcon.Y, screenIcon.X, screenIcon.Y - ds, c);
+        }
     }
 }

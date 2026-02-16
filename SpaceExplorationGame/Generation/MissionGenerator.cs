@@ -98,6 +98,8 @@ public static class MissionGenerator
             TargetSystemName = targetSystem.Name,
             CreditReward = reward,
             RequiredAmount = 1,
+            TurnInSystemIndex = currentSystem.Index,
+            TurnInSystemName = currentSystem.Name,
             OriginSystemIndex = currentSystem.Index,
             OriginSystemName = currentSystem.Name
         };
@@ -119,6 +121,8 @@ public static class MissionGenerator
             TargetResource = resource,
             RequiredAmount = amount,
             CreditReward = reward,
+            TurnInSystemIndex = currentSystem.Index,
+            TurnInSystemName = currentSystem.Name,
             OriginSystemIndex = currentSystem.Index,
             OriginSystemName = currentSystem.Name
         };
@@ -137,6 +141,8 @@ public static class MissionGenerator
             Type = MissionType.BountyHunt,
             RequiredAmount = killCount,
             CreditReward = reward,
+            TurnInSystemIndex = currentSystem.Index,
+            TurnInSystemName = currentSystem.Name,
             OriginSystemIndex = currentSystem.Index,
             OriginSystemName = currentSystem.Name
         };
@@ -175,6 +181,8 @@ public static class MissionGenerator
             TargetPlanetName = targetPlanet.Name,
             RequiredAmount = 1,
             CreditReward = reward,
+            TurnInSystemIndex = currentSystem.Index,
+            TurnInSystemName = currentSystem.Name,
             OriginSystemIndex = currentSystem.Index,
             OriginSystemName = currentSystem.Name
         };
@@ -196,6 +204,8 @@ public static class MissionGenerator
             TargetSystemName = targetSystem.Name,
             RequiredAmount = 1,
             CreditReward = reward,
+            TurnInSystemIndex = currentSystem.Index,
+            TurnInSystemName = currentSystem.Name,
             OriginSystemIndex = currentSystem.Index,
             OriginSystemName = currentSystem.Name
         };
