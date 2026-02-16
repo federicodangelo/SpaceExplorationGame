@@ -19,8 +19,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
     private readonly Func<Vector2, bool>? _canMoveTo;
 
     // Projectiles spawned this frame (created after query completes to avoid mutation during iteration)
-    private readonly List<(Vector2 Pos, Vector2 Dir, float Damage, float Speed, Faction Faction,
-        byte R, byte G, byte B, float Lifetime)> _pendingProjectiles = [];
+    private readonly List<SurfaceProjectileSpawn> _pendingProjectiles = [];
 
     // Per-frame cached state for [Query] method access
     private float _dt;
@@ -92,7 +91,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
             {
                 ai.FireCooldown = ai.Config.FireRate;
-                _pendingProjectiles.Add((transform.Position, dir, ai.Config.WeaponDamage,
+                _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
                     ai.Config.ProjectileSpeed, Faction.Fauna, 200, 60, 60, 0.1f));
             }
         }
@@ -152,7 +151,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
             {
                 ai.FireCooldown = ai.Config.FireRate;
-                _pendingProjectiles.Add((transform.Position, dir, ai.Config.WeaponDamage,
+                _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
                     ai.Config.ProjectileSpeed, Faction.Bandit, 255, 150, 50, GameConfig.AvatarProjectileLifetime));
             }
         }

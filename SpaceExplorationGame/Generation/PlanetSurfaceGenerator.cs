@@ -26,14 +26,14 @@ public class PlanetSurfaceData
     public int Height { get; set; }
     public TerrainType[,] Tiles { get; set; } = null!;
     public List<SettlementData> Settlements { get; set; } = [];
-    public (int X, int Y) LandingZone { get; set; }
+    public TilePos LandingZone { get; set; }
 
     /// <summary>Spawn positions for hostile fauna (world-space coordinates).</summary>
-    public List<(float X, float Y, float WanderAngle)> FaunaSpawns { get; set; } = [];
+    public List<CreatureSpawn> FaunaSpawns { get; set; } = [];
     /// <summary>Spawn positions for hostile bandits (world-space coordinates).</summary>
-    public List<(float X, float Y, float WanderAngle)> BanditSpawns { get; set; } = [];
+    public List<CreatureSpawn> BanditSpawns { get; set; } = [];
     /// <summary>Spawn positions for mineable rocks (world-space coordinates + resource info).</summary>
-    public List<(float X, float Y, ResourceType Resource, int Amount, float Size, float Hp)> RockSpawns { get; set; } = [];
+    public List<RockSpawn> RockSpawns { get; set; } = [];
 }
 
 /// <summary>A building within a settlement layout.</summary>
@@ -56,9 +56,9 @@ public class SettlementBuilding
 public class SettlementLayout
 {
     public List<SettlementBuilding> Buildings { get; set; } = [];
-    public List<(float X, float Y, float W, float H)> Streets { get; set; } = [];
-    public List<(float X, float Y)> Lights { get; set; } = [];
-    public (float X, float Y, float W, float H) Perimeter { get; set; }
+    public List<FloatRect> Streets { get; set; } = [];
+    public List<FloatPos> Lights { get; set; } = [];
+    public FloatRect Perimeter { get; set; }
 }
 
 public class SettlementData
@@ -137,7 +137,7 @@ public static class PlanetSurfaceGenerator
         }
 
         // Landing zone (flat area near center) — also ensure walkable
-        result.LandingZone = (width / 2, height / 2);
+        result.LandingZone = new TilePos(width / 2, height / 2);
         EnsureWalkableArea(tiles, width, height, width / 2 - 2, height / 2 - 2, 4, 4, margin: 2, planet.Type);
 
         // Generate enemy spawn points on walkable terrain, away from landing zone and settlements
@@ -263,19 +263,19 @@ public static class PlanetSurfaceGenerator
     }
 
     /// <summary>Get the color for a terrain tile type.</summary>
-    public static (byte R, byte G, byte B) GetTerrainColor(TerrainType type)
+    public static Color3 GetTerrainColor(TerrainType type)
     {
         return type switch
         {
-            TerrainType.Rock => (128, 112, 96),
-            TerrainType.Sand => (210, 190, 140),
-            TerrainType.Grass => (60, 140, 60),
-            TerrainType.Water => (40, 80, 180),
-            TerrainType.Ice => (200, 220, 255),
-            TerrainType.Lava => (220, 80, 20),
-            TerrainType.Metal => (160, 160, 170),
-            TerrainType.Void => (0, 0, 0),
-            _ => (80, 80, 80)
+            TerrainType.Rock => new(128, 112, 96),
+            TerrainType.Sand => new(210, 190, 140),
+            TerrainType.Grass => new(60, 140, 60),
+            TerrainType.Water => new(40, 80, 180),
+            TerrainType.Ice => new(200, 220, 255),
+            TerrainType.Lava => new(220, 80, 20),
+            TerrainType.Metal => new(160, 160, 170),
+            TerrainType.Void => new(0, 0, 0),
+            _ => new(80, 80, 80)
         };
     }
 
@@ -302,7 +302,7 @@ public static class PlanetSurfaceGenerator
         {
             if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
             {
-                data.FaunaSpawns.Add((sx, sy, rng.NextFloat() * MathF.PI * 2f));
+                data.FaunaSpawns.Add(new CreatureSpawn(sx, sy, rng.NextFloat() * MathF.PI * 2f));
             }
         }
 
@@ -313,7 +313,7 @@ public static class PlanetSurfaceGenerator
             {
                 if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
                 {
-                    data.BanditSpawns.Add((sx, sy, rng.NextFloat() * MathF.PI * 2f));
+                    data.BanditSpawns.Add(new CreatureSpawn(sx, sy, rng.NextFloat() * MathF.PI * 2f));
                 }
             }
         }
@@ -343,7 +343,7 @@ public static class PlanetSurfaceGenerator
                 int amount = rng.NextInt(GameConfig.SurfaceRockMinResource, GameConfig.SurfaceRockMaxResource + 1);
                 float size = GameConfig.SurfaceRockMinSize + rng.NextFloat() * (GameConfig.SurfaceRockMaxSize - GameConfig.SurfaceRockMinSize);
                 float hp = GameConfig.SurfaceRockMinHp + rng.NextFloat() * (GameConfig.SurfaceRockMaxHp - GameConfig.SurfaceRockMinHp);
-                data.RockSpawns.Add((rx, ry, resource, amount, size, hp));
+                data.RockSpawns.Add(new RockSpawn(rx, ry, resource, amount, size, hp));
             }
         }
     }
@@ -444,7 +444,7 @@ public static class PlanetSurfaceGenerator
         float totalH = settlement.Height * ts;
 
         // Perimeter
-        layout.Perimeter = (baseX, baseY, totalW, totalH);
+        layout.Perimeter = new FloatRect(baseX, baseY, totalW, totalH);
 
         // Street grid: one horizontal and one vertical street through the settlement
         float streetWidth = ts * 0.6f;
@@ -452,56 +452,56 @@ public static class PlanetSurfaceGenerator
         float streetCenterY = baseY + totalH * (0.35f + rng.NextFloat() * 0.3f);
 
         // Vertical street
-        layout.Streets.Add((streetCenterX - streetWidth / 2, baseY, streetWidth, totalH));
+        layout.Streets.Add(new FloatRect(streetCenterX - streetWidth / 2, baseY, streetWidth, totalH));
         // Horizontal street
-        layout.Streets.Add((baseX, streetCenterY - streetWidth / 2, totalW, streetWidth));
+        layout.Streets.Add(new FloatRect(baseX, streetCenterY - streetWidth / 2, totalW, streetWidth));
 
         // Define building zones (quadrants around the street intersection)
-        var zones = new (float zx, float zy, float zw, float zh)[]
+        var zones = new FloatRect[]
         {
-            (baseX, baseY, streetCenterX - streetWidth / 2 - baseX, streetCenterY - streetWidth / 2 - baseY),
-            (streetCenterX + streetWidth / 2, baseY, baseX + totalW - streetCenterX - streetWidth / 2, streetCenterY - streetWidth / 2 - baseY),
-            (baseX, streetCenterY + streetWidth / 2, streetCenterX - streetWidth / 2 - baseX, baseY + totalH - streetCenterY - streetWidth / 2),
-            (streetCenterX + streetWidth / 2, streetCenterY + streetWidth / 2, baseX + totalW - streetCenterX - streetWidth / 2, baseY + totalH - streetCenterY - streetWidth / 2),
+            new(baseX, baseY, streetCenterX - streetWidth / 2 - baseX, streetCenterY - streetWidth / 2 - baseY),
+            new(streetCenterX + streetWidth / 2, baseY, baseX + totalW - streetCenterX - streetWidth / 2, streetCenterY - streetWidth / 2 - baseY),
+            new(baseX, streetCenterY + streetWidth / 2, streetCenterX - streetWidth / 2 - baseX, baseY + totalH - streetCenterY - streetWidth / 2),
+            new(streetCenterX + streetWidth / 2, streetCenterY + streetWidth / 2, baseX + totalW - streetCenterX - streetWidth / 2, baseY + totalH - streetCenterY - streetWidth / 2),
         };
 
         // Building color palettes (muted sci-fi tones)
-        var palettes = new (byte r, byte g, byte b)[]
+        var palettes = new Color3[]
         {
-            (110, 115, 130), // blue-gray
-            (130, 110, 100), // warm gray
-            (100, 120, 110), // teal-gray
-            (125, 120, 135), // purple-gray
-            (140, 130, 110), // tan
-            (95,  105, 120), // steel blue
-            (120, 110, 95),  // brown-gray
+            new(110, 115, 130), // blue-gray
+            new(130, 110, 100), // warm gray
+            new(100, 120, 110), // teal-gray
+            new(125, 120, 135), // purple-gray
+            new(140, 130, 110), // tan
+            new(95,  105, 120), // steel blue
+            new(120, 110, 95),  // brown-gray
         };
 
         // Place buildings in each zone
-        foreach (var (zx, zy, zw, zh) in zones)
+        foreach (var zone in zones)
         {
-            if (zw < ts * 1.2f || zh < ts * 1.2f) continue; // zone too small
+            if (zone.W < ts * 1.2f || zone.H < ts * 1.2f) continue; // zone too small
 
             float margin = ts * 0.25f;
-            float cursorX = zx + margin;
-            float cursorY = zy + margin;
+            float cursorX = zone.X + margin;
+            float cursorY = zone.Y + margin;
 
             // Fill zone row by row with varied buildings
-            while (cursorY + ts < zy + zh - margin)
+            while (cursorY + ts < zone.Y + zone.H - margin)
             {
-                cursorX = zx + margin;
+                cursorX = zone.X + margin;
                 float rowH = ts * (0.8f + rng.NextFloat() * 0.6f);
 
-                while (cursorX + ts < zx + zw - margin)
+                while (cursorX + ts < zone.X + zone.W - margin)
                 {
                     float bw = ts * (0.8f + rng.NextFloat() * 1.2f);
                     float bh = rowH;
 
                     // Clamp to zone bounds
-                    if (cursorX + bw > zx + zw - margin)
-                        bw = zx + zw - margin - cursorX;
-                    if (cursorY + bh > zy + zh - margin)
-                        bh = zy + zh - margin - cursorY;
+                    if (cursorX + bw > zone.X + zone.W - margin)
+                        bw = zone.X + zone.W - margin - cursorX;
+                    if (cursorY + bh > zone.Y + zone.H - margin)
+                        bh = zone.Y + zone.H - margin - cursorY;
 
                     if (bw < ts * 0.5f || bh < ts * 0.5f)
                     {
@@ -516,9 +516,9 @@ public static class PlanetSurfaceGenerator
                         Y = cursorY,
                         W = bw,
                         H = bh,
-                        R = pal.r,
-                        G = pal.g,
-                        B = pal.b,
+                        R = pal.R,
+                        G = pal.G,
+                        B = pal.B,
                         HasAntenna = rng.NextFloat() < 0.2f,
                         HasChimney = rng.NextFloat() < 0.15f,
                         WindowRows = bh > ts * 0.6f ? rng.NextInt(1, 3) : 0,
@@ -537,13 +537,13 @@ public static class PlanetSurfaceGenerator
         float lightSpacing = ts * 1.5f;
         for (float ly = baseY + lightSpacing; ly < baseY + totalH - lightSpacing; ly += lightSpacing)
         {
-            layout.Lights.Add((streetCenterX - streetWidth / 2 - 4, ly));
-            layout.Lights.Add((streetCenterX + streetWidth / 2 + 4, ly));
+            layout.Lights.Add(new FloatPos(streetCenterX - streetWidth / 2 - 4, ly));
+            layout.Lights.Add(new FloatPos(streetCenterX + streetWidth / 2 + 4, ly));
         }
         for (float lx = baseX + lightSpacing; lx < baseX + totalW - lightSpacing; lx += lightSpacing)
         {
-            layout.Lights.Add((lx, streetCenterY - streetWidth / 2 - 4));
-            layout.Lights.Add((lx, streetCenterY + streetWidth / 2 + 4));
+            layout.Lights.Add(new FloatPos(lx, streetCenterY - streetWidth / 2 - 4));
+            layout.Lights.Add(new FloatPos(lx, streetCenterY + streetWidth / 2 + 4));
         }
 
         return layout;

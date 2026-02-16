@@ -132,19 +132,19 @@ public static class HudRenderer
         {
             ref var health = ref ecsWorld.Get<Health>(playerShip);
             RenderHealthBar(renderer, y + LineHeight + 4, "SHLD", health.Shield, health.MaxShield,
-                (80, 160, 255), null, null);
+                new Color3(80, 160, 255), null, null);
         }
     }
 
     /// <summary>Render a single health/shield bar with label and numeric text.</summary>
     private static void RenderHealthBar(SpriteRenderer renderer, float y,
         string label, float current, float max,
-        (byte R, byte G, byte B) fillColor,
-        (byte R, byte G, byte B)? labelColor,
-        (byte R, byte G, byte B)? textColor)
+        Color3 fillColor,
+        Color3? labelColor,
+        Color3? textColor)
     {
-        var lc = labelColor ?? (200, 200, 200);
-        var tc = textColor ?? (200, 200, 200);
+        var lc = labelColor ?? new Color3(200, 200, 200);
+        var tc = textColor ?? new Color3(200, 200, 200);
 
         float labelW = renderer.MeasureText(label, TextScale) + 8;
         float totalW = labelW + BarWidth + 80;
@@ -167,11 +167,11 @@ public static class HudRenderer
     }
 
     /// <summary>Calculate the hull bar color based on current percentage.</summary>
-    private static (byte R, byte G, byte B) HPBarColor(float pct)
+    private static Color3 HPBarColor(float pct)
     {
         byte r = pct > 0.5f ? (byte)(255 * (1 - pct) * 2) : (byte)255;
         byte g = pct > 0.5f ? (byte)255 : (byte)(255 * pct * 2);
-        return (r, g, 0);
+        return new Color3(r, g, 0);
     }
 
     /// <summary>Format danger level with color-coded text.</summary>
@@ -194,7 +194,7 @@ public static class HudRenderer
 
     /// <summary>Render a multi-line interaction panel centered at the bottom of the screen.</summary>
     public static void RenderPromptPanel(SpriteRenderer renderer, string[] lines,
-        (byte R, byte G, byte B)[] colors)
+        Color3[] colors)
     {
         float w = GameConfig.WindowWidth;
         float h = GameConfig.WindowHeight;
@@ -223,7 +223,7 @@ public static class HudRenderer
         // Remaining lines at text scale
         for (int i = 1; i < lines.Length; i++)
         {
-            var c = i < colors.Length ? colors[i] : (R: (byte)150, G: (byte)150, B: (byte)150);
+            var c = i < colors.Length ? colors[i] : new Color3(150, 150, 150);
             renderer.DrawTextScreen(px + 10, py + 6 + 24 + (i - 1) * 18, lines[i], c.R, c.G, c.B, TextScale);
         }
     }
@@ -246,10 +246,10 @@ public static class HudRenderer
                  $"TYPE: {planet.Type.ToString().ToUpper()}",
                  details,
                  settText],
-                [(100, 255, 100),
-                 (180, 180, 180),
-                 (150, 150, 150),
-                 planet.HasSettlement ? ((byte)255, (byte)220, (byte)100) : ((byte)120, (byte)120, (byte)120)]);
+                [new Color3(100, 255, 100),
+                 new Color3(180, 180, 180),
+                 new Color3(150, 150, 150),
+                 planet.HasSettlement ? new Color3(255, 220, 100) : new Color3(120, 120, 120)]);
         }
         else if (nearbyMoonIndex >= 0 && nearbyMoonPlanetIndex >= 0
             && nearbyMoonPlanetIndex < planets.Count
@@ -261,9 +261,9 @@ public static class HudRenderer
                 [$"[E] LAND ON {moon.Name.ToUpper()}",
                  $"TYPE: {moon.Type.ToString().ToUpper()}",
                  $"ORBITS: {parent.Name.ToUpper()}"],
-                [(180, 255, 180),
-                 (180, 180, 180),
-                 (150, 150, 150)]);
+                [new Color3(180, 255, 180),
+                 new Color3(180, 180, 180),
+                 new Color3(150, 150, 150)]);
         }
         else if (nearbyStationIndex >= 0)
         {
@@ -334,10 +334,10 @@ public static class HudRenderer
 
             var (cr, cg, cb) = ai.Config.Faction switch
             {
-                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
-                Faction.Trader => ((byte)200, (byte)180, (byte)80),
-                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
-                _ => ((byte)200, (byte)200, (byte)200)
+                Faction.Pirate => new Color3(255, 80, 80),
+                Faction.Trader => new Color3(200, 180, 80),
+                Faction.Patrol => new Color3(80, 160, 255),
+                _ => new Color3(200, 200, 200)
             };
 
             RenderOffscreenIndicator(renderer, camera, transform.Position, cr, cg, cb);

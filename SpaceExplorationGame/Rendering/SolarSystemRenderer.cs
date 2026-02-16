@@ -14,7 +14,7 @@ public static class SolarSystemRenderer
 {
     /// <summary>Renders parallax background stars.</summary>
     public static void RenderBackgroundStars(SpriteRenderer renderer, Camera camera,
-        List<(float X, float Y, byte Brightness)> bgStars, Vector2 starCenter)
+        List<BackgroundStar> bgStars, Vector2 starCenter)
     {
         foreach (var (x, y, brightness) in bgStars)
         {
@@ -107,10 +107,10 @@ public static class SolarSystemRenderer
             };
             var (fr, fg, fb) = ai.Config.Faction switch
             {
-                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
-                Faction.Trader => ((byte)200, (byte)180, (byte)80),
-                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
-                _ => ((byte)200, (byte)200, (byte)200)
+                Faction.Pirate => new Color3(255, 80, 80),
+                Faction.Trader => new Color3(200, 180, 80),
+                Faction.Patrol => new Color3(80, 160, 255),
+                _ => new Color3(200, 200, 200)
             };
             var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
             renderer.DrawText(camera, labelPos, factionLabel, fr, fg, fb, 0.8f);

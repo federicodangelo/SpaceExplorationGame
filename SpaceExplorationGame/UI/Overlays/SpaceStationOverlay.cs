@@ -56,9 +56,9 @@ public class SpaceStationOverlay : OverlayBase
         ItemHeight = 50f,
         SelectedScale = 2.5f,
         NormalScale = 2f,
-        SelectedColor = (100, 255, 200),
-        NormalColor = (160, 160, 180),
-        HighlightBg = (40, 40, 80),
+        SelectedColor = new Color3(100, 255, 200),
+        NormalColor = new Color3(160, 160, 180),
+        HighlightBg = new Color3(40, 40, 80),
         HighlightAlpha = 255,
     };
 

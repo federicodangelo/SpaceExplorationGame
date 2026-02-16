@@ -26,7 +26,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
     protected abstract string Title { get; }
 
     /// <summary>Title text color.</summary>
-    protected abstract (byte R, byte G, byte B) TitleColor { get; }
+    protected abstract Color3 TitleColor { get; }
 
     /// <summary>Panel height in pixels (e.g. 620 for ship with 7 slots, 420 for 3 slots).</summary>
     protected abstract float PanelHeight { get; }
@@ -374,7 +374,7 @@ public abstract class CustomizationOverlayBase : OverlayBase
 
     /// <summary>Helper for subclass stat comparison rendering.</summary>
     protected static void RenderStatDiffs(SpriteRenderer renderer, float x, float y,
-        List<(string Label, float Diff)> diffs)
+        List<StatDiff> diffs)
     {
         float cx = x;
         foreach (var (label, diff) in diffs)

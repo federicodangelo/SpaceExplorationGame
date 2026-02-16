@@ -16,7 +16,7 @@ public class VehicleCustomizationOverlay : CustomizationOverlayBase
     ];
 
     protected override string Title => "VEHICLE CUSTOMIZATION";
-    protected override (byte R, byte G, byte B) TitleColor => (255, 180, 80);
+    protected override Color3 TitleColor => new(255, 180, 80);
     protected override float PanelHeight => 420;
     protected override int SlotCount => SlotOrder.Length;
 
@@ -65,12 +65,12 @@ public class VehicleCustomizationOverlay : CustomizationOverlayBase
         var n = ((VehiclePart)newPart).Stats;
         var o = ((VehiclePart)currentPart).Stats;
 
-        var diffs = new List<(string Label, float Diff)>();
-        if (n.Acceleration - o.Acceleration != 0) diffs.Add(("ACC", n.Acceleration - o.Acceleration));
-        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(("SPD", n.MaxSpeed - o.MaxSpeed));
-        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(("ROT", n.RotationSpeed - o.RotationSpeed));
-        if (n.Friction - o.Friction != 0) diffs.Add(("GRP", (n.Friction - o.Friction) * 1000));
-        if (n.Visibility - o.Visibility != 0) diffs.Add(("VIS", n.Visibility - o.Visibility));
+        var diffs = new List<StatDiff>();
+        if (n.Acceleration - o.Acceleration != 0) diffs.Add(new StatDiff("ACC", n.Acceleration - o.Acceleration));
+        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", n.MaxSpeed - o.MaxSpeed));
+        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", n.RotationSpeed - o.RotationSpeed));
+        if (n.Friction - o.Friction != 0) diffs.Add(new StatDiff("GRP", (n.Friction - o.Friction) * 1000));
+        if (n.Visibility - o.Visibility != 0) diffs.Add(new StatDiff("VIS", n.Visibility - o.Visibility));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

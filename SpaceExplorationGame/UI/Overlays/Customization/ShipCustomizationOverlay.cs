@@ -12,7 +12,7 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
     private ShipSlotType[] _slots = [];
 
     protected override string Title => _currentShipName;
-    protected override (byte R, byte G, byte B) TitleColor => (100, 220, 255);
+    protected override Color3 TitleColor => new(100, 220, 255);
     protected override float PanelHeight => 200 + _slots.Length * 55;
     protected override int SlotCount => _slots.Length;
 
@@ -74,17 +74,17 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
         var n = ((ShipPart)newPart).Stats;
         var o = ((ShipPart)currentPart).Stats;
 
-        var diffs = new List<(string Label, float Diff)>();
-        if (n.Acceleration - o.Acceleration != 0) diffs.Add(("ACC", n.Acceleration - o.Acceleration));
-        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(("SPD", n.MaxSpeed - o.MaxSpeed));
-        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(("ROT", n.RotationSpeed - o.RotationSpeed));
-        if (n.MaxHull - o.MaxHull != 0) diffs.Add(("HULL", n.MaxHull - o.MaxHull));
-        if (n.MaxFuel - o.MaxFuel != 0) diffs.Add(("FUEL", n.MaxFuel - o.MaxFuel));
-        if (n.FtlRange - o.FtlRange != 0) diffs.Add(("FTL", n.FtlRange - o.FtlRange));
-        if (n.ShieldStrength - o.ShieldStrength != 0) diffs.Add(("SHD", n.ShieldStrength - o.ShieldStrength));
-        if (n.WeaponDamage - o.WeaponDamage != 0) diffs.Add(("DMG", n.WeaponDamage - o.WeaponDamage));
-        if (n.FuelEfficiency - o.FuelEfficiency != 0) diffs.Add(("EFF", (n.FuelEfficiency - o.FuelEfficiency) * 100));
-        if (n.CargoCapacity - o.CargoCapacity != 0) diffs.Add(("CARGO", n.CargoCapacity - o.CargoCapacity));
+        var diffs = new List<StatDiff>();
+        if (n.Acceleration - o.Acceleration != 0) diffs.Add(new StatDiff("ACC", n.Acceleration - o.Acceleration));
+        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", n.MaxSpeed - o.MaxSpeed));
+        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", n.RotationSpeed - o.RotationSpeed));
+        if (n.MaxHull - o.MaxHull != 0) diffs.Add(new StatDiff("HULL", n.MaxHull - o.MaxHull));
+        if (n.MaxFuel - o.MaxFuel != 0) diffs.Add(new StatDiff("FUEL", n.MaxFuel - o.MaxFuel));
+        if (n.FtlRange - o.FtlRange != 0) diffs.Add(new StatDiff("FTL", n.FtlRange - o.FtlRange));
+        if (n.ShieldStrength - o.ShieldStrength != 0) diffs.Add(new StatDiff("SHD", n.ShieldStrength - o.ShieldStrength));
+        if (n.WeaponDamage - o.WeaponDamage != 0) diffs.Add(new StatDiff("DMG", n.WeaponDamage - o.WeaponDamage));
+        if (n.FuelEfficiency - o.FuelEfficiency != 0) diffs.Add(new StatDiff("EFF", (n.FuelEfficiency - o.FuelEfficiency) * 100));
+        if (n.CargoCapacity - o.CargoCapacity != 0) diffs.Add(new StatDiff("CARGO", n.CargoCapacity - o.CargoCapacity));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

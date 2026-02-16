@@ -22,7 +22,7 @@ public class PlanetLandingOverlay : OverlayBase
     private Vector2 _mapOffset = Vector2.Zero;  // pan offset in screen pixels
 
     // Landing cursor
-    private (int TileX, int TileY) _cursorTile;
+    private TilePos _cursorTile;
     private bool _hasCursor = false;
     private float _cursorPulse = 0f;  // animation timer
 
@@ -32,7 +32,7 @@ public class PlanetLandingOverlay : OverlayBase
 
     // Double-click tracking
     private float _lastClickTime;
-    private (int X, int Y) _lastClickTile = (-1, -1);
+    private TilePos _lastClickTile = new(-1, -1);
     private const float DoubleClickTime = 0.4f;
 
     // Moon tracking (if landing on a moon)
@@ -55,7 +55,7 @@ public class PlanetLandingOverlay : OverlayBase
         _cursorPulse = 0f;
         _isPanning = false;
         _lastClickTime = 0f;
-        _lastClickTile = (-1, -1);
+        _lastClickTile = new TilePos(-1, -1);
 
         // Generate the same surface we'll land on
         var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
@@ -65,7 +65,7 @@ public class PlanetLandingOverlay : OverlayBase
         _terrainTexture = CreateTerrainTexture(game);
 
         // Default cursor at center
-        _cursorTile = (_surfaceData.Width / 2, _surfaceData.Height / 2);
+        _cursorTile = new TilePos(_surfaceData.Width / 2, _surfaceData.Height / 2);
         _hasCursor = true;
 
         IsOpen = true;
@@ -139,12 +139,12 @@ public class PlanetLandingOverlay : OverlayBase
                     {
                         // Double-click: confirm landing
                         TryLand(game);
-                        _lastClickTile = (-1, -1);
+                        _lastClickTile = new TilePos(-1, -1);
                     }
                     else
                     {
                         // Single click: select
-                        _cursorTile = (tilePos.X, tilePos.Y);
+                        _cursorTile = tilePos;
                         _hasCursor = true;
                         _lastClickTime = now;
                         _lastClickTile = tilePos;
@@ -163,8 +163,9 @@ public class PlanetLandingOverlay : OverlayBase
 
         if (nudgeX != 0 || nudgeY != 0)
         {
-            _cursorTile.TileX = Math.Clamp(_cursorTile.TileX + nudgeX, 0, _surfaceData.Width - 1);
-            _cursorTile.TileY = Math.Clamp(_cursorTile.TileY + nudgeY, 0, _surfaceData.Height - 1);
+            _cursorTile = new TilePos(
+                Math.Clamp(_cursorTile.X + nudgeX, 0, _surfaceData.Width - 1),
+                Math.Clamp(_cursorTile.Y + nudgeY, 0, _surfaceData.Height - 1));
             _hasCursor = true;
         }
 
@@ -193,7 +194,7 @@ public class PlanetLandingOverlay : OverlayBase
     private void TryLand(Game game)
     {
         if (!_hasCursor) return;
-        var terrain = _surfaceData.Tiles[_cursorTile.TileX, _cursorTile.TileY];
+        var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
         if (terrain is TerrainType.Water or TerrainType.Lava or TerrainType.Void) return;
 
         if (_isMoon)
@@ -210,7 +211,7 @@ public class PlanetLandingOverlay : OverlayBase
 
         Cleanup();
         Close();
-        game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.TileX, _cursorTile.TileY));
+        game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.X, _cursorTile.Y));
     }
 
     public override void Render(Game game)
@@ -263,8 +264,8 @@ public class PlanetLandingOverlay : OverlayBase
         // Draw landing cursor
         if (_hasCursor)
         {
-            float cx = mapX + (_cursorTile.TileX + 0.5f) * tileToScreenX;
-            float cy = mapY + (_cursorTile.TileY + 0.5f) * tileToScreenY;
+            float cx = mapX + (_cursorTile.X + 0.5f) * tileToScreenX;
+            float cy = mapY + (_cursorTile.Y + 0.5f) * tileToScreenY;
             float pulseSize = 6f + MathF.Sin(_cursorPulse) * 2f;
             float outerSize = pulseSize + 4f;
 
@@ -289,7 +290,7 @@ public class PlanetLandingOverlay : OverlayBase
             renderer.DrawRectScreen(cx + outerSize, cy + outerSize - bLen, 2, bLen, 200, 255, 200, 255);
 
             // Terrain info at cursor
-            var terrain = _surfaceData.Tiles[_cursorTile.TileX, _cursorTile.TileY];
+            var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
             string terrainName = terrain.ToString().ToUpper();
             bool canLand = terrain is not (TerrainType.Water or TerrainType.Lava or TerrainType.Void);
 
@@ -297,8 +298,8 @@ public class PlanetLandingOverlay : OverlayBase
             string? nearSettlement = null;
             foreach (var s in _surfaceData.Settlements)
             {
-                if (_cursorTile.TileX >= s.TileX && _cursorTile.TileX < s.TileX + s.Width &&
-                    _cursorTile.TileY >= s.TileY && _cursorTile.TileY < s.TileY + s.Height)
+                if (_cursorTile.X >= s.TileX && _cursorTile.X < s.TileX + s.Width &&
+                    _cursorTile.Y >= s.TileY && _cursorTile.Y < s.TileY + s.Height)
                 {
                     nearSettlement = s.Name;
                     break;
@@ -322,7 +323,7 @@ public class PlanetLandingOverlay : OverlayBase
             byte tb = canLand ? (byte)100 : (byte)80;
             renderer.DrawTextScreen(infoPanelX, infoPanelY, $"TERRAIN: {terrainName}", tr, tg, tb, 1.5f);
             renderer.DrawTextScreen(infoPanelX, infoPanelY + 16,
-                $"POS: ({_cursorTile.TileX}, {_cursorTile.TileY})", 150, 150, 150, 1.3f);
+                $"POS: ({_cursorTile.X}, {_cursorTile.Y})", 150, 150, 150, 1.3f);
 
             if (nearSettlement != null)
             {
@@ -361,7 +362,7 @@ public class PlanetLandingOverlay : OverlayBase
         // Landing prompt
         if (_hasCursor)
         {
-            var terrain = _surfaceData.Tiles[_cursorTile.TileX, _cursorTile.TileY];
+            var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
             bool canLand = terrain is not (TerrainType.Water or TerrainType.Lava or TerrainType.Void);
             string prompt = canLand ? "[DBLCLICK/ENTER] CONFIRM LANDING" : "CANNOT LAND ON " + terrain.ToString().ToUpper();
             byte pr = canLand ? (byte)100 : (byte)255;
@@ -443,7 +444,7 @@ public class PlanetLandingOverlay : OverlayBase
         return new Vector2(GameConfig.WindowWidth / 2f, GameConfig.WindowHeight / 2f + 10);
     }
 
-    private (int X, int Y) ScreenToTile(Vector2 screenPos)
+    private TilePos ScreenToTile(Vector2 screenPos)
     {
         var mapCenter = GetMapCenter();
         float displayW = MapDisplaySize * _mapZoom;
@@ -457,6 +458,6 @@ public class PlanetLandingOverlay : OverlayBase
         int tileX = (int)(relX * _surfaceData.Width);
         int tileY = (int)(relY * _surfaceData.Height);
 
-        return (tileX, tileY);
+        return new TilePos(tileX, tileY);
     }
 }

@@ -324,17 +324,17 @@ public static class InteriorRenderer
 
 
     /// <summary>Returns the color associated with an interactable type.</summary>
-    public static (byte R, byte G, byte B) GetInteractableColor(InteractableType type) => type switch
+    public static Color3 GetInteractableColor(InteractableType type) => type switch
     {
-        InteractableType.RepairStation => (100, 255, 100),
-        InteractableType.HealthStation => (100, 200, 255),
-        InteractableType.MissionBoard => (100, 180, 255),
-        InteractableType.ShipCustomization => (100, 220, 255),
-        InteractableType.AvatarCustomization => (100, 255, 180),
-        InteractableType.VehicleCustomization => (255, 180, 80),
-        InteractableType.ShipDealer => (255, 200, 80),
-        InteractableType.CargoTerminal => (255, 180, 50),
-        InteractableType.ExitDoor => (255, 100, 100),
-        _ => (200, 200, 200)
+        InteractableType.RepairStation => new Color3(100, 255, 100),
+        InteractableType.HealthStation => new Color3(100, 200, 255),
+        InteractableType.MissionBoard => new Color3(100, 180, 255),
+        InteractableType.ShipCustomization => new Color3(100, 220, 255),
+        InteractableType.AvatarCustomization => new Color3(100, 255, 180),
+        InteractableType.VehicleCustomization => new Color3(255, 180, 80),
+        InteractableType.ShipDealer => new Color3(255, 200, 80),
+        InteractableType.CargoTerminal => new Color3(255, 180, 50),
+        InteractableType.ExitDoor => new Color3(255, 100, 100),
+        _ => new Color3(200, 200, 200)
     };
 }

@@ -505,13 +505,13 @@ public class PlanetSurfaceState : GameState
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
-        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedLastUpdate)
+        foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
         {
-            if (asteroidData.HasValue)
+            if (destroyed.Asteroid.HasValue)
             {
                 // Mineable rock destroyed — collect resources
-                var rock = asteroidData.Value;
-                _explosions.Add(new Explosion(pos, 12f, 140, 120, 100, 0.4f));
+                var rock = destroyed.Asteroid.Value;
+                _explosions.Add(new Explosion(destroyed.Position, 12f, 140, 120, 100, 0.4f));
 
                 int added = game.Player.AddCargo(rock.Resource, rock.ResourceAmount);
                 var resInfo = ResourceCatalog.Get(rock.Resource);
@@ -526,30 +526,30 @@ public class PlanetSurfaceState : GameState
                     _combatMessageTimer = 2.5f;
                 }
 
-                if (game.EcsWorld.IsAlive(entity))
-                    game.EcsWorld.Destroy(entity);
+                if (game.EcsWorld.IsAlive(destroyed.Entity))
+                    game.EcsWorld.Destroy(destroyed.Entity);
             }
-            else if (faction == Faction.Player)
+            else if (destroyed.Faction == Faction.Player)
             {
                 // Player avatar died
-                HandleAvatarDeath(game, pos);
+                HandleAvatarDeath(game, destroyed.Position);
             }
             else
             {
                 // Enemy died
-                _explosions.Add(new Explosion(pos, 15f,
-                    faction == Faction.Fauna ? (byte)200 : (byte)255,
-                    faction == Faction.Fauna ? (byte)80 : (byte)150,
-                    faction == Faction.Fauna ? (byte)60 : (byte)50, 0.6f));
+                _explosions.Add(new Explosion(destroyed.Position, 15f,
+                    destroyed.Faction == Faction.Fauna ? (byte)200 : (byte)255,
+                    destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
+                    destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50, 0.6f));
 
-                if (loot.HasValue)
+                if (destroyed.Loot.HasValue)
                 {
-                    _combatMessage = CombatHelper.ProcessLootDrop(game, loot.Value, combatRng);
+                    _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng);
                     _combatMessageTimer = 3f;
                 }
 
-                if (game.EcsWorld.IsAlive(entity))
-                    game.EcsWorld.Destroy(entity);
+                if (game.EcsWorld.IsAlive(destroyed.Entity))
+                    game.EcsWorld.Destroy(destroyed.Entity);
             }
         }
 

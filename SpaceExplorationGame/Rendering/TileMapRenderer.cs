@@ -23,7 +23,7 @@ public static class TileMapRenderer
     public static void RenderTiles(
         SpriteRenderer renderer, Camera camera,
         int mapWidth, int mapHeight,
-        Func<int, int, (byte R, byte G, byte B)?> getColor,
+        Func<int, int, Color3?> getColor,
         float variationDivisor = 800f,
         Action<int, int, Vector2, int>? renderDetail = null)
     {

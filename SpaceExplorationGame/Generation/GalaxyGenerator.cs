@@ -1,4 +1,5 @@
 using System.Numerics;
+using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation;
@@ -127,18 +128,18 @@ public static class GalaxyGenerator
         };
     }
 
-    private static (byte R, byte G, byte B, float Radius) GetStarProperties(StarClass starClass, SeededRandom rng)
+    private static ColoredRadius GetStarProperties(StarClass starClass, SeededRandom rng)
     {
         return starClass switch
         {
-            StarClass.O => (100, 140, 255, rng.NextFloat(20, 30)),   // Blue
-            StarClass.B => (150, 180, 255, rng.NextFloat(16, 24)),   // Blue-white
-            StarClass.A => (220, 220, 255, rng.NextFloat(14, 20)),   // White
-            StarClass.F => (255, 255, 220, rng.NextFloat(12, 18)),   // Yellow-white
-            StarClass.G => (255, 255, 100, rng.NextFloat(10, 16)),   // Yellow
-            StarClass.K => (255, 180, 80, rng.NextFloat(10, 14)),    // Orange
-            StarClass.M => (255, 100, 60, rng.NextFloat(8, 12)),     // Red
-            _ => (255, 255, 255, 12)
+            StarClass.O => new(100, 140, 255, rng.NextFloat(20, 30)),   // Blue
+            StarClass.B => new(150, 180, 255, rng.NextFloat(16, 24)),   // Blue-white
+            StarClass.A => new(220, 220, 255, rng.NextFloat(14, 20)),   // White
+            StarClass.F => new(255, 255, 220, rng.NextFloat(12, 18)),   // Yellow-white
+            StarClass.G => new(255, 255, 100, rng.NextFloat(10, 16)),   // Yellow
+            StarClass.K => new(255, 180, 80, rng.NextFloat(10, 14)),    // Orange
+            StarClass.M => new(255, 100, 60, rng.NextFloat(8, 12)),     // Red
+            _ => new(255, 255, 255, 12)
         };
     }
 }

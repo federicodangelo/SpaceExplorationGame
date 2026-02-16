@@ -38,16 +38,16 @@ public class MenuWidget<T> where T : struct, Enum
     public float ItemHeight { get; init; } = 50f;
     public float SelectedScale { get; init; } = 2.5f;
     public float NormalScale { get; init; } = 2f;
-    public (byte R, byte G, byte B) SelectedColor { get; init; } = (220, 240, 255);
-    public (byte R, byte G, byte B) NormalColor { get; init; } = (140, 140, 160);
-    public (byte R, byte G, byte B) DisabledColor { get; init; } = (80, 80, 90);
-    public (byte R, byte G, byte B) DisabledHintColor { get; init; } = (200, 80, 80);
+    public Color3 SelectedColor { get; init; } = new(220, 240, 255);
+    public Color3 NormalColor { get; init; } = new(140, 140, 160);
+    public Color3 DisabledColor { get; init; } = new(80, 80, 90);
+    public Color3 DisabledHintColor { get; init; } = new(200, 80, 80);
     public float DisabledHintScale { get; init; } = 1.5f;
-    public (byte R, byte G, byte B) HighlightBg { get; init; } = (40, 60, 120);
+    public Color3 HighlightBg { get; init; } = new(40, 60, 120);
     public byte HighlightAlpha { get; init; } = 180;
     public bool CenterAlign { get; init; } = false;
     public float DescriptionScale { get; init; } = 1.5f;
-    public (byte R, byte G, byte B) DescriptionColor { get; init; } = (160, 160, 180);
+    public Color3 DescriptionColor { get; init; } = new(160, 160, 180);
 
     // ── Constructor ───────────────────────────────────────────────
 

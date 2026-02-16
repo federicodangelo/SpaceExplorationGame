@@ -1,3 +1,5 @@
+using SpaceExplorationGame.Core;
+
 namespace SpaceExplorationGame.Generation;
 
 /// <summary>
@@ -108,7 +110,7 @@ public class InteriorData
     public List<InteriorRoom> Rooms { get; set; } = [];
     public List<InteriorNpc> Npcs { get; set; } = [];
     public List<InteriorInteractable> Interactables { get; set; } = [];
-    public (int X, int Y) SpawnPoint { get; set; }
+    public TilePos SpawnPoint { get; set; }
 }
 
 /// <summary>
@@ -239,7 +241,7 @@ public static class InteriorGenerator
                     data.Tiles[x, y] = InteriorTileType.FloorAccent;
 
         // Spawn point
-        data.SpawnPoint = (docking.CenterX, docking.CenterY);
+        data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
 
         // Cargo terminal (sell mined resources)
         data.Interactables.Add(new InteriorInteractable
@@ -392,7 +394,7 @@ public static class InteriorGenerator
         PlaceCrates(data, rng, housing2, 2);
 
         // Spawn point
-        data.SpawnPoint = (landing.CenterX, landing.CenterY);
+        data.SpawnPoint = new TilePos(landing.CenterX, landing.CenterY);
 
         // Place interactables
         // Cargo terminal (sell mining resources)
@@ -489,20 +491,20 @@ public static class InteriorGenerator
     }
 
     /// <summary>Get the color for an interior tile.</summary>
-    public static (byte R, byte G, byte B) GetTileColor(InteriorTileType type)
+    public static Color3 GetTileColor(InteriorTileType type)
     {
         return type switch
         {
-            InteriorTileType.Floor => (60, 60, 70),
-            InteriorTileType.Wall => (40, 40, 50),
-            InteriorTileType.DoorOpen => (80, 80, 60),
-            InteriorTileType.Console => (30, 80, 120),
-            InteriorTileType.Crate => (100, 80, 50),
-            InteriorTileType.FloorAccent => (70, 65, 80),
-            InteriorTileType.LandingPad => (50, 55, 65),
-            InteriorTileType.StreetTile => (55, 50, 45),
-            InteriorTileType.Void => (10, 10, 15),
-            _ => (40, 40, 40)
+            InteriorTileType.Floor => new(60, 60, 70),
+            InteriorTileType.Wall => new(40, 40, 50),
+            InteriorTileType.DoorOpen => new(80, 80, 60),
+            InteriorTileType.Console => new(30, 80, 120),
+            InteriorTileType.Crate => new(100, 80, 50),
+            InteriorTileType.FloorAccent => new(70, 65, 80),
+            InteriorTileType.LandingPad => new(50, 55, 65),
+            InteriorTileType.StreetTile => new(55, 50, 45),
+            InteriorTileType.Void => new(10, 10, 15),
+            _ => new(40, 40, 40)
         };
     }
 

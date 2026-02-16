@@ -52,7 +52,7 @@ public class SolarSystemState : GameState
     private const float InteractionRadius = 20f;
 
     // Background stars
-    private List<(float X, float Y, byte Brightness)> _bgStars = [];
+    private List<BackgroundStar> _bgStars = [];
 
     // Station overlay (docked at station)
     private readonly SpaceStationOverlay _stationOverlay = new();
@@ -276,7 +276,7 @@ public class SolarSystemState : GameState
         SpawnNPCShips(game, center, mapW, mapH);
         for (int i = 0; i < 800; i++)
         {
-            _bgStars.Add((
+            _bgStars.Add(new BackgroundStar(
                 bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
                 bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
                 (byte)bgRng.NextInt(20, 100)
@@ -689,25 +689,25 @@ public class SolarSystemState : GameState
 
         // Process damage events (visual effects + mining HUD tracking)
         CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
-        foreach (var (pos, _, _, target) in _projectileSystem.DamageEventsLastUpdate)
+        foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
             // Track last asteroid hit for mining HUD
-            if (game.EcsWorld.IsAlive(target) && game.EcsWorld.Has<AsteroidField>(target))
+            if (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<AsteroidField>(evt.Target))
             {
-                _lastHitAsteroid = target;
+                _lastHitAsteroid = evt.Target;
                 _miningHudTimer = 2f;
             }
         }
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xDEADBEEF);
-        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedLastUpdate)
+        foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
         {
-            if (asteroidData.HasValue)
+            if (destroyed.Asteroid.HasValue)
             {
                 // Asteroid destroyed — collect resources
-                var asteroid = asteroidData.Value;
-                _explosions.Add(new Explosion(pos, 15f, 140, 120, 100, 0.5f));
+                var asteroid = destroyed.Asteroid.Value;
+                _explosions.Add(new Explosion(destroyed.Position, 15f, 140, 120, 100, 0.5f));
 
                 int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
                 var resInfo = ResourceCatalog.Get(asteroid.Resource);
@@ -723,39 +723,39 @@ public class SolarSystemState : GameState
                 }
 
                 // Clear mining HUD since asteroid is gone
-                if (_lastHitAsteroid == entity) _miningHudTimer = 0;
+                if (_lastHitAsteroid == destroyed.Entity) _miningHudTimer = 0;
 
-                if (game.EcsWorld.IsAlive(entity))
+                if (game.EcsWorld.IsAlive(destroyed.Entity))
                 {
-                    _asteroidEntities.Remove(entity);
-                    game.EcsWorld.Destroy(entity);
+                    _asteroidEntities.Remove(destroyed.Entity);
+                    game.EcsWorld.Destroy(destroyed.Entity);
                 }
             }
-            else if (faction == Faction.Player)
+            else if (destroyed.Faction == Faction.Player)
             {
                 // Player died
-                HandlePlayerDeath(game, pos);
+                HandlePlayerDeath(game, destroyed.Position);
             }
             else
             {
                 // Enemy died — create explosion and drop loot
-                byte expR = faction == Faction.Pirate ? (byte)255 : (byte)200;
-                byte expG = faction == Faction.Pirate ? (byte)120 : (byte)200;
-                byte expB = faction == Faction.Pirate ? (byte)80 : (byte)200;
-                _explosions.Add(new Explosion(pos, 30f, expR, expG, expB));
+                byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
+                byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
+                byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
+                _explosions.Add(new Explosion(destroyed.Position, 30f, expR, expG, expB));
 
-                if (loot.HasValue)
+                if (destroyed.Loot.HasValue)
                 {
-                    _combatMessage = CombatHelper.ProcessLootDrop(game, loot.Value, combatRng,
-                        resourceAmountMax: 5 + loot.Value.DangerLevel * 2, enablePartDrops: true);
+                    _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng,
+                        resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);
                     _combatMessageTimer = 3f;
                 }
 
                 // Destroy the entity
-                if (game.EcsWorld.IsAlive(entity))
+                if (game.EcsWorld.IsAlive(destroyed.Entity))
                 {
-                    _enemyEntities.Remove(entity);
-                    game.EcsWorld.Destroy(entity);
+                    _enemyEntities.Remove(destroyed.Entity);
+                    game.EcsWorld.Destroy(destroyed.Entity);
                 }
             }
         }

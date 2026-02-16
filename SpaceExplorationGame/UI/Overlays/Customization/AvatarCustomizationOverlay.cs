@@ -16,7 +16,7 @@ public class AvatarCustomizationOverlay : CustomizationOverlayBase
     ];
 
     protected override string Title => "AVATAR CUSTOMIZATION";
-    protected override (byte R, byte G, byte B) TitleColor => (100, 255, 180);
+    protected override Color3 TitleColor => new(100, 255, 180);
     protected override float PanelHeight => 420;
     protected override int SlotCount => SlotOrder.Length;
 
@@ -65,10 +65,10 @@ public class AvatarCustomizationOverlay : CustomizationOverlayBase
         var n = ((AvatarPart)newPart).Stats;
         var o = ((AvatarPart)currentPart).Stats;
 
-        var diffs = new List<(string Label, float Diff)>();
-        if (n.WalkSpeed - o.WalkSpeed != 0) diffs.Add(("SPD", n.WalkSpeed - o.WalkSpeed));
-        if (n.OxygenCapacity - o.OxygenCapacity != 0) diffs.Add(("O2", n.OxygenCapacity - o.OxygenCapacity));
-        if (n.TerrainPenalty - o.TerrainPenalty != 0) diffs.Add(("TRN", (n.TerrainPenalty - o.TerrainPenalty) * 100));
+        var diffs = new List<StatDiff>();
+        if (n.WalkSpeed - o.WalkSpeed != 0) diffs.Add(new StatDiff("SPD", n.WalkSpeed - o.WalkSpeed));
+        if (n.OxygenCapacity - o.OxygenCapacity != 0) diffs.Add(new StatDiff("O2", n.OxygenCapacity - o.OxygenCapacity));
+        if (n.TerrainPenalty - o.TerrainPenalty != 0) diffs.Add(new StatDiff("TRN", (n.TerrainPenalty - o.TerrainPenalty) * 100));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

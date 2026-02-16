@@ -28,7 +28,7 @@ public class MainMenuState : GameState
     private float _animTimer = 0f;
 
     // Background stars for visual flair
-    private List<(float X, float Y, byte Brightness, float Speed)> _bgStars = [];
+    private List<AnimatedStar> _bgStars = [];
 
     private static readonly MenuOption<StartOption>[] MenuOptions =
     [
@@ -47,12 +47,12 @@ public class MainMenuState : GameState
         ItemHeight = 50f,
         SelectedScale = 2.5f,
         NormalScale = 2f,
-        SelectedColor = (220, 240, 255),
-        NormalColor = (140, 140, 160),
-        HighlightBg = (40, 60, 120),
+        SelectedColor = new Color3(220, 240, 255),
+        NormalColor = new Color3(140, 140, 160),
+        HighlightBg = new Color3(40, 60, 120),
         HighlightAlpha = 180,
         DescriptionScale = 1.5f,
-        DescriptionColor = (160, 160, 180)
+        DescriptionColor = new Color3(160, 160, 180)
     };
 
     // Auto-launch: if not None, skip menu and launch this option immediately
@@ -75,7 +75,7 @@ public class MainMenuState : GameState
         var rng = new Random(42);
         for (int i = 0; i < 200; i++)
         {
-            _bgStars.Add((
+            _bgStars.Add(new AnimatedStar(
                 rng.Next(0, GameConfig.WindowWidth),
                 rng.Next(0, GameConfig.WindowHeight),
                 (byte)rng.Next(40, 160),
@@ -200,7 +200,7 @@ public class MainMenuState : GameState
         return systems[rng.NextInt(0, systems.Count)];
     }
 
-    private (StarSystemData System, PlanetData Planet) PickRandomPlanet(Game game)
+    private SystemPlanet PickRandomPlanet(Game game)
     {
         var galaxyRng = game.Seeds.GetGalaxyRandom();
         var systems = GalaxyGenerator.Generate(galaxyRng);
@@ -216,7 +216,7 @@ public class MainMenuState : GameState
             var landable = planets.Where(p => p.HasSolidSurface).ToList();
             if (landable.Count > 0)
             {
-                return (system, landable[rng.NextInt(0, landable.Count)]);
+                return new SystemPlanet(system, landable[rng.NextInt(0, landable.Count)]);
             }
         }
 
@@ -224,10 +224,10 @@ public class MainMenuState : GameState
         var fallbackSystem = systems[0];
         var fallbackRng = game.Seeds.GetStarSystemRandom(fallbackSystem.Index);
         var (fallbackPlanets, _, _) = SolarSystemGenerator.Generate(fallbackRng, fallbackSystem);
-        return (fallbackSystem, fallbackPlanets[0]);
+        return new SystemPlanet(fallbackSystem, fallbackPlanets[0]);
     }
 
-    private (StarSystemData System, SpaceStationData Station) PickRandomStation(Game game)
+    private SystemStation PickRandomStation(Game game)
     {
         var galaxyRng = game.Seeds.GetGalaxyRandom();
         var systems = GalaxyGenerator.Generate(galaxyRng);
@@ -244,7 +244,7 @@ public class MainMenuState : GameState
 
             if (stations.Count > 0)
             {
-                return (system, stations[rng.NextInt(0, stations.Count)]);
+                return new SystemStation(system, stations[rng.NextInt(0, stations.Count)]);
             }
         }
 
@@ -254,17 +254,17 @@ public class MainMenuState : GameState
             var sysRng = game.Seeds.GetStarSystemRandom(system.Index);
             var (_, _, stations) = SolarSystemGenerator.Generate(sysRng, system);
             if (stations.Count > 0)
-                return (system, stations[0]);
+                return new SystemStation(system, stations[0]);
         }
 
         // Last resort: first system
         var fb = systems[0];
         var fbRng = game.Seeds.GetStarSystemRandom(fb.Index);
         var (_, _, fbStations) = SolarSystemGenerator.Generate(fbRng, fb);
-        return (fb, fbStations[0]);
+        return new SystemStation(fb, fbStations[0]);
     }
 
-    private (StarSystemData System, PlanetData Planet) PickRandomSettlement(Game game)
+    private SystemPlanet PickRandomSettlement(Game game)
     {
         var galaxyRng = game.Seeds.GetGalaxyRandom();
         var systems = GalaxyGenerator.Generate(galaxyRng);
@@ -280,7 +280,7 @@ public class MainMenuState : GameState
             var settled = planets.Where(p => p.HasSettlement && p.HasSolidSurface).ToList();
             if (settled.Count > 0)
             {
-                return (system, settled[rng.NextInt(0, settled.Count)]);
+                return new SystemPlanet(system, settled[rng.NextInt(0, settled.Count)]);
             }
         }
 
@@ -288,7 +288,7 @@ public class MainMenuState : GameState
         return PickRandomPlanet(game);
     }
 
-    private (StarSystemData System, PlanetData Planet, SettlementData Settlement) PickRandomSettlementWithData(Game game)
+    private SystemPlanetSettlement PickRandomSettlementWithData(Game game)
     {
         var galaxyRng = game.Seeds.GetGalaxyRandom();
         var systems = GalaxyGenerator.Generate(galaxyRng);
@@ -310,7 +310,7 @@ public class MainMenuState : GameState
                 if (surfaceData.Settlements.Count > 0)
                 {
                     var settlement = surfaceData.Settlements[rng.NextInt(0, surfaceData.Settlements.Count)];
-                    return (system, planet, settlement);
+                    return new SystemPlanetSettlement(system, planet, settlement);
                 }
             }
         }
@@ -319,7 +319,7 @@ public class MainMenuState : GameState
         var (fbSystem, fbPlanet) = PickRandomSettlement(game);
         var fbSurfRng = game.Seeds.GetPlanetSurfaceRandom(fbSystem.Index, fbPlanet.Index);
         var fbSurface = PlanetSurfaceGenerator.Generate(fbSurfRng, fbPlanet);
-        return (fbSystem, fbPlanet, fbSurface.Settlements[0]);
+        return new SystemPlanetSettlement(fbSystem, fbPlanet, fbSurface.Settlements[0]);
     }
 
     public override void Render(Game game)

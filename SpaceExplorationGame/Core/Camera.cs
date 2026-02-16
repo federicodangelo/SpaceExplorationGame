@@ -45,11 +45,11 @@ public class Camera
     /// <summary>
     /// Get the world-space rectangle visible on screen.
     /// </summary>
-    public (Vector2 TopLeft, Vector2 BottomRight) GetVisibleBounds()
+    public VisibleBounds GetVisibleBounds()
     {
         var halfW = ViewportWidth / (2f * Zoom);
         var halfH = ViewportHeight / (2f * Zoom);
-        return (
+        return new VisibleBounds(
             new Vector2(Position.X - halfW, Position.Y - halfH),
             new Vector2(Position.X + halfW, Position.Y + halfH)
         );

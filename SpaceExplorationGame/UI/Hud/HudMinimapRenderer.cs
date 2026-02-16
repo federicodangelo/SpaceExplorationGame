@@ -107,10 +107,10 @@ public static class HudMinimapRenderer
             var ai = ecsWorld.Get<EnemyAI>(entity);
             var (er, eg, eb) = ai.Config.Faction switch
             {
-                Faction.Pirate => ((byte)255, (byte)80, (byte)80),
-                Faction.Trader => ((byte)200, (byte)180, (byte)80),
-                Faction.Patrol => ((byte)80, (byte)160, (byte)255),
-                _ => ((byte)200, (byte)200, (byte)200)
+                Faction.Pirate => new Color3(255, 80, 80),
+                Faction.Trader => new Color3(200, 180, 80),
+                Faction.Patrol => new Color3(80, 160, 255),
+                _ => new Color3(200, 200, 200)
             };
             markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, er, eg, eb));
         }
@@ -263,13 +263,13 @@ public static class HudMinimapRenderer
     }
 
     /// <summary>Computes the player-centered view for scrolling minimaps.</summary>
-    private static (Vector2 Origin, Vector2 Size) PlayerCenteredView(
+    private static ViewArea PlayerCenteredView(
         float mapW, float mapH, Vector2 playerPos)
     {
         float viewRadius = MathF.Min(mapW, mapH) * MinimapViewFraction;
         float viewSize = viewRadius * 2f;
         var origin = new Vector2(playerPos.X - viewRadius, playerPos.Y - viewRadius);
-        return (origin, new Vector2(viewSize, viewSize));
+        return new ViewArea(origin, new Vector2(viewSize, viewSize));
     }
 
     /// <summary>Returns true if screen coordinates fall within the minimap area.</summary>

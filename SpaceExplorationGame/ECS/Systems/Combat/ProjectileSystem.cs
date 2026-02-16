@@ -7,6 +7,18 @@ using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.Combat;
 
+/// <summary>A projectile hit event: which projectile hit which target and for how much damage.</summary>
+public readonly record struct ProjectileHit(Entity Projectile, Entity Target, float Damage);
+
+/// <summary>Per-frame snapshot of a live projectile's state for collision checking.</summary>
+public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position, Projectile Proj);
+
+/// <summary>An entity destroyed by projectile damage this frame.</summary>
+public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid);
+
+/// <summary>A damage event from a projectile hit (for visual effects).</summary>
+public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target);
+
 /// <summary>
 /// Moves projectiles, checks lifetime expiry, and detects collision with Health entities.
 /// Uses Arch source generator for projectile iteration; manual queries for collision detection.
@@ -14,21 +26,21 @@ namespace SpaceExplorationGame.ECS.Systems.Combat;
 public partial class ProjectileSystem : BaseSystem<World, float>
 {
     // Collision results per frame
-    private readonly List<(Entity Projectile, Entity Target, float Damage)> _hits = [];
+    private readonly List<ProjectileHit> _hits = [];
     private readonly HashSet<Entity> _expired = new();
 
     // Cached query description for collision checking
     private static readonly QueryDescription _healthQuery = new QueryDescription().WithAll<Transform, Health>();
 
     // Per-frame data
-    private readonly List<(Entity Entity, Vector2 Position, Projectile Proj)> _projectileData = [];
+    private readonly List<ProjectileSnapshot> _projectileData = [];
     private float _dt;
 
     /// <summary>Entities destroyed this frame (for loot/explosion handling).</summary>
-    public List<(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid)> DestroyedLastUpdate { get; } = [];
+    public List<DestroyedEntity> DestroyedLastUpdate { get; } = [];
 
     /// <summary>Damage events from last update (for visual effects).</summary>
-    public List<(Vector2 Position, float Damage, bool ShieldHit, Entity Target)> DamageEventsLastUpdate { get; } = [];
+    public List<DamageEvent> DamageEventsLastUpdate { get; } = [];
 
     public ProjectileSystem(World world) : base(world)
     {
@@ -47,8 +59,12 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         CollectProjectilesQuery(World);
 
         // 2. Check collisions — done outside the nested query to avoid ref-capture issues
-        foreach (var (projEntity, projPos, proj) in _projectileData)
+        foreach (var snapshot in _projectileData)
         {
+            var projEntity = snapshot.Entity;
+            var projPos = snapshot.Position;
+            var proj = snapshot.Proj;
+
             World.Query(in _healthQuery, (Entity target, ref Transform targetTransform, ref Health targetHealth) =>
             {
                 if (target == projEntity) return;
@@ -93,30 +109,30 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
                 if (dist < proj.CollisionRadius + targetRadius)
                 {
-                    _hits.Add((projEntity, target, proj.Damage));
+                    _hits.Add(new ProjectileHit(projEntity, target, proj.Damage));
                 }
             });
         }
 
         // 3. Process hits
         var processedProjectiles = new HashSet<Entity>();
-        foreach (var (projectile, target, damage) in _hits)
+        foreach (var hit in _hits)
         {
-            if (processedProjectiles.Contains(projectile)) continue;
-            if (!World.IsAlive(target)) continue;
-            if (!World.IsAlive(projectile)) continue;
+            if (processedProjectiles.Contains(hit.Projectile)) continue;
+            if (!World.IsAlive(hit.Target)) continue;
+            if (!World.IsAlive(hit.Projectile)) continue;
 
-            processedProjectiles.Add(projectile);
+            processedProjectiles.Add(hit.Projectile);
 
-            ref var health = ref World.Get<Health>(target);
+            ref var health = ref World.Get<Health>(hit.Target);
             bool hadShield = health.Shield > 0;
-            health.TakeDamage(damage);
+            health.TakeDamage(hit.Damage);
 
-            var targetPos = World.Get<Transform>(target).Position;
-            DamageEventsLastUpdate.Add((targetPos, damage, hadShield, target));
+            var targetPos = World.Get<Transform>(hit.Target).Position;
+            DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target));
 
             // Destroy the projectile (HashSet handles duplicates automatically)
-            _expired.Add(projectile);
+            _expired.Add(hit.Projectile);
 
             // Check if target died
             if (health.IsDead)
@@ -125,28 +141,28 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                 LootDrop? loot = null;
                 AsteroidField? asteroid = null;
 
-                if (World.Has<AsteroidField>(target))
+                if (World.Has<AsteroidField>(hit.Target))
                 {
-                    asteroid = World.Get<AsteroidField>(target);
+                    asteroid = World.Get<AsteroidField>(hit.Target);
                 }
-                else if (World.Has<EnemyAI>(target))
+                else if (World.Has<EnemyAI>(hit.Target))
                 {
-                    faction = World.Get<EnemyAI>(target).Config.Faction;
-                    if (World.Has<LootDrop>(target))
-                        loot = World.Get<LootDrop>(target);
+                    faction = World.Get<EnemyAI>(hit.Target).Config.Faction;
+                    if (World.Has<LootDrop>(hit.Target))
+                        loot = World.Get<LootDrop>(hit.Target);
                 }
-                else if (World.Has<SurfaceAI>(target))
+                else if (World.Has<SurfaceAI>(hit.Target))
                 {
-                    faction = World.Get<SurfaceAI>(target).Config.Faction;
-                    if (World.Has<LootDrop>(target))
-                        loot = World.Get<LootDrop>(target);
+                    faction = World.Get<SurfaceAI>(hit.Target).Config.Faction;
+                    if (World.Has<LootDrop>(hit.Target))
+                        loot = World.Get<LootDrop>(hit.Target);
                 }
-                else if (World.Has<PlayerControlled>(target))
+                else if (World.Has<PlayerControlled>(hit.Target))
                 {
                     faction = Faction.Player;
                 }
 
-                DestroyedLastUpdate.Add((target, targetPos, faction, loot, asteroid));
+                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid));
             }
         }
 
@@ -171,6 +187,6 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         }
 
         // Collect for collision phase (copy values out of the ref context)
-        _projectileData.Add((entity, transform.Position, proj));
+        _projectileData.Add(new ProjectileSnapshot(entity, transform.Position, proj));
     }
 }

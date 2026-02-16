@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 
@@ -16,10 +17,10 @@ public static class CombatHelper
     /// </summary>
     public static void CreateDamagePopups(
         List<DamagePopup> popups,
-        IReadOnlyList<(Vector2 Position, float Damage, bool ShieldHit, Arch.Core.Entity Target)> damageEvents)
+        IReadOnlyList<DamageEvent> damageEvents)
     {
-        foreach (var (pos, damage, shieldHit, _) in damageEvents)
-            popups.Add(new DamagePopup(pos, damage, shieldHit));
+        foreach (var evt in damageEvents)
+            popups.Add(new DamagePopup(evt.Position, evt.Damage, evt.ShieldHit));
     }
 
     /// <summary>

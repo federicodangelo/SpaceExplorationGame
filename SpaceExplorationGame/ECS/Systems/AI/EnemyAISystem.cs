@@ -19,7 +19,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private readonly float _mapHeight;
 
     // Projectiles spawned this frame (to be created after query completes)
-    private readonly List<(Vector2 Pos, Vector2 Dir, float Damage, float Speed, Faction Faction, byte R, byte G, byte B)> _pendingProjectiles = [];
+    private readonly List<ProjectileSpawn> _pendingProjectiles = [];
 
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
@@ -258,7 +258,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         ClampToMap(ref transform);
     }
 
-    private (Vector2 Position, bool HasTarget, Entity? Entity) FindTarget(Entity self, Faction selfFaction,
+    private TargetInfo FindTarget(Entity self, Faction selfFaction,
         Vector2 selfPos, float range, Vector2 playerPos, bool playerAlive)
     {
         Entity? bestTarget = null;
@@ -309,7 +309,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             });
         }
 
-        return (bestPos, bestDist < float.MaxValue, bestTarget);
+        return new TargetInfo(bestPos, bestDist < float.MaxValue, bestTarget);
     }
 
     private Vector2? FindNearestPirate(Vector2 pos, float range)
@@ -363,13 +363,13 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         // Color by faction
         var (r, g, b) = faction switch
         {
-            Faction.Pirate => ((byte)255, (byte)80, (byte)80),     // Red
-            Faction.Patrol => ((byte)80, (byte)200, (byte)255),    // Blue
-            Faction.Trader => ((byte)255, (byte)255, (byte)80),    // Yellow
-            _ => ((byte)255, (byte)255, (byte)255)
+            Faction.Pirate => new Color3(255, 80, 80),     // Red
+            Faction.Patrol => new Color3(80, 200, 255),    // Blue
+            Faction.Trader => new Color3(255, 255, 80),    // Yellow
+            _ => new Color3(255, 255, 255)
         };
 
-        _pendingProjectiles.Add((spawnPos, direction, damage, speed, faction, r, g, b));
+        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, faction, r, g, b));
     }
 
     private void ClampToMap(ref Transform transform)

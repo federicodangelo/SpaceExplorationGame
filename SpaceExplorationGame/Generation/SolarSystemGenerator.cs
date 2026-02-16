@@ -102,7 +102,7 @@ public static class SolarSystemGenerator
         "kr", "pl", "tr", "gr", "br", "dr", "fr", "pr", "st", "ch"
     ];
 
-    public static (List<PlanetData> Planets, List<AsteroidBeltData> AsteroidBelts, List<SpaceStationData> Stations) Generate(
+    public static SolarSystemContent Generate(
         SeededRandom rng, StarSystemData starSystem)
     {
         var planets = new List<PlanetData>();
@@ -197,7 +197,7 @@ public static class SolarSystemGenerator
             }
         }
 
-        return (planets, asteroidBelts, stations);
+        return new SolarSystemContent(planets, asteroidBelts, stations);
     }
 
     private static PlanetType GeneratePlanetType(SeededRandom rng, int orbitIndex, int totalPlanets)
@@ -246,19 +246,19 @@ public static class SolarSystemGenerator
         }
     }
 
-    private static (byte R, byte G, byte B, float Radius) GetPlanetProperties(PlanetType type, SeededRandom rng)
+    private static ColoredRadius GetPlanetProperties(PlanetType type, SeededRandom rng)
     {
         return type switch
         {
-            PlanetType.Rocky => ((byte)rng.NextInt(130, 180), (byte)rng.NextInt(110, 150), (byte)rng.NextInt(90, 130), rng.NextFloat(16, 28)),
-            PlanetType.Terrestrial => ((byte)rng.NextInt(40, 100), (byte)rng.NextInt(100, 200), (byte)rng.NextInt(50, 150), rng.NextFloat(24, 36)),
-            PlanetType.Desert => ((byte)rng.NextInt(180, 230), (byte)rng.NextInt(140, 180), (byte)rng.NextInt(60, 100), rng.NextFloat(20, 32)),
-            PlanetType.GasGiant => ((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140), rng.NextFloat(50, 80)),
-            PlanetType.IceGiant => ((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255), rng.NextFloat(40, 64)),
-            PlanetType.Volcanic => ((byte)rng.NextInt(200, 255), (byte)rng.NextInt(60, 100), (byte)rng.NextInt(20, 60), rng.NextFloat(16, 28)),
-            PlanetType.Ocean => ((byte)rng.NextInt(20, 60), (byte)rng.NextInt(80, 140), (byte)rng.NextInt(180, 240), rng.NextFloat(24, 36)),
-            PlanetType.Frozen => ((byte)rng.NextInt(180, 220), (byte)rng.NextInt(200, 240), (byte)rng.NextInt(230, 255), rng.NextFloat(20, 32)),
-            _ => (128, 128, 128, 24)
+            PlanetType.Rocky => new((byte)rng.NextInt(130, 180), (byte)rng.NextInt(110, 150), (byte)rng.NextInt(90, 130), rng.NextFloat(16, 28)),
+            PlanetType.Terrestrial => new((byte)rng.NextInt(40, 100), (byte)rng.NextInt(100, 200), (byte)rng.NextInt(50, 150), rng.NextFloat(24, 36)),
+            PlanetType.Desert => new((byte)rng.NextInt(180, 230), (byte)rng.NextInt(140, 180), (byte)rng.NextInt(60, 100), rng.NextFloat(20, 32)),
+            PlanetType.GasGiant => new((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140), rng.NextFloat(50, 80)),
+            PlanetType.IceGiant => new((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255), rng.NextFloat(40, 64)),
+            PlanetType.Volcanic => new((byte)rng.NextInt(200, 255), (byte)rng.NextInt(60, 100), (byte)rng.NextInt(20, 60), rng.NextFloat(16, 28)),
+            PlanetType.Ocean => new((byte)rng.NextInt(20, 60), (byte)rng.NextInt(80, 140), (byte)rng.NextInt(180, 240), rng.NextFloat(24, 36)),
+            PlanetType.Frozen => new((byte)rng.NextInt(180, 220), (byte)rng.NextInt(200, 240), (byte)rng.NextInt(230, 255), rng.NextFloat(20, 32)),
+            _ => new(128, 128, 128, 24)
         };
     }
 

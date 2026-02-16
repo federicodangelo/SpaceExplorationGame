@@ -19,7 +19,7 @@ public class GalaxyMapOverlay : OverlayBase
     private int _hoveredSystemIndex = -1;
 
     // Background stars (cosmetic)
-    private List<(float X, float Y, byte Brightness)> _backgroundStars = [];
+    private List<BackgroundStar> _backgroundStars = [];
 
     // Mouse panning state
     private bool _isPanning;
@@ -34,7 +34,7 @@ public class GalaxyMapOverlay : OverlayBase
     private List<nint> _starTextures = [];
 
     // Nebula decorations
-    private List<(float X, float Y, float Radius, byte R, byte G, byte B)> _nebulae = [];
+    private List<NebulaCloud> _nebulae = [];
 
     // Saved camera state from the solar system (restored on close)
     private Vector2 _savedCameraPos;
@@ -58,7 +58,7 @@ public class GalaxyMapOverlay : OverlayBase
         _backgroundStars.Clear();
         for (int i = 0; i < 500; i++)
         {
-            _backgroundStars.Add((
+            _backgroundStars.Add(new BackgroundStar(
                 bgRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
                 bgRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
                 (byte)bgRng.NextInt(30, 120)
@@ -72,7 +72,7 @@ public class GalaxyMapOverlay : OverlayBase
         {
             byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
             int ci = nebRng.NextInt(0, 3);
-            _nebulae.Add((
+            _nebulae.Add(new NebulaCloud(
                 nebRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
                 nebRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
                 nebRng.NextFloat(200, 600),

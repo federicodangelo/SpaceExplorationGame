@@ -37,9 +37,9 @@ public class InGameMenuOverlay : OverlayBase
         ItemHeight = 45f,
         SelectedScale = 2.5f,
         NormalScale = 2f,
-        SelectedColor = (220, 240, 255),
-        NormalColor = (140, 140, 160),
-        HighlightBg = (50, 70, 140),
+        SelectedColor = new Color3(220, 240, 255),
+        NormalColor = new Color3(140, 140, 160),
+        HighlightBg = new Color3(50, 70, 140),
         HighlightAlpha = 180,
     };
 
