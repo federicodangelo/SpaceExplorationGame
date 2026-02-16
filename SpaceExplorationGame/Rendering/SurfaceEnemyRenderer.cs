@@ -92,30 +92,4 @@ public static class SurfaceEnemyRenderer
             renderer.DrawRect(camera, pos + new Vector2(5, -1), 4, 2, 180, 180, 180);
         }
     }
-
-    /// <summary>Render enemy dots on the minimap.</summary>
-    public static void RenderMinimapDots(SpriteRenderer renderer, World world,
-        float mmX, float mmY, float mmSize, float mapPixelWidth, float mapPixelHeight)
-    {
-        float mmScaleX = mmSize / mapPixelWidth;
-        float mmScaleY = mmSize / mapPixelHeight;
-
-        var query = new QueryDescription().WithAll<Transform, SurfaceAI, Health>();
-        world.Query(in query, (ref Transform transform, ref SurfaceAI ai, ref Health health) =>
-        {
-            if (health.IsDead) return;
-
-            float ex = mmX + transform.Position.X * mmScaleX;
-            float ey = mmY + transform.Position.Y * mmScaleY;
-
-            // Clamp to minimap bounds
-            if (ex < mmX || ex > mmX + mmSize || ey < mmY || ey > mmY + mmSize) return;
-
-            byte r = ai.Config.Faction == Faction.Fauna ? (byte)200 : (byte)255;
-            byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
-            byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
-
-            renderer.DrawRectScreen(ex - 1, ey - 1, 3, 3, r, g, b);
-        });
-    }
 }

@@ -26,6 +26,7 @@ public static class HudRenderer
     // Minimap constants (matching InteriorRenderer style)
     private const float MinimapSize = 150f;
     private const float MinimapMargin = 10f;
+    private const float MinimapViewFraction = 0.3f; // fraction of map shown as view radius
 
     // ─────────────────────────────────────────────────────────────
     //  TOP-LEFT HUD
@@ -99,7 +100,7 @@ public static class HudRenderer
     //  MINIMAPS
     // ─────────────────────────────────────────────────────────────
 
-    /// <summary>Render the solar system minimap (top-right).</summary>
+    /// <summary>Render the solar system minimap (top-right, centered on the player).</summary>
     public static void RenderSolarSystemMinimap(SpriteRenderer renderer,
         List<PlanetData> planets, List<Entity> planetEntities,
         List<List<Entity>> moonEntities, List<Entity> stationEntities,
@@ -114,19 +115,27 @@ public static class HudRenderer
         renderer.DrawRectScreen(mmX - 1, mmY - 1, MinimapSize + 2, MinimapSize + 2, 60, 60, 100);
         renderer.DrawRectScreen(mmX, mmY, MinimapSize, MinimapSize, 10, 10, 15, 220);
 
-        // Map bounds in world space
+        // View centered on player
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-        float scaleX = MinimapSize / mapW;
-        float scaleY = MinimapSize / mapH;
+        float viewRadius = MathF.Min(mapW, mapH) * MinimapViewFraction;
+        float viewSize = viewRadius * 2f;
+
+        Vector2 center = ecsWorld.IsAlive(playerShip)
+            ? ecsWorld.Get<Transform>(playerShip).Position
+            : new Vector2(mapW / 2f, mapH / 2f);
+        float viewOriginX = center.X - viewRadius;
+        float viewOriginY = center.Y - viewRadius;
+        float scale = MinimapSize / viewSize;
 
         // Star dot (yellow)
         if (ecsWorld.IsAlive(starEntity))
         {
             var starPos = ecsWorld.Get<Transform>(starEntity).Position;
-            float sx = mmX + starPos.X * scaleX;
-            float sy = mmY + starPos.Y * scaleY;
-            renderer.DrawFilledCircleScreen(sx, sy, 3f, 255, 220, 80, 255);
+            float sx = mmX + (starPos.X - viewOriginX) * scale;
+            float sy = mmY + (starPos.Y - viewOriginY) * scale;
+            if (InMinimap(sx, sy, mmX, mmY))
+                renderer.DrawFilledCircleScreen(sx, sy, 3f, 255, 220, 80, 255);
         }
 
         // Asteroid dots (dim grey)
@@ -135,9 +144,9 @@ public static class HudRenderer
             if (!ecsWorld.IsAlive(entity)) continue;
             if (ecsWorld.Has<Health>(entity) && ecsWorld.Get<Health>(entity).IsDead) continue;
             var pos = ecsWorld.Get<Transform>(entity).Position;
-            float ax = mmX + pos.X * scaleX;
-            float ay = mmY + pos.Y * scaleY;
-            if (ax < mmX || ax > mmX + MinimapSize || ay < mmY || ay > mmY + MinimapSize) continue;
+            float ax = mmX + (pos.X - viewOriginX) * scale;
+            float ay = mmY + (pos.Y - viewOriginY) * scale;
+            if (!InMinimap(ax, ay, mmX, mmY)) continue;
             renderer.DrawRectScreen(ax, ay, 1, 1, 80, 80, 80);
         }
 
@@ -146,8 +155,9 @@ public static class HudRenderer
         {
             if (!ecsWorld.IsAlive(planetEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(planetEntities[i]).Position;
-            float px = mmX + pos.X * scaleX;
-            float py = mmY + pos.Y * scaleY;
+            float px = mmX + (pos.X - viewOriginX) * scale;
+            float py = mmY + (pos.Y - viewOriginY) * scale;
+            if (!InMinimap(px, py, mmX, mmY)) continue;
             byte pr = i < planets.Count ? planets[i].R : (byte)180;
             byte pg = i < planets.Count ? planets[i].G : (byte)180;
             byte pb = i < planets.Count ? planets[i].B : (byte)180;
@@ -160,8 +170,9 @@ public static class HudRenderer
                 {
                     if (!ecsWorld.IsAlive(moonEntity)) continue;
                     var moonPos = ecsWorld.Get<Transform>(moonEntity).Position;
-                    float mx = mmX + moonPos.X * scaleX;
-                    float my = mmY + moonPos.Y * scaleY;
+                    float mx = mmX + (moonPos.X - viewOriginX) * scale;
+                    float my = mmY + (moonPos.Y - viewOriginY) * scale;
+                    if (!InMinimap(mx, my, mmX, mmY)) continue;
                     renderer.DrawRectScreen(mx, my, 2, 2, 160, 160, 180);
                 }
             }
@@ -172,8 +183,9 @@ public static class HudRenderer
         {
             if (!ecsWorld.IsAlive(entity)) continue;
             var pos = ecsWorld.Get<Transform>(entity).Position;
-            float stx = mmX + pos.X * scaleX;
-            float sty = mmY + pos.Y * scaleY;
+            float stx = mmX + (pos.X - viewOriginX) * scale;
+            float sty = mmY + (pos.Y - viewOriginY) * scale;
+            if (!InMinimap(stx, sty, mmX, mmY)) continue;
             renderer.DrawRectScreen(stx - 1, sty - 1, 3, 3, 100, 200, 255);
         }
 
@@ -184,9 +196,9 @@ public static class HudRenderer
             if (!ecsWorld.Has<Health>(entity) || ecsWorld.Get<Health>(entity).IsDead) continue;
             var pos = ecsWorld.Get<Transform>(entity).Position;
             var ai = ecsWorld.Get<EnemyAI>(entity);
-            float ex = mmX + pos.X * scaleX;
-            float ey = mmY + pos.Y * scaleY;
-            if (ex < mmX || ex > mmX + MinimapSize || ey < mmY || ey > mmY + MinimapSize) continue;
+            float ex = mmX + (pos.X - viewOriginX) * scale;
+            float ey = mmY + (pos.Y - viewOriginY) * scale;
+            if (!InMinimap(ex, ey, mmX, mmY)) continue;
             var (er, eg, eb) = ai.Config.Faction switch
             {
                 Faction.Pirate => ((byte)255, (byte)80, (byte)80),
@@ -197,17 +209,16 @@ public static class HudRenderer
             renderer.DrawRectScreen(ex - 1, ey - 1, 3, 3, er, eg, eb);
         }
 
-        // Player ship dot (green, on top)
+        // Player ship dot (green, always centered)
         if (ecsWorld.IsAlive(playerShip))
         {
-            var shipPos = ecsWorld.Get<Transform>(playerShip).Position;
-            float playerX = mmX + shipPos.X * scaleX;
-            float playerY = mmY + shipPos.Y * scaleY;
+            float playerX = mmX + MinimapSize / 2f;
+            float playerY = mmY + MinimapSize / 2f;
             renderer.DrawRectScreen(playerX - 2, playerY - 2, 4, 4, 100, 255, 100);
         }
     }
 
-    /// <summary>Render the planet surface minimap (top-right, styled like interior minimap).</summary>
+    /// <summary>Render the planet surface minimap (top-right, centered on the player).</summary>
     public static void RenderPlanetSurfaceMinimap(SpriteRenderer renderer,
         PlanetSurfaceData surfaceData, Vector2 playerPos, Vector2 shipPos,
         Vector2? vehiclePos, World ecsWorld)
@@ -219,40 +230,49 @@ public static class HudRenderer
         renderer.DrawRectScreen(mmX - 1, mmY - 1, MinimapSize + 2, MinimapSize + 2, 60, 60, 100);
         renderer.DrawRectScreen(mmX, mmY, MinimapSize, MinimapSize, 10, 10, 15, 220);
 
+        // View centered on player
         float mapW = surfaceData.Width * GameConfig.TileSize;
         float mapH = surfaceData.Height * GameConfig.TileSize;
-        float scaleX = MinimapSize / mapW;
-        float scaleY = MinimapSize / mapH;
+        float viewRadius = MathF.Min(mapW, mapH) * MinimapViewFraction;
+        float viewSize = viewRadius * 2f;
+        float viewOriginX = playerPos.X - viewRadius;
+        float viewOriginY = playerPos.Y - viewRadius;
+        float scale = MinimapSize / viewSize;
 
         // Settlement dots (yellow)
         foreach (var settlement in surfaceData.Settlements)
         {
-            float sx = mmX + settlement.TileX * GameConfig.TileSize * scaleX;
-            float sy = mmY + settlement.TileY * GameConfig.TileSize * scaleY;
-            float sw = settlement.Width * GameConfig.TileSize * scaleX;
-            float sh = settlement.Height * GameConfig.TileSize * scaleY;
+            float sx = mmX + (settlement.TileX * GameConfig.TileSize - viewOriginX) * scale;
+            float sy = mmY + (settlement.TileY * GameConfig.TileSize - viewOriginY) * scale;
+            float sw = settlement.Width * GameConfig.TileSize * scale;
+            float sh = settlement.Height * GameConfig.TileSize * scale;
+            // Skip if entirely off minimap
+            if (sx + sw < mmX || sx > mmX + MinimapSize || sy + sh < mmY || sy > mmY + MinimapSize) continue;
             renderer.DrawRectScreen(sx, sy, Math.Max(sw, 3), Math.Max(sh, 3), 200, 180, 80);
         }
 
         // Ship dot (blue-ish)
-        float smx = mmX + shipPos.X * scaleX;
-        float smy = mmY + shipPos.Y * scaleY;
-        renderer.DrawRectScreen(smx - 2, smy - 2, 4, 4, 150, 150, 200);
+        float smx = mmX + (shipPos.X - viewOriginX) * scale;
+        float smy = mmY + (shipPos.Y - viewOriginY) * scale;
+        if (InMinimap(smx, smy, mmX, mmY))
+            renderer.DrawRectScreen(smx - 2, smy - 2, 4, 4, 150, 150, 200);
 
         // Vehicle dot (orange)
         if (vehiclePos.HasValue)
         {
-            float vmx = mmX + vehiclePos.Value.X * scaleX;
-            float vmy = mmY + vehiclePos.Value.Y * scaleY;
-            renderer.DrawRectScreen(vmx - 2, vmy - 2, 4, 4, 180, 140, 80);
+            float vmx = mmX + (vehiclePos.Value.X - viewOriginX) * scale;
+            float vmy = mmY + (vehiclePos.Value.Y - viewOriginY) * scale;
+            if (InMinimap(vmx, vmy, mmX, mmY))
+                renderer.DrawRectScreen(vmx - 2, vmy - 2, 4, 4, 180, 140, 80);
         }
 
         // Enemy dots on minimap
-        SurfaceEnemyRenderer.RenderMinimapDots(renderer, ecsWorld, mmX, mmY, MinimapSize, mapW, mapH);
+        RenderSurfaceEnemyMinimapDots(renderer, ecsWorld, mmX, mmY, MinimapSize,
+            viewOriginX, viewOriginY, viewSize, viewSize);
 
-        // Player dot (green, on top)
-        float pmx = mmX + playerPos.X * scaleX;
-        float pmy = mmY + playerPos.Y * scaleY;
+        // Player dot (green, always centered)
+        float pmx = mmX + MinimapSize / 2f;
+        float pmy = mmY + MinimapSize / 2f;
         renderer.DrawRectScreen(pmx - 2, pmy - 2, 4, 4, 100, 255, 100);
     }
 
@@ -306,6 +326,36 @@ public static class HudRenderer
     // ─────────────────────────────────────────────────────────────
     //  SHARED HELPERS
     // ─────────────────────────────────────────────────────────────
+
+    /// <summary>Returns true if screen coordinates fall within the minimap area.</summary>
+    private static bool InMinimap(float sx, float sy, float mmX, float mmY) =>
+        sx >= mmX && sx <= mmX + MinimapSize && sy >= mmY && sy <= mmY + MinimapSize;
+
+    /// <summary>Render surface enemy dots on the minimap.</summary>
+    private static void RenderSurfaceEnemyMinimapDots(SpriteRenderer renderer, World world,
+        float mmX, float mmY, float mmSize,
+        float viewOriginX, float viewOriginY, float viewWidth, float viewHeight)
+    {
+        float mmScaleX = mmSize / viewWidth;
+        float mmScaleY = mmSize / viewHeight;
+
+        var query = new QueryDescription().WithAll<Transform, SurfaceAI, Health>();
+        world.Query(in query, (ref Transform transform, ref SurfaceAI ai, ref Health health) =>
+        {
+            if (health.IsDead) return;
+
+            float ex = mmX + (transform.Position.X - viewOriginX) * mmScaleX;
+            float ey = mmY + (transform.Position.Y - viewOriginY) * mmScaleY;
+
+            if (ex < mmX || ex > mmX + mmSize || ey < mmY || ey > mmY + mmSize) return;
+
+            byte r = ai.Config.Faction == Faction.Fauna ? (byte)200 : (byte)255;
+            byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
+            byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
+
+            renderer.DrawRectScreen(ex - 1, ey - 1, 3, 3, r, g, b);
+        });
+    }
 
     /// <summary>Render the location info line. Returns the Y position for the next line.</summary>
     private static float RenderLocationLine(SpriteRenderer renderer, float y, string text)
@@ -559,6 +609,20 @@ public static class HudRenderer
         Vector2 starCenter)
     {
         RenderOffscreenIndicator(renderer, camera, starCenter, 255, 220, 80, prefix: "* ", dotRadius: 4f, arrowSize: 10f);
+    }
+
+    /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
+    public static void RenderSettlementOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+        List<SettlementData> settlements)
+    {
+        foreach (var s in settlements)
+        {
+            // Point toward the center of the settlement
+            float cx = (s.TileX + s.Width / 2f) * GameConfig.TileSize;
+            float cy = (s.TileY + s.Height / 2f) * GameConfig.TileSize;
+            RenderOffscreenIndicator(renderer, camera, new Vector2(cx, cy),
+                200, 180, 80, prefix: s.Name + " ", dotRadius: 3f, arrowSize: 8f);
+        }
     }
 
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>

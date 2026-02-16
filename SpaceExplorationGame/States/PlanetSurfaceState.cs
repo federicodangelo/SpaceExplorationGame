@@ -629,6 +629,13 @@ public class PlanetSurfaceState : GameState
         HudRenderer.RenderPlanetSurfaceMinimap(renderer, _surfaceData,
             avatarTf.Position, shipTf.Position, vehiclePos, game.EcsWorld);
 
+        // Off-screen settlement indicators
+        if (!_playerDead && !_playerInsideShip)
+        {
+            HudRenderer.RenderSettlementOffscreenIndicators(renderer, camera,
+                _surfaceData.Settlements);
+        }
+
 
 
         // In-game menu overlay drawn on top of everything
