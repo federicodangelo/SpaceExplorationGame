@@ -151,6 +151,9 @@ public static class HudMinimapRenderer
         // Surface enemies
         CollectSurfaceEnemyMarkers(ecsWorld, markers);
 
+        // Surface mining rocks
+        CollectSurfaceRockMarkers(ecsWorld, markers);
+
         RenderMinimap(renderer, viewOrigin, viewSize,
             areas.ToArray(), markers.ToArray(), playerPos, centerOnPlayer: true);
     }
@@ -284,6 +287,22 @@ public static class HudMinimapRenderer
             byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
             byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
             markers.Add(new MinimapMarker(transform.Position, r, g, b));
+        });
+    }
+
+    /// <summary>Collect surface mining rock markers from the ECS world into the markers list.</summary>
+    private static void CollectSurfaceRockMarkers(World world, List<MinimapMarker> markers)
+    {
+        var query = new QueryDescription().WithAll<Transform, AsteroidField, Health>().WithNone<SurfaceAI>();
+        world.Query(in query, (ref Transform transform, ref AsteroidField rock, ref Health health) =>
+        {
+            if (health.IsDead) return;
+            var resInfo = ResourceCatalog.Get(rock.Resource);
+            // Show rocks as small brownish dots with a hint of resource color
+            byte r = (byte)Math.Clamp((resInfo.R + 140) / 2, 0, 255);
+            byte g = (byte)Math.Clamp((resInfo.G + 120) / 2, 0, 255);
+            byte b = (byte)Math.Clamp((resInfo.B + 100) / 2, 0, 255);
+            markers.Add(new MinimapMarker(transform.Position, r, g, b, Size: 2f));
         });
     }
 }

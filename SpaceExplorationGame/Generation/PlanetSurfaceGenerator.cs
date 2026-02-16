@@ -32,6 +32,8 @@ public class PlanetSurfaceData
     public List<(float X, float Y, float WanderAngle)> FaunaSpawns { get; set; } = [];
     /// <summary>Spawn positions for hostile bandits (world-space coordinates).</summary>
     public List<(float X, float Y, float WanderAngle)> BanditSpawns { get; set; } = [];
+    /// <summary>Spawn positions for mineable rocks (world-space coordinates + resource info).</summary>
+    public List<(float X, float Y, ResourceType Resource, int Amount, float Size, float Hp)> RockSpawns { get; set; } = [];
 }
 
 /// <summary>A building within a settlement layout.</summary>
@@ -140,6 +142,9 @@ public static class PlanetSurfaceGenerator
 
         // Generate enemy spawn points on walkable terrain, away from landing zone and settlements
         GenerateEnemySpawns(rng, result, planet);
+
+        // Generate mineable rock spawn points on walkable terrain
+        GenerateRockSpawns(rng, result, planet);
 
         return result;
     }
@@ -312,6 +317,50 @@ public static class PlanetSurfaceGenerator
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Generate spawn positions for mineable rocks on walkable terrain,
+    /// away from the landing zone and settlements.
+    /// </summary>
+    private static void GenerateRockSpawns(SeededRandom rng, PlanetSurfaceData data, PlanetData planet)
+    {
+        float ts = GameConfig.TileSize;
+        float lzX = data.LandingZone.X * ts;
+        float lzY = data.LandingZone.Y * ts;
+        float safeRadius = 4 * ts; // rocks can be closer to LZ than enemies
+
+        int rockCount = rng.NextInt(GameConfig.MinRocksPerPlanet, GameConfig.MaxRocksPerPlanet + 1);
+
+        // Choose available resources based on planet type
+        ResourceType[] availableResources = GetPlanetResources(planet.Type);
+
+        for (int i = 0; i < rockCount; i++)
+        {
+            if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float rx, out float ry))
+            {
+                var resource = availableResources[rng.NextInt(0, availableResources.Length)];
+                int amount = rng.NextInt(GameConfig.SurfaceRockMinResource, GameConfig.SurfaceRockMaxResource + 1);
+                float size = GameConfig.SurfaceRockMinSize + rng.NextFloat() * (GameConfig.SurfaceRockMaxSize - GameConfig.SurfaceRockMinSize);
+                float hp = GameConfig.SurfaceRockMinHp + rng.NextFloat() * (GameConfig.SurfaceRockMaxHp - GameConfig.SurfaceRockMinHp);
+                data.RockSpawns.Add((rx, ry, resource, amount, size, hp));
+            }
+        }
+    }
+
+    /// <summary>Get the resource types available on a planet based on its type.</summary>
+    private static ResourceType[] GetPlanetResources(PlanetType type)
+    {
+        return type switch
+        {
+            PlanetType.Rocky => [ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Platinum],
+            PlanetType.Volcanic => [ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Crystal],
+            PlanetType.Desert => [ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold],
+            PlanetType.Frozen => [ResourceType.Ice, ResourceType.Iron, ResourceType.Crystal],
+            PlanetType.Terrestrial => [ResourceType.Iron, ResourceType.Nickel, ResourceType.Crystal],
+            PlanetType.Ocean => [ResourceType.Ice, ResourceType.Crystal],
+            _ => [ResourceType.Iron, ResourceType.Nickel]
+        };
     }
 
     /// <summary>Find a walkable spawn position away from landing zone and settlements.</summary>

@@ -193,6 +193,31 @@ public static class EntityFactory
         );
     }
 
+    // ── Surface Mining Rocks ────────────────────────────────────────
+
+    /// <summary>Create a mineable rock entity on a planet surface.</summary>
+    public static Entity CreateSurfaceRock(World world, Vector2 position, float size, float hp,
+        ResourceType resource, int resourceAmount)
+    {
+        // Tint color based on resource type
+        var resInfo = ResourceCatalog.Get(resource);
+        byte r = (byte)Math.Clamp(resInfo.R * 0.6f + 50, 0, 255);
+        byte g = (byte)Math.Clamp(resInfo.G * 0.6f + 40, 0, 255);
+        byte b = (byte)Math.Clamp(resInfo.B * 0.6f + 30, 0, 255);
+
+        return world.Create(
+            new Transform(position),
+            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), r, g, b),
+            new Health(hp, 0f, 0f, 0f),
+            new AsteroidField
+            {
+                Resource = resource,
+                ResourceAmount = resourceAmount,
+                Size = size
+            }
+        );
+    }
+
     // ── NPC Ships ───────────────────────────────────────────────────
 
     /// <summary>Create a pirate NPC ship entity.</summary>

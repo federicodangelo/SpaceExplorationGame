@@ -128,4 +128,14 @@ public static class GameConfig
 
     public const int SurfaceLootCreditsMin = 10;
     public const int SurfaceLootCreditsMax = 40;
+
+    // ── Surface Mining Rocks ────────────────────────────────────
+    public const int MinRocksPerPlanet = 8;
+    public const int MaxRocksPerPlanet = 20;
+    public const float SurfaceRockMinSize = 10f;          // visual size (smallest)
+    public const float SurfaceRockMaxSize = 18f;          // visual size (largest)
+    public const float SurfaceRockMinHp = 15f;
+    public const float SurfaceRockMaxHp = 40f;
+    public const int SurfaceRockMinResource = 1;          // min resource units per rock
+    public const int SurfaceRockMaxResource = 5;           // max resource units per rock
 }

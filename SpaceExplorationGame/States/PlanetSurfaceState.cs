@@ -225,6 +225,12 @@ public class PlanetSurfaceState : GameState
         {
             EntityFactory.CreateBandit(game.EcsWorld, new Vector2(bx, by), angle);
         }
+
+        // Spawn mineable rocks
+        foreach (var (rx, ry, resource, amount, size, hp) in _surfaceData.RockSpawns)
+        {
+            EntityFactory.CreateSurfaceRock(game.EcsWorld, new Vector2(rx, ry), size, hp, resource, amount);
+        }
     }
 
     public override void Exit(Game game)
@@ -499,9 +505,31 @@ public class PlanetSurfaceState : GameState
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
-        foreach (var (entity, pos, faction, loot, _) in _projectileSystem.DestroyedLastUpdate)
+        foreach (var (entity, pos, faction, loot, asteroidData) in _projectileSystem.DestroyedLastUpdate)
         {
-            if (faction == Faction.Player)
+            if (asteroidData.HasValue)
+            {
+                // Mineable rock destroyed — collect resources
+                var rock = asteroidData.Value;
+                _explosions.Add(new Explosion(pos, 12f, 140, 120, 100, 0.4f));
+
+                int added = game.Player.AddCargo(rock.Resource, rock.ResourceAmount);
+                var resInfo = ResourceCatalog.Get(rock.Resource);
+                if (added > 0)
+                {
+                    _combatMessage = $"+{added} {resInfo.Name.ToUpper()}";
+                    _combatMessageTimer = 2.5f;
+                }
+                else
+                {
+                    _combatMessage = "CARGO FULL!";
+                    _combatMessageTimer = 2.5f;
+                }
+
+                if (game.EcsWorld.IsAlive(entity))
+                    game.EcsWorld.Destroy(entity);
+            }
+            else if (faction == Faction.Player)
             {
                 // Player avatar died
                 HandleAvatarDeath(game, pos);
@@ -583,6 +611,9 @@ public class PlanetSurfaceState : GameState
             game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
         }
 
+        // Draw mineable rocks
+        SurfaceRockRenderer.RenderRocks(renderer, camera, game.EcsWorld);
+
         // Draw surface enemies (fauna + bandits)
         SurfaceEnemyRenderer.RenderEnemies(renderer, camera, game.EcsWorld);
 
@@ -610,17 +641,14 @@ public class PlanetSurfaceState : GameState
         // Combat message
         if (_combatMessage != null)
         {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 120, GameConfig.WindowHeight - 90,
-                _combatMessage, 255, 220, 80, 2f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, -40, 255, 220, 80, 2f);
         }
 
         // Death message
         if (_playerDead)
         {
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 80, GameConfig.WindowHeight / 2 - 20,
-                "YOU DIED", 255, 80, 80, 3f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2 - 100, GameConfig.WindowHeight / 2 + 20,
-                "RETURNING TO ORBIT...", 200, 200, 200, 1.5f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, 255, 80, 80, 3f);
+            SolarSystemRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, 200, 200, 200, 1.5f);
         }
 
         // Minimap (top-right, unified style)
