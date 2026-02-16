@@ -54,6 +54,10 @@ public class SolarSystemState : GameState
     // Background stars
     private List<BackgroundStar> _bgStars = [];
 
+    // Camera
+    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+        GameConfig.SolarSystemZoomMin, GameConfig.SolarSystemZoomMax);
+
     // Station overlay (docked at station)
     private readonly SpaceStationOverlay _stationOverlay = new();
     private readonly SpaceStationData? _autoOpenStation;
@@ -321,10 +325,10 @@ public class SolarSystemState : GameState
         _velocitySystem = new VelocitySystem(game.EcsWorld);
         _velocitySystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
 
-        _labelRenderer = new LabelRenderer(game.EcsWorld, game.SpriteRenderer, game.Camera);
+        _labelRenderer = new LabelRenderer(game.EcsWorld, game.SpriteRenderer, _camera);
 
         _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
         _proximitySystem.Initialize();
@@ -348,8 +352,9 @@ public class SolarSystemState : GameState
         _enemyAISystem.Initialize();
 
         // Camera follows player
-        game.Camera.Position = shipStartPos;
-        game.Camera.Zoom = 1f;
+        _camera.Position = shipStartPos;
+        _camera.Zoom = GameConfig.SolarSystemZoomDefault;
+        _camera.ClampZoom();
 
         // Notify mission system that we entered this star system
         game.Player.NotifySystemEntered(_starSystem.Index);
@@ -462,8 +467,8 @@ public class SolarSystemState : GameState
         // Camera zoom (handled per-frame so scroll events aren't missed)
         if (input.MouseWheelY != 0)
         {
-            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            game.Camera.ClampZoom();
+            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.ClampZoom();
         }
     }
 
@@ -855,7 +860,7 @@ public class SolarSystemState : GameState
         // Recreate movement system with new entity
         _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
 
-        game.Camera.Position = respawnPos;
+        _camera.Position = respawnPos;
         _combatMessage = "RESPAWNED — HULL AT 50%";
         _combatMessageTimer = 3f;
 
@@ -906,7 +911,7 @@ public class SolarSystemState : GameState
     public override void Render(Game game)
     {
         var renderer = game.SpriteRenderer;
-        var camera = game.Camera;
+        var camera = _camera;
 
         float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;

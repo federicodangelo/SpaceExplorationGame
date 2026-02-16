@@ -18,7 +18,6 @@ public class Game : IDisposable
     public World EcsWorld { get; private set; } = null!;
 
     // Core systems
-    public Camera Camera { get; private set; } = null!;
     public InputManager Input { get; } = new();
     public SpriteRenderer SpriteRenderer { get; private set; } = null!;
     public TextureManager Textures { get; private set; } = null!;
@@ -75,9 +74,6 @@ public class Game : IDisposable
 
         // ECS world
         EcsWorld = World.Create();
-
-        // Camera
-        Camera = new Camera(GameConfig.WindowWidth, GameConfig.WindowHeight);
 
         // Sprite renderer
         SpriteRenderer = new SpriteRenderer(Renderer);

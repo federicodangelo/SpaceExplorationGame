@@ -17,7 +17,8 @@ public class TextureManager : IDisposable
     }
 
     /// <summary>Creates an SDL texture from a raw RGBA pixel array. Used by entity renderers to generate their own textures.</summary>
-    public nint CreateTextureFromPixels(byte[] pixels, int width, int height)
+    public nint CreateTextureFromPixels(byte[] pixels, int width, int height,
+        SDL.ScaleMode scaleMode = SDL.ScaleMode.Linear)
     {
         unsafe
         {
@@ -35,9 +36,9 @@ public class TextureManager : IDisposable
                 if (texture == nint.Zero)
                     throw new Exception($"Failed to create texture: {SDL.GetError()}");
 
-                // Enable alpha blending and linear filtering on the texture
+                // Enable alpha blending and configure filtering on the texture
                 SDL.SetTextureBlendMode(texture, SDL.BlendMode.Blend);
-                SDL.SetTextureScaleMode(texture, SDL.ScaleMode.Linear);
+                SDL.SetTextureScaleMode(texture, scaleMode);
 
                 return texture;
             }

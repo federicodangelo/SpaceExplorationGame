@@ -42,6 +42,10 @@ public class PlanetSurfaceState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
     private VehicleMovementSystem? _vehicleMovementSystem;
 
+    // Camera
+    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+        GameConfig.PlanetSurfaceZoomMin, GameConfig.PlanetSurfaceZoomMax);
+
     // Combat systems
     private VelocitySystem _velocitySystem = null!;
     private ProjectileSystem _projectileSystem = null!;
@@ -193,12 +197,13 @@ public class PlanetSurfaceState : GameState
         _movementSystem.CanMoveTo = MakeTerrainCollisionCheck();
         _movementSystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
 
         // Camera
-        game.Camera.Position = new Vector2(playerStartX, playerStartY);
-        game.Camera.Zoom = 1.5f;
+        _camera.Position = new Vector2(playerStartX, playerStartY);
+        _camera.Zoom = GameConfig.PlanetSurfaceZoomDefault;
+        _camera.ClampZoom();
 
         // Open starship menu if this is a fresh landing (not returning from settlement)
         if (_playerInsideShip)
@@ -343,8 +348,8 @@ public class PlanetSurfaceState : GameState
         // Camera zoom (handled per-frame so scroll events aren't missed)
         if (input.MouseWheelY != 0)
         {
-            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            game.Camera.ClampZoom();
+            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.ClampZoom();
         }
 
         // Track player facing direction from movement input
@@ -527,7 +532,7 @@ public class PlanetSurfaceState : GameState
                 Vector2 aimDir;
                 if (input.IsMouseDown(1))
                 {
-                    var mouseWorld = game.Camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
+                    var mouseWorld = _camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
                     aimDir = Vector2.Normalize(mouseWorld - avatarTransform.Position);
                     if (float.IsNaN(aimDir.X)) aimDir = _lastMoveDir;
                 }
@@ -639,7 +644,7 @@ public class PlanetSurfaceState : GameState
     public override void Render(Game game)
     {
         var renderer = game.SpriteRenderer;
-        var camera = game.Camera;
+        var camera = _camera;
 
         // Draw terrain tiles
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _surfaceData);

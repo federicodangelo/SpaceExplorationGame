@@ -36,18 +36,14 @@ public class GalaxyMapOverlay : OverlayBase
     // Nebula decorations
     private List<NebulaCloud> _nebulae = [];
 
-    // Saved camera state from the solar system (restored on close)
-    private Vector2 _savedCameraPos;
-    private float _savedCameraZoom;
+    // Camera
+    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+        GameConfig.GalaxyMapZoomMin, GameConfig.GalaxyMapZoomMax);
 
     /// <summary>Open the galaxy map overlay.</summary>
     public void Open(Game game)
     {
         IsOpen = true;
-
-        // Save solar system camera
-        _savedCameraPos = game.Camera.Position;
-        _savedCameraZoom = game.Camera.Zoom;
 
         // Use cached galaxy data
         _starSystems = game.GalaxyData;
@@ -103,15 +99,15 @@ public class GalaxyMapOverlay : OverlayBase
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
         {
             _selectedSystemIndex = game.Player.CurrentStarSystemIndex;
-            game.Camera.Position = _starSystems[_selectedSystemIndex].GalaxyPosition;
+            _camera.Position = _starSystems[_selectedSystemIndex].GalaxyPosition;
         }
         else
         {
             float centerX = GameConfig.GalaxyWidth * GameConfig.TileSize / 2f;
             float centerY = GameConfig.GalaxyHeight * GameConfig.TileSize / 2f;
-            game.Camera.Position = new Vector2(centerX, centerY);
+            _camera.Position = new Vector2(centerX, centerY);
         }
-        game.Camera.Zoom = 0.5f;
+        _camera.Zoom = GameConfig.GalaxyMapZoomDefault;
     }
 
     /// <summary>Close the overlay and restore the solar system camera.</summary>
@@ -123,10 +119,6 @@ public class GalaxyMapOverlay : OverlayBase
         _nebulae.Clear();
         _starSystems.Clear();
         _backgroundStars.Clear();
-
-        // Restore solar system camera
-        game.Camera.Position = _savedCameraPos;
-        game.Camera.Zoom = _savedCameraZoom;
 
         base.Close();
     }
@@ -203,7 +195,6 @@ public class GalaxyMapOverlay : OverlayBase
         if (!IsOpen) return false;
 
         var input = game.Input;
-        var camera = game.Camera;
 
         // Close on M or Escape
         if (input.IsKeyPressed(SDL.Scancode.M) || input.IsKeyPressed(SDL.Scancode.Escape))
@@ -212,15 +203,18 @@ public class GalaxyMapOverlay : OverlayBase
             return true;
         }
 
-        // Zoom with mouse wheel
+        // Zoom with mouse wheel — zoom toward cursor position
+        Vector2 currentMouse = new(input.MouseX, input.MouseY);
         if (input.MouseWheelY != 0)
         {
-            camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            camera.ClampZoom();
+            var worldBeforeZoom = _camera.ScreenToWorld(currentMouse);
+            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.ClampZoom();
+            var worldAfterZoom = _camera.ScreenToWorld(currentMouse);
+            _camera.Position += worldBeforeZoom - worldAfterZoom;
         }
 
         // Mouse panning with left-click drag
-        Vector2 currentMouse = new(input.MouseX, input.MouseY);
         if (input.IsMousePressed(1))
         {
             _lastMouseScreen = currentMouse;
@@ -232,24 +226,28 @@ public class GalaxyMapOverlay : OverlayBase
             if (delta.LengthSquared() > 4f)
             {
                 _isPanning = true;
-                camera.Position -= delta / camera.Zoom;
+                _camera.Position -= delta / _camera.Zoom;
                 _lastMouseScreen = currentMouse;
             }
         }
 
-        // Mouse hover check
-        var mouseWorld = camera.ScreenToWorld(currentMouse);
+        // Mouse hover check — use screen-space distance so hit area feels
+        // consistent regardless of zoom level, and at least as big as the star's
+        // rendered radius (StarRadius * 2 * zoom) or a minimum of 20 screen px.
+        var mouseWorld = _camera.ScreenToWorld(currentMouse);
         _hoveredSystemIndex = -1;
-        float bestDist = 30f / camera.Zoom;
-        bestDist *= bestDist;
+        float bestScreenDistSq = float.MaxValue;
 
         for (int i = 0; i < _starSystems.Count; i++)
         {
-            var diff = mouseWorld - _starSystems[i].GalaxyPosition;
-            float dist = diff.LengthSquared();
-            if (dist < bestDist)
+            var screenPos = _camera.WorldToScreen(_starSystems[i].GalaxyPosition);
+            var screenDiff = currentMouse - screenPos;
+            float screenDistSq = screenDiff.LengthSquared();
+            float starScreenRadius = _starSystems[i].StarRadius * 2f * _camera.Zoom;
+            float hitRadius = MathF.Max(starScreenRadius, 20f);
+            if (screenDistSq < hitRadius * hitRadius && screenDistSq < bestScreenDistSq)
             {
-                bestDist = dist;
+                bestScreenDistSq = screenDistSq;
                 _hoveredSystemIndex = i;
             }
         }
@@ -297,18 +295,17 @@ public class GalaxyMapOverlay : OverlayBase
         if (!IsOpen) return;
 
         var input = game.Input;
-        var camera = game.Camera;
 
         // Camera movement with WASD/arrows
-        float camSpeed = 500f / camera.Zoom;
+        float camSpeed = 500f / _camera.Zoom;
         if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-            camera.Position -= new Vector2(0, camSpeed * dt);
+            _camera.Position -= new Vector2(0, camSpeed * dt);
         if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-            camera.Position += new Vector2(0, camSpeed * dt);
+            _camera.Position += new Vector2(0, camSpeed * dt);
         if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            camera.Position -= new Vector2(camSpeed * dt, 0);
+            _camera.Position -= new Vector2(camSpeed * dt, 0);
         if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            camera.Position += new Vector2(camSpeed * dt, 0);
+            _camera.Position += new Vector2(camSpeed * dt, 0);
     }
 
     /// <summary>Render the galaxy map overlay.</summary>
@@ -317,7 +314,7 @@ public class GalaxyMapOverlay : OverlayBase
         if (!IsOpen) return;
 
         var renderer = game.SpriteRenderer;
-        var camera = game.Camera;
+        var camera = _camera;
 
         // Dark background to cover the solar system
         renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 240));

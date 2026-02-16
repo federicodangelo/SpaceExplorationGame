@@ -41,6 +41,10 @@ public class InteriorState : GameState
     private PlayerMovementSystem _movementSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
 
+    // Camera
+    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+        GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
+
     // Interaction state
     private InteriorNpc? _nearestNpc;
     private InteriorInteractable? _nearestInteractable;
@@ -112,12 +116,14 @@ public class InteriorState : GameState
         };
         _movementSystem.Initialize();
 
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, game.Camera);
+        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
 
         // Camera setup
-        game.Camera.Position = new Vector2(spawnX, spawnY);
-        game.Camera.Zoom = 1.5f;
+        _camera.Position = new Vector2(spawnX, spawnY);
+        _camera.Zoom = GameConfig.InteriorZoomDefault;
+        _camera.ClampZoom();
+
 
         // Notify mission system
         if (_origin == InteriorOrigin.Settlement && _planet != null)
@@ -202,8 +208,8 @@ public class InteriorState : GameState
         // Camera zoom (handled per-frame so scroll events aren't missed)
         if (input.MouseWheelY != 0)
         {
-            game.Camera.Zoom += input.MouseWheelY * GameConfig.CameraZoomSpeed;
-            game.Camera.ClampZoom();
+            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.ClampZoom();
         }
     }
 
@@ -330,7 +336,7 @@ public class InteriorState : GameState
     public override void Render(Game game)
     {
         var renderer = game.SpriteRenderer;
-        var camera = game.Camera;
+        var camera = _camera;
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
 
         // Draw world (background, tiles, room labels, NPCs, interactables, player avatar)

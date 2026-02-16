@@ -10,14 +10,19 @@ public class Camera
 {
     public Vector2 Position { get; set; }
     public float Zoom { get; set; } = 1.0f;
+    public float ZoomMin { get; set; }
+    public float ZoomMax { get; set; }
     public int ViewportWidth { get; set; }
     public int ViewportHeight { get; set; }
 
-    public Camera(int viewportWidth, int viewportHeight)
+    public Camera(int viewportWidth, int viewportHeight, float zoomMin = 0.025f, float zoomMax = 4.0f)
     {
         ViewportWidth = viewportWidth;
         ViewportHeight = viewportHeight;
+        ZoomMin = zoomMin;
+        ZoomMax = zoomMax;
         Position = Vector2.Zero;
+        ClampZoom();
     }
 
     /// <summary>
@@ -57,7 +62,7 @@ public class Camera
 
     public void ClampZoom()
     {
-        Zoom = Math.Clamp(Zoom, GameConfig.CameraZoomMin, GameConfig.CameraZoomMax);
+        Zoom = Math.Clamp(Zoom, ZoomMin, ZoomMax);
     }
 
     /// <summary>
