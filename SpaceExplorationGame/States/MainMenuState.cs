@@ -92,7 +92,8 @@ public class MainMenuState : GameState
     {
         var input = game.Input;
 
-        float menuStartY = GameConfig.WindowHeight / 2f - 40;
+        float menuTotalHeight = MenuOptions.Length * _menu.ItemHeight;
+        float menuStartY = (GameConfig.WindowHeight - menuTotalHeight) / 2f;
         float centerX = GameConfig.WindowWidth / 2f;
         float menuW = 420f;
 
@@ -341,7 +342,10 @@ public class MainMenuState : GameState
         float titleScale = 4f;
         float titleW = renderer.MeasureText(title, titleScale);
         float titleX = GameConfig.WindowWidth / 2f - titleW / 2f;
-        float titleY = 140;
+
+        float menuTotalHeight = MenuOptions.Length * _menu.ItemHeight;
+        float menuStartY = (GameConfig.WindowHeight - menuTotalHeight) / 2f;
+        float titleY = menuStartY - 100;
 
         // Title glow effect
         byte glowR = (byte)(120 + 40 * MathF.Sin(_animTimer * 0.8f));
@@ -357,7 +361,6 @@ public class MainMenuState : GameState
             subtitle, 120, 120, 140, subtitleScale);
 
         // Menu options
-        float menuStartY = GameConfig.WindowHeight / 2f - 40;
         float centerX = GameConfig.WindowWidth / 2f;
         float menuW = 420f;
 
