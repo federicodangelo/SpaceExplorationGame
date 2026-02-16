@@ -71,6 +71,10 @@ public class PlanetSurfaceState : GameState
     // In-game menu overlay
     private readonly InGameMenuOverlay _inGameMenuOverlay = new();
 
+    // Starship menu overlay (shown on landing and when boarding)
+    private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
+    private bool _playerInsideShip = true; // player starts inside the ship
+
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
     private readonly int _landingTileY;
@@ -81,6 +85,32 @@ public class PlanetSurfaceState : GameState
         _planet = planet;
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
+    }
+
+    /// <summary>Helper: mount the player into their vehicle, creating movement system.</summary>
+    private void MountVehicle(Game game)
+    {
+        ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
+        if (!_vehicleDeployed)
+        {
+            // Deploy vehicle at player (ship) position
+            var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
+            _vehicleEntity = EntityFactory.CreateVehicle(game.EcsWorld, shipTf.Position.X, shipTf.Position.Y);
+            _vehicleDeployed = true;
+        }
+        ref var vTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
+        avatarTransform.Position = vTf.Position;
+        avatarTransform.Rotation = vTf.Rotation;
+        var vStats = game.Player.GetCombinedVehicleStats();
+        _vehicleMovementSystem = new VehicleMovementSystem(
+            game.EcsWorld, game.Input, _playerAvatar,
+            acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
+            maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
+            rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
+            friction: GameConfig.VehicleFriction + vStats.Friction);
+        _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
+        _inVehicle = true;
+        game.Player.InVehicle = true;
     }
 
     public override void Enter(Game game)
@@ -103,18 +133,45 @@ public class PlanetSurfaceState : GameState
         float maxHp = game.Player.AvatarMaxHealth;
         float curHp = game.Player.AvatarHealth;
 
-        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, lzX, lzY, avatarSpeed,
+        // Check if we have saved surface positions (returning from a settlement)
+        float shipX, shipY;
+        float playerStartX, playerStartY;
+        if (game.Player.HasSavedSurfacePositions)
+        {
+            // Restore saved positions
+            shipX = game.Player.SavedShipX;
+            shipY = game.Player.SavedShipY;
+            playerStartX = game.Player.SavedPlayerX;
+            playerStartY = game.Player.SavedPlayerY;
+
+            _vehicleDeployed = game.Player.SavedVehicleDeployed;
+            _inVehicle = game.Player.SavedPlayerInVehicle;
+            _playerInsideShip = false; // player was already outside when they entered the settlement
+        }
+        else
+        {
+            // Fresh landing: ship at landing zone, vehicle starts inside ship
+            shipX = lzX + 30;
+            shipY = lzY;
+            playerStartX = lzX;
+            playerStartY = lzY;
+            _vehicleDeployed = false;
+            _inVehicle = false;
+            _playerInsideShip = true; // player starts inside the ship
+        }
+
+        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, playerStartX, playerStartY, avatarSpeed,
             maxHealth: maxHp, currentHealth: curHp);
 
-        // Place ship at landing zone
-        _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, lzX + 30, lzY);
+        // Place ship
+        _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, shipX, shipY);
 
-        // Deploy vehicle near the ship if player has one
-        _inVehicle = false;
-        _vehicleDeployed = game.Player.HasVehicle;
+        // Deploy vehicle if it was deployed before entering settlement
         if (_vehicleDeployed)
         {
-            _vehicleEntity = EntityFactory.CreateVehicle(game.EcsWorld, lzX - 30, lzY);
+            _vehicleEntity = EntityFactory.CreateVehicle(game.EcsWorld,
+                game.Player.HasSavedSurfacePositions ? game.Player.SavedVehicleX : shipX - 30,
+                game.Player.HasSavedSurfacePositions ? game.Player.SavedVehicleY : shipY);
         }
 
         // Initialize ECS systems
@@ -126,8 +183,23 @@ public class PlanetSurfaceState : GameState
         _cameraFollowSystem.Initialize();
 
         // Camera
-        game.Camera.Position = new Vector2(lzX, lzY);
+        game.Camera.Position = new Vector2(playerStartX, playerStartY);
         game.Camera.Zoom = 1.5f;
+
+        // Open starship menu if this is a fresh landing (not returning from settlement)
+        if (_playerInsideShip)
+        {
+            _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
+            _starshipMenuOverlay.Open();
+        }
+        else if (_inVehicle && _vehicleDeployed)
+        {
+            // Returning from settlement while in vehicle — mount vehicle
+            MountVehicle(game);
+        }
+
+        // Clear saved positions now that we've used them
+        game.Player.ClearSavedSurfacePositions();
 
         // Combat systems
         _velocitySystem = new VelocitySystem(game.EcsWorld);
@@ -170,6 +242,17 @@ public class PlanetSurfaceState : GameState
 
     public override void UpdateInput(Game game)
     {
+        // Starship menu overlay (highest priority)
+        if (_starshipMenuOverlay.UpdateInput(game))
+        {
+            // Check if the player made a choice
+            if (_starshipMenuOverlay.LastChoice.HasValue)
+            {
+                HandleStarshipMenuChoice(game, _starshipMenuOverlay.LastChoice.Value);
+            }
+            return;
+        }
+
         // In-game menu overlay (handles Escape toggle + menu navigation)
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
@@ -184,40 +267,48 @@ public class PlanetSurfaceState : GameState
         {
             if (_inVehicle)
             {
-                // Dismount vehicle: place avatar next to vehicle, reset rotation
-                ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
-                avatarTransform.Position = vehicleTf.Position + new Vector2(20, 0);
-                avatarTransform.Rotation = 0f;
-                _vehicleMovementSystem!.Speed = 0f;
-                _inVehicle = false;
-                game.Player.InVehicle = false;
+                if (_nearShip)
+                {
+                    // In vehicle near ship → store vehicle back in ship, board ship
+                    ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
+                    avatarTransform.Position = vehicleTf.Position;
+                    avatarTransform.Rotation = 0f;
+                    _vehicleMovementSystem!.Speed = 0f;
+                    _inVehicle = false;
+                    game.Player.InVehicle = false;
+
+                    // Remove vehicle from the map
+                    if (game.EcsWorld.IsAlive(_vehicleEntity))
+                        game.EcsWorld.Destroy(_vehicleEntity);
+                    _vehicleDeployed = false;
+
+                    BoardShip(game);
+                }
+                else
+                {
+                    // Dismount vehicle: place avatar next to vehicle, reset rotation
+                    ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
+                    avatarTransform.Position = vehicleTf.Position + new Vector2(20, 0);
+                    avatarTransform.Rotation = 0f;
+                    _vehicleMovementSystem!.Speed = 0f;
+                    _inVehicle = false;
+                    game.Player.InVehicle = false;
+                }
             }
             else if (_nearShip)
             {
-                // Board ship (highest priority when on foot)
-                game.Player.InVehicle = false;
-                game.ChangeState(new SolarSystemState(_starSystem));
+                // Board ship on foot → show starship menu
+                BoardShip(game);
             }
             else if (_nearVehicle && _vehicleDeployed)
             {
                 // Mount vehicle
-                ref var vTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
-                avatarTransform.Position = vTf.Position;
-                avatarTransform.Rotation = vTf.Rotation;
-                var vStats = game.Player.GetCombinedVehicleStats();
-                _vehicleMovementSystem = new VehicleMovementSystem(
-                    game.EcsWorld, game.Input, _playerAvatar,
-                    acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
-                    maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
-                    rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
-                    friction: GameConfig.VehicleFriction + vStats.Friction);
-                _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
-                _inVehicle = true;
-                game.Player.InVehicle = true;
+                MountVehicle(game);
             }
             else if (_nearSettlement != null)
             {
-                // Enter settlement interior (lowest priority)
+                // Enter settlement interior — save positions first
+                SaveSurfacePositions(game);
                 game.ChangeState(new InteriorState(
                     InteriorOrigin.Settlement, _starSystem,
                     planet: _planet, settlement: _nearSettlement));
@@ -241,10 +332,65 @@ public class PlanetSurfaceState : GameState
         if (moveDir != Vector2.Zero) _lastMoveDir = Vector2.Normalize(moveDir);
     }
 
+    /// <summary>Board the ship: open the starship menu overlay.</summary>
+    private void BoardShip(Game game)
+    {
+        _playerInsideShip = true;
+        _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
+        _starshipMenuOverlay.VehicleDeployed = _vehicleDeployed;
+        _starshipMenuOverlay.Open();
+    }
+
+    /// <summary>Handle the player's choice from the starship menu.</summary>
+    private void HandleStarshipMenuChoice(Game game, StarshipMenuOption choice)
+    {
+        switch (choice)
+        {
+            case StarshipMenuOption.FlyToSpace:
+                game.Player.InVehicle = false;
+                game.Player.ClearSavedSurfacePositions();
+                game.ChangeState(new SolarSystemState(_starSystem));
+                break;
+
+            case StarshipMenuOption.DisembarkOnFoot:
+                _playerInsideShip = false;
+                // Place avatar next to ship
+                ref var shipTf = ref game.EcsWorld.Get<Transform>(_shipEntity);
+                ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
+                avatarTf.Position = shipTf.Position + new Vector2(30, 0);
+                avatarTf.Rotation = 0f;
+                break;
+
+            case StarshipMenuOption.DisembarkOnVehicle:
+                _playerInsideShip = false;
+                MountVehicle(game);
+                break;
+        }
+    }
+
+    /// <summary>Save the positions of ship, vehicle, and player before entering a settlement.</summary>
+    private void SaveSurfacePositions(Game game)
+    {
+        var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
+        float vehicleX = 0, vehicleY = 0;
+        if (_vehicleDeployed)
+        {
+            var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
+            vehicleX = vehicleTf.Position.X;
+            vehicleY = vehicleTf.Position.Y;
+        }
+        var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
+        game.Player.SaveSurfacePositions(
+            shipTf.Position.X, shipTf.Position.Y,
+            vehicleX, vehicleY, _vehicleDeployed,
+            avatarTf.Position.X, avatarTf.Position.Y,
+            _inVehicle);
+    }
+
     public override void Update(Game game, float dt)
     {
-        // In-game menu active — no simulation
-        if (_inGameMenuOverlay.IsOpen)
+        // Starship menu or in-game menu active — no simulation
+        if (_starshipMenuOverlay.IsOpen || _inGameMenuOverlay.IsOpen)
             return;
 
         if (_inVehicle)
@@ -429,9 +575,9 @@ public class PlanetSurfaceState : GameState
                 vehicleTf.Rotation, _inVehicle);
         }
 
-        // Draw player avatar (only when on foot and alive)
+        // Draw player avatar (only when on foot, alive, and not inside ship)
         var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
-        if (!_inVehicle && !_playerDead)
+        if (!_inVehicle && !_playerDead && !_playerInsideShip)
         {
             game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
         }
@@ -446,8 +592,8 @@ public class PlanetSurfaceState : GameState
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
 
-        // Interaction prompts (only when alive)
-        if (!_playerDead)
+        // Interaction prompts (only when alive and not inside ship)
+        if (!_playerDead && !_playerInsideShip)
         {
             PlanetSurfaceRenderer.RenderInteractionPrompt(renderer,
                 _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
@@ -499,6 +645,9 @@ public class PlanetSurfaceState : GameState
 
         // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);
+
+        // Starship menu overlay drawn on top of everything
+        _starshipMenuOverlay.Render(game);
     }
 
     /// <summary>Creates a terrain collision delegate for the movement system.</summary>

@@ -57,7 +57,12 @@ public static class PlanetSurfaceRenderer
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
 
-        if (inVehicle)
+        if (inVehicle && nearShip)
+        {
+            renderer.DrawTextScreen(w / 2 - 100, h - 60,
+                "[E] BOARD STARSHIP", 100, 255, 100, 2f);
+        }
+        else if (inVehicle)
         {
             renderer.DrawTextScreen(w / 2 - 100, h - 60,
                 "[E] DISMOUNT", 255, 200, 100, 2f);
@@ -65,7 +70,7 @@ public static class PlanetSurfaceRenderer
         else if (nearShip)
         {
             renderer.DrawTextScreen(w / 2 - 100, h - 60,
-                "[E] BOARD SHIP (LEAVE)", 100, 255, 100, 2f);
+                "[E] BOARD STARSHIP", 100, 255, 100, 2f);
         }
         else if (nearVehicle && vehicleDeployed)
         {

@@ -135,6 +135,39 @@ public class PlayerData
     public int ReturnMoonPlanetIndex { get; set; } = -1;  // which planet the moon belongs to
     public int ReturnMoonIndex { get; set; } = -1;        // which moon within that planet
 
+    // Planet surface position memory (preserved across settlement visits)
+    /// <summary>Whether there are saved surface positions to restore (e.g. after exiting a settlement).</summary>
+    public bool HasSavedSurfacePositions { get; set; }
+    public float SavedShipX { get; set; }
+    public float SavedShipY { get; set; }
+    public float SavedVehicleX { get; set; }
+    public float SavedVehicleY { get; set; }
+    public bool SavedVehicleDeployed { get; set; }
+    public float SavedPlayerX { get; set; }
+    public float SavedPlayerY { get; set; }
+    public bool SavedPlayerInVehicle { get; set; }
+
+    /// <summary>Save surface entity positions before entering a settlement.</summary>
+    public void SaveSurfacePositions(float shipX, float shipY, float vehicleX, float vehicleY,
+        bool vehicleDeployed, float playerX, float playerY, bool playerInVehicle)
+    {
+        HasSavedSurfacePositions = true;
+        SavedShipX = shipX;
+        SavedShipY = shipY;
+        SavedVehicleX = vehicleX;
+        SavedVehicleY = vehicleY;
+        SavedVehicleDeployed = vehicleDeployed;
+        SavedPlayerX = playerX;
+        SavedPlayerY = playerY;
+        SavedPlayerInVehicle = playerInVehicle;
+    }
+
+    /// <summary>Clear saved surface positions (e.g. when leaving the planet).</summary>
+    public void ClearSavedSurfacePositions()
+    {
+        HasSavedSurfacePositions = false;
+    }
+
     // Credits
     public int Credits { get; set; } = 10000;
 

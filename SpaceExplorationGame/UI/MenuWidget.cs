@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.UI;
 /// <summary>
 /// Represents a single menu option with an associated enum value, display label, and optional description.
 /// </summary>
-public record struct MenuOption<T>(T Value, string Label, string? Description = null) where T : struct, Enum;
+public record struct MenuOption<T>(T Value, string Label, string? Description = null, bool Enabled = true, string? DisabledHint = null) where T : struct, Enum;
 
 /// <summary>
 /// Reusable menu widget that handles keyboard / mouse navigation and rendering.
@@ -37,6 +37,9 @@ public class MenuWidget<T> where T : struct, Enum
     public float NormalScale { get; init; } = 2f;
     public (byte R, byte G, byte B) SelectedColor { get; init; } = (220, 240, 255);
     public (byte R, byte G, byte B) NormalColor { get; init; } = (140, 140, 160);
+    public (byte R, byte G, byte B) DisabledColor { get; init; } = (80, 80, 90);
+    public (byte R, byte G, byte B) DisabledHintColor { get; init; } = (200, 80, 80);
+    public float DisabledHintScale { get; init; } = 1.5f;
     public (byte R, byte G, byte B) HighlightBg { get; init; } = (40, 60, 120);
     public byte HighlightAlpha { get; init; } = 180;
     public bool CenterAlign { get; init; } = false;
@@ -55,6 +58,7 @@ public class MenuWidget<T> where T : struct, Enum
     /// <summary>
     /// Process keyboard navigation (Up/Down/W/S) and confirm (Return/E).
     /// Returns the confirmed enum value, or null if nothing was confirmed.
+    /// Disabled options can be navigated to but cannot be confirmed.
     /// </summary>
     public T? Update(InputManager input)
     {
@@ -67,7 +71,10 @@ public class MenuWidget<T> where T : struct, Enum
             _selected = (_selected + 1) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            return _options[_selected].Value;
+        {
+            if (_options[_selected].Enabled)
+                return _options[_selected].Value;
+        }
 
         return null;
     }
@@ -95,7 +102,7 @@ public class MenuWidget<T> where T : struct, Enum
                 my >= optY && my <= optY + ItemHeight)
             {
                 _selected = i;
-                if (input.IsMousePressed(1))
+                if (input.IsMousePressed(1) && _options[i].Enabled)
                     return _options[i].Value;
                 break;
             }
@@ -109,7 +116,10 @@ public class MenuWidget<T> where T : struct, Enum
             _selected = (_selected + 1) % _options.Length;
 
         if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            return _options[_selected].Value;
+        {
+            if (_options[_selected].Enabled)
+                return _options[_selected].Value;
+        }
 
         return null;
     }
@@ -128,12 +138,13 @@ public class MenuWidget<T> where T : struct, Enum
         {
             float optY = y + i * ItemHeight;
             bool sel = i == _selected;
+            bool enabled = _options[i].Enabled;
             float scale = sel ? SelectedScale : NormalScale;
-            var (cr, cg, cb) = sel ? SelectedColor : NormalColor;
+            var (cr, cg, cb) = !enabled ? DisabledColor : sel ? SelectedColor : NormalColor;
             string label = _options[i].Label;
 
-            // Selection highlight
-            if (sel)
+            // Selection highlight (only for enabled items)
+            if (sel && enabled)
                 renderer.DrawRectScreen(x, optY - 5, width, ItemHeight - 10, HighlightBg.R, HighlightBg.G, HighlightBg.B, HighlightAlpha);
 
             if (CenterAlign)
@@ -158,6 +169,23 @@ public class MenuWidget<T> where T : struct, Enum
                 string displayLabel = sel ? $"> {label}" : label;
                 float textX = sel ? x + 10 : x + 20;
                 renderer.DrawTextScreen(textX, optY, displayLabel, cr, cg, cb, scale);
+            }
+
+            // Disabled hint text (shown below the label within the same item area)
+            if (!enabled && _options[i].DisabledHint != null)
+            {
+                string hint = _options[i].DisabledHint!;
+                if (CenterAlign)
+                {
+                    float hintW = renderer.MeasureText(hint, DisabledHintScale);
+                    renderer.DrawTextScreen(x + width / 2f - hintW / 2f, optY + scale * 8 + 4, hint,
+                        DisabledHintColor.R, DisabledHintColor.G, DisabledHintColor.B, DisabledHintScale);
+                }
+                else
+                {
+                    renderer.DrawTextScreen(x + 20, optY + scale * 8 + 4, hint,
+                        DisabledHintColor.R, DisabledHintColor.G, DisabledHintColor.B, DisabledHintScale);
+                }
             }
         }
 
