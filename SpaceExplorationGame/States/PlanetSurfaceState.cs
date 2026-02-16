@@ -595,18 +595,15 @@ public class PlanetSurfaceState : GameState
         // Interaction prompts (only when alive and not inside ship)
         if (!_playerDead && !_playerInsideShip)
         {
-            PlanetSurfaceRenderer.RenderInteractionPrompt(renderer,
+            HudRenderer.RenderPlanetSurfacePrompt(renderer,
                 _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
         }
 
-        // HUD
-        PlanetSurfaceRenderer.RenderHud(renderer, _planet, _inVehicle);
-
-        // Avatar health bar (bottom-left)
-        if (!_playerDead && game.EcsWorld.Has<Health>(_playerAvatar))
+        // Unified HUD (top-left: location, player info, health)
+        if (!_playerDead)
         {
-            var health = game.EcsWorld.Get<Health>(_playerAvatar);
-            RenderAvatarHealthBar(renderer, health);
+            HudRenderer.RenderPlanetSurfaceHud(renderer, game.Player, _planet,
+                _starSystem.DangerLevel, _inVehicle, game.EcsWorld, _playerAvatar);
         }
 
         // Combat message
@@ -625,20 +622,12 @@ public class PlanetSurfaceState : GameState
                 "RETURNING TO ORBIT...", 200, 200, 200, 1.5f);
         }
 
-        // Minimap
+        // Minimap (top-right, unified style)
         Vector2? vehiclePos = _vehicleDeployed && !_inVehicle
             ? game.EcsWorld.Get<Transform>(_vehicleEntity).Position
             : null;
-        PlanetSurfaceRenderer.RenderMinimap(renderer, _surfaceData,
-            avatarTf.Position, shipTf.Position, vehiclePos);
-
-        // Enemy dots on minimap
-        float mmSize = 150;
-        float mmX = GameConfig.WindowWidth - mmSize - 10;
-        float mmY = 10;
-        float mapW = _surfaceData.Width * GameConfig.TileSize;
-        float mapH = _surfaceData.Height * GameConfig.TileSize;
-        SurfaceEnemyRenderer.RenderMinimapDots(renderer, game.EcsWorld, mmX, mmY, mmSize, mapW, mapH);
+        HudRenderer.RenderPlanetSurfaceMinimap(renderer, _surfaceData,
+            avatarTf.Position, shipTf.Position, vehiclePos, game.EcsWorld);
 
 
 
@@ -679,30 +668,5 @@ public class PlanetSurfaceState : GameState
 
         _combatMessage = creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
         _combatMessageTimer = RespawnDelay;
-    }
-
-    /// <summary>Render the avatar health bar at the bottom-left of the screen.</summary>
-    private static void RenderAvatarHealthBar(SpriteRenderer renderer, Health health)
-    {
-        float barW = 160;
-        float barH = 12;
-        float barX = 10;
-        float barY = GameConfig.WindowHeight - 30;
-
-        // Label
-        renderer.DrawTextScreen(barX, barY - 16, "HP", 200, 100, 100, 1.5f);
-
-        // Background
-        renderer.DrawRectScreen(barX, barY, barW, barH, 40, 40, 40, 200);
-
-        // Health fill
-        float fillW = barW * health.HullPercent;
-        byte r = health.HullPercent > 0.5f ? (byte)80 : (byte)255;
-        byte g = health.HullPercent > 0.5f ? (byte)200 : (byte)(200 * health.HullPercent * 2);
-        renderer.DrawRectScreen(barX, barY, fillW, barH, r, g, 60);
-
-        // Text
-        renderer.DrawTextScreen(barX + barW + 8, barY - 2,
-            $"{(int)health.Hull}/{(int)health.MaxHull}", 200, 200, 200, 1.5f);
     }
 }

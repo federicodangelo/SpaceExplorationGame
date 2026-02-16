@@ -930,30 +930,29 @@ public class SolarSystemState : GameState
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
 
-        // HUD
-        if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+        // Unified HUD (top-left: location, player info, hull/shields)
         {
-            ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
-            SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, vel.Value.Length());
-        }
-        else
-        {
-            SolarSystemRenderer.RenderHud(renderer, _starSystem.Name, _starSystem.StarClass, 0f);
+            float speed = 0f;
+            if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+            {
+                ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
+                speed = vel.Value.Length();
+            }
+            HudRenderer.RenderSolarSystemHud(renderer, game.Player, _starSystem,
+                game.EcsWorld, _playerShip, speed);
         }
 
-        // Cargo HUD (below system HUD)
-        SolarSystemRenderer.RenderCargoHud(renderer, game.Player);
-
-        // Combat HUD (hull/shield bars + danger level)
-        SolarSystemRenderer.RenderCombatHud(renderer, game.Player, game.EcsWorld,
-            _playerShip, _starSystem.DangerLevel);
+        // Minimap (top-right)
+        HudRenderer.RenderSolarSystemMinimap(renderer, _planets, _planetEntities,
+            _moonEntities, _stationEntities, _asteroidEntities, _enemyEntities,
+            _playerShip, _starEntity, game.EcsWorld, _starSystem.StarRadius);
 
         // Off-screen indicators at screen borders
         if (!_playerDead)
         {
-            SolarSystemRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
+            HudRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
                 _enemyEntities);
-            SolarSystemRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
+            HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
         }
 
         // Death screen
@@ -981,20 +980,9 @@ public class SolarSystemState : GameState
             SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, 255, 200, 80, 2f);
 
         // Interaction prompts
-        if (_nearbyPlanetIndex >= 0)
-        {
-            SolarSystemRenderer.RenderPlanetPanel(renderer, _planets[_nearbyPlanetIndex]);
-        }
-        else if (_nearbyMoonIndex >= 0)
-        {
-            SolarSystemRenderer.RenderMoonPanel(renderer,
-                _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex],
-                _planets[_nearbyMoonPlanetIndex]);
-        }
-        else if (_nearbyStationIndex >= 0)
-        {
-            SolarSystemRenderer.RenderStationPanel(renderer, _stations[_nearbyStationIndex].Name);
-        }
+        HudRenderer.RenderSolarSystemPrompt(renderer,
+            _nearbyPlanetIndex, _nearbyMoonIndex, _nearbyMoonPlanetIndex,
+            _nearbyStationIndex, _planets, _stations);
 
 
 

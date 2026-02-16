@@ -6,7 +6,7 @@ using SpaceExplorationGame.Generation;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders interior visuals: exterior background, tiles, NPCs, interactables, dialogue, and minimap.
+/// Renders interior visuals: exterior background, tiles, NPCs, interactables, and dialogue.
 /// </summary>
 public static class InteriorRenderer
 {
@@ -318,102 +318,9 @@ public static class InteriorRenderer
         renderer.DrawTextScreen(boxX + boxW - 200, boxY + boxH - 25, continueText, 100, 200, 100, 1.5f);
     }
 
-    /// <summary>Renders the interior minimap showing rooms, NPCs, interactables, and the player.</summary>
-    public static void RenderMinimap(SpriteRenderer renderer, InteriorData interior,
-        Vector2 playerPos, int screenW)
-    {
-        float mmSize = 120;
-        float mmX = screenW - mmSize - 10;
-        float mmY = 42;
-        renderer.DrawRectScreen(mmX - 1, mmY - 1, mmSize + 2, mmSize + 2, 60, 60, 100);
-        renderer.DrawRectScreen(mmX, mmY, mmSize, mmSize, 10, 10, 15, 220);
-
-        float scaleX = mmSize / (interior.Width * GameConfig.TileSize);
-        float scaleY = mmSize / (interior.Height * GameConfig.TileSize);
-
-        // Draw rooms on minimap
-        foreach (var room in interior.Rooms)
-        {
-            float rx = mmX + room.X * GameConfig.TileSize * scaleX;
-            float ry = mmY + room.Y * GameConfig.TileSize * scaleY;
-            float rw = room.Width * GameConfig.TileSize * scaleX;
-            float rh = room.Height * GameConfig.TileSize * scaleY;
-            renderer.DrawRectScreen(rx, ry, rw, rh, 50, 50, 60);
-        }
-
-        // Player dot
-        float px = mmX + playerPos.X * scaleX;
-        float py = mmY + playerPos.Y * scaleY;
-        renderer.DrawRectScreen(px - 2, py - 2, 4, 4, 100, 255, 100);
-
-        // NPC dots
-        foreach (var npc in interior.Npcs)
-        {
-            float nx = mmX + npc.TileX * GameConfig.TileSize * scaleX;
-            float ny = mmY + npc.TileY * GameConfig.TileSize * scaleY;
-            renderer.DrawRectScreen(nx - 1, ny - 1, 3, 3, npc.R, npc.G, npc.B);
-        }
-
-        // Interactable dots
-        foreach (var interactable in interior.Interactables)
-        {
-            float ix = mmX + interactable.TileX * GameConfig.TileSize * scaleX;
-            float iy = mmY + interactable.TileY * GameConfig.TileSize * scaleY;
-            var (ir, ig, ib) = GetInteractableColor(interactable.Type);
-            renderer.DrawRectScreen(ix - 1, iy - 1, 3, 3, ir, ig, ib);
-        }
-    }
-
-    /// <summary>Renders the HUD: location bar, credits, interaction prompts, and controls help.</summary>
-    public static void RenderHud(SpriteRenderer renderer, InteriorData interior, int credits,
-        InteriorInteractable? nearestInteractable, InteriorNpc? nearestNpc,
-        bool anyOverlayOpen, int w, int h)
-    {
-        // Location name bar
-        renderer.DrawRectScreen(0, 0, w, 35, 0, 0, 0, 180);
-        string locationLabel = interior.Type == InteriorType.Station
-            ? $"STATION: {interior.Name.ToUpper()}"
-            : $"SETTLEMENT: {interior.Name.ToUpper()}";
-        renderer.DrawTextScreen(10, 8, locationLabel, 200, 200, 255, 2f);
-
-        // Credits
-        renderer.DrawTextScreen(w - 200, 8, $"CREDITS: {credits}", 255, 220, 80, 2f);
-
-        // Interaction prompts
-        if (!anyOverlayOpen)
-        {
-            if (nearestInteractable != null)
-            {
-                string prompt = nearestInteractable.Type switch
-                {
-                    InteractableType.ExitDoor => "[E] EXIT",
-                    InteractableType.RepairStation => "[E] REPAIR",
-                    InteractableType.MissionBoard => "[E] MISSIONS",
-                    InteractableType.ShipCustomization => "[E] SHIP CUSTOMIZATION",
-                    InteractableType.AvatarCustomization => "[E] AVATAR CUSTOMIZATION",
-                    InteractableType.VehicleCustomization => "[E] VEHICLE CUSTOMIZATION",
-                    InteractableType.ShipDealer => "[E] SHIP DEALER",
-                    InteractableType.CargoTerminal => "[E] SELL CARGO",
-                    _ => "[E] INTERACT"
-                };
-                float tw = renderer.MeasureText(prompt, 2f);
-                renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
-                renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 100, 255, 200, 2f);
-            }
-            else if (nearestNpc != null)
-            {
-                string prompt = $"[E] TALK TO {nearestNpc.Name.ToUpper()}";
-                float tw = renderer.MeasureText(prompt, 2f);
-                renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, 0, 0, 0, 180);
-                renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, prompt, 200, 200, 255, 2f);
-            }
-        }
-
-
-    }
 
     /// <summary>Returns the color associated with an interactable type.</summary>
-    private static (byte R, byte G, byte B) GetInteractableColor(InteractableType type) => type switch
+    public static (byte R, byte G, byte B) GetInteractableColor(InteractableType type) => type switch
     {
         InteractableType.TradeTerminal => (255, 220, 80),
         InteractableType.RepairStation => (100, 255, 100),

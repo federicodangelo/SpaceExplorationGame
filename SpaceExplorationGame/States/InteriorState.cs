@@ -323,10 +323,14 @@ public class InteriorState : GameState
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen;
 
-        InteriorRenderer.RenderHud(renderer, _interior, game.Player.Credits,
-            anyOverlayOpen ? null : _nearestInteractable,
-            anyOverlayOpen ? null : _nearestNpc,
-            anyOverlayOpen, w, h);
+        // Unified HUD (top-left: location, player info, health)
+        HudRenderer.RenderInteriorHud(renderer, game.Player, _interior, _starSystem);
+
+        // Interaction prompts
+        if (!anyOverlayOpen)
+        {
+            HudRenderer.RenderInteriorPrompt(renderer, _nearestInteractable, _nearestNpc);
+        }
 
         // Dialogue box
         if (_showingDialogue && _dialogueNpc != null)
@@ -346,8 +350,8 @@ public class InteriorState : GameState
         // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);
 
-        // Minimap
-        InteriorRenderer.RenderMinimap(renderer, _interior, avatarTf.Position, w);
+        // Minimap (top-right, unified style)
+        HudRenderer.RenderInteriorMinimap(renderer, _interior, avatarTf.Position);
     }
 }
 
