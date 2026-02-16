@@ -1062,6 +1062,7 @@ public class SolarSystemState : GameState
                         break;
 
                     case MissionType.Exploration:
+                    case MissionType.SettlementDelivery:
                         // Highlight the specific target planet
                         if (mission.Target.HasPlanet && mission.Target.PlanetIndex < _planetEntities.Count)
                         {

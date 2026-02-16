@@ -18,7 +18,10 @@ public enum MissionType
     Exploration,
 
     /// <summary>Travel to a specific star system.</summary>
-    Patrol
+    Patrol,
+
+    /// <summary>Visit a settlement on a specific planet.</summary>
+    SettlementDelivery
 }
 
 /// <summary>
@@ -101,6 +104,7 @@ public class Mission
                 MissionType.Delivery => $"GO TO {Target.SystemName.ToUpper()}",
                 MissionType.Exploration => $"LAND ON {Target.PlanetName?.ToUpper() ?? "?"}",
                 MissionType.Patrol => $"GO TO {Target.SystemName.ToUpper()}",
+                MissionType.SettlementDelivery => $"VISIT SETTLEMENT ON {Target.PlanetName?.ToUpper() ?? "?"}",
                 _ => ""
             };
         }
@@ -114,6 +118,7 @@ public class Mission
         MissionType.BountyHunt => "BOUNTY",
         MissionType.Exploration => "EXPLORE",
         MissionType.Patrol => "PATROL",
+        MissionType.SettlementDelivery => "SETTLEMENT",
         _ => "MISSION"
     };
 
@@ -125,6 +130,7 @@ public class Mission
         MissionType.BountyHunt => new Color3(255, 100, 100),
         MissionType.Exploration => new Color3(100, 255, 150),
         MissionType.Patrol => new Color3(180, 150, 255),
+        MissionType.SettlementDelivery => new Color3(255, 180, 120),
         _ => new Color3(200, 200, 200)
     };
 }

@@ -118,6 +118,10 @@ public class InteriorState : GameState
         // Camera setup
         game.Camera.Position = new Vector2(spawnX, spawnY);
         game.Camera.Zoom = 1.5f;
+
+        // Notify mission system
+        if (_origin == InteriorOrigin.Settlement && _planet != null)
+            game.Player.NotifySettlementEntered(_starSystem.Index, _planet.Index);
     }
 
     public override void Exit(Game game)

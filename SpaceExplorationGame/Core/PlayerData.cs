@@ -420,6 +420,20 @@ public class PlayerData
         }
     }
 
+    /// <summary>Notify: player entered a settlement. Checks settlement delivery missions.</summary>
+    public void NotifySettlementEntered(int systemIndex, int planetIndex)
+    {
+        foreach (var m in ActiveMissions)
+        {
+            if (m.Status == MissionStatus.Active && m.Type == MissionType.SettlementDelivery
+                && m.Target.IsPlanet(systemIndex, planetIndex))
+            {
+                m.CurrentAmount = 1;
+                m.Status = MissionStatus.Completed;
+            }
+        }
+    }
+
     /// <summary>Notify: a pirate was killed by the player. Checks bounty missions.</summary>
     public void NotifyPirateKilled()
     {

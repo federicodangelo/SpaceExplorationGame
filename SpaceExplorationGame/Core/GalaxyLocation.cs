@@ -12,7 +12,10 @@ public enum GalaxyLocationType
     System,
 
     /// <summary>A specific planet within a star system (exploration).</summary>
-    Planet
+    Planet,
+
+    /// <summary>A settlement on a specific planet (settlement delivery).</summary>
+    Settlement
 }
 
 /// <summary>
@@ -45,7 +48,10 @@ public readonly record struct GalaxyLocation
     public bool HasSystem => Type != GalaxyLocationType.None;
 
     /// <summary>True when this target points to a specific planet.</summary>
-    public bool HasPlanet => Type == GalaxyLocationType.Planet;
+    public bool HasPlanet => Type == GalaxyLocationType.Planet || Type == GalaxyLocationType.Settlement;
+
+    /// <summary>True when this target points to a settlement on a planet.</summary>
+    public bool HasSettlement => Type == GalaxyLocationType.Settlement;
 
     /// <summary>Check whether this target's system matches <paramref name="systemIndex"/>.</summary>
     public bool IsSystem(int systemIndex) => HasSystem && SystemIndex == systemIndex;
@@ -79,6 +85,17 @@ public readonly record struct GalaxyLocation
         int planetIndex, string planetName) => new()
     {
         Type = GalaxyLocationType.Planet,
+        SystemIndex = systemIndex,
+        SystemName = systemName,
+        PlanetIndex = planetIndex,
+        PlanetName = planetName
+    };
+
+    /// <summary>Create a target pointing at a settlement on a planet.</summary>
+    public static GalaxyLocation ForSettlement(int systemIndex, string systemName,
+        int planetIndex, string planetName) => new()
+    {
+        Type = GalaxyLocationType.Settlement,
         SystemIndex = systemIndex,
         SystemName = systemName,
         PlanetIndex = planetIndex,

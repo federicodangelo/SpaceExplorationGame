@@ -45,6 +45,7 @@ public static class MissionGenerator
                 MissionType.BountyHunt => GenerateBountyMission(rng, missionId, currentSystem),
                 MissionType.Exploration => GenerateExplorationMission(rng, seeds, missionId, currentSystem, otherSystems),
                 MissionType.Patrol => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems),
+                MissionType.SettlementDelivery => GenerateSettlementDeliveryMission(rng, seeds, missionId, currentSystem, otherSystems),
                 _ => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems)
             };
 
@@ -73,11 +74,12 @@ public static class MissionGenerator
         float roll = rng.NextFloat();
         return roll switch
         {
-            < 0.25f => MissionType.Delivery,
-            < 0.45f => MissionType.Mining,
-            < 0.65f => MissionType.BountyHunt,
-            < 0.85f => MissionType.Exploration,
-            _ => MissionType.Patrol
+            < 0.20f => MissionType.Delivery,
+            < 0.35f => MissionType.Mining,
+            < 0.50f => MissionType.BountyHunt,
+            < 0.65f => MissionType.Exploration,
+            < 0.80f => MissionType.Patrol,
+            _ => MissionType.SettlementDelivery
         };
     }
 
@@ -192,6 +194,41 @@ public static class MissionGenerator
             Description = $"Travel to the {targetSystem.Name} system.",
             Type = MissionType.Patrol,
             Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            RequiredAmount = 1,
+            CreditReward = reward
+        };
+    }
+
+    private static Mission GenerateSettlementDeliveryMission(SeededRandom rng, SeedManager seeds,
+        int id, StarSystemData currentSystem, List<StarSystemData> otherSystems)
+    {
+        // Pick a target system and find a planet with a settlement
+        var targetSystem = rng.Pick(otherSystems);
+
+        var sysRng = seeds.GetStarSystemRandom(targetSystem.Index);
+        var (planets, _, _) = SolarSystemGenerator.Generate(sysRng, targetSystem);
+
+        // Look for planets with settlements
+        var settled = planets.Where(p => p.HasSettlement).ToList();
+        if (settled.Count == 0)
+        {
+            // Fallback to delivery mission
+            return GenerateDeliveryMission(rng, seeds, id, currentSystem, otherSystems);
+        }
+
+        var targetPlanet = rng.Pick(settled);
+        int reward = 500 + currentSystem.DangerLevel * 130 + rng.NextInt(100, 500);
+
+        return new Mission
+        {
+            Id = id,
+            Title = $"Settlement Supply: {targetPlanet.Name}",
+            Description = $"Deliver supplies to a settlement on {targetPlanet.Name} in the {targetSystem.Name} system. Enter any settlement there.",
+            Type = MissionType.SettlementDelivery,
+            Target = GalaxyLocation.ForSettlement(targetSystem.Index, targetSystem.Name,
+                targetPlanet.Index, targetPlanet.Name),
             TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             RequiredAmount = 1,
