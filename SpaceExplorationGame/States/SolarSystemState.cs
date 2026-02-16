@@ -1039,7 +1039,7 @@ public class SolarSystemState : GameState
         foreach (var mission in missions)
         {
             // Show objective markers for incomplete missions in this system
-            if (mission.TargetSystemIndex == sysIndex && mission.Status != MissionStatus.Completed)
+            if (mission.Target.IsSystem(sysIndex) && mission.Status != MissionStatus.Completed)
             {
                 var mc = mission.TypeColor;
                 var ringColor = new Color4(mc.R, mc.G, mc.B, ringAlpha);
@@ -1063,13 +1063,13 @@ public class SolarSystemState : GameState
 
                     case MissionType.Exploration:
                         // Highlight the specific target planet
-                        if (mission.TargetPlanetIndex >= 0 && mission.TargetPlanetIndex < _planetEntities.Count)
+                        if (mission.Target.HasPlanet && mission.Target.PlanetIndex < _planetEntities.Count)
                         {
-                            var planetEntity = _planetEntities[mission.TargetPlanetIndex];
+                            var planetEntity = _planetEntities[mission.Target.PlanetIndex];
                             if (game.EcsWorld.IsAlive(planetEntity))
                             {
                                 var pos = game.EcsWorld.Get<Transform>(planetEntity).Position;
-                                float planetRadius = _planets[mission.TargetPlanetIndex].Radius;
+                                float planetRadius = _planets[mission.Target.PlanetIndex].Radius;
                                 float markerRadius = planetRadius + 8 + pulse * 4;
                                 renderer.DrawCircle(camera, pos, markerRadius, ringColor);
                                 renderer.DrawCircle(camera, pos, markerRadius + 3, glowColor);
@@ -1082,7 +1082,7 @@ public class SolarSystemState : GameState
             }
 
             // Show turn-in markers on stations for completed missions in this system
-            if (mission.Status == MissionStatus.Completed && mission.TurnInSystemIndex == sysIndex)
+            if (mission.Status == MissionStatus.Completed && mission.TurnIn.IsSystem(sysIndex))
             {
                 var turnInRing = new Color4(100, 255, 100, ringAlpha);
                 var turnInGlow = new Color4(100, 255, 100, (byte)(30 + (int)(pulse * 40)));

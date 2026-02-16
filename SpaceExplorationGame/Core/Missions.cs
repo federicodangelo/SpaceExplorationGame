@@ -57,19 +57,16 @@ public class Mission
     /// <summary>Current status.</summary>
     public MissionStatus Status { get; set; } = MissionStatus.Available;
 
-    // ── Target information ──
+    // ── Locations ──
 
-    /// <summary>Star system index the mission targets (-1 if any system).</summary>
-    public int TargetSystemIndex { get; init; } = -1;
+    /// <summary>Where the mission objective must be completed.</summary>
+    public GalaxyLocation Target { get; init; }
 
-    /// <summary>Name of the target star system.</summary>
-    public string TargetSystemName { get; init; } = "";
+    /// <summary>Where the mission must be turned in after completion.</summary>
+    public GalaxyLocation TurnIn { get; init; }
 
-    /// <summary>Planet index within the target system (-1 if N/A).</summary>
-    public int TargetPlanetIndex { get; init; } = -1;
-
-    /// <summary>Name of the target planet (null if N/A).</summary>
-    public string? TargetPlanetName { get; init; }
+    /// <summary>Where the mission was originally picked up.</summary>
+    public GalaxyLocation Origin { get; init; }
 
     // ── Progress ──
 
@@ -87,22 +84,6 @@ public class Mission
     /// <summary>Credits awarded on turn-in.</summary>
     public int CreditReward { get; init; }
 
-    // ── Turn-in ──
-
-    /// <summary>Star system index where the mission must be turned in.</summary>
-    public int TurnInSystemIndex { get; init; }
-
-    /// <summary>Name of the system where the mission must be turned in.</summary>
-    public string TurnInSystemName { get; init; } = "";
-
-    // ── Origin ──
-
-    /// <summary>System index where this mission was picked up.</summary>
-    public int OriginSystemIndex { get; init; }
-
-    /// <summary>Name of the system where this mission was picked up.</summary>
-    public string OriginSystemName { get; init; } = "";
-
     // ── Helpers ──
 
     /// <summary>Formatted progress string for display.</summary>
@@ -111,15 +92,15 @@ public class Mission
         get
         {
             if (Status == MissionStatus.Completed)
-                return $"TURN IN AT {TurnInSystemName.ToUpper()}";
+                return $"TURN IN AT {TurnIn.SystemName.ToUpper()}";
 
             return Type switch
             {
                 MissionType.Mining => $"{CurrentAmount}/{RequiredAmount} {ResourceCatalog.Get(TargetResource).Name.ToUpper()}",
                 MissionType.BountyHunt => $"{CurrentAmount}/{RequiredAmount} PIRATES",
-                MissionType.Delivery => $"GO TO {TargetSystemName.ToUpper()}",
-                MissionType.Exploration => $"LAND ON {TargetPlanetName?.ToUpper() ?? "?"}",
-                MissionType.Patrol => $"GO TO {TargetSystemName.ToUpper()}",
+                MissionType.Delivery => $"GO TO {Target.SystemName.ToUpper()}",
+                MissionType.Exploration => $"LAND ON {Target.PlanetName?.ToUpper() ?? "?"}",
+                MissionType.Patrol => $"GO TO {Target.SystemName.ToUpper()}",
                 _ => ""
             };
         }

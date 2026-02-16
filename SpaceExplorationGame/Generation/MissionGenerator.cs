@@ -94,14 +94,11 @@ public static class MissionGenerator
             Title = $"Supply Run to {targetSystem.Name}",
             Description = $"Deliver supplies to a station in the {targetSystem.Name} system. Dock at any station there to complete.",
             Type = MissionType.Delivery,
-            TargetSystemIndex = targetSystem.Index,
-            TargetSystemName = targetSystem.Name,
+            Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             CreditReward = reward,
-            RequiredAmount = 1,
-            TurnInSystemIndex = currentSystem.Index,
-            TurnInSystemName = currentSystem.Name,
-            OriginSystemIndex = currentSystem.Index,
-            OriginSystemName = currentSystem.Name
+            RequiredAmount = 1
         };
     }
 
@@ -118,13 +115,12 @@ public static class MissionGenerator
             Title = $"Mining Contract: {resInfo.Name}",
             Description = $"Mine {amount} units of {resInfo.Name}. Mine asteroids or surface rocks anywhere.",
             Type = MissionType.Mining,
+            Target = GalaxyLocation.None,
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             TargetResource = resource,
             RequiredAmount = amount,
-            CreditReward = reward,
-            TurnInSystemIndex = currentSystem.Index,
-            TurnInSystemName = currentSystem.Name,
-            OriginSystemIndex = currentSystem.Index,
-            OriginSystemName = currentSystem.Name
+            CreditReward = reward
         };
     }
 
@@ -139,12 +135,11 @@ public static class MissionGenerator
             Title = $"Pirate Bounty: {killCount} Ships",
             Description = $"Destroy {killCount} pirate ships anywhere in the galaxy.",
             Type = MissionType.BountyHunt,
+            Target = GalaxyLocation.None,
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             RequiredAmount = killCount,
-            CreditReward = reward,
-            TurnInSystemIndex = currentSystem.Index,
-            TurnInSystemName = currentSystem.Name,
-            OriginSystemIndex = currentSystem.Index,
-            OriginSystemName = currentSystem.Name
+            CreditReward = reward
         };
     }
 
@@ -175,16 +170,12 @@ public static class MissionGenerator
             Title = $"Explore {targetPlanet.Name}",
             Description = $"Land on {targetPlanet.Name} in the {targetSystem.Name} system.",
             Type = MissionType.Exploration,
-            TargetSystemIndex = targetSystem.Index,
-            TargetSystemName = targetSystem.Name,
-            TargetPlanetIndex = targetPlanet.Index,
-            TargetPlanetName = targetPlanet.Name,
+            Target = GalaxyLocation.ForPlanet(targetSystem.Index, targetSystem.Name,
+                targetPlanet.Index, targetPlanet.Name),
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             RequiredAmount = 1,
-            CreditReward = reward,
-            TurnInSystemIndex = currentSystem.Index,
-            TurnInSystemName = currentSystem.Name,
-            OriginSystemIndex = currentSystem.Index,
-            OriginSystemName = currentSystem.Name
+            CreditReward = reward
         };
     }
 
@@ -200,14 +191,11 @@ public static class MissionGenerator
             Title = $"Patrol {targetSystem.Name}",
             Description = $"Travel to the {targetSystem.Name} system.",
             Type = MissionType.Patrol,
-            TargetSystemIndex = targetSystem.Index,
-            TargetSystemName = targetSystem.Name,
+            Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+            TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+            Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             RequiredAmount = 1,
-            CreditReward = reward,
-            TurnInSystemIndex = currentSystem.Index,
-            TurnInSystemName = currentSystem.Name,
-            OriginSystemIndex = currentSystem.Index,
-            OriginSystemName = currentSystem.Name
+            CreditReward = reward
         };
     }
 }

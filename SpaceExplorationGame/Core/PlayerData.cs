@@ -332,7 +332,7 @@ public class PlayerData
     {
         foreach (var m in ActiveMissions)
         {
-            if (m.Status == MissionStatus.Active && m.TargetSystemIndex == systemIndex)
+            if (m.Status == MissionStatus.Active && m.Target.IsSystem(systemIndex))
             {
                 if (m.Type == MissionType.Patrol)
                 {
@@ -348,7 +348,7 @@ public class PlayerData
     {
         foreach (var m in ActiveMissions)
         {
-            if (m.Status == MissionStatus.Active && m.TargetSystemIndex == systemIndex)
+            if (m.Status == MissionStatus.Active && m.Target.IsSystem(systemIndex))
             {
                 if (m.Type == MissionType.Delivery)
                 {
@@ -365,7 +365,7 @@ public class PlayerData
         foreach (var m in ActiveMissions)
         {
             if (m.Status == MissionStatus.Active && m.Type == MissionType.Exploration
-                && m.TargetSystemIndex == systemIndex && m.TargetPlanetIndex == planetIndex)
+                && m.Target.IsPlanet(systemIndex, planetIndex))
             {
                 m.CurrentAmount = 1;
                 m.Status = MissionStatus.Completed;

@@ -130,7 +130,7 @@ public class MissionOverlay : OverlayBase
                 if (mission.Status == MissionStatus.Completed)
                 {
                     // Check if we're at the turn-in system
-                    if (_currentSystem != null && mission.TurnInSystemIndex == _currentSystem.Index)
+                    if (_currentSystem != null && mission.TurnIn.IsSystem(_currentSystem.Index))
                     {
                         int reward = game.Player.TurnInMission(mission);
                         _selectedIndex = Math.Min(_selectedIndex, game.Player.ActiveMissions.Count - 1);
@@ -140,7 +140,7 @@ public class MissionOverlay : OverlayBase
                     }
                     else
                     {
-                        string sysName = mission.TurnInSystemName.ToUpper();
+                        string sysName = mission.TurnIn.SystemName.ToUpper();
                         _statusMessage = $"MUST TURN IN AT {sysName}";
                         _statusTimer = 2.5f;
                     }
@@ -297,16 +297,14 @@ public class MissionOverlay : OverlayBase
             renderer.DrawTextScreen(panelX + 25, y + 48,
                 $"REWARD: {m.CreditReward} CREDITS", new Color3(255, 220, 80), 1.5f);
             renderer.DrawTextScreen(panelX + panelW - 250, y + 48,
-                $"TURN IN: {m.TurnInSystemName.ToUpper()}", new Color3(160, 140, 200), 1.2f);
+                $"TURN IN: {m.TurnIn.SystemName.ToUpper()}", new Color3(160, 140, 200), 1.2f);
 
             // Target info
-            if (m.TargetSystemName.Length > 0)
+            if (m.Target.HasSystem)
             {
-                string targetInfo = m.Type switch
-                {
-                    MissionType.Exploration => $"TARGET: {m.TargetPlanetName?.ToUpper()} IN {m.TargetSystemName.ToUpper()}",
-                    _ => $"TARGET: {m.TargetSystemName.ToUpper()}"
-                };
+                string targetInfo = m.Target.HasPlanet
+                    ? $"TARGET: {m.Target.PlanetName?.ToUpper()} IN {m.Target.SystemName.ToUpper()}"
+                    : $"TARGET: {m.Target.SystemName.ToUpper()}";
                 renderer.DrawTextScreen(panelX + 25, y + 63, targetInfo, new Color3(120, 160, 200), 1.2f);
             }
         }
@@ -360,7 +358,7 @@ public class MissionOverlay : OverlayBase
             // Turn-in hint for completed missions
             if (completed && selected)
             {
-                bool canTurnIn = _currentSystem != null && m.TurnInSystemIndex == _currentSystem.Index;
+                bool canTurnIn = _currentSystem != null && m.TurnIn.IsSystem(_currentSystem.Index);
                 if (canTurnIn)
                 {
                     renderer.DrawTextScreen(panelX + 25, y + 62,
@@ -369,7 +367,7 @@ public class MissionOverlay : OverlayBase
                 else
                 {
                     renderer.DrawTextScreen(panelX + 25, y + 62,
-                        $"TURN IN AT {m.TurnInSystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f);
+                        $"TURN IN AT {m.TurnIn.SystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f);
                 }
             }
         }

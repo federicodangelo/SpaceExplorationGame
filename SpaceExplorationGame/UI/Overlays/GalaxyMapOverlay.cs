@@ -410,9 +410,9 @@ public class GalaxyMapOverlay : OverlayBase
         {
             // Target system marker (for incomplete missions)
             if (mission.Status != MissionStatus.Completed &&
-                mission.TargetSystemIndex >= 0 && mission.TargetSystemIndex < _starSystems.Count)
+                mission.Target.HasSystem && mission.Target.SystemIndex < _starSystems.Count)
             {
-                var targetSys = _starSystems[mission.TargetSystemIndex];
+                var targetSys = _starSystems[mission.Target.SystemIndex];
                 var mc = mission.TypeColor;
                 float markerRadius = targetSys.StarRadius + 8;
 
@@ -427,9 +427,9 @@ public class GalaxyMapOverlay : OverlayBase
 
             // Turn-in system marker (for completed missions)
             if (mission.Status == MissionStatus.Completed &&
-                mission.TurnInSystemIndex >= 0 && mission.TurnInSystemIndex < _starSystems.Count)
+                mission.TurnIn.HasSystem && mission.TurnIn.SystemIndex < _starSystems.Count)
             {
-                var turnInSys = _starSystems[mission.TurnInSystemIndex];
+                var turnInSys = _starSystems[mission.TurnIn.SystemIndex];
                 float markerRadius = turnInSys.StarRadius + 8;
 
                 // Green pulsing ring for turn-in
@@ -476,8 +476,8 @@ public class GalaxyMapOverlay : OverlayBase
 
             // Check for active missions targeting this system or needing turn-in here
             var missionsHere = game.Player.ActiveMissions.Where(m =>
-                m.TargetSystemIndex == _selectedSystemIndex ||
-                (m.Status == MissionStatus.Completed && m.TurnInSystemIndex == _selectedSystemIndex)).ToList();
+                m.Target.IsSystem(_selectedSystemIndex) ||
+                (m.Status == MissionStatus.Completed && m.TurnIn.IsSystem(_selectedSystemIndex))).ToList();
             int missionExtraHeight = missionsHere.Count > 0 ? (missionsHere.Count * 18 + 5) : 0;
 
             float panelHeight = 180 + missionExtraHeight;
