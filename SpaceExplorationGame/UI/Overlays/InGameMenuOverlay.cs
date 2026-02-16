@@ -15,7 +15,7 @@ public class InGameMenuOverlay : OverlayBase
     private enum InGameMenuOption
     {
         Resume,
-        TrackMission,
+        Missions,
         Controls,
         MainMenu
     }
@@ -23,7 +23,7 @@ public class InGameMenuOverlay : OverlayBase
     private static readonly MenuOption<InGameMenuOption>[] MenuOptions =
     [
         new(InGameMenuOption.Resume, "RESUME"),
-        new(InGameMenuOption.TrackMission, "TRACK MISSION >>", Enabled: false, DisabledHint: "NO MISSIONS"),
+        new(InGameMenuOption.Missions, "MISSIONS"),
         new(InGameMenuOption.Controls, "CONTROLS"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
     ];
@@ -32,6 +32,7 @@ public class InGameMenuOverlay : OverlayBase
     public GameStateType StateType { get; set; }
 
     private bool _showingControls;
+    private readonly MissionsListOverlay _missionsOverlay = new();
 
     private readonly MenuWidget<InGameMenuOption> _menu = new(MenuOptions)
     {
@@ -49,7 +50,8 @@ public class InGameMenuOverlay : OverlayBase
     {
         _menu.SelectedIndex = 0;
         _showingControls = false;
-        UpdateTrackMissionOption(game);
+        _missionsOverlay.Close();
+        UpdateMissionsOption(game);
         IsOpen = true;
     }
 
@@ -68,7 +70,7 @@ public class InGameMenuOverlay : OverlayBase
         var input = game.Input;
 
         // Toggle on Escape
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        if (input.IsKeyPressed(SDL.Scancode.Escape) && !_missionsOverlay.IsOpen && !_showingControls)
         {
             Toggle(game);
             return true;
@@ -79,6 +81,15 @@ public class InGameMenuOverlay : OverlayBase
         float menuCenterX = GameConfig.WindowWidth / 2f;
         float menuStartY = GameConfig.WindowHeight / 2f - 30;
         float menuW = 300f;
+
+        // Missions sub-overlay
+        if (_missionsOverlay.IsOpen)
+        {
+            _missionsOverlay.UpdateInput(game);
+            // Keep label in sync (e.g. after abandoning a mission)
+            UpdateMissionsOption(game);
+            return true;
+        }
 
         if (_showingControls)
         {
@@ -94,10 +105,9 @@ public class InGameMenuOverlay : OverlayBase
         var confirmed = _menu.Update(input, menuCenterX - menuW / 2f, menuStartY, menuW);
         if (confirmed == InGameMenuOption.Resume)
             Close();
-        else if (confirmed == InGameMenuOption.TrackMission)
+        else if (confirmed == InGameMenuOption.Missions)
         {
-            game.Player.CycleTrackedMission();
-            UpdateTrackMissionOption(game);
+            _missionsOverlay.Open(game);
         }
         else if (confirmed == InGameMenuOption.Controls)
             _showingControls = true;
@@ -107,10 +117,24 @@ public class InGameMenuOverlay : OverlayBase
         return true;
     }
 
+    /// <summary>Update sub-overlay timers.</summary>
+    public override void Update(Game game, float dt)
+    {
+        if (_missionsOverlay.IsOpen)
+            _missionsOverlay.Update(game, dt);
+    }
+
     /// <summary>Render the in-game menu overlay.</summary>
     public override void Render(Game game)
     {
         if (!IsOpen) return;
+
+        // If missions sub-overlay is open, render that instead
+        if (_missionsOverlay.IsOpen)
+        {
+            _missionsOverlay.Render(game);
+            return;
+        }
 
         var renderer = game.SpriteRenderer;
 
@@ -141,19 +165,6 @@ public class InGameMenuOverlay : OverlayBase
         float menuStartY = GameConfig.WindowHeight / 2f - 50;
         float menuW = 300f;
         _menu.Render(renderer, GameConfig.WindowWidth / 2f - menuW / 2f, menuStartY, menuW);
-
-        // Show currently tracked mission below menu when hovering Track Mission option
-        if (_menu.IsSelected(InGameMenuOption.TrackMission))
-        {
-            var tracked = game.Player.GetTrackedMission();
-            if (tracked != null)
-            {
-                string label = $"TRACKING: [{tracked.TypeLabel}] {tracked.Title}";
-                float lw = renderer.MeasureText(label, 1.5f);
-                renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - lw / 2f,
-                    panelY + panelH - 30, label, tracked.TypeColor, 1.5f);
-            }
-        }
     }
 
     /// <summary>Renders the controls help panel with context-appropriate key bindings.</summary>
@@ -222,27 +233,11 @@ public class InGameMenuOverlay : OverlayBase
         renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - hw / 2f, cy + 8, hint, new Color3(120, 120, 140), 1.5f);
     }
 
-    /// <summary>Update the Track Mission menu option based on the player's active missions.</summary>
-    private void UpdateTrackMissionOption(Game game)
+    /// <summary>Update the Missions menu option based on the player's active missions.</summary>
+    private void UpdateMissionsOption(Game game)
     {
         int missionCount = game.Player.ActiveMissions.Count;
-        if (missionCount >= 2)
-        {
-            var tracked = game.Player.GetTrackedMission();
-            string label = tracked != null
-                ? $"TRACK: {tracked.TypeLabel} >>"
-                : "TRACK MISSION >>";
-            _menu.SetOption(1, new(InGameMenuOption.TrackMission, label));
-        }
-        else if (missionCount == 1)
-        {
-            _menu.SetOption(1, new(InGameMenuOption.TrackMission, "TRACK MISSION",
-                Enabled: false, DisabledHint: "ONLY 1 MISSION"));
-        }
-        else
-        {
-            _menu.SetOption(1, new(InGameMenuOption.TrackMission, "TRACK MISSION",
-                Enabled: false, DisabledHint: "NO MISSIONS"));
-        }
+        string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
+        _menu.SetOption(1, new(InGameMenuOption.Missions, label));
     }
 }
