@@ -36,9 +36,9 @@ public class StarshipMenuOverlay : OverlayBase
 
         MenuOption<StarshipMenuOption>[] options =
         [
-            new(StarshipMenuOption.FlyToSpace, "FLY TO SPACE", "Leave the planet and return to orbit"),
-            new(StarshipMenuOption.DisembarkOnFoot, "DISEMBARK (ON FOOT)", "Exit the starship on foot"),
-            new(StarshipMenuOption.DisembarkOnVehicle, "DISEMBARK (ON VEHICLE)", "Exit the starship in your vehicle",
+            new(StarshipMenuOption.FlyToSpace, "FLY TO SPACE"),
+            new(StarshipMenuOption.DisembarkOnFoot, "DISEMBARK (ON FOOT)"),
+            new(StarshipMenuOption.DisembarkOnVehicle, "DISEMBARK (ON VEHICLE)",
                 Enabled: vehicleEnabled, DisabledHint: vehicleHint)
         ];
 
