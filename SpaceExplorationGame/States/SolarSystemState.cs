@@ -794,7 +794,7 @@ public class SolarSystemState : GameState
         _combatMessageTimer = RespawnDelay;
     }
 
-    /// <summary>Respawn the player at the nearest station (or center of system).</summary>
+    /// <summary>Respawn the player at the nearest station with the station menu open.</summary>
     private void HandlePlayerRespawn(Game game)
     {
         _playerDead = false;
@@ -804,12 +804,15 @@ public class SolarSystemState : GameState
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 respawnPos = new(centerX + 400, centerY);
 
+        int nearestStationIdx = -1;
+
         if (_stationEntities.Count > 0)
         {
             // Find nearest station from last known player position
             float bestDist = float.MaxValue;
-            foreach (var stEntity in _stationEntities)
+            for (int i = 0; i < _stationEntities.Count; i++)
             {
+                var stEntity = _stationEntities[i];
                 if (!game.EcsWorld.IsAlive(stEntity)) continue;
                 var stPos = game.EcsWorld.Get<Transform>(stEntity).Position;
                 float dist = Vector2.Distance(stPos, respawnPos);
@@ -817,6 +820,7 @@ public class SolarSystemState : GameState
                 {
                     bestDist = dist;
                     respawnPos = stPos + new Vector2(50, 0);
+                    nearestStationIdx = i;
                 }
             }
         }
@@ -838,6 +842,13 @@ public class SolarSystemState : GameState
         game.Camera.Position = respawnPos;
         _combatMessage = "RESPAWNED — HULL AT 50%";
         _combatMessageTimer = 3f;
+
+        // Dock at the nearest station and open the station menu
+        if (nearestStationIdx >= 0 && nearestStationIdx < _stations.Count)
+        {
+            SetAnchor(game, _stationEntities[nearestStationIdx]);
+            _stationOverlay.Open(_starSystem, _stations[nearestStationIdx], game);
+        }
     }
 
     /// <summary>Record the entity the ship should follow and the offset from it.</summary>

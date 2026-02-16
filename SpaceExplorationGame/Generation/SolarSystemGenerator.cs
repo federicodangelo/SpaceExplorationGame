@@ -165,10 +165,9 @@ public static class SolarSystemGenerator
             });
         }
 
-        // Space stations
-        if (starSystem.HasSpaceStation)
+        // Space stations (always at least 1 for gameplay; more if the system flag is set)
         {
-            int stationCount = rng.NextInt(2, 5);
+            int stationCount = starSystem.HasSpaceStation ? rng.NextInt(2, 5) : 1;
             for (int i = 0; i < stationCount; i++)
             {
                 int parentPlanet = rng.NextInt(-1, planetCount); // -1 = orbit star
