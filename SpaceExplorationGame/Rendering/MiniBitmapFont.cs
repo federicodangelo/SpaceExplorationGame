@@ -16,11 +16,11 @@ public static class MiniBitmapFont
         DefineChar('A', """
                         .###.
                         #...#
-                        #...#
                         #####
                         #...#
                         #...#
                         #...#
+                        .....
                         .....
                         """);
         DefineChar('B', """
