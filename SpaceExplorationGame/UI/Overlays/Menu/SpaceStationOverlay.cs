@@ -42,7 +42,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
     protected override string Title => "SPACE STATION";
     protected override Color3 TitleColor => new(100, 200, 255);
     protected override float PanelWidth => 600;
-    protected override float PanelHeight => 130 + Menu.TotalHeight + 20 + 110 + 40;
+    protected override float PanelHeight => 110 + Menu.TotalHeight + 20 + 110 + 40;
     protected override bool ShowCredits => true;
     protected override bool CloseOnClickOutside => false;
     protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT";
@@ -50,7 +50,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
 
     // ── Menu layout ──
 
-    protected override float MenuY => PanelY + 130;
+    protected override float MenuY => PanelY + 110;
 
     // ── Constructor ──
 
@@ -206,7 +206,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
 
         // Ship status section
-        float statusY = MenuY + menuHeight + 20;
+        float statusY = MenuY + menuHeight + 4;
         renderer.DrawLineScreen(px + 20, statusY, px + pw - 20, statusY, new Color3(60, 60, 100));
         renderer.DrawTextScreen(px + 20, statusY + 10, $"SHIP: {game.Player.CurrentShipType.Name.ToUpper()}", new Color3(150, 150, 200), 2f);
         renderer.DrawTextScreen(px + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", new Color3(100, 255, 100), 1.5f);
