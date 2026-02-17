@@ -1003,7 +1003,7 @@ public class SolarSystemState : GameState
         // Death screen
         if (_playerDead)
         {
-            SolarSystemRenderer.RenderDeathScreen(renderer, _respawnTimer);
+            HudRenderer.RenderDeathScreen(renderer, _respawnTimer);
         }
 
         // Mining target info panel (shown for 2s after a projectile hit)
@@ -1012,17 +1012,17 @@ public class SolarSystemState : GameState
         {
             ref var asteroidField = ref game.EcsWorld.Get<AsteroidField>(_lastHitAsteroid);
             ref var asteroidHealth = ref game.EcsWorld.Get<Health>(_lastHitAsteroid);
-            SolarSystemRenderer.RenderMiningPanel(renderer, asteroidField.Resource,
+            HudRenderer.RenderMiningPanel(renderer, asteroidField.Resource,
                 asteroidHealth.Hull, asteroidHealth.MaxHull, asteroidField.ResourceAmount);
         }
 
         // Mining feedback message
         if (_miningMessage != null)
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, new Color3(255, 220, 80), 2.5f);
+            HudRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, new Color3(255, 220, 80), 2.5f);
 
         // Combat feedback message
         if (_combatMessage != null)
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, new Color3(255, 200, 80), 2f);
+            HudRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, new Color3(255, 200, 80), 2f);
 
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,

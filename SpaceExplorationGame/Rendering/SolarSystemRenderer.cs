@@ -41,30 +41,6 @@ public static class SolarSystemRenderer
         }
     }
 
-    /// <summary>Renders the mining target info panel for an asteroid entity.</summary>
-    public static void RenderMiningPanel(SpriteRenderer renderer, ResourceType resource,
-        float hp, float maxHp, int resourceAmount)
-    {
-        var resInfo = ResourceCatalog.Get(resource);
-        float panelW = 280;
-        float panelH = 72;
-        float px = GameConfig.WindowWidth / 2f - panelW / 2f;
-        float py = GameConfig.WindowHeight - panelH - 15;
-
-        renderer.DrawRectScreen(px, py, panelW, panelH, new Color4(0, 0, 0, 180));
-        renderer.DrawTextScreen(px + 10, py + 6, $"ASTEROID - {resInfo.Name.ToUpper()}", resInfo.Color, 2f);
-
-        // HP bar
-        float barX = px + 10;
-        float barY = py + 30;
-        float barW = panelW - 20;
-        float hpRatio = maxHp > 0 ? hp / maxHp : 0;
-        renderer.DrawRectScreen(barX, barY, barW, 12, new Color3(40, 40, 40));
-        renderer.DrawRectScreen(barX, barY, barW * hpRatio, 12, resInfo.Color);
-
-        renderer.DrawTextScreen(px + 10, py + 48, $"HP: {hp:F0}/{maxHp:F0}  QTY: {resourceAmount}", new Color3(180, 180, 180), 1.5f);
-    }
-
     /// <summary>Render all NPC ships with their textures, health bars, and faction labels.</summary>
     public static void RenderNPCShips(SpriteRenderer renderer, Camera camera, World ecsWorld,
         List<Entity> enemyEntities, EnemyShipRenderer enemyShipRenderer)
@@ -115,25 +91,6 @@ public static class SolarSystemRenderer
             var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
             renderer.DrawText(camera, labelPos, factionLabel, factionColor, 0.8f);
         }
-    }
-
-    /// <summary>Render the death overlay with respawn countdown.</summary>
-    public static void RenderDeathScreen(SpriteRenderer renderer, float respawnTimer)
-    {
-        renderer.DrawRectScreen(0, GameConfig.WindowHeight / 2f - 40, GameConfig.WindowWidth, 80, new Color4(0, 0, 0, 180));
-        string deathText = $"SHIP DESTROYED - RESPAWNING IN {respawnTimer:F1}s";
-        float textW = renderer.MeasureText(deathText, 3f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - textW / 2f,
-            GameConfig.WindowHeight / 2f - 15, deathText, new Color3(255, 80, 80), 3f);
-    }
-
-    /// <summary>Render a centered feedback message at the given vertical offset.</summary>
-    public static void RenderCenteredMessage(SpriteRenderer renderer, string message,
-        float yOffset, Color4 color, float scale)
-    {
-        float msgW = renderer.MeasureText(message, scale);
-        float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
-        renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, color, scale);
     }
 
 }

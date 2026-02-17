@@ -726,14 +726,14 @@ public class PlanetSurfaceState : GameState
         // Combat message
         if (_combatMessage != null)
         {
-            SolarSystemRenderer.RenderCenteredMessage(renderer, _combatMessage, -40, new Color3(255, 220, 80), 2f);
+            HudRenderer.RenderCenteredMessage(renderer, _combatMessage, -40, new Color3(255, 220, 80), 2f);
         }
 
         // Death message
         if (_playerDead)
         {
-            SolarSystemRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, new Color3(255, 80, 80), 3f);
-            SolarSystemRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, new Color3(200, 200, 200), 1.5f);
+            HudRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, new Color3(255, 80, 80), 3f);
+            HudRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, new Color3(200, 200, 200), 1.5f);
         }
 
         // Minimap (top-right, unified style)

@@ -5,6 +5,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.UI.Hud;
 
@@ -30,7 +31,7 @@ public static class HudMinimapRenderer
 {
     // Minimap constants
     private const float MinimapSize = 150f;
-    private const float MinimapMargin = 10f;
+    private const float MinimapMargin = 10f; // must match HudRenderer.HudMargin
     private const float MinimapViewFraction = 0.3f; // fraction of map shown as view radius
 
     // ─────────────────────────────────────────────────────────────
@@ -215,9 +216,8 @@ public static class HudMinimapRenderer
         float mmX = GameConfig.WindowWidth - MinimapSize - MinimapMargin;
         float mmY = MinimapMargin;
 
-        // Border + background
-        renderer.DrawRectScreen(mmX - 1, mmY - 1, MinimapSize + 2, MinimapSize + 2, new Color3(60, 60, 100));
-        renderer.DrawRectScreen(mmX, mmY, MinimapSize, MinimapSize, new Color4(10, 10, 15, 220));
+        // Border + background (sci-fi frame)
+        OverlayBase.DrawFrame(renderer, mmX, mmY, MinimapSize, MinimapSize, 220);
 
         float scaleX = MinimapSize / viewSize.X;
         float scaleY = MinimapSize / viewSize.Y;

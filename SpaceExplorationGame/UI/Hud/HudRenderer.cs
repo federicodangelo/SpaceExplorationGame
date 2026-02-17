@@ -5,6 +5,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.UI.Hud;
 
@@ -22,7 +23,8 @@ public static class HudRenderer
     private const float TitleScale = 2f;
     private const float BarWidth = 160f;
     private const float BarHeight = 12f;
-    private const byte BgAlpha = 160;
+    private const float HudMargin = 10f;
+    private const float SepGap = 6f;
 
     // ─────────────────────────────────────────────────────────────
     //  TOP-LEFT HUD
@@ -32,22 +34,63 @@ public static class HudRenderer
     public static void RenderSolarSystemHud(SpriteRenderer renderer, PlayerData player,
         StarSystemData starSystem, World ecsWorld, Entity playerShip, float speed)
     {
-        float y = Padding;
-
-        // Line 1: Location
         string dangerStr = FormatDanger(starSystem.DangerLevel);
         string locationLine = $"{starSystem.Name}  |  CLASS {starSystem.StarClass} STAR  |  {dangerStr}  |  SPD {speed:F0}";
-        y = RenderLocationLine(renderer, y, locationLine);
+        string infoLine = FormatPlayerInfo(player);
+        var tracked = player.GetTrackedMission();
+        var stats = player.GetCombinedStats();
+        bool hasShield = stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip);
 
-        // Line 2: Player info (credits + cargo)
-        y = RenderPlayerInfoLine(renderer, y, player);
+        // Measure panel width
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
 
-        // Line 3: Health / shields
-        RenderShipHealthBars(renderer, y, player, ecsWorld, playerShip);
+        // Calculate panel height
+        float panelH = Padding
+            + LineHeight + SepGap   // location + sep
+            + LineHeight + SepGap   // info + sep
+            + BarHeight + 8;        // hull bar
+        if (hasShield) panelH += BarHeight + 4;
+        if (tracked != null)
+        {
+            panelH += SepGap + LineHeight * 2 + 4;
+            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+        }
+        panelH += Padding;
 
-        // Mission tracker (below health bars)
-        float missionY = y + LineHeight + 4 + (player.GetCombinedStats().ShieldStrength > 0 ? LineHeight + 4 : 0) + 4;
-        RenderMissionTracker(renderer, missionY, player);
+        // Frame
+        OverlayBase.DrawFrame(renderer, HudMargin, HudMargin, panelW, panelH);
+
+        // Content
+        float cx = HudMargin + Padding;
+        float y = HudMargin + Padding;
+
+        renderer.DrawTextScreen(cx, y, locationLine, new Color3(200, 200, 255), TextScale);
+        y += LineHeight;
+        DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+        y += SepGap;
+
+        renderer.DrawTextScreen(cx, y, infoLine, new Color3(255, 220, 80), TextScale);
+        y += LineHeight;
+        DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+        y += SepGap;
+
+        float hullPct = player.ShipMaxHealth > 0 ? player.ShipHealth / player.ShipMaxHealth : 0;
+        RenderBarContent(renderer, cx, y, "HULL", player.ShipHealth, player.ShipMaxHealth, HPBarColor(hullPct));
+        y += BarHeight + 8;
+
+        if (hasShield)
+        {
+            ref var health = ref ecsWorld.Get<Health>(playerShip);
+            RenderBarContent(renderer, cx, y, "SHLD", health.Shield, health.MaxShield, new Color3(80, 160, 255));
+            y += BarHeight + 4;
+        }
+
+        if (tracked != null)
+        {
+            DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+            y += SepGap;
+            RenderMissionContent(renderer, cx, y, player);
+        }
     }
 
     /// <summary>Render the unified top-left HUD for the planet surface state.</summary>
@@ -55,127 +98,182 @@ public static class HudRenderer
         PlanetData planet, int dangerLevel, bool inVehicle,
         World ecsWorld, Entity playerAvatar)
     {
-        float y = Padding;
-
-        // Line 1: Location
         string dangerStr = FormatDanger(dangerLevel);
         string mode = inVehicle ? "VEHICLE" : "ON FOOT";
         string locationLine = $"{planet.Name.ToUpper()}  |  {planet.Type.ToString().ToUpper()}  |  {dangerStr}  |  {mode}";
-        y = RenderLocationLine(renderer, y, locationLine);
+        string infoLine = FormatPlayerInfo(player);
+        var tracked = player.GetTrackedMission();
+        bool hasHealth = ecsWorld.IsAlive(playerAvatar) && ecsWorld.Has<Health>(playerAvatar);
+        Health avatarHealth = default;
+        if (hasHealth) avatarHealth = ecsWorld.Get<Health>(playerAvatar);
 
-        // Line 2: Player info (credits + cargo)
-        y = RenderPlayerInfoLine(renderer, y, player);
+        // Measure panel width
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
 
-        // Line 3: Avatar health
-        if (ecsWorld.IsAlive(playerAvatar) && ecsWorld.Has<Health>(playerAvatar))
+        // Calculate panel height
+        float panelH = Padding
+            + LineHeight + SepGap   // location + sep
+            + LineHeight + SepGap;  // info + sep
+        if (hasHealth) panelH += BarHeight + 8;
+        if (tracked != null)
         {
-            var health = ecsWorld.Get<Health>(playerAvatar);
-            RenderHealthBar(renderer, y, "HP", health.Hull, health.MaxHull,
-                HPBarColor(health.HullPercent), null, null);
-            y += LineHeight + 8;
+            panelH += SepGap + LineHeight * 2 + 4;
+            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+        }
+        panelH += Padding;
+
+        // Frame
+        OverlayBase.DrawFrame(renderer, HudMargin, HudMargin, panelW, panelH);
+
+        // Content
+        float cx = HudMargin + Padding;
+        float y = HudMargin + Padding;
+
+        renderer.DrawTextScreen(cx, y, locationLine, new Color3(200, 200, 255), TextScale);
+        y += LineHeight;
+        DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+        y += SepGap;
+
+        renderer.DrawTextScreen(cx, y, infoLine, new Color3(255, 220, 80), TextScale);
+        y += LineHeight;
+
+        if (hasHealth)
+        {
+            DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+            y += SepGap;
+            RenderBarContent(renderer, cx, y, "HP", avatarHealth.Hull, avatarHealth.MaxHull,
+                HPBarColor(avatarHealth.HullPercent));
+            y += BarHeight + 8;
         }
 
-        // Mission tracker
-        RenderMissionTracker(renderer, y, player);
+        if (tracked != null)
+        {
+            DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+            y += SepGap;
+            RenderMissionContent(renderer, cx, y, player);
+        }
     }
 
     /// <summary>Render the unified top-left HUD for the interior state.</summary>
     public static void RenderInteriorHud(SpriteRenderer renderer, PlayerData player,
         InteriorData interior, StarSystemData starSystem)
     {
-        float y = Padding;
-
-        // Line 1: Location
         string typeLabel = interior.Type == InteriorType.Station ? "STATION" : "SETTLEMENT";
         string dangerStr = FormatDanger(starSystem.DangerLevel);
         string locationLine = $"{interior.Name.ToUpper()}  |  {typeLabel}  |  {starSystem.Name}  |  {dangerStr}";
-        y = RenderLocationLine(renderer, y, locationLine);
+        string infoLine = FormatPlayerInfo(player);
+        var tracked = player.GetTrackedMission();
 
-        // Line 2: Player info (credits + cargo)
-        y = RenderPlayerInfoLine(renderer, y, player);
+        // Measure panel width
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
 
-        // Line 3: Avatar health
-        RenderHealthBar(renderer, y, "HP", player.AvatarHealth, player.AvatarMaxHealth,
-            HPBarColor(player.AvatarMaxHealth > 0 ? player.AvatarHealth / player.AvatarMaxHealth : 1f),
-            null, null);
-        y += LineHeight + 8;
+        // Calculate panel height
+        float panelH = Padding
+            + LineHeight + SepGap   // location + sep
+            + LineHeight + SepGap   // info + sep
+            + BarHeight + 8;        // HP bar
+        if (tracked != null)
+        {
+            panelH += SepGap + LineHeight * 2 + 4;
+            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+        }
+        panelH += Padding;
 
-        // Mission tracker
-        RenderMissionTracker(renderer, y, player);
+        // Frame
+        OverlayBase.DrawFrame(renderer, HudMargin, HudMargin, panelW, panelH);
+
+        // Content
+        float cx = HudMargin + Padding;
+        float y = HudMargin + Padding;
+
+        renderer.DrawTextScreen(cx, y, locationLine, new Color3(200, 200, 255), TextScale);
+        y += LineHeight;
+        DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+        y += SepGap;
+
+        renderer.DrawTextScreen(cx, y, infoLine, new Color3(255, 220, 80), TextScale);
+        y += LineHeight;
+        DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+        y += SepGap;
+
+        RenderBarContent(renderer, cx, y, "HP", player.AvatarHealth, player.AvatarMaxHealth,
+            HPBarColor(player.AvatarMaxHealth > 0 ? player.AvatarHealth / player.AvatarMaxHealth : 1f));
+        y += BarHeight + 8;
+
+        if (tracked != null)
+        {
+            DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
+            y += SepGap;
+            RenderMissionContent(renderer, cx, y, player);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
     //  SHARED HELPERS
     // ─────────────────────────────────────────────────────────────
 
-    /// <summary>Render the location info line. Returns the Y position for the next line.</summary>
-    private static float RenderLocationLine(SpriteRenderer renderer, float y, string text)
+    /// <summary>Format the player info string (credits, cargo, fuel).</summary>
+    private static string FormatPlayerInfo(PlayerData player) =>
+        $"CREDITS: {player.Credits}  |  CARGO: {player.CargoUsed}/{player.MaxCargo}  |  FUEL: {player.ShipFuel:F0}/{player.ShipMaxFuel:F0}";
+
+    /// <summary>Measure the required panel width for the HUD based on content.</summary>
+    private static float MeasureHudPanelWidth(SpriteRenderer renderer, string locationLine,
+        string infoLine, object? tracked)
     {
-        float textW = renderer.MeasureText(text, TextScale);
-        float bgW = Math.Max(textW + Padding * 2, 300f);
-        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, new Color4(0, 0, 0, BgAlpha));
-        renderer.DrawTextScreen(Padding, y + 2, text, new Color3(200, 200, 255), TextScale);
-        return y + LineHeight + 6;
+        float maxW = Math.Max(renderer.MeasureText(locationLine, TextScale),
+                              renderer.MeasureText(infoLine, TextScale));
+        float barW = renderer.MeasureText("HULL", TextScale) + 8 + BarWidth + 80;
+        maxW = Math.Max(maxW, barW);
+        return Math.Max(maxW, 380f) + Padding * 2;
     }
 
-    /// <summary>Render credits and cargo line. Returns the Y position for the next line.</summary>
-    private static float RenderPlayerInfoLine(SpriteRenderer renderer, float y, PlayerData player)
+    /// <summary>Draw a thin separator line inside a HUD panel.</summary>
+    private static void DrawHudSeparator(SpriteRenderer renderer, float x, float y, float w)
     {
-        string info = $"CREDITS: {player.Credits}  |  CARGO: {player.CargoUsed}/{player.MaxCargo}  |  FUEL: {player.ShipFuel:F0}/{player.ShipMaxFuel:F0}";
-        float textW = renderer.MeasureText(info, TextScale);
-        float bgW = Math.Max(textW + Padding * 2, 300f);
-        renderer.DrawRectScreen(0, y, bgW, LineHeight + 4, new Color4(0, 0, 0, BgAlpha));
-        renderer.DrawTextScreen(Padding, y + 2, info, new Color3(255, 220, 80), TextScale);
-        return y + LineHeight + 6;
+        renderer.DrawRectScreen(x, y, w, 1, new Color4(60, 80, 140, 150));
     }
 
-    /// <summary>Render a health bar (and optional shield bar) for ship combat HUD.</summary>
-    private static void RenderShipHealthBars(SpriteRenderer renderer, float y,
-        PlayerData player, World ecsWorld, Entity playerShip)
+    /// <summary>Render a health/shield bar content (label + bar + numeric, no background).</summary>
+    private static void RenderBarContent(SpriteRenderer renderer, float x, float y,
+        string label, float current, float max, Color3 fillColor)
     {
-        // Hull bar
-        float hullPct = player.ShipMaxHealth > 0 ? player.ShipHealth / player.ShipMaxHealth : 0;
-        var hullColor = HPBarColor(hullPct);
-        RenderHealthBar(renderer, y, "HULL", player.ShipHealth, player.ShipMaxHealth, hullColor, null, null);
-
-        // Shield bar (if player has shield)
-        var stats = player.GetCombinedStats();
-        if (stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip))
-        {
-            ref var health = ref ecsWorld.Get<Health>(playerShip);
-            RenderHealthBar(renderer, y + LineHeight + 4, "SHLD", health.Shield, health.MaxShield,
-                new Color3(80, 160, 255), null, null);
-        }
-    }
-
-    /// <summary>Render a single health/shield bar with label and numeric text.</summary>
-    private static void RenderHealthBar(SpriteRenderer renderer, float y,
-        string label, float current, float max,
-        Color3 fillColor,
-        Color3? labelColor,
-        Color3? textColor)
-    {
-        var lc = labelColor ?? new Color3(200, 200, 200);
-        var tc = textColor ?? new Color3(200, 200, 200);
-
+        var lc = new Color3(200, 200, 200);
         float labelW = renderer.MeasureText(label, TextScale) + 8;
-        float totalW = labelW + BarWidth + 80;
-        renderer.DrawRectScreen(0, y, totalW, BarHeight + 8, new Color4(0, 0, 0, BgAlpha));
+        renderer.DrawTextScreen(x, y + 2, label, lc, TextScale);
 
-        // Label
-        renderer.DrawTextScreen(Padding, y + 2, label, lc, TextScale);
-
-        // Bar background
-        float barX = Padding + labelW;
+        float barX = x + labelW;
         renderer.DrawRectScreen(barX, y + 4, BarWidth, BarHeight, new Color3(40, 40, 40));
-
-        // Bar fill
         float pct = max > 0 ? current / max : 0;
         renderer.DrawRectScreen(barX, y + 4, BarWidth * pct, BarHeight, fillColor);
-
-        // Numeric
         renderer.DrawTextScreen(barX + BarWidth + 5, y + 2,
-            $"{(int)current}/{(int)max}", tc, TextScale);
+            $"{(int)current}/{(int)max}", lc, TextScale);
+    }
+
+    /// <summary>Render mission tracker content (no background).</summary>
+    private static void RenderMissionContent(SpriteRenderer renderer, float x, float y, PlayerData player)
+    {
+        var tracked = player.GetTrackedMission();
+        if (tracked == null) return;
+
+        bool completed = tracked.Status == MissionStatus.Completed;
+        string statusIcon = completed ? ">> " : "* ";
+        string missionText = $"{statusIcon}[{tracked.TypeLabel}] {tracked.Title}";
+
+        renderer.DrawTextScreen(x, y + 2, missionText,
+            completed ? new Color3(100, 255, 100) : tracked.TypeColor, TextScale);
+        renderer.DrawTextScreen(x + 10, y + LineHeight + 2, tracked.ProgressText,
+            completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), TextScale);
+
+        int totalActive = player.ActiveMissions.Count;
+        if (totalActive > 1)
+        {
+            int completedCount = player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
+            string extra = completedCount > 0
+                ? $"+{totalActive - 1} MORE ({completedCount} READY)"
+                : $"+{totalActive - 1} MORE";
+            renderer.DrawTextScreen(x, y + LineHeight * 2 + 4, extra,
+                new Color3(120, 120, 150), 1.2f);
+        }
     }
 
     /// <summary>Calculate the hull bar color based on current percentage.</summary>
@@ -189,47 +287,6 @@ public static class HudRenderer
     /// <summary>Format danger level with color-coded text.</summary>
     private static string FormatDanger(int dangerLevel) => $"DANGER LV.{dangerLevel}";
 
-    /// <summary>Render a compact mission tracker showing the most urgent active mission.</summary>
-    private static void RenderMissionTracker(SpriteRenderer renderer, float y, PlayerData player)
-    {
-        var tracked = player.GetTrackedMission();
-        if (tracked == null) return;
-
-        bool completed = tracked.Status == MissionStatus.Completed;
-
-        // Build mission text
-        string statusIcon = completed ? ">> " : "* ";
-        string missionText = $"{statusIcon}[{tracked.TypeLabel}] {tracked.Title}";
-        string progressText = tracked.ProgressText;
-
-        // Measure and draw background
-        float textW1 = renderer.MeasureText(missionText, TextScale);
-        float textW2 = renderer.MeasureText(progressText, TextScale);
-        float bgW = Math.Max(Math.Max(textW1, textW2) + Padding * 2, 300f);
-
-        renderer.DrawRectScreen(0, y, bgW, LineHeight * 2 + 4, new Color4(0, 0, 0, BgAlpha));
-
-        // Mission title
-        renderer.DrawTextScreen(Padding, y + 2, missionText,
-            completed ? new Color3(100, 255, 100) : tracked.TypeColor, TextScale);
-
-        // Progress
-        renderer.DrawTextScreen(Padding + 10, y + LineHeight + 2, progressText,
-            completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), TextScale);
-
-        // Extra missions indicator
-        int totalActive = player.ActiveMissions.Count;
-        if (totalActive > 1)
-        {
-            int completedCount = player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
-            string extra = completedCount > 0
-                ? $"+{totalActive - 1} MORE ({completedCount} READY)"
-                : $"+{totalActive - 1} MORE";
-            renderer.DrawTextScreen(Padding, y + LineHeight * 2 + 4, extra,
-                new Color3(120, 120, 150), 1.2f);
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────
     //  INTERACTION PROMPTS (bottom-center)
     // ─────────────────────────────────────────────────────────────
@@ -241,8 +298,12 @@ public static class HudRenderer
         float tw = renderer.MeasureText(text, TitleScale);
         float w = GameConfig.WindowWidth;
         float h = GameConfig.WindowHeight;
-        renderer.DrawRectScreen(w / 2f - tw / 2f - 10, h - 60, tw + 20, 35, new Color4(0, 0, 0, 180));
-        renderer.DrawTextScreen(w / 2f - tw / 2f, h - 55, text, new Color3(r, g, b), TitleScale);
+        float panelW = tw + 20;
+        float panelH = 35;
+        float px = w / 2f - panelW / 2f;
+        float py = h - panelH - HudMargin;
+        OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
+        renderer.DrawTextScreen(px + 10, py + 8, text, new Color3(r, g, b), TitleScale);
     }
 
     /// <summary>Render a multi-line interaction panel centered at the bottom of the screen.</summary>
@@ -266,8 +327,8 @@ public static class HudRenderer
         float panelW = Math.Max(maxW + 20, 280);
         float panelH = 28 + (lines.Length - 1) * 18 + 10;
         float px = w / 2f - panelW / 2f;
-        float py = h - panelH - 15;
-        renderer.DrawRectScreen(px, py, panelW, panelH, new Color4(0, 0, 0, 180));
+        float py = h - panelH - HudMargin;
+        OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
 
         // First line (action) at title scale
         var c0 = colors[0];
@@ -723,7 +784,7 @@ public static class HudRenderer
         float timerX = GameConfig.WindowWidth / 2f - timerW / 2f;
         float timerY = GameConfig.WindowHeight / 2f - 40;
         var timerColor = isLanding ? new Color3(100, 255, 200) : new Color3(100, 200, 255);
-        renderer.DrawRectScreen(timerX - 10, timerY - 6, timerW + 20, 34, new Color4(0, 0, 0, 200));
+        OverlayBase.DrawFrame(renderer, timerX - 10, timerY - 6, timerW + 20, 34);
         renderer.DrawTextScreen(timerX, timerY, timerText, timerColor, timerScale);
 
         // Progress bar
@@ -734,5 +795,55 @@ public static class HudRenderer
         var barColor = isLanding ? new Color4(100, 255, 200, 220) : new Color4(100, 200, 255, 220);
         renderer.DrawRectScreen(barX, barY, barW, barH, new Color4(40, 40, 60, 200));
         renderer.DrawRectScreen(barX, barY, barW * progress, barH, barColor);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  MINING / DEATH / CENTERED MESSAGE
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>Renders the mining target info panel for an asteroid entity.</summary>
+    public static void RenderMiningPanel(SpriteRenderer renderer, ResourceType resource,
+        float hp, float maxHp, int resourceAmount)
+    {
+        var resInfo = ResourceCatalog.Get(resource);
+        float panelW = 280;
+        float panelH = 72;
+        float px = GameConfig.WindowWidth / 2f - panelW / 2f;
+        float py = GameConfig.WindowHeight - panelH - HudMargin;
+
+        OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
+        renderer.DrawTextScreen(px + 10, py + 6, $"ASTEROID - {resInfo.Name.ToUpper()}", resInfo.Color, 2f);
+
+        // HP bar
+        float barX = px + 10;
+        float barY = py + 30;
+        float barW = panelW - 20;
+        float hpRatio = maxHp > 0 ? hp / maxHp : 0;
+        renderer.DrawRectScreen(barX, barY, barW, 12, new Color3(40, 40, 40));
+        renderer.DrawRectScreen(barX, barY, barW * hpRatio, 12, resInfo.Color);
+
+        renderer.DrawTextScreen(px + 10, py + 48, $"HP: {hp:F0}/{maxHp:F0}  QTY: {resourceAmount}", new Color3(180, 180, 180), 1.5f);
+    }
+
+    /// <summary>Render the death overlay with respawn countdown.</summary>
+    public static void RenderDeathScreen(SpriteRenderer renderer, float respawnTimer)
+    {
+        string deathText = $"SHIP DESTROYED - RESPAWNING IN {respawnTimer:F1}s";
+        float textW = renderer.MeasureText(deathText, 3f);
+        float panelW = textW + 40;
+        float panelH = 50;
+        float px = GameConfig.WindowWidth / 2f - panelW / 2f;
+        float py = GameConfig.WindowHeight / 2f - panelH / 2f;
+        OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
+        renderer.DrawTextScreen(px + 20, py + 12, deathText, new Color3(255, 80, 80), 3f);
+    }
+
+    /// <summary>Render a centered feedback message at the given vertical offset.</summary>
+    public static void RenderCenteredMessage(SpriteRenderer renderer, string message,
+        float yOffset, Color4 color, float scale)
+    {
+        float msgW = renderer.MeasureText(message, scale);
+        float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
+        renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, color, scale);
     }
 }

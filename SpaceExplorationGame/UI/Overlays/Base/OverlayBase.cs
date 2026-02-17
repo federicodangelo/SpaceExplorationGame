@@ -36,7 +36,7 @@ public abstract class OverlayBase
     /// <summary>
     /// Draw a sci-fi styled frame: outer border, dark fill, and corner bracket accents.
     /// </summary>
-    protected static void DrawFrame(SpriteRenderer renderer, float x, float y, float w, float h,
+    public static void DrawFrame(SpriteRenderer renderer, float x, float y, float w, float h,
         byte bgAlpha = 230)
     {
         var borderColor = new Color4(60, 80, 140, 220);
@@ -68,7 +68,7 @@ public abstract class OverlayBase
     /// <summary>
     /// Draw a sci-fi styled frame with a header strip and title.
     /// </summary>
-    protected static void DrawFrameWithHeader(SpriteRenderer renderer, float x, float y, float w, float h,
+    public static void DrawFrameWithHeader(SpriteRenderer renderer, float x, float y, float w, float h,
         string title, float titleScale = 1.8f, byte bgAlpha = 230)
     {
         const float headerH = 30f;
