@@ -333,6 +333,18 @@ public class InteriorState : GameState
                 game.Player.ReturnPlanetIndex = _planet!.Index;
                 int landX = _settlement!.TileRect.X + _settlement.TileRect.Width / 2;
                 int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height / 2;
+                // If no saved surface positions exist (e.g. started from main menu),
+                // create them so the landing animation doesn't play on the planet surface.
+                if (!game.Player.HasSavedSurfacePositions)
+                {
+                    float px = landX * GameConfig.TileSize;
+                    float py = landY * GameConfig.TileSize;
+                    game.Player.SaveSurfacePositions(
+                        px + 30, py,    // ship near settlement
+                        0, 0, false,    // no vehicle
+                        px, py,         // player at settlement
+                        false);         // not in vehicle
+                }
                 game.ChangeState(new PlanetSurfaceState(_starSystem, _planet, landX, landY));
                 break;
         }
