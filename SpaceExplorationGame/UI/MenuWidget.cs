@@ -56,6 +56,31 @@ public class MenuWidget<T> where T : struct, Enum
         _options = options;
     }
 
+    // ── Item geometry helper ──────────────────────────────────────
+
+    /// <summary>
+    /// Returns the screen-space bounds of menu item <paramref name="index"/>
+    /// given the menu origin (<paramref name="menuX"/>, <paramref name="menuY"/>)
+    /// and <paramref name="menuWidth"/>. Used by both hit-testing and rendering
+    /// so the two can never drift apart.
+    /// </summary>
+    private Rect GetItemRect(int index, float menuX, float menuY, float menuWidth)
+    {
+        float y = menuY + index * ItemHeight;
+        return new Rect(menuX, y, menuWidth, ItemHeight);
+    }
+
+    /// <summary>
+    /// Returns the inset highlight rectangle for the given item (smaller than the
+    /// full item rect by <c>HighlightPadding</c> on top and bottom).
+    /// </summary>
+    private const float HighlightPadding = 2f;
+    private Rect GetHighlightRect(int index, float menuX, float menuY, float menuWidth)
+    {
+        var r = GetItemRect(index, menuX, menuY, menuWidth);
+        return new Rect(r.X, r.Y - HighlightPadding, r.W, r.H + HighlightPadding * 2);
+    }
+
     // ── Update (keyboard only) ────────────────────────────────────
 
     /// <summary>
@@ -95,14 +120,15 @@ public class MenuWidget<T> where T : struct, Enum
     {
         if (_options.Length == 0) return null;
 
-        // Mouse hover / click
+        // Mouse hover / click — uses the same GetItemRect as rendering
         float mx = input.MouseX;
         float my = input.MouseY;
+        
         for (int i = 0; i < _options.Length; i++)
         {
-            float optY = menuScreenY + i * ItemHeight;
-            if (mx >= menuScreenX && mx <= menuScreenX + itemWidth &&
-                my >= optY && my <= optY + ItemHeight)
+            var r = GetItemRect(i, menuScreenX, menuScreenY, itemWidth);
+            if (mx >= r.X && mx <= r.X + r.W &&
+                my >= r.Y && my <= r.Y + r.H)
             {
                 _selected = i;
                 if (input.IsMousePressed(1) && _options[i].Enabled)
@@ -135,20 +161,31 @@ public class MenuWidget<T> where T : struct, Enum
     /// <paramref name="y"/> is the top of the first item.
     /// <paramref name="width"/> is used for highlight rect width and centering.
     /// </summary>
-    public void Render(SpriteRenderer renderer, float x, float y, float width)
+    public void Render(SpriteRenderer renderer, float x, float y, float width, float panelBottom)
     {
         for (int i = 0; i < _options.Length; i++)
         {
-            float optY = y + i * ItemHeight;
+            var itemRect = GetItemRect(i, x, y, width);
             bool sel = i == _selected;
             bool enabled = _options[i].Enabled;
             float scale = sel ? SelectedScale : NormalScale;
             var c = !enabled ? DisabledColor : sel ? SelectedColor : NormalColor;
             string label = _options[i].Label;
 
+            // Vertically center text within the item rect
+            float textH = 8 * scale;
+            float textY = itemRect.Y + (itemRect.H - textH) / 2f;
+
+            // Debug: draw item rect with border
+            //renderer.DrawRectScreen(itemRect.X, itemRect.Y, itemRect.W, itemRect.H, new Color4(255, 0, 0, 100));
+            //renderer.DrawRectScreen(itemRect.X + 2, itemRect.Y + 2, itemRect.W - 4, itemRect.H - 4, new Color4(255, 0, 0, 150));
+
             // Selection highlight (only for enabled items)
             if (sel && enabled)
-                renderer.DrawRectScreen(x, optY - 5, width, ItemHeight - 10, HighlightBg.WithAlpha(HighlightAlpha));
+            {
+                var hr = GetHighlightRect(i, x, y, width);
+                renderer.DrawRectScreen(hr.X, hr.Y, hr.W, hr.H, HighlightBg.WithAlpha(HighlightAlpha));
+            }
 
             if (CenterAlign)
             {
@@ -157,13 +194,13 @@ public class MenuWidget<T> where T : struct, Enum
                 {
                     float textW = renderer.MeasureText(label, scale);
                     float textX = x + width / 2f - textW / 2f;
-                    renderer.DrawTextScreen(textX - renderer.MeasureText("> ", scale), optY, ">", c, scale);
-                    renderer.DrawTextScreen(textX, optY, label, c, scale);
+                    renderer.DrawTextScreen(textX - renderer.MeasureText("> ", scale), textY, ">", c, scale);
+                    renderer.DrawTextScreen(textX, textY, label, c, scale);
                 }
                 else
                 {
                     float textW = renderer.MeasureText(label, scale);
-                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, optY, label, c, scale);
+                    renderer.DrawTextScreen(x + width / 2f - textW / 2f, textY, label, c, scale);
                 }
             }
             else
@@ -171,7 +208,7 @@ public class MenuWidget<T> where T : struct, Enum
                 // Left-aligned with > prefix
                 string displayLabel = sel ? $"> {label}" : label;
                 float textX = sel ? x + 10 : x + 20;
-                renderer.DrawTextScreen(textX, optY, displayLabel, c, scale);
+                renderer.DrawTextScreen(textX, textY, displayLabel, c, scale);
             }
 
             // Disabled hint text (shown below the label within the same item area)
@@ -181,12 +218,12 @@ public class MenuWidget<T> where T : struct, Enum
                 if (CenterAlign)
                 {
                     float hintW = renderer.MeasureText(hint, DisabledHintScale);
-                    renderer.DrawTextScreen(x + width / 2f - hintW / 2f, optY + scale * 8 + 4, hint,
+                    renderer.DrawTextScreen(x + width / 2f - hintW / 2f, textY + textH + 4, hint,
                         DisabledHintColor, DisabledHintScale);
                 }
                 else
                 {
-                    renderer.DrawTextScreen(x + 20, optY + scale * 8 + 4, hint,
+                    renderer.DrawTextScreen(x + 20, textY + textH + 4, hint,
                         DisabledHintColor, DisabledHintScale);
                 }
             }
@@ -196,7 +233,7 @@ public class MenuWidget<T> where T : struct, Enum
         string? description = _options[_selected].Description;
         if (description != null)
         {
-            float descY = y + _options.Length * ItemHeight + 10;
+            float descY = panelBottom + 10;
             if (CenterAlign)
             {
                 float descW = renderer.MeasureText(description, DescriptionScale);

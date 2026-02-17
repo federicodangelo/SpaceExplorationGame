@@ -35,7 +35,6 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
     protected override float PanelWidth => 520;
     protected override bool CloseOnClickOutside => false;
     protected override byte DimAlpha => 0; // MainMenuState draws its own background
-
     protected override string? ControlsHint => "UP/DOWN: SELECT   ENTER: CONFIRM";
 
     // ── Constructor ──

@@ -203,7 +203,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         renderer.DrawTextScreen(px + pw - 200, py + 20, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
 
         // Menu
-        Menu.Render(renderer, MenuX, MenuY, MenuWidth);
+        Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
 
         // Ship status section
         float statusY = MenuY + menuHeight + 20;

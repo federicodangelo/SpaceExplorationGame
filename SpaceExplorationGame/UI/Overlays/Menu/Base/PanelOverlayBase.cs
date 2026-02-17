@@ -50,6 +50,9 @@ public abstract class PanelOverlayBase : OverlayBase
     /// <summary>Top edge of the panel on screen. Override for non-centered panels.</summary>
     protected virtual float PanelY => GameConfig.WindowHeight / 2f - PanelHeight / 2f;
 
+    /// <summary>Bottom edge of the panel on screen.</summary>
+    protected float PanelBottom => PanelY + PanelHeight;
+
     /// <summary>Y position where content starts (after title + separator).</summary>
     protected float ContentY => PanelY + 55;
 

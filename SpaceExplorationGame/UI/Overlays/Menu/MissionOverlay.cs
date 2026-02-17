@@ -148,7 +148,7 @@ public class MissionOverlay : ListPanelOverlay
             new Color3(180, 180, 200), 1.5f);
 
         // Tab bar
-        float tabY = contentY - 10;
+        float tabY = contentY - 7;
         float tabW = panelW / 2f - 20;
 
         bool availSel = _currentTab == Tab.Available;

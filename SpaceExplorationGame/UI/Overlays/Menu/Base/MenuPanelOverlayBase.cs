@@ -20,9 +20,14 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
 
     // ── Default panel height (auto-calculated from menu) ──
 
-    /// <summary>Panel height auto-calculated from title (55px) + menu items + bottom hint (35px).
+    /// <summary>Panel height auto-calculated from title (55px) + menu items + bottom padding.
     /// Override in subclasses that render additional content beyond the menu.</summary>
-    protected override float PanelHeight => 55 + Menu.TotalHeight;
+    protected override float PanelHeight => 55 + Menu.TotalHeight + BottomPadding;
+
+    /// <summary>
+    /// Bottom padding below the menu, for spacing or additional content (e.g. controls hint).
+    /// </summary>
+    protected virtual float BottomPadding => ControlsHint != null ? 35 : 0;
 
     // ── Menu layout (subclass can override for positioning) ──
 
@@ -83,6 +88,6 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
-        Menu.Render(renderer, MenuX, MenuY, MenuWidth);
+        Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
     }
 }
