@@ -90,20 +90,32 @@ SpaceExplorationGame/
     │   ├── HudRenderer.cs             # Unified HUD: location info, stats, health bars, prompts, offscreen indicators
     │   └── HudMinimapRenderer.cs      # Unified minimap: data-driven renderer with markers, areas, player dot
     └── Overlays/
-        ├── OverlayBase.cs             # Abstract base class for all overlays
-        ├── GalaxyMapOverlay.cs        # Galaxy map overlay (rendered atop SolarSystem)
-        ├── PlanetLandingOverlay.cs    # Orbital landing site selection overlay (rendered atop SolarSystem)
+        ├── Base/
+        │   └── OverlayBase.cs             # Abstract base class for all overlays
         ├── Customization/
         │   ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
         │   ├── ShipCustomizationOverlay.cs   # Ship equipment management UI (dynamic slots per ship type)
         │   ├── VehicleCustomizationOverlay.cs # Vehicle customization management UI
         │   └── Base/
         │       └── CustomizationOverlayBase.cs  # Abstract base for all customization overlays
+        ├── Map/
+        │   ├── GalaxyMapOverlay.cs         # Dual-tab map overlay container (Solar System + Galaxy tabs)
+        │   ├── GalaxyMapPanel.cs           # Galaxy star chart panel (hover, click-to-select, FTL travel)
+        │   ├── PlanetLandingOverlay.cs     # Orbital landing site selection overlay container
+        │   ├── PlanetLandingPanel.cs       # Planet terrain panel for landing site selection
+        │   ├── PlanetSurfaceMapOverlay.cs  # Planet surface map overlay container (opened with M on surface)
+        │   ├── PlanetSurfaceMapPanel.cs    # Planet surface terrain panel with settlement/ship markers
+        │   ├── SolarSystemMapPanel.cs      # Solar system panel (planets, moons, stations, orbits)
+        │   └── Base/
+        │       ├── MapOverlayBase.cs       # Abstract base for map overlays (frame, layout, info panel)
+        │       ├── MapPanelBase.cs         # Abstract base for map panels (camera, pan, zoom, WASD)
+        │       └── PlanetMapPanelBase.cs   # Abstract base for planet map panels (terrain texture, settlements)
         └── Menu/
             ├── ControlsOverlay.cs          # Context-aware key bindings display overlay
             ├── HealthStationOverlay.cs     # Avatar healing overlay (credits for HP)
             ├── InGameMenuOverlay.cs        # Pause menu overlay (Resume / Controls / Main Menu)
             ├── ListPanelOverlay.cs         # Abstract base for navigable list panel overlays
+            ├── MainMenuOverlay.cs          # Main menu start-option selection overlay
             ├── MissionOverlay.cs           # Mission board overlay (Available / Active tabs)
             ├── MissionsListOverlay.cs      # Active missions list overlay (track/abandon)
             ├── RepairOverlay.cs            # Ship repair overlay
@@ -157,9 +169,9 @@ The game uses a state machine pattern. Each state (`GameState` subclass) owns it
 `GameStateType` enum: `MainMenu`, `SolarSystem`, `PlanetSurface`, `Interior`
 
 States:
-- **MainMenuState**: Starting point selection. Animated starfield background with pulsing title glow. 7 options: Star System, Galaxy Map, Space Station, Inside Space Station, Planet Surface, Settlement, Inside Settlement. Mouse hover/click and keyboard navigation via `MenuWidget<StartOption>`. Picks random systems/planets/stations for non-galaxy-map starts. Supports auto-launch via constructor parameter (for CLI `--start` flag). Displays galaxy seed at the bottom.
-- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay**. Press Space to fire weapons (when not mining). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn based on per-system danger level. Pirates attack the player and traders; patrols hunt pirates and defend traders. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with hull/cargo/credit penalties. When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderer, InteractionProximitySystem, ShipMovementSystem, ProjectileSystem, ShieldRegenSystem, and EnemyAISystem. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
-- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default). On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. Uses PlayerMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, SurfaceEnemyAISystem, and TileMapRenderer.
+- **MainMenuState**: Starting point selection. Animated starfield background with pulsing title glow. Uses **MainMenuOverlay** (extends `MenuPanelOverlayBase<StartOption>`) for the 7 options: Star System, Galaxy Map, Space Station, Inside Space Station, Planet Surface, Settlement, Inside Settlement. Mouse hover/click and keyboard navigation. Picks random systems/planets/stations for non-galaxy-map starts. Supports auto-launch via constructor parameter (for CLI `--start` flag). Displays galaxy seed at the bottom.
+- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay** (dual-tab map with Solar System and Galaxy views). Press Space to fire weapons (when not mining). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn based on per-system danger level. Pirates attack the player and traders; patrols hunt pirates and defend traders. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with hull/cargo/credit penalties. When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderer, InteractionProximitySystem, ShipMovementSystem, ProjectileSystem, ShieldRegenSystem, and EnemyAISystem. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
+- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default). On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. Uses PlayerMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, SurfaceEnemyAISystem, and TileMapRenderer.
 - **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards, cargo terminals, and customization terminals (ship, ship dealer, avatar, vehicle). Station docking bays have five terminals: exit door, ship customization, ship dealer, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. No combat in interiors. No InGameMenuOverlay — Escape closes dialogues/overlays. Uses PlayerMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
 
 ### Overlays
@@ -172,12 +184,15 @@ Overlays are semi-transparent UI layers rendered on top of a game state. All ove
 
 **Overlay class hierarchy**:
 ```
-OverlayBase                             (Overlays/OverlayBase.cs)
-├── GalaxyMapOverlay                    (Overlays/GalaxyMapOverlay.cs)
-├── PlanetLandingOverlay                (Overlays/PlanetLandingOverlay.cs)
+OverlayBase                             (Overlays/Base/OverlayBase.cs)
+├── MapOverlayBase                      (Overlays/Map/Base/MapOverlayBase.cs)
+│   ├── GalaxyMapOverlay                (Overlays/Map/GalaxyMapOverlay.cs)
+│   ├── PlanetLandingOverlay            (Overlays/Map/PlanetLandingOverlay.cs)
+│   └── PlanetSurfaceMapOverlay         (Overlays/Map/PlanetSurfaceMapOverlay.cs)
 ├── PanelOverlayBase                    (Overlays/Menu/Base/PanelOverlayBase.cs)
 │   ├── MenuPanelOverlayBase<T>         (Overlays/Menu/Base/MenuPanelOverlayBase.cs)
 │   │   ├── InGameMenuOverlay           (Overlays/Menu/InGameMenuOverlay.cs)
+│   │   ├── MainMenuOverlay             (Overlays/Menu/MainMenuOverlay.cs)
 │   │   ├── SpaceStationOverlay         (Overlays/Menu/SpaceStationOverlay.cs)
 │   │   └── StarshipMenuOverlay         (Overlays/Menu/StarshipMenuOverlay.cs)
 │   ├── ListPanelOverlay                (Overlays/Menu/ListPanelOverlay.cs)
@@ -192,6 +207,13 @@ OverlayBase                             (Overlays/OverlayBase.cs)
     ├── ShipCustomizationOverlay        (Overlays/Customization/ShipCustomizationOverlay.cs)
     ├── AvatarCustomizationOverlay      (Overlays/Customization/AvatarCustomizationOverlay.cs)
     └── VehicleCustomizationOverlay     (Overlays/Customization/VehicleCustomizationOverlay.cs)
+
+MapPanelBase                            (Overlays/Map/Base/MapPanelBase.cs)
+├── SolarSystemMapPanel                 (Overlays/Map/SolarSystemMapPanel.cs)
+├── GalaxyMapPanel                      (Overlays/Map/GalaxyMapPanel.cs)
+└── PlanetMapPanelBase                  (Overlays/Map/Base/PlanetMapPanelBase.cs)
+    ├── PlanetLandingPanel              (Overlays/Map/PlanetLandingPanel.cs)
+    └── PlanetSurfaceMapPanel           (Overlays/Map/PlanetSurfaceMapPanel.cs)
 ```
 
 **`PanelOverlayBase`** provides a complete centered-panel framework: background dimming, bordered panel with title/separator, credits display, controls hint, timed status messages, Escape-to-close, and click-outside-to-close. All menu/list overlays in `Overlays/Menu/` inherit from it.
@@ -200,14 +222,26 @@ OverlayBase                             (Overlays/OverlayBase.cs)
 
 **`ListPanelOverlay`** extends `PanelOverlayBase` for overlays with a navigable list of items. Provides keyboard/mouse navigation, confirm/secondary-action callbacks, and tab switching.
 
+**`MapOverlayBase`** provides a full-screen map overlay framework: dark background, bordered frame with header strip, clipped map content area, and an info panel beside the map. Delegates all content to a `MapPanelBase` panel returned by `GetActivePanel()`. Subclasses supply the panel, header rendering, and optional HUD elements.
+
+**`MapPanelBase`** is the abstract base for map panels displayed inside a `MapOverlayBase`. Provides a dedicated `Camera`, mouse-wheel zoom-to-cursor, drag panning, WASD/arrow key movement, and shared rendering helpers (target brackets, mission diamonds, info panel headers). Each panel implements `Open`, `Close`, `SetupCamera`, `UpdateInput`, `RenderContent`, and `RenderInfoPanel`.
+
+**`PlanetMapPanelBase`** extends `MapPanelBase` for planet/moon terrain maps. Provides terrain texture creation/rendering, settlement marker rendering, camera clamping within terrain bounds, and shared lifecycle stubs. Used by both `PlanetLandingPanel` and `PlanetSurfaceMapPanel`.
+
 Key overlays:
-- **GalaxyMapOverlay** (drawn over SolarSystemState): Full-screen overlay. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape. Saves/restores parent camera state on open/close. Creates and manages its own star textures.
+- **GalaxyMapOverlay** (drawn over SolarSystemState): Full-screen dual-tab map overlay container. Switches between two panels via M/Tab key or clickable header tabs:
+  - **Solar System tab** (`SolarSystemMapPanel`): Interactive map of the current solar system showing the star, orbiting planets, moons, and stations at their orbital positions. Click to select objects, double-click to set navigation target. Info panel shows object details (type, radius, orbit, moons, terrain, settlements, danger). Renders orbit lines, mission target markers, and animated selection brackets.
+  - **Galaxy tab** (`GalaxyMapPanel`): Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState.
+  
+  Both panels share a common layout via `MapOverlayBase` with an 800×700 map area and 280px info panel. Opened with M key from SolarSystemState, defaults to Solar System tab. Closed with Escape. Each panel manages its own camera state independently.
 - **SpaceStationOverlay** (drawn over SolarSystemState): Semi-transparent menu drawn when docked. Refuels ship on docking. 9 menu options: Repair, Missions, Sell Cargo, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight. Hosts 7 sub-overlays.
-- **PlanetLandingOverlay** (drawn over SolarSystemState): Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan via mouse drag and WASD cursor nudge. Cannot land on water/lava/void. Confirms with Enter/E, cancels with Escape. Supports moon landing (tracks moon context for correct return). Ship is anchored to the orbiting body via the anchor system while the overlay is active.
+- **PlanetLandingOverlay** (drawn over SolarSystemState): Orbital landing site selection overlay. Uses `MapOverlayBase` framework (700×700 map, 260px info panel) and delegates terrain rendering to `PlanetLandingPanel` (extends `PlanetMapPanelBase`). Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan via mouse drag and WASD. Cannot land on water/lava/void. Confirms with Enter/E, cancels with Escape. Supports moon landing (tracks moon context for correct return). Ship is anchored to the orbiting body via the anchor system while the overlay is active.
+- **MainMenuOverlay** (drawn over MainMenuState): Start-option selection overlay. Extends `MenuPanelOverlayBase<StartOption>` with centered alignment, large text, and descriptions. 7 options with descriptions. No dimming (MainMenuState draws its own background). Escape does nothing. Reports selected option back to MainMenuState via `SelectedOption` property.
 - **InGameMenuOverlay** (drawn over SolarSystemState and PlanetSurfaceState): Pause/escape menu toggled with Escape key. Options include Resume, Missions List, Controls, and Main Menu. Uses `MenuPanelOverlayBase<InGameMenuOption>`. Not used in InteriorState.
 - **ControlsOverlay** (drawn as sub-overlay of InGameMenuOverlay): Displays context-appropriate key bindings based on the current `GameStateType`. Extends `PanelOverlayBase`.
 - **MissionsListOverlay** (drawn as sub-overlay of InGameMenuOverlay): Lists all active missions with status, progress, and rewards. Allows tracking (Enter) or abandoning (X) missions. Extends `ListPanelOverlay`.
 - **HealthStationOverlay** (drawn over InteriorState): Available at health station NPCs. Shows avatar HP bar and offers full healing for credits (1 credit per HP). Extends `PanelOverlayBase`.
+- **PlanetSurfaceMapOverlay** (drawn over PlanetSurfaceState): Planet surface terrain overview overlay. Uses `MapOverlayBase` framework (700×700 map, 260px info panel) and delegates rendering to `PlanetSurfaceMapPanel` (extends `PlanetMapPanelBase`). Shows terrain map with ship, player, and vehicle markers. Settlements are clickable — click to select, double-click to set as navigation target. Info panel shows selected object details (settlement name, terrain type, distance). Opened with M key from PlanetSurfaceState, closed with M or Escape.
 - **StarshipMenuOverlay** (drawn over PlanetSurfaceState): Shown when landing on a planet or boarding the starship on the surface. Three options: Fly to Space (return to orbit), Disembark on Foot (exit ship walking), Disembark on Vehicle (deploy vehicle and drive). Vehicle option is disabled if the player has no vehicle. Uses `MenuWidget<StarshipMenuOption>`.
 - **RepairOverlay**: Ship hull repair interface. Cost: 2 credits per damage point (full repair only). Available from SpaceStationOverlay and interior RepairStation terminals.
 - **MissionOverlay**: Mission board interface with two tabs (Available / Active). Available tab shows missions generated for the current station/settlement board; Active tab shows the player's accepted missions. Accept missions with Enter/E (max 3 active), turn in completed missions with Enter, abandon missions with X, switch tabs with A/D. Missions are generated deterministically per board using seeded RNG; accepted/completed missions are filtered out so they won't re-appear.
@@ -639,12 +673,13 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - Enter/E: Select option
 - Mouse: Hover to highlight, click to select
 
-### Galaxy Map (Overlay)
+### Map Overlay (M key — SolarSystemState)
+- M/Tab: Toggle between Solar System and Galaxy tabs
 - WASD/Arrows/Mouse Drag: Pan camera
 - Mouse Scroll: Zoom
-- Click: Select star system
-- Double-Click/Enter: Travel to selected system
-- M/Escape: Close overlay
+- Click: Select object (planet/station/star system)
+- Double-Click/Enter: Set navigation target / Travel to system (Galaxy tab)
+- Escape: Close overlay
 
 ### Solar System
 - W/Up: Thrust forward
@@ -675,7 +710,15 @@ The `Camera` class handles world-to-screen coordinate conversion with zoom suppo
 - Space (hold): Fire weapon (in movement direction)
 - Left Mouse (hold): Fire weapon (toward cursor)
 - E: Board ship (when near, on foot) / Enter settlement (when near, on foot) / Mount/dismount vehicle
+- M: Open surface map overlay (terrain overview with settlements, ship, player markers)
 - Escape: Open in-game menu (Resume / Main Menu)
+
+### Surface Map (M key — PlanetSurfaceState)
+- WASD/Arrows/Mouse Drag: Pan camera
+- Mouse Scroll: Zoom
+- Click: Select settlement or location
+- Double-Click: Set navigation target
+- M/Escape: Close overlay
 
 ### Interior (Station / Settlement)
 - WASD/Arrows: Move avatar
@@ -731,11 +774,15 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health)
 - [x] In-game menu overlay (Resume / Main Menu) for SolarSystem and PlanetSurface states
 - [x] Main menu with 7 start options (including Inside Station and Inside Settlement)
+- [x] Main menu overlay (MenuPanelOverlayBase extraction)
 - [x] Anchor system for ship tracking during overlays
 - [x] Centralized entity creation via EntityFactory
+- [x] Map overlay framework (MapOverlayBase + MapPanelBase + PlanetMapPanelBase base classes)
+- [x] Dual-tab map overlay (Solar System + Galaxy tabs with SolarSystemMapPanel and GalaxyMapPanel)
+- [x] Planet surface map overlay (PlanetSurfaceMapOverlay with settlement/ship/vehicle markers)
+- [x] Mission system (5 types: Delivery, Mining, BountyHunt, Exploration, Patrol; deterministic generation, accept/track/complete/abandon, HUD tracker)
 
 ## TODO / Next Steps
-- [x] Mission system (5 types: Delivery, Mining, BountyHunt, Exploration, Patrol; deterministic generation, accept/track/complete/abandon, HUD tracker)
 - [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
