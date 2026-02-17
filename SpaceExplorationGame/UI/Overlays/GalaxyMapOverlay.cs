@@ -4,6 +4,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
+using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.UI.Overlays;
 

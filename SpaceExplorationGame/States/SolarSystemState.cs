@@ -10,10 +10,10 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays;
-using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.ECS.Systems.Movement;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
+using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 

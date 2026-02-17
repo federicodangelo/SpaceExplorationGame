@@ -1,14 +1,15 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu.Base;
 
 /// <summary>
 /// Base class for panel overlays driven by a <see cref="MenuWidget{T}"/>.
 /// Handles menu keyboard/mouse input, sub-overlay delegation, and rendering.
 /// Subclasses provide menu options, content rendering, and action callbacks — no input handling.
 /// </summary>
-public abstract class MenuPanelOverlay<T> : PanelOverlayBase where T : struct, Enum
+public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struct, Enum
 {
     private readonly List<OverlayBase> _subOverlays = [];
 

@@ -1,7 +1,7 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
 /// Overlay for buying and selling ship hulls at stations/settlements.

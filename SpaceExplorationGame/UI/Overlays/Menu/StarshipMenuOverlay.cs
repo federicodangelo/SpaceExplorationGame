@@ -1,7 +1,7 @@
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 public enum StarshipMenuOption
 {
@@ -14,7 +14,7 @@ public enum StarshipMenuOption
 /// Overlay displayed when the player is inside the starship on a planet surface.
 /// Provides options to fly to space, or disembark on foot or in a vehicle.
 /// </summary>
-public class StarshipMenuOverlay : MenuPanelOverlay<StarshipMenuOption>
+public class StarshipMenuOverlay : MenuPanelOverlayBase<StarshipMenuOption>
 {
     protected override string Title => "STARSHIP";
     protected override Color3 TitleColor => new(100, 200, 255);

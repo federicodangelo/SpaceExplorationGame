@@ -1,6 +1,6 @@
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Base;
 
 /// <summary>
 /// Base class for all overlays. Provides a consistent lifecycle with separate

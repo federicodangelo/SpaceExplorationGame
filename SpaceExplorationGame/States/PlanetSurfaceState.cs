@@ -12,7 +12,7 @@ using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Hud;
-using SpaceExplorationGame.UI.Overlays;
+using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 

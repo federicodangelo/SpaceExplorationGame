@@ -1,9 +1,10 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
+using SpaceExplorationGame.UI.Overlays.Customization;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays.Customization;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 public enum StationMenuOption
 {
@@ -23,7 +24,7 @@ public enum StationMenuOption
 /// Overlay displayed atop SolarSystemState when the player docks at a space station.
 /// Provides repair, missions, customization, ship dealer, walk-interior, and exit options.
 /// </summary>
-public class SpaceStationOverlay : MenuPanelOverlay<StationMenuOption>
+public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
 {
     private StarSystemData _starSystem = null!;
     private SpaceStationData _station = null!;

@@ -1,15 +1,15 @@
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
 /// Overlay for the in-game menu. Provides Resume, Missions, Controls, and Main Menu options.
 /// Can be reused by any game state that needs an escape menu.
 /// Note: States are responsible for toggling this overlay via Escape (Open/Close).
 /// </summary>
-public class InGameMenuOverlay : MenuPanelOverlay<InGameMenuOverlay.InGameMenuOption>
+public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMenuOption>
 {
     public enum InGameMenuOption
     {

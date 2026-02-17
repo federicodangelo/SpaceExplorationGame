@@ -1,9 +1,9 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.States;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
 /// Overlay that displays context-appropriate keyboard controls.

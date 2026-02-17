@@ -1,8 +1,8 @@
 using SDL3;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
 /// Base class for panel overlays with a navigable list of items.

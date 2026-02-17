@@ -1,7 +1,8 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
-namespace SpaceExplorationGame.UI.Overlays;
+namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
 /// Overlay for the Health Station interaction – restores avatar health for credits.

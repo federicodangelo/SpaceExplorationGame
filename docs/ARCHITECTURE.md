@@ -20,6 +20,8 @@ SpaceExplorationGame/
 │   ├── GameConfig.cs              # All tunable constants
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
+│   ├── CommonTypes.cs             # Shared lightweight value types (colors, geometry, spawn data, etc.)
+│   ├── GalaxyLocation.cs          # Galaxy location value type (system/planet/settlement) for missions
 │   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   ├── PlayerData.cs              # Persistent player data across state changes (includes mission tracking)
 │   ├── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
@@ -54,7 +56,9 @@ SpaceExplorationGame/
 │   ├── GalaxyGenerator.cs         # Galaxy star system placement & properties
 │   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
 │   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
-│   └── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum│   ├── MissionGenerator.cs        # Deterministic mission generation per station/settlement board├── Rendering/
+│   ├── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum
+│   └── MissionGenerator.cs        # Deterministic mission generation per station/settlement board
+├── Rendering/
 │   ├── SpriteRenderer.cs          # SDL3 rendering abstraction (primitives + textures)
 │   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── TextureManager.cs          # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
@@ -73,7 +77,8 @@ SpaceExplorationGame/
 │   ├── ProjectileRenderer.cs      # Projectile trail rendering, damage popups, explosion effects (static)
 │   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars)
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels)
-│   └── SettlementRenderer.cs      # Settlement rendering helper
+│   ├── SettlementRenderer.cs      # Settlement rendering helper
+│   └── SurfaceRockRenderer.cs     # Mineable rock rendering on planet surfaces (health bars, resource veins)
 ├── States/
 │   ├── MainMenuState.cs           # Starting point selection menu (7 options)
 │   ├── SolarSystemState.cs        # Space flight within a solar system + overlays
@@ -87,19 +92,28 @@ SpaceExplorationGame/
     └── Overlays/
         ├── OverlayBase.cs             # Abstract base class for all overlays
         ├── GalaxyMapOverlay.cs        # Galaxy map overlay (rendered atop SolarSystem)
-        ├── SpaceStationOverlay.cs     # Station docking overlay (rendered atop SolarSystem)
         ├── PlanetLandingOverlay.cs    # Orbital landing site selection overlay (rendered atop SolarSystem)
-        ├── InGameMenuOverlay.cs       # Pause menu overlay (Resume / Main Menu)
-        ├── StarshipMenuOverlay.cs     # Starship menu on planet surface (Fly/Disembark)
-        ├── RepairOverlay.cs           # Ship repair overlay
-        ├── MissionOverlay.cs          # Mission board overlay (placeholder)
-        ├── SellCargoOverlay.cs        # Sell resources for credits overlay
-        ├── ShipDealerOverlay.cs       # Ship hull purchase/trade-in overlay
-        └── Customization/
-            ├── CustomizationOverlayBase.cs  # Abstract base for all customization overlays
-            ├── ShipCustomizationOverlay.cs  # Ship equipment management UI (dynamic slots per ship type)
-            ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
-            └── VehicleCustomizationOverlay.cs # Vehicle customization management UI
+        ├── Customization/
+        │   ├── AvatarCustomizationOverlay.cs # Avatar customization management UI
+        │   ├── ShipCustomizationOverlay.cs   # Ship equipment management UI (dynamic slots per ship type)
+        │   ├── VehicleCustomizationOverlay.cs # Vehicle customization management UI
+        │   └── Base/
+        │       └── CustomizationOverlayBase.cs  # Abstract base for all customization overlays
+        └── Menu/
+            ├── ControlsOverlay.cs          # Context-aware key bindings display overlay
+            ├── HealthStationOverlay.cs     # Avatar healing overlay (credits for HP)
+            ├── InGameMenuOverlay.cs        # Pause menu overlay (Resume / Controls / Main Menu)
+            ├── ListPanelOverlay.cs         # Abstract base for navigable list panel overlays
+            ├── MissionOverlay.cs           # Mission board overlay (Available / Active tabs)
+            ├── MissionsListOverlay.cs      # Active missions list overlay (track/abandon)
+            ├── RepairOverlay.cs            # Ship repair overlay
+            ├── SellCargoOverlay.cs         # Sell resources for credits overlay
+            ├── ShipDealerOverlay.cs        # Ship hull purchase/trade-in overlay
+            ├── SpaceStationOverlay.cs      # Station docking overlay (rendered atop SolarSystem)
+            ├── StarshipMenuOverlay.cs      # Starship menu on planet surface (Fly/Disembark)
+            └── Base/
+                ├── MenuPanelOverlayBase.cs   # Abstract base for MenuWidget-driven panel overlays
+                └── PanelOverlayBase.cs       # Root base for all centered-panel overlays (dimming, border, title)
 ```
 
 ## Command Line Options
@@ -156,11 +170,44 @@ Overlays are semi-transparent UI layers rendered on top of a game state. All ove
 - `Render(Game)` — abstract rendering
 - `Close()` — sets `IsOpen = false`
 
+**Overlay class hierarchy**:
+```
+OverlayBase                             (Overlays/OverlayBase.cs)
+├── GalaxyMapOverlay                    (Overlays/GalaxyMapOverlay.cs)
+├── PlanetLandingOverlay                (Overlays/PlanetLandingOverlay.cs)
+├── PanelOverlayBase                    (Overlays/Menu/Base/PanelOverlayBase.cs)
+│   ├── MenuPanelOverlayBase<T>         (Overlays/Menu/Base/MenuPanelOverlayBase.cs)
+│   │   ├── InGameMenuOverlay           (Overlays/Menu/InGameMenuOverlay.cs)
+│   │   ├── SpaceStationOverlay         (Overlays/Menu/SpaceStationOverlay.cs)
+│   │   └── StarshipMenuOverlay         (Overlays/Menu/StarshipMenuOverlay.cs)
+│   ├── ListPanelOverlay                (Overlays/Menu/ListPanelOverlay.cs)
+│   │   ├── MissionOverlay              (Overlays/Menu/MissionOverlay.cs)
+│   │   ├── MissionsListOverlay         (Overlays/Menu/MissionsListOverlay.cs)
+│   │   ├── SellCargoOverlay            (Overlays/Menu/SellCargoOverlay.cs)
+│   │   └── ShipDealerOverlay           (Overlays/Menu/ShipDealerOverlay.cs)
+│   ├── RepairOverlay                   (Overlays/Menu/RepairOverlay.cs)
+│   ├── HealthStationOverlay            (Overlays/Menu/HealthStationOverlay.cs)
+│   └── ControlsOverlay                 (Overlays/Menu/ControlsOverlay.cs)
+└── CustomizationOverlayBase            (Overlays/Customization/Base/CustomizationOverlayBase.cs)
+    ├── ShipCustomizationOverlay        (Overlays/Customization/ShipCustomizationOverlay.cs)
+    ├── AvatarCustomizationOverlay      (Overlays/Customization/AvatarCustomizationOverlay.cs)
+    └── VehicleCustomizationOverlay     (Overlays/Customization/VehicleCustomizationOverlay.cs)
+```
+
+**`PanelOverlayBase`** provides a complete centered-panel framework: background dimming, bordered panel with title/separator, credits display, controls hint, timed status messages, Escape-to-close, and click-outside-to-close. All menu/list overlays in `Overlays/Menu/` inherit from it.
+
+**`MenuPanelOverlayBase<T>`** extends `PanelOverlayBase` for overlays driven by a `MenuWidget<T>` enum-based menu. Handles menu input delegation, sub-overlay lifecycle, and `OnOptionSelected` callbacks.
+
+**`ListPanelOverlay`** extends `PanelOverlayBase` for overlays with a navigable list of items. Provides keyboard/mouse navigation, confirm/secondary-action callbacks, and tab switching.
+
 Key overlays:
 - **GalaxyMapOverlay** (drawn over SolarSystemState): Full-screen overlay. Bird's-eye view of the galaxy. Click to select star systems, double-click or Enter to travel. Mouse drag to pan. Nebula clouds and glow-textured stars. Shows FTL range and fuel range circles. Traveling to a different system spends fuel and transitions to a new SolarSystemState. Selecting the current system closes the overlay. Opened with M key, closed with M or Escape. Saves/restores parent camera state on open/close. Creates and manages its own star textures.
 - **SpaceStationOverlay** (drawn over SolarSystemState): Semi-transparent menu drawn when docked. Refuels ship on docking. 9 menu options: Repair, Missions, Sell Cargo, Ship Customization, Ship Dealer, Avatar Customization, Vehicle Customization, Walk Station, Exit. Walk Station transitions to InteriorState; Exit closes the overlay and returns to free flight. Hosts 7 sub-overlays.
 - **PlanetLandingOverlay** (drawn over SolarSystemState): Orbital view for landing site selection. Shows full terrain map as a texture (1px = 1 tile) with settlement markers. The player clicks to choose a landing site; reticle with terrain info panel shows selected terrain type and position. Supports zoom, pan via mouse drag and WASD cursor nudge. Cannot land on water/lava/void. Confirms with Enter/E, cancels with Escape. Supports moon landing (tracks moon context for correct return). Ship is anchored to the orbiting body via the anchor system while the overlay is active.
-- **InGameMenuOverlay** (drawn over SolarSystemState and PlanetSurfaceState): Pause/escape menu toggled with Escape key. Four options: Resume (closes overlay), Track Mission (cycles which active mission is shown in the HUD; disabled when fewer than 2 missions), Controls (shows context-appropriate key bindings), Main Menu (transitions to MainMenuState). Uses `MenuWidget<InGameMenuOption>`. Not used in InteriorState.
+- **InGameMenuOverlay** (drawn over SolarSystemState and PlanetSurfaceState): Pause/escape menu toggled with Escape key. Options include Resume, Missions List, Controls, and Main Menu. Uses `MenuPanelOverlayBase<InGameMenuOption>`. Not used in InteriorState.
+- **ControlsOverlay** (drawn as sub-overlay of InGameMenuOverlay): Displays context-appropriate key bindings based on the current `GameStateType`. Extends `PanelOverlayBase`.
+- **MissionsListOverlay** (drawn as sub-overlay of InGameMenuOverlay): Lists all active missions with status, progress, and rewards. Allows tracking (Enter) or abandoning (X) missions. Extends `ListPanelOverlay`.
+- **HealthStationOverlay** (drawn over InteriorState): Available at health station NPCs. Shows avatar HP bar and offers full healing for credits (1 credit per HP). Extends `PanelOverlayBase`.
 - **StarshipMenuOverlay** (drawn over PlanetSurfaceState): Shown when landing on a planet or boarding the starship on the surface. Three options: Fly to Space (return to orbit), Disembark on Foot (exit ship walking), Disembark on Vehicle (deploy vehicle and drive). Vehicle option is disabled if the player has no vehicle. Uses `MenuWidget<StarshipMenuOption>`.
 - **RepairOverlay**: Ship hull repair interface. Cost: 2 credits per damage point (full repair only). Available from SpaceStationOverlay and interior RepairStation terminals.
 - **MissionOverlay**: Mission board interface with two tabs (Available / Active). Available tab shows missions generated for the current station/settlement board; Active tab shows the player's accepted missions. Accept missions with Enter/E (max 3 active), turn in completed missions with Enter, abandon missions with X, switch tabs with A/D. Missions are generated deterministically per board using seeded RNG; accepted/completed missions are filtered out so they won't re-appear.
@@ -299,6 +346,7 @@ The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, sca
 - **SolarSystemRenderer** — background stars (parallax), orbit lines, interaction panels (planet/moon/station)
 - **ProjectileRenderer** — projectile trail rendering (colored elongated lines), floating damage numbers (blue=shield, yellow=hull), expanding explosion circles with particle sparks
 - **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead
+- **SurfaceRockRenderer** — mineable rock rendering on planet surfaces (body, highlight, resource vein, health bar)
 - **PlanetSurfaceRenderer** — terrain details, settlement markers
 - **InteriorRenderer** — tiles, room labels, NPCs, interactable markers
 - **SettlementRenderer** — settlement-specific rendering
