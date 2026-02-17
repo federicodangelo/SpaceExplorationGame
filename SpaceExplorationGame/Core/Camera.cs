@@ -15,6 +15,13 @@ public class Camera
     public int ViewportWidth { get; set; }
     public int ViewportHeight { get; set; }
 
+    /// <summary>
+    /// Screen-space offset added to WorldToScreen output.
+    /// Use to render into a sub-region of the screen (e.g. a map panel).
+    /// </summary>
+    public float ViewportOffsetX { get; set; }
+    public float ViewportOffsetY { get; set; }
+
     public Camera(int viewportWidth, int viewportHeight, float zoomMin = 0.025f, float zoomMax = 4.0f)
     {
         ViewportWidth = viewportWidth;
@@ -32,7 +39,7 @@ public class Camera
     {
         var offset = worldPos - Position;
         offset *= Zoom;
-        offset += new Vector2(ViewportWidth / 2f, ViewportHeight / 2f);
+        offset += new Vector2(ViewportOffsetX + ViewportWidth / 2f, ViewportOffsetY + ViewportHeight / 2f);
         return offset;
     }
 
@@ -41,7 +48,7 @@ public class Camera
     /// </summary>
     public Vector2 ScreenToWorld(Vector2 screenPos)
     {
-        var offset = screenPos - new Vector2(ViewportWidth / 2f, ViewportHeight / 2f);
+        var offset = screenPos - new Vector2(ViewportOffsetX + ViewportWidth / 2f, ViewportOffsetY + ViewportHeight / 2f);
         offset /= Zoom;
         offset += Position;
         return offset;

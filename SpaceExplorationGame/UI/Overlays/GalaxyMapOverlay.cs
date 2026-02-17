@@ -41,6 +41,19 @@ public class GalaxyMapOverlay : OverlayBase
     private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
         GameConfig.GalaxyMapZoomMin, GameConfig.GalaxyMapZoomMax);
 
+    // Map panel layout
+    private const float MapWidth = 800f;
+    private const float MapHeight = 700f;
+    private const float MapPad = 12f;
+    private const float MapHeaderH = 30f;
+    private const float InfoPanelWidth = 280f;
+    private const float InfoPanelGap = 20f;
+
+    // Computed layout positions (set in Open)
+    private float _mapX, _mapY;
+    private float _frameX, _frameY, _frameW, _frameH;
+    private float _ipX, _ipY, _ipH;
+
     /// <summary>Open the galaxy map overlay.</summary>
     public void Open(Game game)
     {
@@ -96,6 +109,24 @@ public class GalaxyMapOverlay : OverlayBase
         _hoveredSystemIndex = -1;
         _lastClickSystem = -1;
         _isPanning = false;
+
+        // Compute panel layout
+        _frameW = MapWidth + MapPad * 2;
+        _frameH = MapHeight + MapPad * 2 + MapHeaderH;
+        float totalW = _frameW + InfoPanelGap + InfoPanelWidth;
+        _frameX = (GameConfig.WindowWidth - totalW) / 2f;
+        _frameY = (GameConfig.WindowHeight - _frameH) / 2f;
+        _mapX = _frameX + MapPad;
+        _mapY = _frameY + MapPad + MapHeaderH;
+        _ipX = _frameX + _frameW + InfoPanelGap;
+        _ipY = _frameY;
+        _ipH = _frameH;
+
+        // Configure camera for the map panel
+        _camera.ViewportWidth = (int)MapWidth;
+        _camera.ViewportHeight = (int)MapHeight;
+        _camera.ViewportOffsetX = _mapX;
+        _camera.ViewportOffsetY = _mapY;
 
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
         {
@@ -230,24 +261,28 @@ public class GalaxyMapOverlay : OverlayBase
             }
         }
 
-        // Mouse hover check — use screen-space distance so hit area feels
-        // consistent regardless of zoom level, and at least as big as the star's
-        // rendered radius (StarRadius * 2 * zoom) or a minimum of 20 screen px.
-        var mouseWorld = _camera.ScreenToWorld(currentMouse);
+        // Mouse hover check — only within the map panel area.
+        // Uses screen-space distance so hit area feels consistent regardless
+        // of zoom level, and at least as big as the star's rendered radius
+        // (StarRadius * 2 * zoom) or a minimum of 20 screen px.
         _hoveredSystemIndex = -1;
-        float bestScreenDistSq = float.MaxValue;
-
-        for (int i = 0; i < _starSystems.Count; i++)
+        bool mouseInMap = currentMouse.X >= _mapX && currentMouse.X < _mapX + MapWidth &&
+                          currentMouse.Y >= _mapY && currentMouse.Y < _mapY + MapHeight;
+        if (mouseInMap)
         {
-            var screenPos = _camera.WorldToScreen(_starSystems[i].GalaxyPosition);
-            var screenDiff = currentMouse - screenPos;
-            float screenDistSq = screenDiff.LengthSquared();
-            float starScreenRadius = _starSystems[i].StarRadius * 2f * _camera.Zoom;
-            float hitRadius = MathF.Max(starScreenRadius, 20f);
-            if (screenDistSq < hitRadius * hitRadius && screenDistSq < bestScreenDistSq)
+            float bestScreenDistSq = float.MaxValue;
+            for (int i = 0; i < _starSystems.Count; i++)
             {
-                bestScreenDistSq = screenDistSq;
-                _hoveredSystemIndex = i;
+                var screenPos = _camera.WorldToScreen(_starSystems[i].GalaxyPosition);
+                var screenDiff = currentMouse - screenPos;
+                float screenDistSq = screenDiff.LengthSquared();
+                float starScreenRadius = _starSystems[i].StarRadius * 2f * _camera.Zoom;
+                float hitRadius = MathF.Max(starScreenRadius, 20f);
+                if (screenDistSq < hitRadius * hitRadius && screenDistSq < bestScreenDistSq)
+                {
+                    bestScreenDistSq = screenDistSq;
+                    _hoveredSystemIndex = i;
+                }
             }
         }
 
@@ -315,23 +350,28 @@ public class GalaxyMapOverlay : OverlayBase
         var renderer = game.SpriteRenderer;
         var camera = _camera;
 
-        // Dark background to cover the solar system
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 240));
+        // Semi-transparent dark overlay
+        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 180));
 
-        // Draw background stars
+        // ── Map container frame ──
+        DrawFrameWithHeader(renderer, _frameX, _frameY, _frameW, _frameH, "STAR CHART");
+
+        // Inner map border
+        renderer.DrawRectScreen(_mapX - 1, _mapY - 1, MapWidth + 2, MapHeight + 2, new Color4(50, 65, 110, 180));
+
+        // ── Galaxy content (clipped to map panel) ──
+        renderer.SetClipRect(_mapX, _mapY, MapWidth, MapHeight);
+
+        // Background stars
         foreach (var (x, y, brightness) in _backgroundStars)
         {
             var screenPos = camera.WorldToScreen(new Vector2(x, y));
-            if (screenPos.X >= 0 && screenPos.X < GameConfig.WindowWidth &&
-                screenPos.Y >= 0 && screenPos.Y < GameConfig.WindowHeight)
-            {
-                renderer.DrawRectScreen(screenPos.X, screenPos.Y,
-                    Math.Max(1, camera.Zoom), Math.Max(1, camera.Zoom),
-                    new Color3(brightness, brightness, brightness));
-            }
+            renderer.DrawRectScreen(screenPos.X, screenPos.Y,
+                Math.Max(1, camera.Zoom), Math.Max(1, camera.Zoom),
+                new Color3(brightness, brightness, brightness));
         }
 
-        // Draw nebula clouds
+        // Nebula clouds
         foreach (var (nx, ny, nr, nColor) in _nebulae)
         {
             renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nColor.WithAlpha(20));
@@ -339,23 +379,19 @@ public class GalaxyMapOverlay : OverlayBase
             renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nColor.WithAlpha(10));
         }
 
-        // Draw FTL range circle around player's current system
+        // FTL range circle around player's current system
         int currentSys = game.Player.CurrentStarSystemIndex;
         if (currentSys >= 0 && currentSys < _starSystems.Count)
         {
             var playerPos = _starSystems[currentSys].GalaxyPosition;
             float ftlRange = GetFtlRange(game);
-            renderer.DrawCircle(camera, playerPos, ftlRange,
-                new Color4(40, 80, 40, 200), 64);
+            renderer.DrawCircle(camera, playerPos, ftlRange, new Color4(40, 80, 40, 200), 64);
             float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
             if (fuelRange < ftlRange)
-            {
-                renderer.DrawCircle(camera, playerPos, fuelRange,
-                    new Color4(80, 160, 200, 80));
-            }
+                renderer.DrawCircle(camera, playerPos, fuelRange, new Color4(80, 160, 200, 80));
         }
 
-        // Draw star systems
+        // Star systems
         for (int i = 0; i < _starSystems.Count; i++)
         {
             var sys = _starSystems[i];
@@ -374,95 +410,109 @@ public class GalaxyMapOverlay : OverlayBase
             else if (!reachable && !isCurrentSystem) alpha = 160;
 
             if (i < _starTextures.Count)
-            {
-                renderer.DrawTexture(camera, _starTextures[i], sys.GalaxyPosition,
-                    (int)texSize, (int)texSize, 0f, alpha);
-            }
+                renderer.DrawTexture(camera, _starTextures[i], sys.GalaxyPosition, (int)texSize, (int)texSize, 0f, alpha);
 
             if (inRange && !reachable && !isCurrentSystem)
-            {
-                renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f,
-                    new Color4(255, 40, 40, 60));
-            }
+                renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f, new Color4(255, 40, 40, 60));
 
             if (isSelected)
             {
-                byte ringR = reachable || isCurrentSystem ? (byte)255 : (byte)255;
                 byte ringG = reachable || isCurrentSystem ? (byte)255 : (byte)80;
                 byte ringB = reachable || isCurrentSystem ? (byte)255 : (byte)80;
-                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, new Color3(ringR, ringG, ringB));
+                renderer.DrawCircle(camera, sys.GalaxyPosition, radius + 5, new Color3(255, ringG, ringB));
             }
 
             float textScale = Math.Max(1f, camera.Zoom);
             byte labelBright = (byte)(inRange ? 200 : 80);
-            renderer.DrawText(camera,
-                sys.GalaxyPosition + new Vector2(0, radius + 12),
+            renderer.DrawText(camera, sys.GalaxyPosition + new Vector2(0, radius + 12),
                 sys.Name, new Color3(labelBright, labelBright, labelBright), textScale);
         }
 
-        // Draw mission target markers (pulsing rings on target systems)
+        // Mission target markers
         float pulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
         byte missionAlpha = (byte)(100 + (int)(pulse * 155));
         foreach (var mission in game.Player.ActiveMissions)
         {
-            // Target system marker (for incomplete missions)
             if (mission.Status != MissionStatus.Completed &&
                 mission.Target.HasSystem && mission.Target.SystemIndex < _starSystems.Count)
             {
                 var targetSys = _starSystems[mission.Target.SystemIndex];
                 var mc = mission.TypeColor;
-                float markerRadius = targetSys.StarRadius + 8;
-
-                // Pulsing outer ring
-                renderer.DrawCircle(camera, targetSys.GalaxyPosition, markerRadius,
+                renderer.DrawCircle(camera, targetSys.GalaxyPosition, targetSys.StarRadius + 8,
                     new Color4(mc.R, mc.G, mc.B, missionAlpha));
-
-                // Small diamond icon offset above the star
-                DrawMissionDiamond(renderer, camera, targetSys.GalaxyPosition,
-                    targetSys.StarRadius, mc, missionAlpha);
+                DrawMissionDiamond(renderer, camera, targetSys.GalaxyPosition, targetSys.StarRadius, mc, missionAlpha);
             }
 
-            // Turn-in system marker (for completed missions)
             if (mission.Status == MissionStatus.Completed &&
                 mission.TurnIn.HasSystem && mission.TurnIn.SystemIndex < _starSystems.Count)
             {
                 var turnInSys = _starSystems[mission.TurnIn.SystemIndex];
-                float markerRadius = turnInSys.StarRadius + 8;
-
-                // Green pulsing ring for turn-in
-                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, markerRadius,
+                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, turnInSys.StarRadius + 8,
                     new Color4(100, 255, 100, missionAlpha));
-                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, markerRadius + 3,
+                renderer.DrawCircle(camera, turnInSys.GalaxyPosition, turnInSys.StarRadius + 11,
                     new Color4(100, 255, 100, (byte)(missionAlpha / 3)));
-
-                DrawMissionDiamond(renderer, camera, turnInSys.GalaxyPosition,
-                    turnInSys.StarRadius, new Color3(100, 255, 100), missionAlpha);
+                DrawMissionDiamond(renderer, camera, turnInSys.GalaxyPosition, turnInSys.StarRadius,
+                    new Color3(100, 255, 100), missionAlpha);
             }
         }
 
-        // Draw player location marker
-        if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < _starSystems.Count)
+        // Player location marker
+        if (currentSys >= 0 && currentSys < _starSystems.Count)
         {
-            var playerSys = _starSystems[game.Player.CurrentStarSystemIndex];
-            renderer.DrawCircle(camera, playerSys.GalaxyPosition,
-                playerSys.StarRadius + 10, new Color3(0, 255, 100));
+            var playerSys = _starSystems[currentSys];
+            renderer.DrawCircle(camera, playerSys.GalaxyPosition, playerSys.StarRadius + 10, new Color3(0, 255, 100));
         }
 
-        // HUD background
-        const float hudMargin = 5f;
-        DrawFrame(renderer, hudMargin, hudMargin, 260, 115, 200);
+        renderer.ClearClipRect();
 
-        // HUD
-        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 10, "GALAXY MAP", new Color3(200, 200, 255), 2f);
-        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 35, $"SEED: {game.Seeds.GalaxySeed}", new Color3(150, 150, 150), 1.5f);
-        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 55, $"SYSTEMS: {_starSystems.Count}", new Color3(150, 150, 150), 1.5f);
+        // ── Info panel (right side) ──
+        DrawFrame(renderer, _ipX, _ipY, InfoPanelWidth, _ipH, 220);
+
+        // Info panel header
+        renderer.DrawRectScreen(_ipX, _ipY, InfoPanelWidth, 30, new Color4(30, 40, 70, 240));
+        renderer.DrawRectScreen(_ipX, _ipY + 29, InfoPanelWidth, 1, new Color4(60, 80, 140, 200));
+        string navLabel = "NAVIGATION DATA";
+        float navLabelW = renderer.MeasureText(navLabel, 1.8f);
+        renderer.DrawTextScreen(_ipX + InfoPanelWidth / 2f - navLabelW / 2f, _ipY + 6, navLabel, new Color3(140, 170, 220), 1.8f);
+
+        float cx = _ipX + 12;
+        float cy = _ipY + 40;
+
+        // Galaxy info
+        renderer.DrawTextScreen(cx, cy, "SYSTEMS", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(cx, cy + 16, _starSystems.Count.ToString(), new Color3(200, 220, 255), 1.8f);
+
+        renderer.DrawRectScreen(cx, cy + 42, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
 
         // Fuel gauge
-        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
-        float fuelBarW = 200;
-        renderer.DrawRectScreen(hudMargin + 10, hudMargin + 95, fuelBarW, 10, new Color3(40, 40, 40));
-        renderer.DrawRectScreen(hudMargin + 10, hudMargin + 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, new Color3(100, 200, 255));
+        renderer.DrawTextScreen(cx, cy + 52, "FUEL", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(cx, cy + 68, $"{game.Player.ShipFuel:F1} / {game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.8f);
+        float fuelBarW = InfoPanelWidth - 24;
+        renderer.DrawRectScreen(cx, cy + 94, fuelBarW, 10, new Color3(40, 40, 40));
+        float fuelPct = game.Player.ShipMaxFuel > 0 ? game.Player.ShipFuel / game.Player.ShipMaxFuel : 0;
+        renderer.DrawRectScreen(cx, cy + 94, fuelBarW * fuelPct, 10, new Color3(100, 200, 255));
 
+        // Show fuel cost preview on bar if a system is selected
+        if (_selectedSystemIndex >= 0 && _selectedSystemIndex != game.Player.CurrentStarSystemIndex)
+        {
+            float jumpDist = GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
+            float jumpCost = jumpDist * GameConfig.FuelPerDistanceUnit;
+            float costPct = game.Player.ShipMaxFuel > 0 ? jumpCost / game.Player.ShipMaxFuel : 0;
+            float remainPct = fuelPct - costPct;
+            if (remainPct < 0) remainPct = 0;
+            // Draw the consumed segment in orange/red between remaining and current fuel
+            bool canAffordJump = game.Player.ShipFuel >= jumpCost;
+            var costColor = canAffordJump ? new Color4(255, 160, 40, 200) : new Color4(255, 60, 60, 200);
+            float costStartX = cx + fuelBarW * remainPct;
+            float costW = fuelBarW * fuelPct - fuelBarW * remainPct;
+            if (costW > 0)
+                renderer.DrawRectScreen(costStartX, cy + 94, costW, 10, costColor);
+        }
+
+        renderer.DrawRectScreen(cx, cy + 114, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
+
+        // Selected system info
+        float selY = cy + 124;
         if (_selectedSystemIndex >= 0)
         {
             var sys = _starSystems[_selectedSystemIndex];
@@ -472,74 +522,81 @@ public class GalaxyMapOverlay : OverlayBase
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
-            // Check for active missions targeting this system or needing turn-in here
-            var missionsHere = game.Player.ActiveMissions.Where(m =>
-                m.Target.IsSystem(_selectedSystemIndex) ||
-                (m.Status == MissionStatus.Completed && m.TurnIn.IsSystem(_selectedSystemIndex))).ToList();
-            int missionExtraHeight = missionsHere.Count > 0 ? (missionsHere.Count * 18 + 5) : 0;
+            renderer.DrawTextScreen(cx, selY, "SELECTED", new Color3(100, 120, 160), 1.3f);
+            renderer.DrawTextScreen(cx, selY + 16, sys.Name.ToUpper(), new Color3(200, 220, 255), 1.8f);
 
-            float panelHeight = 180 + missionExtraHeight;
-            float panelY = GameConfig.WindowHeight - panelHeight - hudMargin;
-            DrawFrame(renderer, hudMargin, panelY, 420, panelHeight, 220);
-            float selX = hudMargin + 10;
-            renderer.DrawTextScreen(selX, panelY + 10, $"SELECTED: {sys.Name}", new Color3(255, 255, 255), 2f);
-            renderer.DrawTextScreen(selX, panelY + 35, $"CLASS: {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
-            renderer.DrawTextScreen(selX, panelY + 55, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
-            renderer.DrawTextScreen(selX, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawRectScreen(cx, selY + 42, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
 
-            // Danger level with color coding
-            string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)} ({sys.DangerLevel}/5)";
+            renderer.DrawTextScreen(cx, selY + 52, $"CLASS {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 72, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 92,
+                $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}",
+                sys.HasSpaceStation ? new Color3(100, 255, 200) : new Color3(120, 120, 120), 1.5f);
+
+            // Danger level
+            string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)}";
             byte dangerR = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)255 : (byte)255;
             byte dangerG = sys.DangerLevel <= 2 ? (byte)255 : sys.DangerLevel <= 3 ? (byte)200 : (byte)80;
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
-            renderer.DrawTextScreen(selX, panelY + 95, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 112, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
 
-            // Mission markers for this system
-            float infoY = panelY + 115;
+            // Missions targeting this system
+            var missionsHere = game.Player.ActiveMissions.Where(m =>
+                m.Target.IsSystem(_selectedSystemIndex) ||
+                (m.Status == MissionStatus.Completed && m.TurnIn.IsSystem(_selectedSystemIndex))).ToList();
+
+            float missionY = selY + 136;
             if (missionsHere.Count > 0)
             {
+                renderer.DrawRectScreen(cx, missionY - 4, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
                 foreach (var m in missionsHere)
                 {
                     var mc = m.TypeColor;
                     string statusTag = m.Status == MissionStatus.Completed ? " [DONE]" : "";
-                    renderer.DrawTextScreen(selX, infoY, $"[!] {m.TypeLabel}: {m.Title}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.5f);
-                    infoY += 18;
+                    renderer.DrawTextScreen(cx, missionY, $"[!] {m.TypeLabel}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.3f);
+                    missionY += 16;
                 }
-                infoY += 5;
+                missionY += 4;
             }
+
+            renderer.DrawRectScreen(cx, missionY, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
+            missionY += 10;
 
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(selX, infoY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
-                renderer.DrawTextScreen(selX, infoY + 20, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
+                renderer.DrawTextScreen(cx, missionY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(cx, missionY + 20, "[ENTER] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
             }
             else
             {
-                renderer.DrawTextScreen(selX, infoY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
+                renderer.DrawTextScreen(cx, missionY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(selX, infoY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
+                renderer.DrawTextScreen(cx, missionY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(selX, infoY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(selX, infoY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
                 else
-                    renderer.DrawTextScreen(selX, infoY + 40, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40, "[ENTER] TRAVEL", new Color3(100, 255, 100), 1.5f);
             }
         }
+        else
+        {
+            renderer.DrawTextScreen(cx, selY, "NO SYSTEM SELECTED", new Color3(100, 120, 160), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 20, "CLICK A STAR TO SELECT", new Color3(140, 140, 160), 1.3f);
+        }
 
-        // Controls help background
-        float ctrlX = GameConfig.WindowWidth - 315;
-        DrawFrame(renderer, ctrlX, hudMargin, 310, 110, 200);
-
-        // Controls help
-        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 10, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 30, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 50, "CLICK: SELECT", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 70, "DBLCLICK/ENTER: TRAVEL", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 90, "M/ESC: CLOSE MAP", new Color3(180, 180, 180), 1.5f);
+        // Controls (bottom of info panel)
+        float ctrlY = _ipY + _ipH - 110;
+        renderer.DrawRectScreen(cx, ctrlY, InfoPanelWidth - 24, 1, new Color4(40, 55, 90, 150));
+        renderer.DrawTextScreen(cx, ctrlY + 8, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 56, "DBLCLICK/ENTER: TRAVEL", new Color3(100, 255, 100), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 72, "M/ESC: CLOSE MAP", new Color3(255, 150, 150), 1.3f);
     }
 
     private static void DrawMissionDiamond(SpriteRenderer renderer, Camera camera,

@@ -19,6 +19,19 @@ public class SpriteRenderer : IDisposable
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
     }
 
+    /// <summary>Set a clip rectangle — all subsequent draw calls are confined to this area.</summary>
+    public void SetClipRect(float x, float y, float w, float h)
+    {
+        var rect = new SDL.Rect { X = (int)x, Y = (int)y, W = (int)w, H = (int)h };
+        SDL.SetRenderClipRect(_renderer, in rect);
+    }
+
+    /// <summary>Clear the clip rectangle so draw calls cover the full window again.</summary>
+    public void ClearClipRect()
+    {
+        SDL.SetRenderClipRect(_renderer, nint.Zero);
+    }
+
     /// <summary>Load a texture from file and return its index.</summary>
     public int LoadTexture(string path)
     {
