@@ -19,6 +19,12 @@ public class MenuWidget<T> where T : struct, Enum
     private int _selected;
     private readonly MenuOption<T>[] _options;
 
+    // When the user navigates with the keyboard we ignore mouse hover
+    // until the physical mouse position actually changes.
+    private bool _ignoreMouseHover;
+    private float _lastMouseX = float.NaN;
+    private float _lastMouseY = float.NaN;
+
     // ── Public state ──────────────────────────────────────────────
     public int SelectedIndex
     {
@@ -120,29 +126,68 @@ public class MenuWidget<T> where T : struct, Enum
     {
         if (_options.Length == 0) return null;
 
-        // Mouse hover / click — uses the same GetItemRect as rendering
         float mx = input.MouseX;
         float my = input.MouseY;
-        
-        for (int i = 0; i < _options.Length; i++)
+
+        // Re-enable mouse hover when the physical mouse position changes
+        if (_ignoreMouseHover)
         {
-            var r = GetItemRect(i, menuScreenX, menuScreenY, itemWidth);
-            if (mx >= r.X && mx <= r.X + r.W &&
-                my >= r.Y && my <= r.Y + r.H)
+            if (mx != _lastMouseX || my != _lastMouseY)
+                _ignoreMouseHover = false;
+        }
+        _lastMouseX = mx;
+        _lastMouseY = my;
+
+        // Mouse hover / click — uses the same GetItemRect as rendering
+        if (!_ignoreMouseHover)
+        {
+            for (int i = 0; i < _options.Length; i++)
             {
-                _selected = i;
-                if (input.IsMousePressed(1) && _options[i].Enabled)
-                    return _options[i].Value;
-                break;
+                var r = GetItemRect(i, menuScreenX, menuScreenY, itemWidth);
+                if (mx >= r.X && mx <= r.X + r.W &&
+                    my >= r.Y && my <= r.Y + r.H)
+                {
+                    _selected = i;
+                    if (input.IsMousePressed(1) && _options[i].Enabled)
+                        return _options[i].Value;
+                    break;
+                }
+            }
+        }
+        else if (input.IsMousePressed(1))
+        {
+            // Allow click even while ignoring hover — re-enable mouse and process click
+            _ignoreMouseHover = false;
+            for (int i = 0; i < _options.Length; i++)
+            {
+                var r = GetItemRect(i, menuScreenX, menuScreenY, itemWidth);
+                if (mx >= r.X && mx <= r.X + r.W &&
+                    my >= r.Y && my <= r.Y + r.H)
+                {
+                    _selected = i;
+                    if (_options[i].Enabled)
+                        return _options[i].Value;
+                    break;
+                }
             }
         }
 
-        // Keyboard (after mouse so keyboard can still override)
+        // Keyboard navigation — suppress mouse hover when used
+        bool keyNav = false;
         if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        {
             _selected = (_selected - 1 + _options.Length) % _options.Length;
+            keyNav = true;
+        }
 
         if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        {
             _selected = (_selected + 1) % _options.Length;
+            keyNav = true;
+        }
+
+        if (keyNav)
+            _ignoreMouseHover = true;
 
         if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
         {
