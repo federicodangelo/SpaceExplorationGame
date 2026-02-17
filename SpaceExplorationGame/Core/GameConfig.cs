@@ -34,7 +34,7 @@ public static class GameConfig
     public const float PlanetSurfaceZoomMax = 1.5f;
     public const float PlanetSurfaceZoomDefault = 1.5f;
 
-    public const float GalaxyMapZoomMin = 0.05f;
+    public const float GalaxyMapZoomMin = 0.005f;
     public const float GalaxyMapZoomMax = 6.0f;
     public const float GalaxyMapZoomDefault = 0.1f;
 

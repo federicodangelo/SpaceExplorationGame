@@ -554,6 +554,7 @@ public class SolarSystemState : GameState
 
         // --- Check proximity for interactions ---
         ref var shipTransformForProximity = ref game.EcsWorld.Get<Transform>(_playerShip);
+        game.Player.ShipWorldPosition = shipTransformForProximity.Position;
         _proximitySystem.FindNearest(shipTransformForProximity.Position);
         _nearbyPlanetIndex = -1;
         _nearbyStationIndex = -1;
@@ -999,6 +1000,15 @@ public class SolarSystemState : GameState
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _stationEntities, _planetEntities,
                 _planets, game.EcsWorld);
+
+            // Navigation target indicator
+            if (game.Player.HasNavigationTarget)
+            {
+                Vector2? targetPos = ResolveNavTargetPosition(game);
+                if (targetPos.HasValue)
+                    HudRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
+                        targetPos.Value, game.Player.NavTargetName, game.Player.NavTargetColor);
+            }
         }
 
         // Death screen
@@ -1037,6 +1047,39 @@ public class SolarSystemState : GameState
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
+    }
+
+    /// <summary>Resolve the world position of the current navigation target.</summary>
+    private Vector2? ResolveNavTargetPosition(Game game)
+    {
+        var player = game.Player;
+        switch (player.NavTargetType)
+        {
+            case NavigationTargetType.Star:
+                if (game.EcsWorld.IsAlive(_starEntity))
+                    return game.EcsWorld.Get<Transform>(_starEntity).Position;
+                break;
+
+            case NavigationTargetType.Planet:
+                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _planetEntities.Count
+                    && game.EcsWorld.IsAlive(_planetEntities[player.NavTargetPlanetIndex]))
+                    return game.EcsWorld.Get<Transform>(_planetEntities[player.NavTargetPlanetIndex]).Position;
+                break;
+
+            case NavigationTargetType.Moon:
+                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _moonEntities.Count
+                    && player.NavTargetMoonIndex >= 0 && player.NavTargetMoonIndex < _moonEntities[player.NavTargetPlanetIndex].Count
+                    && game.EcsWorld.IsAlive(_moonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]))
+                    return game.EcsWorld.Get<Transform>(_moonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]).Position;
+                break;
+
+            case NavigationTargetType.Station:
+                if (player.NavTargetStationIndex >= 0 && player.NavTargetStationIndex < _stationEntities.Count
+                    && game.EcsWorld.IsAlive(_stationEntities[player.NavTargetStationIndex]))
+                    return game.EcsWorld.Get<Transform>(_stationEntities[player.NavTargetStationIndex]).Position;
+                break;
+        }
+        return null;
     }
 
 }

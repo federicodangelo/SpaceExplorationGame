@@ -1,5 +1,7 @@
 namespace SpaceExplorationGame.Core;
 
+using System.Numerics;
+
 /// <summary>
 /// Persistent player data that survives across state changes.
 /// </summary>
@@ -11,6 +13,9 @@ public class PlayerData
     public float ShipMaxHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
     public float ShipFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
     public float ShipMaxFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
+
+    /// <summary>Current ship world position (updated each frame by the active state).</summary>
+    public Vector2 ShipWorldPosition { get; set; }
 
     // Ship equipment
     public Dictionary<ShipSlotType, ShipPart> EquippedParts { get; set; } = ShipPartCatalog.GetStarterLoadout(ShipTypeCatalog.StarterShip);
@@ -63,6 +68,9 @@ public class PlayerData
         ClaimedMissionIds.Clear();
         MissionsCompleted = 0;
         TrackedMissionIndex = -1;
+
+        // Navigation target
+        ClearNavigationTarget();
     }
 
     /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>
@@ -495,4 +503,92 @@ public class PlayerData
         else if (TrackedMissionIndex >= ActiveMissions.Count)
             TrackedMissionIndex = ActiveMissions.Count - 1;
     }
+
+    // ── Navigation Target ──
+
+    /// <summary>Type of the current navigation target.</summary>
+    public NavigationTargetType NavTargetType { get; set; } = NavigationTargetType.None;
+
+    /// <summary>Index of the target planet (if targeting a planet or moon).</summary>
+    public int NavTargetPlanetIndex { get; set; } = -1;
+
+    /// <summary>Index of the target moon within its parent planet (if targeting a moon).</summary>
+    public int NavTargetMoonIndex { get; set; } = -1;
+
+    /// <summary>Index of the target station (if targeting a station).</summary>
+    public int NavTargetStationIndex { get; set; } = -1;
+
+    /// <summary>Name of the navigation target (for display).</summary>
+    public string NavTargetName { get; set; } = "";
+
+    /// <summary>Color of the navigation target marker.</summary>
+    public Color3 NavTargetColor { get; set; } = new(255, 200, 100);
+
+    /// <summary>Whether the player has an active navigation target.</summary>
+    public bool HasNavigationTarget => NavTargetType != NavigationTargetType.None;
+
+    /// <summary>Set the star as the nav target.</summary>
+    public void SetNavTargetStar(string name, Color3 color)
+    {
+        NavTargetType = NavigationTargetType.Star;
+        NavTargetPlanetIndex = -1;
+        NavTargetMoonIndex = -1;
+        NavTargetStationIndex = -1;
+        NavTargetName = name;
+        NavTargetColor = color;
+    }
+
+    /// <summary>Set a planet as the nav target.</summary>
+    public void SetNavTargetPlanet(int planetIndex, string name, Color3 color)
+    {
+        NavTargetType = NavigationTargetType.Planet;
+        NavTargetPlanetIndex = planetIndex;
+        NavTargetMoonIndex = -1;
+        NavTargetStationIndex = -1;
+        NavTargetName = name;
+        NavTargetColor = color;
+    }
+
+    /// <summary>Set a moon as the nav target.</summary>
+    public void SetNavTargetMoon(int planetIndex, int moonIndex, string name, Color3 color)
+    {
+        NavTargetType = NavigationTargetType.Moon;
+        NavTargetPlanetIndex = planetIndex;
+        NavTargetMoonIndex = moonIndex;
+        NavTargetStationIndex = -1;
+        NavTargetName = name;
+        NavTargetColor = color;
+    }
+
+    /// <summary>Set a station as the nav target.</summary>
+    public void SetNavTargetStation(int stationIndex, string name, Color3 color)
+    {
+        NavTargetType = NavigationTargetType.Station;
+        NavTargetPlanetIndex = -1;
+        NavTargetMoonIndex = -1;
+        NavTargetStationIndex = stationIndex;
+        NavTargetName = name;
+        NavTargetColor = color;
+    }
+
+    /// <summary>Clear the navigation target.</summary>
+    public void ClearNavigationTarget()
+    {
+        NavTargetType = NavigationTargetType.None;
+        NavTargetPlanetIndex = -1;
+        NavTargetMoonIndex = -1;
+        NavTargetStationIndex = -1;
+        NavTargetName = "";
+        NavTargetColor = new Color3(255, 200, 100);
+    }
+}
+
+/// <summary>Type of navigation target the player can set.</summary>
+public enum NavigationTargetType
+{
+    None,
+    Star,
+    Planet,
+    Moon,
+    Station
 }

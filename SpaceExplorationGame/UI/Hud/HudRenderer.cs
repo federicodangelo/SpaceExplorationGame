@@ -890,4 +890,15 @@ public static class HudRenderer
         float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
         renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, color, scale);
     }
+
+    /// <summary>
+    /// Render a prominent offscreen indicator for the player's current navigation target.
+    /// </summary>
+    public static void RenderNavTargetOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+        Vector2 targetWorldPos, string targetName, Color3 targetColor)
+    {
+        RenderOffscreenIndicator(renderer, camera, targetWorldPos,
+            targetColor.R, targetColor.G, targetColor.B,
+            prefix: $"TARGET: {targetName}", dotRadius: 5f, arrowSize: 10f);
+    }
 }
