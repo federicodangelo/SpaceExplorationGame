@@ -432,9 +432,14 @@ public class SolarSystemState : GameState
         if (_stationOverlay.UpdateInput(game))
             return;
 
-        // In-game menu overlay (handles Escape toggle + menu navigation)
+        // In-game menu overlay
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
+        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        {
+            _inGameMenuOverlay.Open(game);
+            return;
+        }
 
         // Interact
         if (input.IsKeyPressed(SDL.Scancode.E))

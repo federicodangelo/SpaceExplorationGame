@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
@@ -10,23 +9,41 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Shows two tabs: Available missions (accept) and Active missions (turn in / abandon).
 /// Used by both SpaceStationOverlay (docked menu) and InteriorState (walkable).
 /// </summary>
-public class MissionOverlay : OverlayBase
+public class MissionOverlay : ListPanelOverlay
 {
     private enum Tab { Available, Active }
 
     private Tab _currentTab = Tab.Available;
-    private int _selectedIndex;
     private List<Mission> _availableMissions = [];
-    private string? _statusMessage;
-    private float _statusTimer;
 
     // Context for generating missions
     private StarSystemData? _currentSystem;
     private ulong _boardSeed;
 
+    protected override string Title => "MISSION BOARD";
+    protected override Color3 TitleColor => new(100, 180, 255);
+    protected override float PanelWidth => 650;
+    protected override float PanelHeight => 580;
+    protected override string? ControlsHint => _currentTab == Tab.Available
+        ? "A/D: TABS  W/S: SELECT  ENTER: ACCEPT  ESC: CLOSE"
+        : "A/D: TABS  W/S: SELECT  ENTER: TURN IN  X: ABANDON  ESC: CLOSE";
+
+    protected override int ItemCount => _currentTab switch
+    {
+        Tab.Available => _availableMissions.Count,
+        Tab.Active => _game?.Player.ActiveMissions.Count ?? 0,
+        _ => 0
+    };
+
+    protected override float ItemHeight => 80f;
+    protected override float ListOffsetY => 45f; // after tab bar
+
+    private Game? _game;
+
     /// <summary>Open the mission board with context for generating available missions.</summary>
     public void Open(Game game, StarSystemData currentSystem, ulong boardSeed)
     {
+        _game = game;
         _currentSystem = currentSystem;
         _boardSeed = boardSeed;
 
@@ -40,179 +57,100 @@ public class MissionOverlay : OverlayBase
             .ToList();
 
         _currentTab = game.Player.HasCompletedMissions ? Tab.Active : Tab.Available;
-        _selectedIndex = 0;
-        _statusMessage = null;
-        _statusTimer = 0;
-        IsOpen = true;
+
+        base.Open();
     }
 
     /// <summary>Legacy Open() for backwards compatibility (no mission generation context).</summary>
-    public void Open()
+    public override void Open()
     {
         // Fallback: open with empty available missions (active tab only)
         _availableMissions = [];
         _currentTab = Tab.Active;
-        _selectedIndex = 0;
-        _statusMessage = null;
-        _statusTimer = 0;
-        IsOpen = true;
+        base.Open();
     }
 
-    private int CurrentListCount(Game game) => _currentTab switch
+    // ── Tab navigation callbacks ──
+
+    protected override void OnNavigateLeft(Game game)
     {
-        Tab.Available => _availableMissions.Count,
-        Tab.Active => game.Player.ActiveMissions.Count,
-        _ => 0
-    };
+        _currentTab = Tab.Available;
+        SelectedIndex = 0;
+    }
 
-    /// <summary>Process input for the mission overlay. Returns true if the overlay is active.</summary>
-    public override bool UpdateInput(Game game)
+    protected override void OnNavigateRight(Game game)
     {
-        if (!IsOpen) return false;
+        _currentTab = Tab.Active;
+        SelectedIndex = 0;
+    }
 
-        var input = game.Input;
+    // ── Item action callbacks ──
 
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+    protected override void OnItemConfirmed(Game game, int index)
+    {
+        if (_currentTab == Tab.Available && index < _availableMissions.Count)
         {
-            Close();
-            return true;
-        }
-
-        // Tab switching with left/right
-        if (input.IsKeyPressed(SDL.Scancode.Left) || input.IsKeyPressed(SDL.Scancode.A))
-        {
-            _currentTab = Tab.Available;
-            _selectedIndex = 0;
-        }
-        else if (input.IsKeyPressed(SDL.Scancode.Right) || input.IsKeyPressed(SDL.Scancode.D))
-        {
-            _currentTab = Tab.Active;
-            _selectedIndex = 0;
-        }
-
-        int count = CurrentListCount(game);
-
-        // Navigation
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
-        {
-            _selectedIndex = count > 0 ? (_selectedIndex - 1 + count) % count : 0;
-        }
-        else if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
-        {
-            _selectedIndex = count > 0 ? (_selectedIndex + 1) % count : 0;
-        }
-
-        // Confirm action
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-        {
-            if (_currentTab == Tab.Available && _selectedIndex < _availableMissions.Count)
+            var mission = _availableMissions[index];
+            if (game.Player.ActiveMissions.Count >= PlayerData.MaxActiveMissions)
             {
-                var mission = _availableMissions[_selectedIndex];
-                if (game.Player.ActiveMissions.Count >= PlayerData.MaxActiveMissions)
+                SetStatus($"MAX {PlayerData.MaxActiveMissions} ACTIVE MISSIONS!", 2.5f);
+            }
+            else
+            {
+                game.Player.AcceptMission(mission);
+                _availableMissions.RemoveAt(index);
+                ClampSelection();
+                SetStatus("MISSION ACCEPTED!", 2f);
+            }
+        }
+        else if (_currentTab == Tab.Active && index < game.Player.ActiveMissions.Count)
+        {
+            var mission = game.Player.ActiveMissions[index];
+            if (mission.Status == MissionStatus.Completed)
+            {
+                if (_currentSystem != null && mission.TurnIn.IsSystem(_currentSystem.Index))
                 {
-                    _statusMessage = $"MAX {PlayerData.MaxActiveMissions} ACTIVE MISSIONS!";
-                    _statusTimer = 2.5f;
+                    int reward = game.Player.TurnInMission(mission);
+                    ClampSelection();
+                    SetStatus($"MISSION COMPLETE! +{reward} CREDITS", 2.5f);
                 }
                 else
                 {
-                    game.Player.AcceptMission(mission);
-                    _availableMissions.RemoveAt(_selectedIndex);
-                    _selectedIndex = Math.Min(_selectedIndex, _availableMissions.Count - 1);
-                    if (_selectedIndex < 0) _selectedIndex = 0;
-                    _statusMessage = "MISSION ACCEPTED!";
-                    _statusTimer = 2f;
-                }
-            }
-            else if (_currentTab == Tab.Active && _selectedIndex < game.Player.ActiveMissions.Count)
-            {
-                var mission = game.Player.ActiveMissions[_selectedIndex];
-                if (mission.Status == MissionStatus.Completed)
-                {
-                    // Check if we're at the turn-in system
-                    if (_currentSystem != null && mission.TurnIn.IsSystem(_currentSystem.Index))
-                    {
-                        int reward = game.Player.TurnInMission(mission);
-                        _selectedIndex = Math.Min(_selectedIndex, game.Player.ActiveMissions.Count - 1);
-                        if (_selectedIndex < 0) _selectedIndex = 0;
-                        _statusMessage = $"MISSION COMPLETE! +{reward} CREDITS";
-                        _statusTimer = 2.5f;
-                    }
-                    else
-                    {
-                        string sysName = mission.TurnIn.SystemName.ToUpper();
-                        _statusMessage = $"MUST TURN IN AT {sysName}";
-                        _statusTimer = 2.5f;
-                    }
+                    string sysName = mission.TurnIn.SystemName.ToUpper();
+                    SetStatus($"MUST TURN IN AT {sysName}", 2.5f);
                 }
             }
         }
-
-        // Abandon active mission with X key
-        if (input.IsKeyPressed(SDL.Scancode.X))
-        {
-            if (_currentTab == Tab.Active && _selectedIndex < game.Player.ActiveMissions.Count)
-            {
-                var mission = game.Player.ActiveMissions[_selectedIndex];
-                game.Player.AbandonMission(mission);
-                _selectedIndex = Math.Min(_selectedIndex, game.Player.ActiveMissions.Count - 1);
-                if (_selectedIndex < 0) _selectedIndex = 0;
-                _statusMessage = "MISSION ABANDONED";
-                _statusTimer = 2f;
-            }
-        }
-
-        return true;
     }
 
-    /// <summary>Update timers.</summary>
-    public override void Update(Game game, float dt)
+    protected override void OnItemSecondary(Game game, int index)
     {
-        if (!IsOpen) return;
-        if (_statusTimer > 0)
+        if (_currentTab == Tab.Active && index < game.Player.ActiveMissions.Count)
         {
-            _statusTimer -= dt;
-            if (_statusTimer <= 0) _statusMessage = null;
+            var mission = game.Player.ActiveMissions[index];
+            game.Player.AbandonMission(mission);
+            ClampSelection();
+            SetStatus("MISSION ABANDONED", 2f);
         }
     }
 
-    /// <summary>Render the mission overlay.</summary>
-    public override void Render(Game game)
+    // ── Rendering ──
+
+    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+        float panelX, float contentY, float panelW, float contentH)
     {
-        if (!IsOpen) return;
-
-        var renderer = game.SpriteRenderer;
-        int w = GameConfig.WindowWidth;
-        int h = GameConfig.WindowHeight;
-
-        // Semi-transparent background
-        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 150));
-
-        float panelW = 650;
-        float panelH = 580;
-        float panelX = w / 2f - panelW / 2f;
-        float panelY = h / 2f - panelH / 2f;
-
-        // Panel border + background
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
-
-        // Title
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, "MISSION BOARD", new Color3(100, 180, 255), 2.5f);
-
         // Mission count display
         int activeCount = game.Player.ActiveMissions.Count;
         int completedCount = game.Player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
         string countText = $"ACTIVE: {activeCount}/{PlayerData.MaxActiveMissions}";
         if (completedCount > 0) countText += $"  READY: {completedCount}";
-        renderer.DrawTextScreen(panelX + panelW - 300, panelY + 17, countText, new Color3(180, 180, 200), 1.5f);
-
-        renderer.DrawLineScreen(panelX + 15, panelY + 42, panelX + panelW - 15, panelY + 42, new Color3(60, 60, 100));
+        renderer.DrawTextScreen(panelX + panelW - 300, PanelY + 17, countText,
+            new Color3(180, 180, 200), 1.5f);
 
         // Tab bar
-        float tabY = panelY + 48;
+        float tabY = contentY - 10;
         float tabW = panelW / 2f - 20;
 
-        // Available tab
         bool availSel = _currentTab == Tab.Available;
         renderer.DrawRectScreen(panelX + 10, tabY, tabW, 28,
             availSel ? new Color3(40, 50, 80) : new Color3(20, 20, 40));
@@ -220,7 +158,6 @@ public class MissionOverlay : OverlayBase
             $"< AVAILABLE ({_availableMissions.Count}) >",
             availSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f);
 
-        // Active tab
         bool activeSel = _currentTab == Tab.Active;
         renderer.DrawRectScreen(panelX + 10 + tabW + 20, tabY, tabW, 28,
             activeSel ? new Color3(40, 50, 80) : new Color3(20, 20, 40));
@@ -231,55 +168,42 @@ public class MissionOverlay : OverlayBase
             activeLabel,
             activeSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f);
 
-        renderer.DrawLineScreen(panelX + 15, tabY + 32, panelX + panelW - 15, tabY + 32, new Color3(60, 60, 100));
+        renderer.DrawLineScreen(panelX + 15, tabY + 32, panelX + panelW - 15, tabY + 32,
+            new Color3(60, 60, 100));
 
         // Mission list
-        float listY = tabY + 40;
-        float listH = panelH - (listY - panelY) - 60; // leave room for controls
+        float listY = contentY + ListOffsetY;
+        float listH = contentH - ListOffsetY;
 
         if (_currentTab == Tab.Available)
             RenderAvailableMissions(renderer, panelX, listY, panelW, listH);
         else
             RenderActiveMissions(renderer, panelX, listY, panelW, listH, game);
-
-        // Status message
-        if (_statusMessage != null)
-        {
-            float msgW = renderer.MeasureText(_statusMessage, 2f);
-            renderer.DrawRectScreen(panelX + panelW / 2f - msgW / 2f - 10, panelY + panelH - 55,
-                msgW + 20, 25, new Color4(0, 60, 0, 220));
-            renderer.DrawTextScreen(panelX + panelW / 2f - msgW / 2f, panelY + panelH - 52,
-                _statusMessage, new Color3(100, 255, 100), 2f);
-        }
-
-        // Controls hint
-        float ctrlY = panelY + panelH - 25;
-        string controls = _currentTab == Tab.Available
-            ? "A/D: TABS  W/S: SELECT  ENTER: ACCEPT  ESC: CLOSE"
-            : "A/D: TABS  W/S: SELECT  ENTER: TURN IN  X: ABANDON  ESC: CLOSE";
-        renderer.DrawTextScreen(panelX + 10, ctrlY, controls, new Color3(100, 100, 130), 1.5f);
     }
 
-    private void RenderAvailableMissions(SpriteRenderer renderer, float panelX, float startY, float panelW, float listH)
+    private void RenderAvailableMissions(SpriteRenderer renderer, float panelX, float startY,
+        float panelW, float listH)
     {
         if (_availableMissions.Count == 0)
         {
-            renderer.DrawTextScreen(panelX + 20, startY + 20, "NO MISSIONS AVAILABLE", new Color3(120, 120, 140), 2f);
-            renderer.DrawTextScreen(panelX + 20, startY + 45, "Check other stations for missions.", new Color3(90, 90, 110), 1.5f);
+            renderer.DrawTextScreen(panelX + 20, startY + 20, "NO MISSIONS AVAILABLE",
+                new Color3(120, 120, 140), 2f);
+            renderer.DrawTextScreen(panelX + 20, startY + 45, "Check other stations for missions.",
+                new Color3(90, 90, 110), 1.5f);
             return;
         }
 
-        float itemH = 80;
         for (int i = 0; i < _availableMissions.Count; i++)
         {
-            float y = startY + i * itemH;
-            if (y + itemH > startY + listH) break; // clip
+            float y = startY + i * ItemHeight;
+            if (y + ItemHeight > startY + listH) break;
 
             var m = _availableMissions[i];
-            bool selected = i == _selectedIndex;
+            bool selected = i == SelectedIndex;
 
             if (selected)
-                renderer.DrawRectScreen(panelX + 5, y, panelW - 10, itemH - 4, new Color3(35, 40, 65));
+                renderer.DrawRectScreen(panelX + 5, y, panelW - 10, ItemHeight - 4,
+                    new Color3(35, 40, 65));
 
             // Type badge
             renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
@@ -290,7 +214,8 @@ public class MissionOverlay : OverlayBase
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f);
 
             // Description
-            renderer.DrawTextScreen(panelX + 25, y + 28, m.Description, new Color3(140, 140, 160), 1.5f);
+            renderer.DrawTextScreen(panelX + 25, y + 28, m.Description,
+                new Color3(140, 140, 160), 1.5f);
 
             // Reward and turn-in location
             renderer.DrawTextScreen(panelX + 25, y + 48,
@@ -304,70 +229,63 @@ public class MissionOverlay : OverlayBase
                 string targetInfo = m.Target.HasPlanet
                     ? $"TARGET: {m.Target.PlanetName?.ToUpper()} IN {m.Target.SystemName.ToUpper()}"
                     : $"TARGET: {m.Target.SystemName.ToUpper()}";
-                renderer.DrawTextScreen(panelX + 25, y + 63, targetInfo, new Color3(120, 160, 200), 1.2f);
+                renderer.DrawTextScreen(panelX + 25, y + 63, targetInfo,
+                    new Color3(120, 160, 200), 1.2f);
             }
         }
     }
 
-    private void RenderActiveMissions(SpriteRenderer renderer, float panelX, float startY, float panelW, float listH, Game game)
+    private void RenderActiveMissions(SpriteRenderer renderer, float panelX, float startY,
+        float panelW, float listH, Game game)
     {
         var active = game.Player.ActiveMissions;
         if (active.Count == 0)
         {
-            renderer.DrawTextScreen(panelX + 20, startY + 20, "NO ACTIVE MISSIONS", new Color3(120, 120, 140), 2f);
-            renderer.DrawTextScreen(panelX + 20, startY + 45, "Accept missions from the Available tab.", new Color3(90, 90, 110), 1.5f);
+            renderer.DrawTextScreen(panelX + 20, startY + 20, "NO ACTIVE MISSIONS",
+                new Color3(120, 120, 140), 2f);
+            renderer.DrawTextScreen(panelX + 20, startY + 45, "Accept missions from the Available tab.",
+                new Color3(90, 90, 110), 1.5f);
             return;
         }
 
-        float itemH = 80;
         for (int i = 0; i < active.Count; i++)
         {
-            float y = startY + i * itemH;
-            if (y + itemH > startY + listH) break; // clip
+            float y = startY + i * ItemHeight;
+            if (y + ItemHeight > startY + listH) break;
 
             var m = active[i];
-            bool selected = i == _selectedIndex;
+            bool selected = i == SelectedIndex;
             bool completed = m.Status == MissionStatus.Completed;
 
             if (selected)
-                renderer.DrawRectScreen(panelX + 5, y, panelW - 10, itemH - 4,
+                renderer.DrawRectScreen(panelX + 5, y, panelW - 10, ItemHeight - 4,
                     completed ? new Color3(30, 50, 30) : new Color3(35, 40, 65));
 
-            // Status badge
             string statusTag = completed ? "[COMPLETE]" : "[IN PROGRESS]";
             var statusColor = completed ? new Color3(100, 255, 100) : new Color3(255, 200, 80);
             renderer.DrawTextScreen(panelX + 15, y + 5, statusTag, statusColor, 1.5f);
 
-            // Type badge
             float afterStatus = panelX + 15 + renderer.MeasureText(statusTag, 1.5f) + 8;
             renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
-            // Title
             renderer.DrawTextScreen(panelX + 15, y + 24, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f);
 
-            // Progress
             renderer.DrawTextScreen(panelX + 25, y + 46, m.ProgressText,
                 completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), 1.5f);
 
-            // Reward
             renderer.DrawTextScreen(panelX + panelW - 200, y + 46,
                 $"REWARD: {m.CreditReward} CR", new Color3(255, 220, 80), 1.5f);
 
-            // Turn-in hint for completed missions
             if (completed && selected)
             {
                 bool canTurnIn = _currentSystem != null && m.TurnIn.IsSystem(_currentSystem.Index);
                 if (canTurnIn)
-                {
                     renderer.DrawTextScreen(panelX + 25, y + 62,
                         "PRESS ENTER TO TURN IN", new Color3(100, 255, 100), 1.2f);
-                }
                 else
-                {
                     renderer.DrawTextScreen(panelX + 25, y + 62,
                         $"TURN IN AT {m.TurnIn.SystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f);
-                }
             }
         }
     }

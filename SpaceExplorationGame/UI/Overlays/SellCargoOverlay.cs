@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering;
 
@@ -8,182 +7,133 @@ namespace SpaceExplorationGame.UI.Overlays;
 /// Overlay for selling cargo resources at stations and settlements.
 /// Lists all cargo with sell prices, supports selling individual items or all at once.
 /// </summary>
-public class SellCargoOverlay : OverlayBase
+public class SellCargoOverlay : ListPanelOverlay
 {
-    private int _selectedIndex;
-    private string? _statusMessage;
-    private float _statusTimer;
+    private ResourceType[] _cargoKeys = [];
 
-    public void Open() => IsOpen = true;
+    protected override string Title => "CARGO TERMINAL";
+    protected override Color3 TitleColor => new(255, 220, 80);
+    protected override float PanelWidth => 500;
+    protected override float PanelHeight => 160 + Math.Max(_cargoKeys.Length, 1) * 26
+                                            + (_cargoKeys.Length > 0 ? 40 : 0);
+    protected override bool ShowCredits => true;
+    protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: SELL  ESC: CLOSE";
 
-    public override bool UpdateInput(Game game)
+    // Item count includes cargo items + 1 "SELL ALL" option (when cargo exists)
+    protected override int ItemCount =>
+        _cargoKeys.Length > 0 ? _cargoKeys.Length + 1 : 0;
+
+    protected override float ItemHeight => 26f;
+    protected override float ListOffsetY => 55f;   // after credits + cargo header
+
+    public override void Open()
     {
-        if (!IsOpen) return false;
-
-        var input = game.Input;
-
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
-        {
-            Close();
-            return true;
-        }
-
-        var cargoKeys = GetCargoKeys(game.Player);
-        int itemCount = cargoKeys.Length;
-
-        // Navigate: Up/Down through individual resources, then "SELL ALL" at the bottom
-        int totalOptions = itemCount + (itemCount > 0 ? 1 : 0); // +1 for SELL ALL
-
-        if (totalOptions > 0)
-        {
-            if (input.IsKeyPressed(SDL.Scancode.Up))
-                _selectedIndex = (_selectedIndex - 1 + totalOptions) % totalOptions;
-            if (input.IsKeyPressed(SDL.Scancode.Down))
-                _selectedIndex = (_selectedIndex + 1) % totalOptions;
-
-            if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
-            {
-                if (_selectedIndex < itemCount)
-                {
-                    // Sell individual resource
-                    var resource = cargoKeys[_selectedIndex];
-                    int earned = game.Player.SellCargo(resource);
-                    if (earned > 0)
-                    {
-                        _statusMessage = $"SOLD FOR {earned} CREDITS";
-                        _statusTimer = 2f;
-                    }
-                    // If we just sold the last index, clamp
-                    if (_selectedIndex >= GetCargoKeys(game.Player).Length)
-                        _selectedIndex = Math.Max(0, GetCargoKeys(game.Player).Length);
-                }
-                else
-                {
-                    // Sell all
-                    int earned = game.Player.SellAllCargo();
-                    if (earned > 0)
-                    {
-                        _statusMessage = $"SOLD ALL FOR {earned} CREDITS";
-                        _statusTimer = 2f;
-                        _selectedIndex = 0;
-                    }
-                }
-            }
-        }
-
-        return true;
+        base.Open();
     }
 
-    public override void Update(Game game, float dt)
+    protected override void OnItemConfirmed(Game game, int index)
     {
-        if (!IsOpen) return;
-        if (_statusTimer > 0)
+        if (_cargoKeys.Length == 0) return;
+
+        if (index < _cargoKeys.Length)
         {
-            _statusTimer -= dt;
-            if (_statusTimer <= 0) _statusMessage = null;
-        }
-    }
-
-    public override void Render(Game game)
-    {
-        if (!IsOpen) return;
-
-        var renderer = game.SpriteRenderer;
-        int w = GameConfig.WindowWidth;
-        int h = GameConfig.WindowHeight;
-
-        // Semi-transparent background
-        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 150));
-
-        var cargoKeys = GetCargoKeys(game.Player);
-        int itemCount = cargoKeys.Length;
-
-        float panelW = 500;
-        float panelH = 160 + Math.Max(itemCount, 1) * 26 + (itemCount > 0 ? 40 : 0);
-        float panelX = w / 2f - panelW / 2f;
-        float panelY = h / 2f - panelH / 2f;
-
-        // Panel border
-        renderer.DrawRectScreen(panelX - 2, panelY - 2, panelW + 4, panelH + 4, new Color4(60, 60, 100, 200));
-        renderer.DrawRectScreen(panelX, panelY, panelW, panelH, new Color4(15, 15, 35, 245));
-
-        // Title
-        renderer.DrawTextScreen(panelX + 15, panelY + 10, "CARGO TERMINAL", new Color3(255, 220, 80), 2.5f);
-        renderer.DrawLineScreen(panelX + 15, panelY + 45, panelX + panelW - 15, panelY + 45, new Color3(60, 60, 100));
-
-        // Credits
-        renderer.DrawTextScreen(panelX + 15, panelY + 55, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
-        renderer.DrawTextScreen(panelX + 15, panelY + 80, $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(200, 180, 100), 1.5f);
-
-        renderer.DrawLineScreen(panelX + 15, panelY + 100, panelX + panelW - 15, panelY + 100, new Color3(60, 60, 100));
-
-        float listY = panelY + 110;
-
-        if (itemCount == 0)
-        {
-            renderer.DrawTextScreen(panelX + 20, listY, "CARGO HOLD EMPTY", new Color3(120, 120, 150), 2f);
+            // Sell individual resource
+            var resource = _cargoKeys[index];
+            int earned = game.Player.SellCargo(resource);
+            if (earned > 0)
+                SetStatus($"SOLD FOR {earned} CREDITS");
+            RefreshCargoKeys(game);
+            ClampSelection();
         }
         else
         {
-            for (int i = 0; i < itemCount; i++)
+            // Sell all
+            int earned = game.Player.SellAllCargo();
+            if (earned > 0)
             {
-                var resource = cargoKeys[i];
-                var resInfo = ResourceCatalog.Get(resource);
-                int amount = game.Player.Cargo[resource];
-                int value = amount * resInfo.ValuePerUnit;
-
-                bool selected = i == _selectedIndex;
-                if (selected)
-                    renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 24, new Color4(40, 40, 80, 200));
-
-                byte tr = selected ? (byte)255 : resInfo.Color.R;
-                byte tg = selected ? (byte)255 : resInfo.Color.G;
-                byte tb = selected ? (byte)255 : resInfo.Color.B;
-
-                renderer.DrawTextScreen(panelX + 20, listY + 2, $"{resInfo.Name.ToUpper()}", new Color3(tr, tg, tb), 1.8f);
-                renderer.DrawTextScreen(panelX + 180, listY + 2, $"x{amount}", new Color3(200, 200, 200), 1.8f);
-                renderer.DrawTextScreen(panelX + 280, listY + 2, $"= {value} CR", new Color3(255, 220, 80), 1.8f);
-
-                if (selected)
-                    renderer.DrawTextScreen(panelX + panelW - 80, listY + 2, "[SELL]", new Color3(100, 255, 100), 1.5f);
-
-                listY += 26;
+                SetStatus($"SOLD ALL FOR {earned} CREDITS");
+                RefreshCargoKeys(game);
+                ClampSelection();
             }
-
-            // SELL ALL option
-            listY += 10;
-            bool sellAllSelected = _selectedIndex == itemCount;
-            if (sellAllSelected)
-                renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 28, new Color4(40, 60, 40, 200));
-
-            int totalValue = 0;
-            foreach (var (resource, amount) in game.Player.Cargo)
-                totalValue += amount * ResourceCatalog.Get(resource).ValuePerUnit;
-
-            byte sr = sellAllSelected ? (byte)100 : (byte)180;
-            byte sg = sellAllSelected ? (byte)255 : (byte)180;
-            byte sb = sellAllSelected ? (byte)100 : (byte)180;
-            renderer.DrawTextScreen(panelX + 20, listY + 2, $"SELL ALL ({totalValue} CREDITS)", new Color3(sr, sg, sb), 2f);
         }
-
-        // Status message
-        if (_statusMessage != null)
-        {
-            float smY = panelY + panelH - 50;
-            renderer.DrawTextScreen(panelX + 20, smY, _statusMessage, new Color3(100, 255, 100), 2f);
-        }
-
-        // Close hint
-        renderer.DrawTextScreen(panelX + 10, panelY + panelH - 25, "UP/DOWN: SELECT  ENTER: SELL  ESC: CLOSE", new Color3(100, 100, 130), 1.5f);
     }
 
-    private static ResourceType[] GetCargoKeys(PlayerData player)
+    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+        float panelX, float contentY, float panelW, float contentH)
+    {
+        // Refresh cargo keys each frame to stay in sync
+        RefreshCargoKeys(game);
+
+        // Cargo info
+        renderer.DrawTextScreen(panelX + 15, contentY + 5,
+            $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(200, 180, 100), 1.5f);
+        renderer.DrawLineScreen(panelX + 15, contentY + 25, panelX + panelW - 15, contentY + 25,
+            new Color3(60, 60, 100));
+
+        float listY = contentY + ListOffsetY;
+
+        if (_cargoKeys.Length == 0)
+        {
+            renderer.DrawTextScreen(panelX + 20, listY, "CARGO HOLD EMPTY",
+                new Color3(120, 120, 150), 2f);
+            return;
+        }
+
+        for (int i = 0; i < _cargoKeys.Length; i++)
+        {
+            var resource = _cargoKeys[i];
+            var resInfo = ResourceCatalog.Get(resource);
+            int amount = game.Player.Cargo[resource];
+            int value = amount * resInfo.ValuePerUnit;
+
+            bool selected = i == SelectedIndex;
+            if (selected)
+                renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 24,
+                    new Color4(40, 40, 80, 200));
+
+            byte tr = selected ? (byte)255 : resInfo.Color.R;
+            byte tg = selected ? (byte)255 : resInfo.Color.G;
+            byte tb = selected ? (byte)255 : resInfo.Color.B;
+
+            renderer.DrawTextScreen(panelX + 20, listY + 2, resInfo.Name.ToUpper(),
+                new Color3(tr, tg, tb), 1.8f);
+            renderer.DrawTextScreen(panelX + 180, listY + 2, $"x{amount}",
+                new Color3(200, 200, 200), 1.8f);
+            renderer.DrawTextScreen(panelX + 280, listY + 2, $"= {value} CR",
+                new Color3(255, 220, 80), 1.8f);
+
+            if (selected)
+                renderer.DrawTextScreen(panelX + panelW - 80, listY + 2, "[SELL]",
+                    new Color3(100, 255, 100), 1.5f);
+
+            listY += ItemHeight;
+        }
+
+        // SELL ALL option
+        listY += 10;
+        bool sellAllSelected = SelectedIndex == _cargoKeys.Length;
+        if (sellAllSelected)
+            renderer.DrawRectScreen(panelX + 10, listY - 2, panelW - 20, 28,
+                new Color4(40, 60, 40, 200));
+
+        int totalValue = 0;
+        foreach (var (resource, amount) in game.Player.Cargo)
+            totalValue += amount * ResourceCatalog.Get(resource).ValuePerUnit;
+
+        byte sr = sellAllSelected ? (byte)100 : (byte)180;
+        byte sg = sellAllSelected ? (byte)255 : (byte)180;
+        byte sb = sellAllSelected ? (byte)100 : (byte)180;
+        renderer.DrawTextScreen(panelX + 20, listY + 2, $"SELL ALL ({totalValue} CREDITS)",
+            new Color3(sr, sg, sb), 2f);
+    }
+
+    private void RefreshCargoKeys(Game game)
     {
         var keys = new List<ResourceType>();
-        foreach (var (resource, amount) in player.Cargo)
+        foreach (var (resource, amount) in game.Player.Cargo)
         {
             if (amount > 0) keys.Add(resource);
         }
-        return keys.ToArray();
+        _cargoKeys = keys.ToArray();
     }
 }

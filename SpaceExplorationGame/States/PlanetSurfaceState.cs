@@ -282,11 +282,17 @@ public class PlanetSurfaceState : GameState
             return;
         }
 
-        // In-game menu overlay (handles Escape toggle + menu navigation)
+        // In-game menu overlay
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
 
         var input = game.Input;
+
+        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        {
+            _inGameMenuOverlay.Open(game);
+            return;
+        }
 
         // Get player position for proximity checks
         ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);

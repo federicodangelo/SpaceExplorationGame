@@ -36,7 +36,7 @@ public class Game : IDisposable
     public SeedManager Seeds { get; private set; } = null!;
 
     /// <summary>Cached galaxy data — generated once from the galaxy seed, reused everywhere.</summary>
-    public List<StarSystemData> GalaxyData { get; private set; } = null!;
+    public List<StarSystemData> GalaxyData { get; private set; } = [];
 
     // Game state
     private GameState? _currentState;
