@@ -991,8 +991,11 @@ public class SolarSystemState : GameState
         if (!_playerDead)
         {
             HudRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
-                _enemyEntities, _playerShip, 5000f);
+                _enemyEntities, _playerShip, 2500f);
             HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
+            HudRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
+                _playerShip, game.EcsWorld, _planetEntities, _planets,
+                _stationEntities, _stations, 5000f);
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _stationEntities, _planetEntities,
                 _planets, game.EcsWorld);

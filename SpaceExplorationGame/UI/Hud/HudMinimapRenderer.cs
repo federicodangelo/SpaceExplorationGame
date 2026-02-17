@@ -30,7 +30,7 @@ public readonly record struct MinimapArea(
 public static class HudMinimapRenderer
 {
     // Minimap constants
-    private const float MinimapSize = 150f;
+    private const float MinimapSize = 200f;
     private const float MinimapMargin = 10f; // must match HudRenderer.HudMargin
     private const float MinimapViewFraction = 0.3f; // fraction of map shown as view radius
 
@@ -57,30 +57,36 @@ public static class HudMinimapRenderer
         // Collect markers
         var markers = new List<MinimapMarker>();
 
-        // Star (yellow circle)
+        // Star (yellow circle, prominent)
         if (ecsWorld.IsAlive(starEntity))
         {
             var pos = ecsWorld.Get<Transform>(starEntity).Position;
-            markers.Add(new MinimapMarker(pos, new Color3(255, 220, 80), Size: 6f, Shape: MinimapMarkerShape.Circle));
+            markers.Add(new MinimapMarker(pos, new Color4(255, 220, 80, 120), Size: 12f, Shape: MinimapMarkerShape.Circle));
+            markers.Add(new MinimapMarker(pos, new Color3(255, 220, 80), Size: 8f, Shape: MinimapMarkerShape.Circle));
         }
 
-        // Asteroids (dim grey, tiny)
+        // Asteroids (dim grey, tiny, 1px)
         foreach (var entity in asteroidEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
             if (ecsWorld.Has<Health>(entity) && ecsWorld.Get<Health>(entity).IsDead) continue;
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(80, 80, 80), Size: 1f));
+            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color4(60, 60, 60, 120), Size: 1f));
         }
 
-        // Planets (colored circles) and moons
+        // Planets (colored circles, prominent) and moons (tiny)
         for (int i = 0; i < planetEntities.Count; i++)
         {
             if (!ecsWorld.IsAlive(planetEntities[i])) continue;
             byte pr = i < planets.Count ? planets[i].Color.R : (byte)180;
             byte pg = i < planets.Count ? planets[i].Color.G : (byte)180;
             byte pb = i < planets.Count ? planets[i].Color.B : (byte)180;
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(planetEntities[i]).Position,
-                new Color4(pr, pg, pb, 220), Size: 4f, Shape: MinimapMarkerShape.Circle));
+            var planetPos = ecsWorld.Get<Transform>(planetEntities[i]).Position;
+            // Outer glow ring for visibility
+            markers.Add(new MinimapMarker(planetPos,
+                new Color4(pr, pg, pb, 80), Size: 10f, Shape: MinimapMarkerShape.Circle));
+            // Main planet dot
+            markers.Add(new MinimapMarker(planetPos,
+                new Color4(pr, pg, pb, 240), Size: 6f, Shape: MinimapMarkerShape.Circle));
 
             if (i < moonEntities.Count)
             {
@@ -88,32 +94,37 @@ public static class HudMinimapRenderer
                 {
                     if (!ecsWorld.IsAlive(moonEntity)) continue;
                     markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(moonEntity).Position,
-                        new Color3(160, 160, 180), Size: 2f));
+                        new Color4(140, 140, 160, 120), Size: 1f));
                 }
             }
         }
 
-        // Stations (cyan)
+        // Stations (cyan, prominent)
         foreach (var entity in stationEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(100, 200, 255)));
+            var stationPos = ecsWorld.Get<Transform>(entity).Position;
+            // Outer glow for visibility
+            markers.Add(new MinimapMarker(stationPos, new Color4(100, 200, 255, 80), Size: 9f, Shape: MinimapMarkerShape.Circle));
+            // Main station dot
+            markers.Add(new MinimapMarker(stationPos, new Color3(100, 200, 255), Size: 5f));
         }
 
-        // Enemies (faction-colored)
+        // Enemies (1px, subdued — only pirates get slightly more visibility)
         foreach (var entity in enemyEntities)
         {
             if (!ecsWorld.IsAlive(entity)) continue;
             if (!ecsWorld.Has<Health>(entity) || ecsWorld.Get<Health>(entity).IsDead) continue;
             var ai = ecsWorld.Get<EnemyAI>(entity);
-            var (er, eg, eb) = ai.Config.Faction switch
+            var color = ai.Config.Faction switch
             {
-                Faction.Pirate => new Color3(255, 80, 80),
-                Faction.Trader => new Color3(200, 180, 80),
-                Faction.Patrol => new Color3(80, 160, 255),
-                _ => new Color3(200, 200, 200)
+                Faction.Pirate => new Color4(255, 80, 80, 180),
+                Faction.Trader => new Color4(160, 140, 60, 80),
+                Faction.Patrol => new Color4(60, 120, 200, 80),
+                _ => new Color4(150, 150, 150, 80)
             };
-            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, new Color3(er, eg, eb)));
+            float size = ai.Config.Faction == Faction.Pirate ? 2f : 1f;
+            markers.Add(new MinimapMarker(ecsWorld.Get<Transform>(entity).Position, color, Size: size));
         }
 
         RenderMinimap(renderer, viewOrigin, viewSize,

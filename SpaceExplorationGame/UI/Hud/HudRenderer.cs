@@ -432,7 +432,7 @@ public static class HudRenderer
 
     // ── Off-screen indicators ──────────────────────────────────────────
 
-    /// <summary>Render arrow indicators at screen edges for off-screen NPC ships within range.</summary>
+    /// <summary>Render arrow indicators at screen edges for off-screen hostile NPC ships within range.</summary>
     public static void RenderOffscreenIndicators(SpriteRenderer renderer, Camera camera, World ecsWorld,
         List<Entity> enemyEntities, Entity playerShip, float maxDistance = float.MaxValue)
     {
@@ -447,23 +447,65 @@ public static class HudRenderer
             ref var health = ref ecsWorld.Get<Health>(entity);
             if (health.IsDead) continue;
 
+            var ai = ecsWorld.Get<EnemyAI>(entity);
+
+            // Only show indicators for hostile factions (pirates)
+            if (ai.Config.Faction != Faction.Pirate) continue;
+
             ref var transform = ref ecsWorld.Get<Transform>(entity);
 
             // Skip ships beyond max distance
             float dist = Vector2.Distance(playerPos, transform.Position);
             if (dist > maxDistance) continue;
 
-            var ai = ecsWorld.Get<EnemyAI>(entity);
+            // Fade alpha by distance (fully opaque at close range, fading toward maxDistance)
+            float distFraction = dist / maxDistance;
+            byte alpha = (byte)(255 * (1f - distFraction * distFraction)); // quadratic falloff
 
-            var (cr, cg, cb) = ai.Config.Faction switch
-            {
-                Faction.Pirate => new Color3(255, 80, 80),
-                Faction.Trader => new Color3(200, 180, 80),
-                Faction.Patrol => new Color3(80, 160, 255),
-                _ => new Color3(200, 200, 200)
-            };
+            RenderOffscreenIndicator(renderer, camera, transform.Position, 255, 80, 80, alpha: alpha);
+        }
+    }
 
-            RenderOffscreenIndicator(renderer, camera, transform.Position, cr, cg, cb);
+    /// <summary>Render off-screen indicators for planets and stations in the solar system, fading by distance.</summary>
+    public static void RenderSolarSystemObjectOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+        Entity playerShip, World ecsWorld,
+        List<Entity> planetEntities, List<PlanetData> planets,
+        List<Entity> stationEntities, List<SpaceStationData> stations,
+        float maxDistance = 5000f)
+    {
+        Vector2 playerPos = ecsWorld.IsAlive(playerShip)
+            ? ecsWorld.Get<Transform>(playerShip).Position
+            : camera.Position;
+
+        // Planets
+        for (int i = 0; i < planetEntities.Count; i++)
+        {
+            if (!ecsWorld.IsAlive(planetEntities[i])) continue;
+            var pos = ecsWorld.Get<Transform>(planetEntities[i]).Position;
+            float dist = Vector2.Distance(playerPos, pos);
+            if (dist > maxDistance) continue;
+            float distFraction = dist / maxDistance;
+            byte alpha = (byte)(255 * (1f - distFraction * distFraction));
+            string name = i < planets.Count ? planets[i].Name.ToUpper() : "PLANET";
+            byte pr = i < planets.Count ? planets[i].Color.R : (byte)180;
+            byte pg = i < planets.Count ? planets[i].Color.G : (byte)180;
+            byte pb = i < planets.Count ? planets[i].Color.B : (byte)180;
+            RenderOffscreenIndicator(renderer, camera, pos, pr, pg, pb,
+                prefix: name + " ", dotRadius: 4f, arrowSize: 9f, alpha: alpha);
+        }
+
+        // Stations
+        for (int i = 0; i < stationEntities.Count; i++)
+        {
+            if (!ecsWorld.IsAlive(stationEntities[i])) continue;
+            var pos = ecsWorld.Get<Transform>(stationEntities[i]).Position;
+            float dist = Vector2.Distance(playerPos, pos);
+            if (dist > maxDistance) continue;
+            float distFraction = dist / maxDistance;
+            byte alpha = (byte)(255 * (1f - distFraction * distFraction));
+            string name = i < stations.Count ? stations[i].Name.ToUpper() : "STATION";
+            RenderOffscreenIndicator(renderer, camera, pos, 100, 200, 255,
+                prefix: name + " ", dotRadius: 4f, arrowSize: 9f, alpha: alpha);
         }
     }
 
@@ -579,7 +621,7 @@ public static class HudRenderer
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
     private static void RenderOffscreenIndicator(SpriteRenderer renderer, Camera camera,
         Vector2 worldPos, byte cr, byte cg, byte cb, string? prefix = null,
-        float dotRadius = 3f, float arrowSize = 8f)
+        float dotRadius = 3f, float arrowSize = 8f, byte alpha = 255)
     {
         const float margin = 30f;
         float screenW = GameConfig.WindowWidth;
@@ -616,14 +658,16 @@ public static class HudRenderer
         float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
         float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
 
-        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, new Color4(cr, cg, cb, 255));
-        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, new Color4(cr, cg, cb, 255));
-        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, new Color4(cr, cg, cb, 255));
-        renderer.DrawLineScreen(ix, iy, tipX, tipY, new Color4(cr, cg, cb, 255));
-        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, new Color4(cr, cg, cb, 200));
-        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, new Color4(cr, cg, cb, 200));
+        byte a1 = alpha;
+        byte a2 = (byte)Math.Min((int)alpha, 200);
+        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, new Color4(cr, cg, cb, a1));
+        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, new Color4(cr, cg, cb, a1));
+        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, new Color4(cr, cg, cb, a1));
+        renderer.DrawLineScreen(ix, iy, tipX, tipY, new Color4(cr, cg, cb, a1));
+        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, new Color4(cr, cg, cb, a2));
+        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, new Color4(cr, cg, cb, a2));
 
-        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, new Color4(cr, cg, cb, 220));
+        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, new Color4(cr, cg, cb, (byte)Math.Min((int)alpha, 220)));
 
         // Distance label: world distance from screen edge to target
         float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
@@ -634,7 +678,7 @@ public static class HudRenderer
         float labelW = renderer.MeasureText(label, 1f);
         float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
         float labelOffY = -MathF.Sin(angle) * 16f - 4f;
-        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, new Color3(cr, cg, cb), 1f);
+        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, new Color4(cr, cg, cb, alpha), 1f);
     }
 
     // ─────────────────────────────────────────────────────────────
