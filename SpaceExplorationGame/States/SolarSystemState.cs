@@ -479,8 +479,6 @@ public class SolarSystemState : GameState
 
     public override void Update(Game game, float dt)
     {
-        var input = game.Input;
-
         // In-game menu active — no simulation
         if (_inGameMenuOverlay.IsOpen)
         {
