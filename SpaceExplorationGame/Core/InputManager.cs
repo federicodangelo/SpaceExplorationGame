@@ -44,6 +44,21 @@ public class InputManager
         MouseWheelY = 0;
     }
 
+    /// <summary>
+    /// Full reset: clears ALL input state (pressed, released, down, wheel).
+    /// Use on state transitions so the new state starts with a completely clean slate.
+    /// </summary>
+    public void Reset()
+    {
+        _keysDown.Clear();
+        _keysPressed.Clear();
+        _keysReleased.Clear();
+        _mouseDown.Clear();
+        _mousePressed.Clear();
+        _mouseReleased.Clear();
+        MouseWheelY = 0;
+    }
+
     /// <summary>Feed an SDL event into the input manager.</summary>
     public void ProcessEvent(SDL.Event e)
     {

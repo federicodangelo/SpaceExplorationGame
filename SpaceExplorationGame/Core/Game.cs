@@ -119,6 +119,10 @@ public class Game : IDisposable
         _pendingState = null;
 
         _currentState.Enter(this);
+
+        // Full reset so the new state doesn't react to any input
+        // (pressed, released, or held-down) from the previous state.
+        Input.Reset();
     }
 
     public void Run()

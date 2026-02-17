@@ -9,11 +9,11 @@ using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Hud;
-using SpaceExplorationGame.UI.Overlays;
 using SpaceExplorationGame.ECS.Systems.Movement;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.UI.Overlays.Menu;
+using SpaceExplorationGame.UI.Overlays.Map;
 
 namespace SpaceExplorationGame.States;
 
