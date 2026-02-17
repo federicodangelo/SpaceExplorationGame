@@ -178,9 +178,8 @@ public abstract class PanelOverlayBase : OverlayBase
 
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
 
-        // Panel border + background
-        renderer.DrawRectScreen(px - 2, py - 2, pw + 4, ph + 4, new Color4(60, 60, 100, 200));
-        renderer.DrawRectScreen(px, py, pw, ph, new Color4(15, 15, 35, 245));
+        // Panel frame with sci-fi styling
+        DrawFrame(renderer, px, py, pw, ph, 245);
 
         // Title
         renderer.DrawTextScreen(px + 15, py + 10, Title, TitleColor, 2.5f);
@@ -191,7 +190,7 @@ public abstract class PanelOverlayBase : OverlayBase
                 $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
 
         // Separator
-        renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, new Color3(60, 60, 100));
+        renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, new Color3(60, 80, 140));
 
         // Content (subclass renders here)
         RenderPanelContent(game, renderer, px, ContentY, pw, ContentHeight);

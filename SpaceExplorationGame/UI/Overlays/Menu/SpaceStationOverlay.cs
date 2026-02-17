@@ -189,27 +189,15 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
         int menuHeight = (int)Menu.TotalHeight;
 
-        // Panel border + background
-        renderer.DrawRectScreen(px - 2, py - 2, pw + 4, ph + 4, new Color4(60, 60, 100, 150));
-        renderer.DrawRectScreen(px, py, pw, ph, new Color4(15, 15, 35, 240));
-
-        // Corner accents
-        int accentLen = 30;
-        renderer.DrawLineScreen(px, py, px + accentLen, py, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px, py, px, py + accentLen, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px + pw, py, px + pw - accentLen, py, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px + pw, py, px + pw, py + accentLen, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px, py + ph, px + accentLen, py + ph, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px, py + ph, px, py + ph - accentLen, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px + pw, py + ph, px + pw - accentLen, py + ph, new Color3(100, 180, 255));
-        renderer.DrawLineScreen(px + pw, py + ph, px + pw, py + ph - accentLen, new Color3(100, 180, 255));
+        // Panel frame with sci-fi styling
+        DrawFrame(renderer, px, py, pw, ph, 240);
 
         // Title
         renderer.DrawTextScreen(px + 20, py + 20, "SPACE STATION", new Color3(100, 200, 255), 3f);
         renderer.DrawTextScreen(px + 20, py + 55, _station.Name.ToUpper(), new Color3(200, 200, 200), 2f);
         renderer.DrawTextScreen(px + 20, py + 80, $"IN SYSTEM: {_starSystem.Name}", new Color3(120, 120, 150), 1.5f);
 
-        renderer.DrawLineScreen(px + 20, py + 105, px + pw - 20, py + 105, new Color3(60, 60, 100));
+        renderer.DrawLineScreen(px + 20, py + 105, px + pw - 20, py + 105, new Color3(60, 80, 140));
 
         // Credits
         renderer.DrawTextScreen(px + pw - 200, py + 20, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);

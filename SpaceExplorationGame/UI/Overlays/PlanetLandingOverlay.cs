@@ -18,18 +18,12 @@ public class PlanetLandingOverlay : OverlayBase
 
     // Orbital map rendering
     private nint _terrainTexture;
-    private const float MapDisplaySize = 700f;  // base display size in pixels
-    private float _mapZoom = 1.0f;
-    private Vector2 _mapOffset = Vector2.Zero;  // pan offset in screen pixels
+    private const float MapDisplaySize = 700f;  // display size in pixels
 
     // Landing cursor
     private TilePos _cursorTile;
     private bool _hasCursor = false;
     private float _cursorPulse = 0f;  // animation timer
-
-    // Dragging / panning
-    private bool _isPanning = false;
-    private Vector2 _lastMouseScreen;
 
     // Double-click tracking
     private float _lastClickTime;
@@ -51,10 +45,7 @@ public class PlanetLandingOverlay : OverlayBase
         _moonIndex = moonIndex;
 
         // Reset state
-        _mapZoom = 1.0f;
-        _mapOffset = Vector2.Zero;
         _cursorPulse = 0f;
-        _isPanning = false;
         _lastClickTime = 0f;
         _lastClickTile = new TilePos(-1, -1);
 
@@ -93,66 +84,31 @@ public class PlanetLandingOverlay : OverlayBase
 
         var input = game.Input;
 
-        // Zoom with scroll
-        if (input.MouseWheelY != 0)
-        {
-            float oldZoom = _mapZoom;
-            _mapZoom += input.MouseWheelY * 0.15f;
-            _mapZoom = Math.Clamp(_mapZoom, 0.5f, 4.0f);
-
-            // Zoom toward mouse position
-            var mouseScreen = new Vector2(input.MouseX, input.MouseY);
-            var mapCenter = GetMapCenter();
-            var mouseRelative = mouseScreen - mapCenter - _mapOffset;
-            _mapOffset += mouseRelative * (1f - _mapZoom / oldZoom);
-        }
-
-        // Mouse panning with left-click drag (same as galaxy map)
+        // Click to select / double-click to land
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
-        if (input.IsMousePressed(1))
-        {
-            _lastMouseScreen = currentMouse;
-            _isPanning = false;
-        }
-        if (input.IsMouseDown(1))
-        {
-            Vector2 delta = currentMouse - _lastMouseScreen;
-            if (delta.LengthSquared() > 4f) // moved more than 2px
-            {
-                _isPanning = true;
-                _mapOffset += delta;
-                _lastMouseScreen = currentMouse;
-            }
-        }
-
-        // Click to select / double-click to land (on mouse release, only if not panning)
         if (input.IsMouseReleased(1))
         {
-            if (!_isPanning)
-            {
-                var tilePos = ScreenToTile(currentMouse);
+            var tilePos = ScreenToTile(currentMouse);
 
-                if (tilePos.X >= 0 && tilePos.X < _surfaceData.Width &&
-                    tilePos.Y >= 0 && tilePos.Y < _surfaceData.Height)
+            if (tilePos.X >= 0 && tilePos.X < _surfaceData.Width &&
+                tilePos.Y >= 0 && tilePos.Y < _surfaceData.Height)
+            {
+                float now = (float)game.GlobalTime;
+                if (tilePos == _lastClickTile && (now - _lastClickTime) < DoubleClickTime && _hasCursor)
                 {
-                    float now = (float)game.GlobalTime;
-                    if (tilePos == _lastClickTile && (now - _lastClickTime) < DoubleClickTime && _hasCursor)
-                    {
-                        // Double-click: confirm landing
-                        TryLand(game);
-                        _lastClickTile = new TilePos(-1, -1);
-                    }
-                    else
-                    {
-                        // Single click: select
-                        _cursorTile = tilePos;
-                        _hasCursor = true;
-                        _lastClickTime = now;
-                        _lastClickTile = tilePos;
-                    }
+                    // Double-click: confirm landing
+                    TryLand(game);
+                    _lastClickTile = new TilePos(-1, -1);
+                }
+                else
+                {
+                    // Single click: select
+                    _cursorTile = tilePos;
+                    _hasCursor = true;
+                    _lastClickTime = now;
+                    _lastClickTile = tilePos;
                 }
             }
-            _isPanning = false;
         }
 
         // WASD to nudge cursor
@@ -226,15 +182,25 @@ public class PlanetLandingOverlay : OverlayBase
         // Semi-transparent dark overlay so the solar system is visible behind
         renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, 180));
 
-        // Draw the terrain map
-        float displayW = MapDisplaySize * _mapZoom;
-        float displayH = MapDisplaySize * _mapZoom;
+        // Draw the terrain map (centered, shifted left to make room for info panel)
+        float displayW = MapDisplaySize;
+        float displayH = MapDisplaySize;
         var mapCenter = GetMapCenter();
-        float mapX = mapCenter.X - displayW / 2f + _mapOffset.X;
-        float mapY = mapCenter.Y - displayH / 2f + _mapOffset.Y;
+        float mapX = mapCenter.X - displayW / 2f - 130f;
+        float mapY = mapCenter.Y - displayH / 2f;
 
-        // Map border
-        renderer.DrawRectScreen(mapX - 2, mapY - 2, displayW + 4, displayH + 4, new Color4(60, 80, 120, 180));
+        // ── Map container frame ──
+        const float pad = 12f;           // padding between border and map
+        const float headerH = 30f;      // header strip height
+        float frameX = mapX - pad;
+        float frameY = mapY - pad - headerH;
+        float frameW = displayW + pad * 2;
+        float frameH = displayH + pad * 2 + headerH;
+
+        DrawFrameWithHeader(renderer, frameX, frameY, frameW, frameH, $"SURFACE SCAN - {_planet.Name.ToUpper()}");
+
+        // Inner map border (thin bright line right around the terrain)
+        renderer.DrawRectScreen(mapX - 1, mapY - 1, displayW + 2, displayH + 2, new Color4(50, 65, 110, 180));
 
         // Terrain texture
         var dstRect = new SDL.FRect { X = mapX, Y = mapY, W = displayW, H = displayH };
@@ -256,7 +222,7 @@ public class PlanetLandingOverlay : OverlayBase
             renderer.DrawRectScreen(sx - sw / 2f - 1, sy - sh / 2f - 1, sw + 2, sh + 2, new Color4(255, 220, 100, 180));
 
             // Settlement label
-            float labelScale = Math.Max(1f, _mapZoom * 0.8f);
+            float labelScale = 1f;
             float textW = renderer.MeasureText(settlement.Name, labelScale);
             renderer.DrawRectScreen(sx - textW / 2f - 2, sy - sh / 2f - 14 * labelScale, textW + 4, 12 * labelScale, new Color4(0, 0, 0, 160));
             renderer.DrawTextScreen(sx - textW / 2f, sy - sh / 2f - 13 * labelScale, settlement.Name, new Color3(255, 220, 100), labelScale);
@@ -317,7 +283,7 @@ public class PlanetLandingOverlay : OverlayBase
             if (infoPanelX + panelW > GameConfig.WindowWidth - 10) infoPanelX = cx - panelW - 15;
             if (infoPanelY + panelH > GameConfig.WindowHeight - 10) infoPanelY = cy - panelH - 15;
 
-            renderer.DrawRectScreen(infoPanelX - 4, infoPanelY - 4, panelW, panelH, new Color4(0, 0, 0, 180));
+            DrawFrame(renderer, infoPanelX - 4, infoPanelY - 4, panelW, panelH, 200);
 
             byte tr = canLand ? (byte)100 : (byte)255;
             byte tg = canLand ? (byte)255 : (byte)80;
@@ -333,32 +299,73 @@ public class PlanetLandingOverlay : OverlayBase
         }
 
         // --- HUD ---
-        // Title
-        float titleBgW = 500;
-        renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - titleBgW / 2f, 8, titleBgW, 32, new Color4(0, 0, 0, 180));
+        const float hudMargin = 5f;
+
+        // Title (centered above map)
         string title = $"ORBITAL VIEW - {_planet.Name.ToUpper()}";
         float titleW = renderer.MeasureText(title, 2.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, 14, title, new Color3(180, 200, 255), 2.5f);
+        float titleBgW = titleW + 30;
+        DrawFrame(renderer, GameConfig.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
+        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
 
-        // Planet info
-        renderer.DrawRectScreen(10, 50, 240, 68, new Color4(0, 0, 0, 180));
-        renderer.DrawTextScreen(16, 56, $"TYPE: {_planet.Type.ToString().ToUpper()}", new Color3(150, 150, 150), 1.5f);
-        renderer.DrawTextScreen(16, 74, $"SIZE: {_surfaceData.Width}x{_surfaceData.Height} TILES", new Color3(150, 150, 150), 1.5f);
+        // Planet info panel (positioned to the right of the map)
+        float infoPanelW = 260;
+        float ipX = mapX + displayW + pad + 20f;
+        float ipY = frameY;
+        float ipH = frameH;
+        DrawFrame(renderer, ipX, ipY, infoPanelW, ipH, 220);
+
+        // Planet info header
+        renderer.DrawRectScreen(ipX, ipY, infoPanelW, 30, new Color4(30, 40, 70, 240));
+        renderer.DrawRectScreen(ipX, ipY + 29, infoPanelW, 1, new Color4(60, 80, 140, 200));
+        string infoLabel = "PLANET DATA";
+        float infoLabelW = renderer.MeasureText(infoLabel, 1.8f);
+        renderer.DrawTextScreen(ipX + infoPanelW / 2f - infoLabelW / 2f, ipY + 6, infoLabel, new Color3(140, 170, 220), 1.8f);
+
+        // Planet info content
+        float ipContentY = ipY + 40;
+        renderer.DrawTextScreen(ipX + 12, ipContentY, "NAME", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 16, _planet.Name.ToUpper(), new Color3(200, 220, 255), 1.8f);
+
+        renderer.DrawRectScreen(ipX + 12, ipContentY + 42, infoPanelW - 24, 1, new Color4(40, 55, 90, 150));
+
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 52, "TYPE", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 68, _planet.Type.ToString().ToUpper(), new Color3(200, 200, 200), 1.8f);
+
+        renderer.DrawRectScreen(ipX + 12, ipContentY + 94, infoPanelW - 24, 1, new Color4(40, 55, 90, 150));
+
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 104, "SIZE", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 120, $"{_surfaceData.Width} x {_surfaceData.Height} TILES", new Color3(200, 200, 200), 1.8f);
+
+        renderer.DrawRectScreen(ipX + 12, ipContentY + 146, infoPanelW - 24, 1, new Color4(40, 55, 90, 150));
+
         int settlementCount = _surfaceData.Settlements.Count;
-        string settText = settlementCount > 0 ? $"SETTLEMENTS: {settlementCount}" : "NO SETTLEMENTS";
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 156, "SETTLEMENTS", new Color3(100, 120, 160), 1.3f);
+        string settText = settlementCount > 0 ? settlementCount.ToString() : "NONE";
         byte settR = settlementCount > 0 ? (byte)255 : (byte)120;
         byte settG = settlementCount > 0 ? (byte)220 : (byte)120;
         byte settB = settlementCount > 0 ? (byte)100 : (byte)120;
-        renderer.DrawTextScreen(16, 92, settText, new Color3(settR, settG, settB), 1.5f);
+        renderer.DrawTextScreen(ipX + 12, ipContentY + 172, settText, new Color3(settR, settG, settB), 1.8f);
 
-        // Controls
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, GameConfig.WindowHeight - 130, 310, 125, new Color4(0, 0, 0, 180));
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 124, "CLICK: SELECT LANDING SITE", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 104, "WASD/ARROWS: NUDGE CURSOR", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 84, "SCROLL: ZOOM MAP", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 64, "LEFT-DRAG: PAN MAP", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 44, "DBLCLICK/ENTER: LAND", new Color3(100, 255, 100), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, GameConfig.WindowHeight - 24, "ESC: CANCEL", new Color3(255, 150, 150), 1.5f);
+        // Settlement names (if any)
+        if (settlementCount > 0)
+        {
+            renderer.DrawRectScreen(ipX + 12, ipContentY + 198, infoPanelW - 24, 1, new Color4(40, 55, 90, 150));
+            float settListY = ipContentY + 208;
+            foreach (var s in _surfaceData.Settlements)
+            {
+                renderer.DrawTextScreen(ipX + 16, settListY, $"> {s.Name}", new Color3(255, 220, 100), 1.3f);
+                settListY += 16;
+            }
+        }
+
+        // Controls (bottom of info panel)
+        float ctrlStartY = ipY + ipH - 110;
+        renderer.DrawRectScreen(ipX + 12, ctrlStartY, infoPanelW - 24, 1, new Color4(40, 55, 90, 150));
+        renderer.DrawTextScreen(ipX + 12, ctrlStartY + 8, "CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ctrlStartY + 24, "WASD/ARROWS: NUDGE", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ctrlStartY + 40, "DBLCLICK/ENTER: LAND", new Color3(100, 255, 100), 1.3f);
+        renderer.DrawTextScreen(ipX + 12, ctrlStartY + 56, "ESC: CANCEL", new Color3(255, 150, 150), 1.3f);
 
         // Landing prompt
         if (_hasCursor)
@@ -370,8 +377,8 @@ public class PlanetLandingOverlay : OverlayBase
             byte pg = canLand ? (byte)255 : (byte)80;
             byte pb = canLand ? (byte)100 : (byte)80;
             float promptW = renderer.MeasureText(prompt, 2f);
-            renderer.DrawRectScreen(GameConfig.WindowWidth / 2f - promptW / 2f - 6, GameConfig.WindowHeight - 50, promptW + 12, 28, new Color4(0, 0, 0, 180));
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - promptW / 2f, GameConfig.WindowHeight - 45, prompt, new Color3(pr, pg, pb), 2f);
+            DrawFrame(renderer, GameConfig.WindowWidth / 2f - promptW / 2f - 6, GameConfig.WindowHeight - 50 - hudMargin, promptW + 12, 28, 200);
+            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - promptW / 2f, GameConfig.WindowHeight - 45 - hudMargin, prompt, new Color3(pr, pg, pb), 2f);
         }
     }
 
@@ -448,10 +455,10 @@ public class PlanetLandingOverlay : OverlayBase
     private TilePos ScreenToTile(Vector2 screenPos)
     {
         var mapCenter = GetMapCenter();
-        float displayW = MapDisplaySize * _mapZoom;
-        float displayH = MapDisplaySize * _mapZoom;
-        float mapX = mapCenter.X - displayW / 2f + _mapOffset.X;
-        float mapY = mapCenter.Y - displayH / 2f + _mapOffset.Y;
+        float displayW = MapDisplaySize;
+        float displayH = MapDisplaySize;
+        float mapX = mapCenter.X - displayW / 2f - 130f;
+        float mapY = mapCenter.Y - displayH / 2f;
 
         float relX = (screenPos.X - mapX) / displayW;
         float relY = (screenPos.Y - mapY) / displayH;

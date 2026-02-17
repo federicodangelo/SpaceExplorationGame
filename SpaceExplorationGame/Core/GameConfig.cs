@@ -36,7 +36,7 @@ public static class GameConfig
 
     public const float GalaxyMapZoomMin = 0.05f;
     public const float GalaxyMapZoomMax = 6.0f;
-    public const float GalaxyMapZoomDefault = 0.5f;
+    public const float GalaxyMapZoomDefault = 0.1f;
 
     // Galaxy
     public const int GalaxyWidth = 2000;   // in tiles

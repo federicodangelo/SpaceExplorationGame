@@ -118,7 +118,6 @@ public class GalaxyMapOverlay : OverlayBase
         foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
         _starTextures.Clear();
         _nebulae.Clear();
-        _starSystems.Clear();
         _backgroundStars.Clear();
 
         base.Close();
@@ -181,7 +180,6 @@ public class GalaxyMapOverlay : OverlayBase
             foreach (var tex in _starTextures) game.StarRenderer.DestroyTexture(tex);
             _starTextures.Clear();
             _nebulae.Clear();
-            _starSystems.Clear();
             _backgroundStars.Clear();
             IsOpen = false;
             game.ChangeState(new SolarSystemState(targetSystem));
@@ -451,18 +449,19 @@ public class GalaxyMapOverlay : OverlayBase
         }
 
         // HUD background
-        renderer.DrawRectScreen(0, 0, 260, 115, new Color4(0, 0, 0, 160));
+        const float hudMargin = 5f;
+        DrawFrame(renderer, hudMargin, hudMargin, 260, 115, 200);
 
         // HUD
-        renderer.DrawTextScreen(10, 10, "GALAXY MAP", new Color3(200, 200, 255), 2f);
-        renderer.DrawTextScreen(10, 35, $"SEED: {game.Seeds.GalaxySeed}", new Color3(150, 150, 150), 1.5f);
-        renderer.DrawTextScreen(10, 55, $"SYSTEMS: {_starSystems.Count}", new Color3(150, 150, 150), 1.5f);
+        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 10, "GALAXY MAP", new Color3(200, 200, 255), 2f);
+        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 35, $"SEED: {game.Seeds.GalaxySeed}", new Color3(150, 150, 150), 1.5f);
+        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 55, $"SYSTEMS: {_starSystems.Count}", new Color3(150, 150, 150), 1.5f);
 
         // Fuel gauge
-        renderer.DrawTextScreen(10, 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
+        renderer.DrawTextScreen(hudMargin + 10, hudMargin + 75, $"FUEL: {game.Player.ShipFuel:F1}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
         float fuelBarW = 200;
-        renderer.DrawRectScreen(10, 95, fuelBarW, 10, new Color3(40, 40, 40));
-        renderer.DrawRectScreen(10, 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, new Color3(100, 200, 255));
+        renderer.DrawRectScreen(hudMargin + 10, hudMargin + 95, fuelBarW, 10, new Color3(40, 40, 40));
+        renderer.DrawRectScreen(hudMargin + 10, hudMargin + 95, fuelBarW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 10, new Color3(100, 200, 255));
 
         if (_selectedSystemIndex >= 0)
         {
@@ -480,19 +479,20 @@ public class GalaxyMapOverlay : OverlayBase
             int missionExtraHeight = missionsHere.Count > 0 ? (missionsHere.Count * 18 + 5) : 0;
 
             float panelHeight = 180 + missionExtraHeight;
-            float panelY = GameConfig.WindowHeight - panelHeight;
-            renderer.DrawRectScreen(0, panelY, 420, panelHeight, new Color4(10, 10, 30, 200));
-            renderer.DrawTextScreen(10, panelY + 10, $"SELECTED: {sys.Name}", new Color3(255, 255, 255), 2f);
-            renderer.DrawTextScreen(10, panelY + 35, $"CLASS: {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
-            renderer.DrawTextScreen(10, panelY + 55, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
-            renderer.DrawTextScreen(10, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", new Color3(200, 200, 200), 1.5f);
+            float panelY = GameConfig.WindowHeight - panelHeight - hudMargin;
+            DrawFrame(renderer, hudMargin, panelY, 420, panelHeight, 220);
+            float selX = hudMargin + 10;
+            renderer.DrawTextScreen(selX, panelY + 10, $"SELECTED: {sys.Name}", new Color3(255, 255, 255), 2f);
+            renderer.DrawTextScreen(selX, panelY + 35, $"CLASS: {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(selX, panelY + 55, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(selX, panelY + 75, $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}", new Color3(200, 200, 200), 1.5f);
 
             // Danger level with color coding
             string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)} ({sys.DangerLevel}/5)";
             byte dangerR = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)255 : (byte)255;
             byte dangerG = sys.DangerLevel <= 2 ? (byte)255 : sys.DangerLevel <= 3 ? (byte)200 : (byte)80;
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
-            renderer.DrawTextScreen(10, panelY + 95, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
+            renderer.DrawTextScreen(selX, panelY + 95, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
 
             // Mission markers for this system
             float infoY = panelY + 115;
@@ -502,7 +502,7 @@ public class GalaxyMapOverlay : OverlayBase
                 {
                     var mc = m.TypeColor;
                     string statusTag = m.Status == MissionStatus.Completed ? " [DONE]" : "";
-                    renderer.DrawTextScreen(10, infoY, $"[!] {m.TypeLabel}: {m.Title}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.5f);
+                    renderer.DrawTextScreen(selX, infoY, $"[!] {m.TypeLabel}: {m.Title}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.5f);
                     infoY += 18;
                 }
                 infoY += 5;
@@ -510,35 +510,36 @@ public class GalaxyMapOverlay : OverlayBase
 
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(10, infoY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
-                renderer.DrawTextScreen(10, infoY + 20, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
+                renderer.DrawTextScreen(selX, infoY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(selX, infoY + 20, "[ENTER/DBLCLICK] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
             }
             else
             {
-                renderer.DrawTextScreen(10, infoY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
+                renderer.DrawTextScreen(selX, infoY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(10, infoY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
+                renderer.DrawTextScreen(selX, infoY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(10, infoY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(selX, infoY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(10, infoY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(selX, infoY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
                 else
-                    renderer.DrawTextScreen(10, infoY + 40, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
+                    renderer.DrawTextScreen(selX, infoY + 40, "[ENTER/DBLCLICK] TRAVEL", new Color3(100, 255, 100), 1.5f);
             }
         }
 
         // Controls help background
-        renderer.DrawRectScreen(GameConfig.WindowWidth - 310, 5, 310, 110, new Color4(0, 0, 0, 160));
+        float ctrlX = GameConfig.WindowWidth - 315;
+        DrawFrame(renderer, ctrlX, hudMargin, 310, 110, 200);
 
         // Controls help
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 10, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 30, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 50, "CLICK: SELECT", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 70, "DBLCLICK/ENTER: TRAVEL", new Color3(180, 180, 180), 1.5f);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - 300, 90, "M/ESC: CLOSE MAP", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 10, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 30, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 50, "CLICK: SELECT", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 70, "DBLCLICK/ENTER: TRAVEL", new Color3(180, 180, 180), 1.5f);
+        renderer.DrawTextScreen(ctrlX + 10, hudMargin + 90, "M/ESC: CLOSE MAP", new Color3(180, 180, 180), 1.5f);
     }
 
     private static void DrawMissionDiamond(SpriteRenderer renderer, Camera camera,
