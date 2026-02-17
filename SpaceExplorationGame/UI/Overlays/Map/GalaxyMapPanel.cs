@@ -183,11 +183,12 @@ public class GalaxyMapPanel : MapPanelBase
             float fuelCost = GetFuelCost(current, _selectedSystemIndex);
             game.Player.TrySpendFuel(fuelCost);
             game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
+            var sourceSystem = _starSystems[current];
             var targetSystem = _starSystems[_selectedSystemIndex];
             _nebulae.Clear();
             _backgroundStars.Clear();
             OnRequestClose?.Invoke(game);
-            game.ChangeState(new FTLTransitionState(targetSystem));
+            game.ChangeState(new FTLTransitionState(sourceSystem, targetSystem));
         }
     }
 

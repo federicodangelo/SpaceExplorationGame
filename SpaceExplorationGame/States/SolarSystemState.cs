@@ -254,7 +254,7 @@ public class SolarSystemState : GameState
         else
         {
             // Default: start near the star (close enough to see it on arrival)
-            shipStartPos = center + new Vector2(400, 0);
+            shipStartPos = center + new Vector2(-400, 0);
         }
 
         // Clear return context

@@ -15,7 +15,12 @@ public class FTLTransitionState : GameState
 {
     public override GameStateType Type => GameStateType.SolarSystem;
 
+    private readonly StarSystemData _sourceSystem;
     private readonly StarSystemData _targetSystem;
+
+    // ── Star textures (created on Enter, destroyed on Exit) ──
+    private nint _sourceStarTexture;
+    private nint _targetStarTexture;
 
     // ── Animation timing ──
     private float _elapsed;
@@ -46,8 +51,9 @@ public class FTLTransitionState : GameState
     // ── RNG ──
     private readonly Random _rng = new();
 
-    public FTLTransitionState(StarSystemData targetSystem)
+    public FTLTransitionState(StarSystemData sourceSystem, StarSystemData targetSystem)
     {
+        _sourceSystem = sourceSystem;
         _targetSystem = targetSystem;
     }
 
@@ -64,9 +70,28 @@ public class FTLTransitionState : GameState
         _wavePositions.Clear();
         for (int i = 0; i < WaveCount; i++)
             _wavePositions.Add(ScreenW + i * (ScreenW / WaveCount));
+
+        // Create star textures for source and target systems
+        int sourceSize = Math.Max((int)(_sourceSystem.StarRadius * 6), 32);
+        _sourceStarTexture = game.StarRenderer.CreateTexture(sourceSize, _sourceSystem.StarColor);
+        int targetSize = Math.Max((int)(_targetSystem.StarRadius * 6), 32);
+        _targetStarTexture = game.StarRenderer.CreateTexture(targetSize, _targetSystem.StarColor);
     }
 
-    public override void Exit(Game game) { }
+    public override void Exit(Game game)
+    {
+        // Clean up star textures
+        if (_sourceStarTexture != nint.Zero)
+        {
+            game.StarRenderer.DestroyTexture(_sourceStarTexture);
+            _sourceStarTexture = nint.Zero;
+        }
+        if (_targetStarTexture != nint.Zero)
+        {
+            game.StarRenderer.DestroyTexture(_targetStarTexture);
+            _targetStarTexture = nint.Zero;
+        }
+    }
 
     public override void UpdateInput(Game game)
     {
@@ -139,6 +164,9 @@ public class FTLTransitionState : GameState
         byte bgB = (byte)(_elapsed >= ChargeDuration ? 12 : (byte)(_elapsed / ChargeDuration * 12));
         renderer.DrawRectScreen(0, 0, ScreenW, ScreenH, new Color4(0, 0, bgB, 255));
 
+        // ── Source & target stars ──
+        RenderSystemStars(game, renderer);
+
         // ── Star streaks ──
         RenderStars(renderer);
 
@@ -181,6 +209,93 @@ public class FTLTransitionState : GameState
     }
 
     public override void HandleEvent(Game game, SDL.Event e) { }
+
+    // ─────────────────────────────────────────────────────────────
+    //  SYSTEM STARS (source & target)
+    // ─────────────────────────────────────────────────────────────
+
+    private void RenderSystemStars(Game game, SpriteRenderer renderer)
+    {
+        float chargeEnd = ChargeDuration;
+        float flashEnd = chargeEnd + JumpFlashDuration;
+        float travelEnd = flashEnd + TravelDuration;
+
+        float sourceDisplaySize = MathF.Max(_sourceSystem.StarRadius * 6f, 32f);
+        float targetDisplaySize = MathF.Max(_targetSystem.StarRadius * 6f, 32f);
+
+        // ── Source star (starts at left-of-center, scrolls off-screen left) ──
+        if (_elapsed < travelEnd)
+        {
+            float sourceX;
+            byte sourceAlpha;
+
+            if (_elapsed < chargeEnd)
+            {
+                // During charge: star is visible on the far left, slowly drifting left
+                float p = _elapsed / chargeEnd;
+                sourceX = ScreenW * 0.12f - p * 60f;
+                sourceAlpha = (byte)(200 - p * 40);
+            }
+            else
+            {
+                // During travel: rapidly scrolls off to the left
+                float timeSinceFlash = _elapsed - flashEnd;
+                float travelP = MathF.Max(timeSinceFlash / TravelDuration, 0f);
+                sourceX = ScreenW * 0.12f - 60f - travelP * ScreenW * 1.5f;
+                sourceAlpha = (byte)(160 * MathF.Max(1f - travelP * 3f, 0f));
+            }
+
+            if (sourceAlpha > 3 && sourceX > -sourceDisplaySize * 2)
+            {
+                renderer.DrawTextureScreen(_sourceStarTexture,
+                    sourceX, CY, sourceDisplaySize, sourceDisplaySize, 0f, sourceAlpha);
+
+                // Star name label below
+                string srcName = _sourceSystem.Name.ToUpperInvariant();
+                float nameW = renderer.MeasureText(srcName, 1f);
+                renderer.DrawTextScreen(sourceX - nameW / 2f, CY + sourceDisplaySize * 0.55f,
+                    srcName, new Color4(_sourceSystem.StarColor.R, _sourceSystem.StarColor.G,
+                    _sourceSystem.StarColor.B, (byte)(sourceAlpha * 0.7f)), 1f);
+            }
+        }
+
+        // ── Target star (scrolls in from the right during exit) ──
+        if (_elapsed >= travelEnd - TravelDuration * 0.15f)
+        {
+            float targetX;
+            byte targetAlpha;
+
+            if (_elapsed < travelEnd)
+            {
+                // End of travel: star appears at far right edge
+                float preArrival = (travelEnd - _elapsed) / (TravelDuration * 0.15f);
+                targetX = ScreenW + targetDisplaySize - (1f - preArrival) * ScreenW * 0.3f;
+                targetAlpha = (byte)(40 * (1f - preArrival));
+            }
+            else
+            {
+                // During exit: star slides in to rest position on the right side
+                float p = (_elapsed - travelEnd) / ExitDuration;
+                float eased = 1f - (1f - p) * (1f - p); // ease-out quad
+                targetX = ScreenW * 0.88f + (1f - eased) * ScreenW * 0.3f;
+                targetAlpha = (byte)(40 + eased * 200);
+            }
+
+            if (targetAlpha > 3)
+            {
+                renderer.DrawTextureScreen(_targetStarTexture,
+                    targetX, CY, targetDisplaySize, targetDisplaySize, 0f, targetAlpha);
+
+                // Star name label below
+                string tgtName = _targetSystem.Name.ToUpperInvariant();
+                float nameW = renderer.MeasureText(tgtName, 1f);
+                byte labelAlpha = (byte)MathF.Min(targetAlpha * 0.7f, 255);
+                renderer.DrawTextScreen(targetX - nameW / 2f, CY + targetDisplaySize * 0.55f,
+                    tgtName, new Color4(_targetSystem.StarColor.R, _targetSystem.StarColor.G,
+                    _targetSystem.StarColor.B, labelAlpha), 1f);
+            }
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  STAR MANAGEMENT
