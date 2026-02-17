@@ -524,6 +524,12 @@ public class PlayerData
     /// <summary>Color of the navigation target marker.</summary>
     public Color3 NavTargetColor { get; set; } = new(255, 200, 100);
 
+    /// <summary>World X position of the surface navigation target.</summary>
+    public float NavTargetWorldX { get; set; }
+
+    /// <summary>World Y position of the surface navigation target.</summary>
+    public float NavTargetWorldY { get; set; }
+
     /// <summary>Whether the player has an active navigation target.</summary>
     public bool HasNavigationTarget => NavTargetType != NavigationTargetType.None;
 
@@ -571,6 +577,19 @@ public class PlayerData
         NavTargetColor = color;
     }
 
+    /// <summary>Set a surface-level target (settlement, ship, etc.) as the nav target.</summary>
+    public void SetNavTargetSurface(string name, Color3 color, float worldX, float worldY)
+    {
+        NavTargetType = NavigationTargetType.SurfaceTarget;
+        NavTargetPlanetIndex = -1;
+        NavTargetMoonIndex = -1;
+        NavTargetStationIndex = -1;
+        NavTargetName = name;
+        NavTargetColor = color;
+        NavTargetWorldX = worldX;
+        NavTargetWorldY = worldY;
+    }
+
     /// <summary>Clear the navigation target.</summary>
     public void ClearNavigationTarget()
     {
@@ -580,6 +599,8 @@ public class PlayerData
         NavTargetStationIndex = -1;
         NavTargetName = "";
         NavTargetColor = new Color3(255, 200, 100);
+        NavTargetWorldX = 0;
+        NavTargetWorldY = 0;
     }
 }
 
@@ -590,5 +611,6 @@ public enum NavigationTargetType
     Star,
     Planet,
     Moon,
-    Station
+    Station,
+    SurfaceTarget
 }

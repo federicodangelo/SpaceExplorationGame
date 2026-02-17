@@ -12,6 +12,7 @@ using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Hud;
+using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
@@ -75,6 +76,9 @@ public class PlanetSurfaceState : GameState
 
     // In-game menu overlay
     private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.PlanetSurface };
+
+    // Surface map overlay (M key)
+    private readonly PlanetSurfaceMapOverlay _surfaceMapOverlay = new();
 
     // Starship menu overlay (shown on landing and when boarding)
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
@@ -260,6 +264,13 @@ public class PlanetSurfaceState : GameState
             var health = game.EcsWorld.Get<Health>(_playerAvatar);
             game.Player.AvatarHealth = health.Hull;
         }
+
+        // Clear surface nav target since positions are only valid on this planet
+        if (game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+            game.Player.ClearNavigationTarget();
+
+        // Clean up surface map overlay texture
+        _surfaceMapOverlay.Cleanup();
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
@@ -282,6 +293,10 @@ public class PlanetSurfaceState : GameState
             return;
         }
 
+        // Surface map overlay
+        if (_surfaceMapOverlay.UpdateInput(game))
+            return;
+
         // In-game menu overlay
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
@@ -291,6 +306,19 @@ public class PlanetSurfaceState : GameState
         if (input.IsKeyPressed(SDL.Scancode.Escape))
         {
             _inGameMenuOverlay.Open(game);
+            return;
+        }
+
+        // Open surface map overlay
+        if (input.IsKeyPressed(SDL.Scancode.M))
+        {
+            var avatarPos = game.EcsWorld.Get<Transform>(_playerAvatar).Position;
+            var shipPos = game.EcsWorld.Get<Transform>(_shipEntity).Position;
+            Vector2? vehiclePos = _vehicleDeployed
+                ? game.EcsWorld.Get<Transform>(_vehicleEntity).Position
+                : null;
+            _surfaceMapOverlay.Open(game, _starSystem, _planet, _surfaceData,
+                shipPos, avatarPos, vehiclePos);
             return;
         }
 
@@ -456,9 +484,13 @@ public class PlanetSurfaceState : GameState
             return;
         }
 
-        // Starship menu or in-game menu active — no simulation
-        if (_starshipMenuOverlay.IsOpen || _inGameMenuOverlay.IsOpen)
+        // Starship menu, surface map, or in-game menu active — no simulation
+        if (_starshipMenuOverlay.IsOpen || _surfaceMapOverlay.IsOpen || _inGameMenuOverlay.IsOpen)
+        {
+            if (_surfaceMapOverlay.IsOpen)
+                _surfaceMapOverlay.Update(game, dt);
             return;
+        }
 
         if (_inVehicle)
         {
@@ -663,6 +695,15 @@ public class PlanetSurfaceState : GameState
             game.Player, (float)game.GlobalTime, _starSystem.Index, _planet.Index,
             _surfaceData.Settlements);
 
+        // Draw navigation target marker in the world
+        if (game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+        {
+            var targetPos = new Vector2(game.Player.NavTargetWorldX, game.Player.NavTargetWorldY);
+            HudRenderer.RenderSurfaceNavTargetMarker(renderer, camera,
+                targetPos, game.Player.NavTargetName, game.Player.NavTargetColor,
+                (float)game.GlobalTime);
+        }
+
         // Draw ship
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
         float shipScale = 1f;
@@ -751,12 +792,23 @@ public class PlanetSurfaceState : GameState
             HudRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
             HudRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _planet.Index, _surfaceData.Settlements);
+
+            // Navigation target indicator
+            if (game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+            {
+                var targetPos = new Vector2(game.Player.NavTargetWorldX, game.Player.NavTargetWorldY);
+                HudRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
+                    targetPos, game.Player.NavTargetName, game.Player.NavTargetColor);
+            }
         }
 
 
 
         // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);
+
+        // Surface map overlay drawn on top of everything
+        _surfaceMapOverlay.Render(game);
 
         // Starship menu overlay drawn on top of everything
         _starshipMenuOverlay.Render(game);

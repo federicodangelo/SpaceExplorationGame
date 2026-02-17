@@ -901,4 +901,39 @@ public static class HudRenderer
             targetColor.R, targetColor.G, targetColor.B,
             prefix: $"TARGET: {targetName}", dotRadius: 5f, arrowSize: 10f);
     }
+
+    /// <summary>
+    /// Render a pulsing world-space marker at the navigation target position on the planet surface.
+    /// Shows concentric rings, a crosshair, and a label.
+    /// </summary>
+    public static void RenderSurfaceNavTargetMarker(SpriteRenderer renderer, Camera camera,
+        Vector2 targetWorldPos, string targetName, Color3 targetColor, float globalTime)
+    {
+        float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));
+        byte alpha1 = (byte)(120 + (int)(pulse * 135));
+        byte alpha2 = (byte)(60 + (int)(pulse * 80));
+
+        // Pulsing rings
+        float innerR = 12f + pulse * 4f;
+        float outerR = innerR + 6f;
+        renderer.DrawCircle(camera, targetWorldPos, innerR, new Color4(targetColor.R, targetColor.G, targetColor.B, alpha1));
+        renderer.DrawCircle(camera, targetWorldPos, outerR, new Color4(targetColor.R, targetColor.G, targetColor.B, alpha2));
+
+        // Crosshair lines
+        float crossLen = 8f;
+        var crossColor = new Color4(targetColor.R, targetColor.G, targetColor.B, alpha1);
+        renderer.DrawLine(camera,
+            targetWorldPos + new Vector2(-crossLen, 0), targetWorldPos + new Vector2(-innerR + 2, 0), crossColor);
+        renderer.DrawLine(camera,
+            targetWorldPos + new Vector2(crossLen, 0), targetWorldPos + new Vector2(innerR - 2, 0), crossColor);
+        renderer.DrawLine(camera,
+            targetWorldPos + new Vector2(0, -crossLen), targetWorldPos + new Vector2(0, -innerR + 2), crossColor);
+        renderer.DrawLine(camera,
+            targetWorldPos + new Vector2(0, crossLen), targetWorldPos + new Vector2(0, innerR - 2), crossColor);
+
+        // Label above marker
+        string label = $"[TARGET: {targetName}]";
+        renderer.DrawText(camera, targetWorldPos + new Vector2(0, -outerR - 10),
+            label, new Color4(targetColor.R, targetColor.G, targetColor.B, alpha1), Math.Max(1f, camera.Zoom * 0.8f));
+    }
 }
