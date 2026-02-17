@@ -786,6 +786,5 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] FTL travel animation (hyperspace tunnel with star streaks, charge-up → tunnel → exit flash)
 
 ## TODO / Next Steps
-- [ ] Fuel consumption during local flight
 - [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game
