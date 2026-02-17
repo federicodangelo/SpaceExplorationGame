@@ -3,6 +3,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.UI;
+using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 
@@ -30,30 +31,7 @@ public class MainMenuState : GameState
     // Background stars for visual flair
     private List<AnimatedStar> _bgStars = [];
 
-    private static readonly MenuOption<StartOption>[] MenuOptions =
-    [
-        new(StartOption.StarSystem, "STAR SYSTEM", "Start inside a random star system, ready to explore"),
-        new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
-        new(StartOption.SpaceStation, "SPACE STATION", "Dock at a random space station"),
-        new(StartOption.SpaceStationInside, "INSIDE SPACE STATION", "Walk around inside a random space station"),
-        new(StartOption.PlanetSurface, "PLANET SURFACE", "Land directly on a random planet's surface"),
-        new(StartOption.Settlement, "SETTLEMENT", "Start at a settlement on an inhabited planet"),
-        new(StartOption.SettlementInside, "INSIDE SETTLEMENT", "Walk around inside a random settlement")
-    ];
-
-    private readonly MenuWidget<StartOption> _menu = new(MenuOptions)
-    {
-        CenterAlign = true,
-        ItemHeight = 50f,
-        SelectedScale = 2.5f,
-        NormalScale = 2f,
-        SelectedColor = new Color3(220, 240, 255),
-        NormalColor = new Color3(140, 140, 160),
-        HighlightBg = new Color3(40, 60, 120),
-        HighlightAlpha = 180,
-        DescriptionScale = 1.5f,
-        DescriptionColor = new Color3(160, 160, 180)
-    };
+    private readonly MainMenuOverlay _menuOverlay = new();
 
     // Auto-launch: if not None, skip menu and launch this option immediately
     private readonly StartOption _autoLaunchOption;
@@ -74,6 +52,10 @@ public class MainMenuState : GameState
             LaunchOption(game, _autoLaunchOption);
             return;
         }
+
+        // Open the menu overlay
+        _menuOverlay.Open();
+
         // Generate background stars
         var rng = new Random(42);
         for (int i = 0; i < 200; i++)
@@ -93,21 +75,19 @@ public class MainMenuState : GameState
 
     public override void UpdateInput(Game game)
     {
-        var input = game.Input;
+        _menuOverlay.UpdateInput(game);
 
-        float menuTotalHeight = MenuOptions.Length * _menu.ItemHeight;
-        float menuStartY = (GameConfig.WindowHeight - menuTotalHeight) / 2f;
-        float centerX = GameConfig.WindowWidth / 2f;
-        float menuW = 420f;
-
-        var confirmed = _menu.Update(input, centerX - menuW / 2f, menuStartY, menuW);
-        if (confirmed is { } option)
+        if (_menuOverlay.SelectedOption is { } option)
+        {
+            _menuOverlay.SelectedOption = null;
             LaunchOption(game, option);
+        }
     }
 
     public override void Update(Game game, float dt)
     {
         _animTimer += dt;
+        _menuOverlay.Update(game, dt);
     }
 
     private void LaunchOption(Game game, StartOption option)
@@ -340,10 +320,7 @@ public class MainMenuState : GameState
         float titleScale = 4f;
         float titleW = renderer.MeasureText(title, titleScale);
         float titleX = GameConfig.WindowWidth / 2f - titleW / 2f;
-
-        float menuTotalHeight = MenuOptions.Length * _menu.ItemHeight;
-        float menuStartY = (GameConfig.WindowHeight - menuTotalHeight) / 2f;
-        float titleY = menuStartY - 100;
+        float titleY = _menuOverlay.PanelTop - 80;
 
         // Title glow effect
         byte glowR = (byte)(120 + 40 * MathF.Sin(_animTimer * 0.8f));
@@ -351,29 +328,12 @@ public class MainMenuState : GameState
         byte glowB = (byte)(220 + 35 * MathF.Sin(_animTimer * 0.8f + 1f));
         renderer.DrawTextScreen(titleX, titleY, title, new Color3(glowR, glowG, glowB), titleScale);
 
-        // Subtitle
-        string subtitle = "CHOOSE YOUR STARTING POINT";
-        float subtitleScale = 1.8f;
-        float subtitleW = renderer.MeasureText(subtitle, subtitleScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - subtitleW / 2f, titleY + 50,
-            subtitle, new Color3(120, 120, 140), subtitleScale);
-
-        // Menu options
-        float centerX = GameConfig.WindowWidth / 2f;
-        float menuW = 420f;
-
-        _menu.Render(renderer, centerX - menuW / 2f, menuStartY, menuW);
+        // Menu overlay (renders the panel with options)
+        _menuOverlay.Render(game);
 
         // Bottom info
         string seedInfo = $"SEED: {game.Seeds.GalaxySeed}";
         float seedScale = 1.3f;
         renderer.DrawTextScreen(10, GameConfig.WindowHeight - 25, seedInfo, new Color3(80, 80, 100), seedScale);
-
-        // Controls hint
-        string controls = "UP/DOWN: SELECT   ENTER: CONFIRM";
-        float ctrlScale = 1.3f;
-        float ctrlW = renderer.MeasureText(controls, ctrlScale);
-        renderer.DrawTextScreen(GameConfig.WindowWidth - ctrlW - 10, GameConfig.WindowHeight - 25,
-            controls, new Color3(80, 80, 100), ctrlScale);
     }
 }
