@@ -11,6 +11,7 @@ using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
@@ -124,6 +125,8 @@ public class InteriorState : GameState
         _camera.Zoom = GameConfig.InteriorZoomDefault;
         _camera.ClampZoom();
 
+        // Music
+        game.Audio.SetMusicTheme(MusicTheme.Interior);
 
         // Notify mission system
         if (_origin == InteriorOrigin.Settlement && _planet != null)

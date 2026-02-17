@@ -8,6 +8,7 @@ A 2D procedural space exploration game built with C# (.NET 10), SDL3 (via SDL3-C
 - **Rendering**: SDL3 via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS) NuGet package
 - **ECS**: [Arch ECS](https://github.com/genaray/Arch) v2.1.0 with [Arch.System](https://github.com/genaray/Arch.Extended) v1.1.0 and Arch.System.SourceGenerator v2.1.0
 - **Graphics**: Procedural pixel art textures generated at runtime (sphere-shaded planets, glow-gradient stars, pixel-art ship/avatar/station sprites) plus SDL3 draw primitives and a minimal bitmap font.
+- **Audio**: SDL3 built-in audio API (push-based streaming) — fully procedural synthesis, no external audio files or SDL_mixer
 
 ## Project Structure
 
@@ -50,6 +51,10 @@ SpaceExplorationGame/
 │       └── AI/
 │           ├── EnemyAISystem.cs         # AI state machine for NPC ships (pirate/trader/patrol)
 │           └── SurfaceEnemyAISystem.cs  # AI state machine for surface enemies (fauna/bandits)
+├── Audio/
+│   ├── AudioManager.cs             # Central audio manager (SDL3 device, mixing, crossfade, volume)
+│   ├── MusicGenerator.cs            # Real-time procedural ambient music (6 layers, 7 themes)
+│   └── SfxGenerator.cs              # Pre-generated sound effects (15 types, additive synthesis)
 ├── Generation/
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
@@ -665,6 +670,70 @@ Base avatar weapon damage is 10. Total damage = base + equipped weapon's `Weapon
 
 **Surface Combat HUD**: Avatar HP bar at bottom-left, floating damage numbers, explosion effects, combat loot messages. Enemy health bars above each enemy. Enemy dots on the minimap (red = fauna, orange = bandits).
 
+### Audio System
+Fully procedural audio engine using SDL3's built-in audio API (push-based streaming at 44100 Hz, stereo float32). No external audio files — all music and sound effects are synthesized at runtime, matching the game's procedural generation philosophy.
+
+**Architecture**: `Game` owns a single `AudioManager` instance (`game.Audio`). States call `SetMusicTheme()` and `PlaySfx()` directly.
+
+**AudioManager** (`Audio/AudioManager.cs`):
+- Opens an SDL3 audio device stream via `SDL.OpenAudioDeviceStream` (44100 Hz, float32 LE, stereo)
+- `Update(float dt)` generates and pushes mixed audio chunks (~2048 frames / ~46ms) to the device, keeping ~0.2s buffered via `SDL.GetAudioStreamAvailable`
+- `SetMusicTheme(theme, instant)` with smooth crossfade (fade out → switch → fade in, 2 vol units/s)
+- `PlaySfx(type, volume, pan)` with constant-power stereo panning, up to 16 simultaneous voices
+- Master / Music / SFX volume controls from `GameConfig`
+
+**MusicGenerator** (`Audio/MusicGenerator.cs`):
+- Real-time additive synthesis with 6 concurrent layers:
+  - **Drone**: 2 detuned sine oscillators + sub-octave
+  - **Pad**: 3-note chord with stereo spread
+  - **Arpeggio**: Triangle wave oscillator with pattern sequencing
+  - **Bass**: Sine wave at chord root / 2
+  - **Atmosphere**: Stereo filtered noise
+  - **Reverb**: Ping-pong delay line
+- Pentatonic minor scale `[0, 3, 5, 7, 10]` with 4 chord voicings and smooth portamento (~2s glide)
+- Deterministic noise via xorshift PRNG (thread-safe, no locking)
+
+**Music Themes** (`MusicTheme` enum):
+| Theme | Root | BPM | Character |
+|---|---|---|---|
+| MainMenu | 110 Hz | 60 | Warm drone, gentle pad, slow arp |
+| SolarSystem | 82 Hz | 70 | Deep space ambience, moderate arp |
+| PlanetSurface | 130 Hz | 75 | Higher drone, livelier arp |
+| Interior | 164 Hz | 55 | Quiet, minimal — mostly pad + atmosphere |
+| FTL | 73 Hz | 140 | Intense driving arp, ascending pattern |
+| Combat | 98 Hz | 120 | Heavy bass, aggressive arp, high reverb |
+
+**SfxGenerator** (`Audio/SfxGenerator.cs`):
+- Pre-generates all SFX as mono float arrays at startup
+- Synthesis techniques: frequency sweeps, filtered noise bursts, sine thumps, ADSR envelopes, single-pole low-pass filter
+
+**SFX Types** (`SfxType` enum — 15 types):
+| SFX | Technique | Duration | Triggered By |
+|---|---|---|---|
+| LaserFire | Descending sine sweep | ~0.15s | Player fires weapon (space/surface) |
+| EnemyLaser | Higher ascending sweep | ~0.12s | (reserved for enemy fire) |
+| Explosion | Low thump + filtered noise | ~0.6s | Enemy ship / enemy destroyed |
+| SmallExplosion | Shorter thump + noise | ~0.3s | Asteroid / rock destroyed |
+| ShieldHit | Brief high-freq ping | ~0.1s | Player shields absorb damage |
+| HullDamage | Mid thump | ~0.15s | Player hull takes damage |
+| MenuSelect | Quick ascending blip | ~0.08s | Menu option confirmed |
+| MenuNavigate | Soft tick | ~0.04s | (reserved for menu navigation) |
+| FtlCharge | Rising sine sweep | ~0.8s | FTL charge phase begins |
+| FtlJump | Deep descending sweep | ~0.5s | FTL jump fires |
+| PickupCredits | Ascending multi-blip | ~0.2s | Credits awarded from loot |
+| PickupItem | Lower ascending blip | ~0.15s | Resource/item picked up |
+| MiningHit | Noise burst | ~0.1s | (reserved for mining impact) |
+| Landing | Descending rumble | ~0.5s | Ship lands on planet |
+| Takeoff | Ascending rumble | ~0.6s | Ship takes off from planet |
+
+**Combat Music Tracking**: `SolarSystemState` and `PlanetSurfaceState` maintain a `_combatMusicTimer` that resets on each damage event. When the timer exceeds `GameConfig.CombatMusicDelay` (5s), the music fades back from Combat to the state's default theme.
+
+**Audio Config** (`GameConfig`):
+- `AudioMasterVolume = 0.5f` — overall output level
+- `AudioMusicVolume = 0.4f` — music layer level
+- `AudioSfxVolume = 0.7f` — SFX layer level
+- `CombatMusicDelay = 5f` — seconds before combat music disengages
+
 ### Camera
 The `Camera` class handles world-to-screen coordinate conversion with zoom support. Scrollable tilemaps render only visible tiles using `GetVisibleBounds()`.
 
@@ -736,7 +805,7 @@ dotnet run
 dotnet run -- 12345  # with specific galaxy seed
 ```
 
-## Current Status (v0.3 - Combat)
+## Current Status (v0.4 - Audio)
 - [x] SDL3 window and game loop (fixed timestep 60fps)
 - [x] Arch ECS integration
 - [x] Camera with zoom and scrolling
@@ -784,7 +853,11 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Planet surface map overlay (PlanetSurfaceMapOverlay with settlement/ship/vehicle markers)
 - [x] Mission system (5 types: Delivery, Mining, BountyHunt, Exploration, Patrol; deterministic generation, accept/track/complete/abandon, HUD tracker)
 - [x] FTL travel animation (hyperspace tunnel with star streaks, charge-up → tunnel → exit flash)
+- [x] Procedural audio engine (SDL3 built-in audio, 44100 Hz stereo float32 push-streaming)
+- [x] Procedural ambient music (6 layers: drone, pad, arp, bass, atmosphere, reverb; 7 themes with crossfade)
+- [x] Procedural sound effects (15 SFX types: weapons, explosions, shields, FTL, pickups, landing/takeoff, menus)
+- [x] Combat music tracking (auto-switch to combat theme on damage, fade back after 5s)
+- [x] Sound effects and music (procedural synthesis via SDL3 built-in audio)
 
 ## TODO / Next Steps
-- [ ] Sound effects and music (SDL_Mixer)
 - [ ] Save/load game

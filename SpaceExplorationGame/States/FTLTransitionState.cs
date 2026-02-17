@@ -1,6 +1,7 @@
 using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 
@@ -50,6 +51,7 @@ public class FTLTransitionState : GameState
 
     // ── RNG ──
     private readonly Random _rng = new();
+    private bool _jumpSfxPlayed;
 
     public FTLTransitionState(StarSystemData sourceSystem, StarSystemData targetSystem)
     {
@@ -60,6 +62,10 @@ public class FTLTransitionState : GameState
     public override void Enter(Game game)
     {
         _elapsed = 0f;
+
+        // Audio: FTL theme + charge-up SFX
+        game.Audio.SetMusicTheme(MusicTheme.FTL, instant: true);
+        game.Audio.PlaySfx(SfxType.FtlCharge);
 
         // Scatter star streaks across the screen
         _stars.Clear();
@@ -101,6 +107,13 @@ public class FTLTransitionState : GameState
     public override void Update(Game game, float dt)
     {
         _elapsed += dt;
+
+        // Play jump SFX at the flash moment
+        if (!_jumpSfxPlayed && _elapsed >= ChargeDuration)
+        {
+            game.Audio.PlaySfx(SfxType.FtlJump);
+            _jumpSfxPlayed = true;
+        }
 
         if (_elapsed >= TotalDuration)
         {

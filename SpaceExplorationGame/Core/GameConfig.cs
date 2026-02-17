@@ -152,4 +152,10 @@ public static class GameConfig
     public const float SurfaceRockMaxHp = 40f;
     public const int SurfaceRockMinResource = 1;          // min resource units per rock
     public const int SurfaceRockMaxResource = 5;           // max resource units per rock
+
+    // ── Audio ───────────────────────────────────────────────────
+    public const float AudioMasterVolume = 0.5f;
+    public const float AudioMusicVolume = 0.4f;
+    public const float AudioSfxVolume = 0.7f;
+    public const float CombatMusicDelay = 5f;            // seconds of combat music after last damage
 }

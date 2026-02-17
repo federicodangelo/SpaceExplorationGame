@@ -1,6 +1,7 @@
 using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.UI;
 using SpaceExplorationGame.UI.Overlays.Menu;
@@ -46,6 +47,9 @@ public class MainMenuState : GameState
         // Reset player data for a fresh start
         game.Player.Reset();
 
+        // Music
+        game.Audio.SetMusicTheme(MusicTheme.MainMenu);
+
         // Auto-launch if requested (from command line)
         if (_autoLaunchOption != StartOption.None)
         {
@@ -79,6 +83,7 @@ public class MainMenuState : GameState
 
         if (_menuOverlay.SelectedOption is { } option)
         {
+            game.Audio.PlaySfx(SfxType.MenuSelect);
             _menuOverlay.SelectedOption = null;
             LaunchOption(game, option);
         }

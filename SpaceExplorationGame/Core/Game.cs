@@ -1,5 +1,6 @@
 using SDL3;
 using Arch.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 
@@ -32,6 +33,9 @@ public class Game : IDisposable
     public StarRenderer StarRenderer { get; private set; } = null!;
     public EnemyShipRenderer EnemyShipRenderer { get; private set; } = null!;
 
+    // Audio
+    public AudioManager Audio { get; private set; } = null!;
+
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
 
@@ -53,7 +57,7 @@ public class Game : IDisposable
     public void Initialize(ulong? galaxySeed = null)
     {
         // Init SDL
-        if (!SDL.Init(SDL.InitFlags.Video))
+        if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio))
         {
             throw new Exception($"SDL init failed: {SDL.GetError()}");
         }
@@ -90,6 +94,13 @@ public class Game : IDisposable
         PlanetRenderer = new PlanetRenderer(Textures);
         StarRenderer = new StarRenderer(Textures);
         EnemyShipRenderer = new EnemyShipRenderer(Textures);
+
+        // Audio
+        Audio = new AudioManager(
+            masterVolume: GameConfig.AudioMasterVolume,
+            musicVolume: GameConfig.AudioMusicVolume,
+            sfxVolume: GameConfig.AudioSfxVolume);
+        Audio.Initialize();
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -174,6 +185,9 @@ public class Game : IDisposable
             // Clear edge-detection input after UpdateInput/Update have consumed it.
             Input.EndFrame();
 
+            // Audio — keep playback buffer topped up
+            Audio.Update((float)elapsed);
+
             // Render
             SDL.SetRenderDrawColor(Renderer, 0, 0, 0, 255);
             SDL.RenderClear(Renderer);
@@ -187,6 +201,7 @@ public class Game : IDisposable
     public void Dispose()
     {
         _currentState?.Exit(this);
+        Audio.Dispose();
         EcsWorld.Dispose();
         AvatarRenderer.Dispose();
         VehicleRenderer.Dispose();

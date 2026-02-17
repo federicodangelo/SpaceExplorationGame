@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
@@ -103,6 +104,10 @@ public class SolarSystemState : GameState
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
 
+    // Combat music tracking
+    private float _combatMusicTimer;
+    private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
+
     // Cached textures for this solar system
     private nint _starTexture;
     private List<nint> _planetTextures = [];
@@ -118,6 +123,9 @@ public class SolarSystemState : GameState
 
     public override void Enter(Game game)
     {
+        // Music
+        game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+
         var rng = game.Seeds.GetStarSystemRandom(_starSystem.Index);
         var (planets, belts, stations) = SolarSystemGenerator.Generate(rng, _starSystem);
         _planets = planets;
@@ -685,6 +693,7 @@ public class SolarSystemState : GameState
 
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
                     weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100));
+                game.Audio.PlaySfx(SfxType.LaserFire);
             }
         }
 
@@ -701,8 +710,22 @@ public class SolarSystemState : GameState
 
         // Process damage events (visual effects + mining HUD tracking)
         CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
+        var playerPos = game.EcsWorld.IsAlive(_playerShip)
+            ? game.EcsWorld.Get<Transform>(_playerShip).Position
+            : _camera.Position;
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
+            // SFX for damage hits — volume attenuated by distance to the player
+            game.Audio.PlaySfxAtDistance(
+                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
+                evt.Position, playerPos, 0.6f);
+
+            // Only trigger combat music when the player is directly involved
+            bool playerInvolved = evt.OwnerFaction == Faction.Player
+                || (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<PlayerControlled>(evt.Target));
+            if (playerInvolved)
+                _combatMusicTimer = GameConfig.CombatMusicDelay;
+
             // Track last asteroid hit for mining HUD
             if (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<AsteroidField>(evt.Target))
             {
@@ -720,6 +743,7 @@ public class SolarSystemState : GameState
                 // Asteroid destroyed — collect resources only if player mined it
                 var asteroid = destroyed.Asteroid.Value;
                 _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
+                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, playerPos, 0.5f);
 
                 if (destroyed.KillerFaction == Faction.Player)
                 {
@@ -761,6 +785,7 @@ public class SolarSystemState : GameState
                 byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
                 byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
                 _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
+                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, playerPos);
 
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
@@ -789,6 +814,22 @@ public class SolarSystemState : GameState
 
         // Update visual effects (timers, positions, removal)
         CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
+
+        // Combat music tracking
+        if (_combatMusicTimer > 0)
+        {
+            _combatMusicTimer -= dt;
+            if (_activeMusicTheme != MusicTheme.Combat)
+            {
+                game.Audio.SetMusicTheme(MusicTheme.Combat);
+                _activeMusicTheme = MusicTheme.Combat;
+            }
+        }
+        else if (_activeMusicTheme != MusicTheme.SolarSystem)
+        {
+            game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+            _activeMusicTheme = MusicTheme.SolarSystem;
+        }
     }
 
     /// <summary>Handle player death — apply penalties and start respawn timer.</summary>
@@ -797,6 +838,7 @@ public class SolarSystemState : GameState
         _playerDead = true;
         _respawnTimer = RespawnDelay;
         _explosions.Add(new Explosion(deathPos, 50f, new Color3(255, 200, 80), 1.5f));
+        game.Audio.PlaySfx(SfxType.Explosion, 1.2f);
 
         // Destroy the old player ship entity so CameraFollowSystem doesn't track it
         if (game.EcsWorld.IsAlive(_playerShip))

@@ -17,7 +17,7 @@ public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position
 public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction);
 
 /// <summary>A damage event from a projectile hit (for visual effects).</summary>
-public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target);
+public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target, Faction OwnerFaction);
 
 /// <summary>
 /// Moves projectiles, checks lifetime expiry, and detects collision with Health entities.
@@ -129,7 +129,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             health.TakeDamage(hit.Damage);
 
             var targetPos = World.Get<Transform>(hit.Target).Position;
-            DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target));
+            DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target, hit.OwnerFaction));
 
             // Destroy the projectile (HashSet handles duplicates automatically)
             _expired.Add(hit.Projectile);

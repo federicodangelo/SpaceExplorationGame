@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
@@ -59,6 +60,10 @@ public class PlanetSurfaceState : GameState
     // Combat HUD
     private string? _combatMessage;
     private float _combatMessageTimer;
+
+    // Combat music tracking
+    private float _combatMusicTimer;
+    private MusicTheme _activeMusicTheme = MusicTheme.PlanetSurface;
 
     // Death handling
     private bool _playerDead;
@@ -215,6 +220,7 @@ public class PlanetSurfaceState : GameState
             // Start landing animation for fresh landings
             _isLanding = true;
             _landingTimer = 0f;
+            game.Audio.PlaySfx(SfxType.Landing);
         }
         else if (_inVehicle && _vehicleDeployed)
         {
@@ -254,6 +260,9 @@ public class PlanetSurfaceState : GameState
         {
             EntityFactory.CreateSurfaceRock(game.EcsWorld, new Vector2(rx, ry), size, hp, resource, amount);
         }
+
+        // Music
+        game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
     }
 
     public override void Exit(Game game)
@@ -414,6 +423,7 @@ public class PlanetSurfaceState : GameState
                 _isTakingOff = true;
                 _takeoffTimer = 0f;
                 _playerInsideShip = true;
+                game.Audio.PlaySfx(SfxType.Takeoff);
                 break;
 
             case StarshipMenuOption.DisembarkOnFoot:
@@ -583,6 +593,7 @@ public class PlanetSurfaceState : GameState
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, aimDir,
                     weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
                     new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime);
+                game.Audio.PlaySfx(SfxType.LaserFire, 0.8f);
             }
 
             // Surface enemy AI
@@ -594,6 +605,22 @@ public class PlanetSurfaceState : GameState
 
         // Process damage events
         CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
+        var playerPos = game.EcsWorld.IsAlive(_playerAvatar)
+            ? game.EcsWorld.Get<Transform>(_playerAvatar).Position
+            : _camera.Position;
+        foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
+        {
+            // SFX attenuated by distance to player
+            game.Audio.PlaySfxAtDistance(
+                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
+                evt.Position, playerPos, 0.5f);
+
+            // Only trigger combat music when the player is directly involved
+            bool playerInvolved = evt.OwnerFaction == Faction.Player
+                || (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<PlayerControlled>(evt.Target));
+            if (playerInvolved)
+                _combatMusicTimer = GameConfig.CombatMusicDelay;
+        }
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xBEEFCAFE);
@@ -604,6 +631,7 @@ public class PlanetSurfaceState : GameState
                 // Mineable rock destroyed — collect resources only if player mined it
                 var rock = destroyed.Asteroid.Value;
                 _explosions.Add(new Explosion(destroyed.Position, 12f, new Color3(140, 120, 100), 0.4f));
+                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, playerPos, 0.5f);
 
                 if (destroyed.KillerFaction == Faction.Player)
                 {
@@ -640,6 +668,7 @@ public class PlanetSurfaceState : GameState
                         destroyed.Faction == Faction.Fauna ? (byte)200 : (byte)255,
                         destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
                         destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50), 0.6f));
+                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, playerPos, 0.7f);
 
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
@@ -677,6 +706,22 @@ public class PlanetSurfaceState : GameState
 
         // Update visual effects
         CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
+
+        // Combat music tracking
+        if (_combatMusicTimer > 0)
+        {
+            _combatMusicTimer -= dt;
+            if (_activeMusicTheme != MusicTheme.Combat)
+            {
+                game.Audio.SetMusicTheme(MusicTheme.Combat);
+                _activeMusicTheme = MusicTheme.Combat;
+            }
+        }
+        else if (_activeMusicTheme != MusicTheme.PlanetSurface)
+        {
+            game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
+            _activeMusicTheme = MusicTheme.PlanetSurface;
+        }
     }
 
     public override void Render(Game game)
@@ -851,6 +896,7 @@ public class PlanetSurfaceState : GameState
         _playerDead = true;
         _respawnTimer = RespawnDelay;
         _explosions.Add(new Explosion(deathPos, 25f, new Color3(255, 120, 80), 1.2f));
+        game.Audio.PlaySfx(SfxType.Explosion);
 
         // Apply death penalties — lose some credits
         int creditsLost = (int)(game.Player.Credits * 0.1f);

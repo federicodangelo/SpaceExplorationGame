@@ -1,4 +1,5 @@
 using System.Numerics;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
@@ -38,6 +39,7 @@ public static class CombatHelper
         // Credits
         int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
         game.Player.Credits += credits;
+        game.Audio.PlaySfx(SfxType.PickupCredits, 0.6f);
         string message = $"+{credits} CREDITS";
 
         // Resource drop
@@ -50,6 +52,7 @@ public static class CombatHelper
             {
                 var resName = ResourceCatalog.Get(resource).Name;
                 message += $"  +{added} {resName.ToUpper()}";
+                game.Audio.PlaySfx(SfxType.PickupItem, 0.5f);
             }
         }
 
