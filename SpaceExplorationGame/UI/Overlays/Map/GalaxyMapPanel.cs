@@ -187,7 +187,7 @@ public class GalaxyMapPanel : MapPanelBase
             _nebulae.Clear();
             _backgroundStars.Clear();
             OnRequestClose?.Invoke(game);
-            game.ChangeState(new SolarSystemState(targetSystem));
+            game.ChangeState(new FTLTransitionState(targetSystem));
         }
     }
 

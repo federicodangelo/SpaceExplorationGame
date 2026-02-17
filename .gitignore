@@ -41,3 +41,6 @@ Thumbs.db
 *.exe
 *.pdb
 *.cache
+
+# External tools
+animate-git.bat
