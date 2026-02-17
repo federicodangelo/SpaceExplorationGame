@@ -993,10 +993,11 @@ public class SolarSystemState : GameState
         {
             HudRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
                 _enemyEntities, _playerShip, 2500f);
-            HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
+            if (!(game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.Star))
+                HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
             HudRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _playerShip, game.EcsWorld, _planetEntities, _planets,
-                _stationEntities, _stations, 5000f);
+                _stationEntities, _stations, 5000f, game.Player);
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _stationEntities, _planetEntities,
                 _planets, game.EcsWorld);

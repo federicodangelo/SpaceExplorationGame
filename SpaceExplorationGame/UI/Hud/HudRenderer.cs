@@ -471,7 +471,7 @@ public static class HudRenderer
         Entity playerShip, World ecsWorld,
         List<Entity> planetEntities, List<PlanetData> planets,
         List<Entity> stationEntities, List<SpaceStationData> stations,
-        float maxDistance = 5000f)
+        float maxDistance = 5000f, PlayerData? player = null)
     {
         Vector2 playerPos = ecsWorld.IsAlive(playerShip)
             ? ecsWorld.Get<Transform>(playerShip).Position
@@ -480,6 +480,9 @@ public static class HudRenderer
         // Planets
         for (int i = 0; i < planetEntities.Count; i++)
         {
+            // Skip if this planet is the current nav target (target indicator takes priority)
+            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.Planet, NavTargetPlanetIndex: var pi } && pi == i)
+                continue;
             if (!ecsWorld.IsAlive(planetEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(planetEntities[i]).Position;
             float dist = Vector2.Distance(playerPos, pos);
@@ -497,6 +500,9 @@ public static class HudRenderer
         // Stations
         for (int i = 0; i < stationEntities.Count; i++)
         {
+            // Skip if this station is the current nav target (target indicator takes priority)
+            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.Station, NavTargetStationIndex: var si } && si == i)
+                continue;
             if (!ecsWorld.IsAlive(stationEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(stationEntities[i]).Position;
             float dist = Vector2.Distance(playerPos, pos);
@@ -525,10 +531,15 @@ public static class HudRenderer
 
     /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
     public static void RenderSettlementOffscreenIndicators(SpriteRenderer renderer, Camera camera,
-        List<SettlementData> settlements)
+        List<SettlementData> settlements, PlayerData? player = null)
     {
         foreach (var s in settlements)
         {
+            // Skip if this settlement is the current nav target (target indicator takes priority)
+            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.SurfaceTarget }
+                && player.NavTargetName == s.Name)
+                continue;
+
             // Point toward the center of the settlement
             float cx = (s.TileRect.X + s.TileRect.Width / 2f) * GameConfig.TileSize;
             float cy = (s.TileRect.Y + s.TileRect.Height / 2f) * GameConfig.TileSize;

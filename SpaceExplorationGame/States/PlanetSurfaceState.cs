@@ -788,8 +788,10 @@ public class PlanetSurfaceState : GameState
         if (!_playerDead && !_playerInsideShip)
         {
             HudRenderer.RenderSettlementOffscreenIndicators(renderer, camera,
-                _surfaceData.Settlements);
-            HudRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
+                _surfaceData.Settlements, game.Player);
+            if (!(game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget
+                && game.Player.NavTargetName == "SHIP"))
+                HudRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
             HudRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _planet.Index, _surfaceData.Settlements);
 
