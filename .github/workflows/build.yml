@@ -50,13 +50,17 @@ jobs:
           -r ${{ matrix.rid }}
           -o publish
 
-      - name: Remove PDB files
+      - name: Remove debug symbols
         run: Remove-Item -Path publish/*.pdb -Force -ErrorAction SilentlyContinue
         if: runner.os == 'Windows'
 
-      - name: Remove PDB files
-        run: rm -f publish/*.pdb
-        if: runner.os != 'Windows'
+      - name: Remove debug symbols
+        run: rm -f publish/*.pdb publish/*.dbg publish/*.dsym
+        if: runner.os == 'Linux'
+
+      - name: Remove debug symbols
+        run: rm -rf publish/*.pdb publish/*.dbg publish/*.dSYM
+        if: runner.os == 'macOS'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
