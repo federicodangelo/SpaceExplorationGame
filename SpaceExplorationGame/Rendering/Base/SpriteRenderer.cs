@@ -189,6 +189,12 @@ public class SpriteRenderer : IDisposable
             SDL.SetTextureAlphaMod(texture, 255);
     }
 
+    /// <summary>Render pre-built colored geometry (no texture) in a single batched draw call.</summary>
+    public void DrawGeometry(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices)
+    {
+        SDL.RenderGeometry(_renderer, nint.Zero, vertices, numVertices, indices, numIndices);
+    }
+
     /// <summary>Draw a filled circle in screen space.</summary>
     public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color)
     {

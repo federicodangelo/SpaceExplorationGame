@@ -1,3 +1,4 @@
+using SDL3;
 using System.Numerics;
 using SpaceExplorationGame.Core;
 
@@ -9,8 +10,14 @@ namespace SpaceExplorationGame.Rendering.Base;
 /// </summary>
 public static class TileMapRenderer
 {
+    // Reusable buffers for batched tile rendering (avoids per-frame allocs).
+    private static SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
+    private static int[] _indexBuf = new int[1536];
+
     /// <summary>
     /// Renders visible tiles with deterministic per-tile brightness variation.
+    /// Background tiles are drawn in a single batched SDL.RenderGeometry call,
+    /// then detail callbacks are invoked in a second pass.
     /// </summary>
     /// <param name="renderer">Sprite renderer.</param>
     /// <param name="camera">Current camera.</param>
@@ -32,6 +39,23 @@ public static class TileMapRenderer
         int endX = Math.Min(mapWidth - 1, (int)(bottomRight.X / GameConfig.TileSize) + 1);
         int endY = Math.Min(mapHeight - 1, (int)(bottomRight.Y / GameConfig.TileSize) + 1);
 
+        float tileSize = GameConfig.TileSize;
+        float halfTile = tileSize / 2f;
+        float scaledSize = tileSize * camera.Zoom;
+        float halfScaled = scaledSize / 2f;
+
+        // ── Pass 1: batch all background tiles into a single draw call ──
+        int maxTiles = (endX - startX + 1) * (endY - startY + 1);
+        int requiredVerts = maxTiles * 4;
+        int requiredIndices = maxTiles * 6;
+        if (_vertexBuf.Length < requiredVerts)
+            _vertexBuf = new SDL.Vertex[requiredVerts];
+        if (_indexBuf.Length < requiredIndices)
+            _indexBuf = new int[requiredIndices];
+
+        int vi = 0; // vertex write index
+        int ii = 0; // index write index
+
         for (int x = startX; x <= endX; x++)
         {
             for (int y = startY; y <= endY; y++)
@@ -39,16 +63,83 @@ public static class TileMapRenderer
                 var color = getColor(x, y);
                 if (color == null) continue;
 
-                int hash = GetTileHash(x,y);
                 var variationColor = GetColorVariation(color.Value, x, y, variationDivisor);
 
                 var worldPos = new Vector2(
-                    x * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                    y * GameConfig.TileSize + GameConfig.TileSize / 2f);
+                    x * tileSize + halfTile,
+                    y * tileSize + halfTile);
+                var screenPos = camera.WorldToScreen(worldPos);
 
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, variationColor);
+                float left = screenPos.X - halfScaled;
+                float top = screenPos.Y - halfScaled;
+                float right = left + scaledSize;
+                float bottom = top + scaledSize;
 
-                renderDetail?.Invoke(x, y, worldPos, hash);
+                var fcolor = new SDL.FColor
+                {
+                    R = variationColor.R / 255f,
+                    G = variationColor.G / 255f,
+                    B = variationColor.B / 255f,
+                    A = 1f
+                };
+
+                int baseVertex = vi;
+
+                // Top-left
+                _vertexBuf[vi++] = new SDL.Vertex
+                {
+                    Position = new SDL.FPoint { X = left, Y = top },
+                    Color = fcolor
+                };
+                // Top-right
+                _vertexBuf[vi++] = new SDL.Vertex
+                {
+                    Position = new SDL.FPoint { X = right, Y = top },
+                    Color = fcolor
+                };
+                // Bottom-right
+                _vertexBuf[vi++] = new SDL.Vertex
+                {
+                    Position = new SDL.FPoint { X = right, Y = bottom },
+                    Color = fcolor
+                };
+                // Bottom-left
+                _vertexBuf[vi++] = new SDL.Vertex
+                {
+                    Position = new SDL.FPoint { X = left, Y = bottom },
+                    Color = fcolor
+                };
+
+                // Two triangles: 0-1-2, 0-2-3
+                _indexBuf[ii++] = baseVertex;
+                _indexBuf[ii++] = baseVertex + 1;
+                _indexBuf[ii++] = baseVertex + 2;
+                _indexBuf[ii++] = baseVertex;
+                _indexBuf[ii++] = baseVertex + 2;
+                _indexBuf[ii++] = baseVertex + 3;
+            }
+        }
+
+        if (vi > 0)
+            renderer.DrawGeometry(_vertexBuf, vi, _indexBuf, ii);
+
+        // ── Pass 2: render per-tile details ──
+        if (renderDetail != null)
+        {
+            for (int x = startX; x <= endX; x++)
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    var color = getColor(x, y);
+                    if (color == null) continue;
+
+                    int hash = GetTileHash(x, y);
+                    var worldPos = new Vector2(
+                        x * tileSize + halfTile,
+                        y * tileSize + halfTile);
+
+                    renderDetail(x, y, worldPos, hash);
+                }
             }
         }
     }
