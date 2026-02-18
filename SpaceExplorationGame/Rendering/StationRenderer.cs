@@ -20,8 +20,8 @@ public class StationRenderer : IDisposable
     const int NumLightsOuterRing = 8;
     const double BlinkPeriod = 2.0; // seconds
 
-    static Color4 BlinkColor1 = new Color4(255, 40, 40, 220); // red
-    static Color4 BlinkColor2 = new Color4(40, 255, 40, 220); // green
+    static Color3 BlinkColor1 = new Color3(255, 40, 40); // red
+    static Color3 BlinkColor2 = new Color3(40, 255, 40); // green
 
     const float OuterRingRadius = 90.0f;
     const float OuterRingLightRadius = 3f;
@@ -30,11 +30,13 @@ public class StationRenderer : IDisposable
 
     private readonly TextureManager _textures;
     private nint _texture;
+    private readonly Dictionary<Color3, nint> _radialFalloffTextures = new();
 
     public StationRenderer(TextureManager textures)
     {
         _textures = textures;
         _texture = GenerateStationTexture(textures);
+        // No need to pre-generate, will be generated per color on demand
     }
 
     /// <summary>Renders all stations with a slowly rotating texture.</summary>
@@ -67,23 +69,49 @@ public class StationRenderer : IDisposable
 
             // Alternate blinking color for each light
             bool blinkState = (l % 2 == 0) ? (blinkPhase < BlinkPeriod / 2) : (blinkPhase >= BlinkPeriod / 2);
-            Color4 color = blinkState ? BlinkColor1 : BlinkColor2;
-            renderer.DrawFilledCircle(camera, lightPos, OuterRingLightRadius, color);
+            var color = blinkState ? BlinkColor1 : BlinkColor2;
+            DrawLightGlow(renderer, camera, lightPos, OuterRingLightRadius * 4, color); // Draw glow
+            DrawLight(renderer, camera, lightPos, OuterRingLightRadius, color);
         }
 
         // Center light
         {
             Vector2 lightPos = position;
-
-            // Alternate blinking color for each light
             bool blinkState = blinkPhase >= BlinkPeriod / 2;
-            Color4 color = blinkState ? BlinkColor1 : BlinkColor2; //Inverted colors for inner ring
-            renderer.DrawFilledCircle(camera, lightPos, CenterLightRadius, color);
+            var color = blinkState ? BlinkColor1 : BlinkColor2; //Inverted colors for inner ring
+            DrawLightGlow(renderer, camera, lightPos, CenterLightRadius * 2.5f, color); // Draw glow
+            DrawLight(renderer, camera, lightPos, CenterLightRadius, color);
         }
     }
-    
 
-    private static nint GenerateStationTexture(TextureManager textures)
+    // Helper function to draw a single light
+    // Draws a radial falloff texture as a glow behind the light
+    private void DrawLightGlow(SpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color3 color)
+    {
+        int size = (int)(radius * 2f);
+        nint texture = GetOrCreateRadialFalloffTexture(color, size);
+        if (texture != nint.Zero)
+        {
+            renderer.DrawTexture(camera, texture, position, size, size, 0f);
+        }
+    }
+
+    private nint GetOrCreateRadialFalloffTexture(Color3 color, int size)
+    {
+        // Use only RGB for key, alpha is handled by draw call
+        if (_radialFalloffTextures.TryGetValue(color, out var tex))
+            return tex;
+        var newTex = GenerateRadialFalloffTexture(_textures, size, color);
+        _radialFalloffTextures[color] = newTex;
+        return newTex;
+    }
+
+    private void DrawLight(SpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color4 color)
+    {
+        renderer.DrawFilledCircle(camera, position, radius, color);
+    }
+    
+    private static nint GenerateStationTexture(TextureManager textures) 
     {
         var pixels = new byte[TextureSize * TextureSize * 4];
 
@@ -167,9 +195,41 @@ public class StationRenderer : IDisposable
         return textures.CreateTextureFromPixels(pixels, TextureSize, TextureSize);
     }
 
+    // Generates a radial falloff (glow) texture with smooth alpha
+    private static nint GenerateRadialFalloffTexture(TextureManager textures, int size, Color3 color)
+    {
+        var pixels = new byte[size * size * 4];
+        int center = size / 2;
+        float maxDist = center;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int idx = (y * size + x) * 4;
+                int dx = x - center;
+                int dy = y - center;
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                float falloff = 1f - Math.Clamp(dist / maxDist, 0f, 1f);
+                // Use a smoothstep for a soft edge
+                float alpha = falloff * falloff * (3f - 2f * falloff);
+                pixels[idx + 0] = color.R;
+                pixels[idx + 1] = color.G;
+                pixels[idx + 2] = color.B;
+                pixels[idx + 3] = (byte)(alpha * 255);
+            }
+        }
+        return textures.CreateTextureFromPixels(pixels, size, size);
+    }
+    
     public void Dispose()
     {
         _textures.DestroyTexture(_texture);
+        foreach (var tex in _radialFalloffTextures.Values)
+        {
+            if (tex != nint.Zero)
+                _textures.DestroyTexture(tex);
+        }
+        _radialFalloffTextures.Clear();
         _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }

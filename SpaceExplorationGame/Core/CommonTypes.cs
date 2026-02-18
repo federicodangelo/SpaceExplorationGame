@@ -22,6 +22,8 @@ public readonly record struct Color4(byte R, byte G, byte B, byte A)
 
     /// <summary>Returns the RGB portion of this color.</summary>
     public Color3 Rgb => new(R, G, B);
+
+    public Color4 WithAlpha(byte a) => new(R, G, B, a);
 }
 
 /// <summary>An RGB color paired with a radius value, used for celestial body visuals.</summary>
