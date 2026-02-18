@@ -83,7 +83,7 @@ public class PlanetSurfaceState : GameState
     private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.PlanetSurface };
 
     // Surface map overlay (M key)
-    private readonly PlanetSurfaceMapOverlay _surfaceMapOverlay = new();
+    private PlanetSurfaceMapOverlay _surfaceMapOverlay = null!;
 
     // Starship menu overlay (shown on landing and when boarding)
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
@@ -139,6 +139,8 @@ public class PlanetSurfaceState : GameState
 
     public override void Enter(Game game)
     {
+        _surfaceMapOverlay = new PlanetSurfaceMapOverlay(game.Textures);
+
         // Generate planet surface
         var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
         _surfaceData = PlanetSurfaceGenerator.Generate(rng, _planet);

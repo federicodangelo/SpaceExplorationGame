@@ -26,7 +26,12 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     private int _moonPlanetIndex;
     private int _moonIndex;
 
+    public PlanetLandingPanel(TextureManager textures) : base(textures)
+    {
+    }
+
     // -- Public state for the overlay's HUD --
+
 
     /// <summary>Whether a landing cursor has been placed.</summary>
     public bool HasCursor => _hasCursor;
@@ -75,7 +80,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _surfaceData = PlanetSurfaceGenerator.Generate(rng, planet);
 
         // Create terrain overview texture
-        _terrainTexture = CreateTerrainTexture(game);
+        CreateTerrainTexture(game);
 
         // Default cursor at center
         _cursorTile = new TilePos(_surfaceData.Width / 2, _surfaceData.Height / 2);

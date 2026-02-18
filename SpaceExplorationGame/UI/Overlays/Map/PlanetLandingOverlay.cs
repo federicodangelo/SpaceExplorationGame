@@ -13,15 +13,16 @@ namespace SpaceExplorationGame.UI.Overlays.Map;
 /// </summary>
 public class PlanetLandingOverlay : MapOverlayBase
 {
-    private readonly PlanetLandingPanel _panel = new();
+    private readonly PlanetLandingPanel _panel;
 
     // ── Layout overrides (700×700 map, 260px info panel) ──
     protected override float MapContentWidth => 700f;
     protected override float MapContentHeight => 700f;
     protected override float InfoPanelWidthValue => 260f;
 
-    public PlanetLandingOverlay()
-    {
+    public PlanetLandingOverlay(TextureManager textures)
+    {        
+        _panel = new PlanetLandingPanel(textures);
         _panel.OnRequestClose = game => Close();
     }
 

@@ -18,13 +18,18 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     protected StarSystemData _starSystem = null!;
     protected PlanetData _planet = null!;
     protected PlanetSurfaceData _surfaceData = null!;
-    protected nint _terrainTexture;
+    protected nint _terrainTexture { get; private set;}
 
     /// <summary>Shared animation timer for the selection reticle (incremented at 3× dt).</summary>
     protected float _selectionPulse;
 
     /// <summary>Name of the planet/moon being viewed.</summary>
     public string PlanetName => _planet?.Name ?? "UNKNOWN";
+
+    public PlanetMapPanelBase(TextureManager textures)
+    {
+        _textures = textures;
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  LIFECYCLE
@@ -103,7 +108,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Create a 1-pixel-per-tile terrain overview texture.</summary>
-    protected nint CreateTerrainTexture(Game game)
+    protected void CreateTerrainTexture(Game game)
     {
         _textures = game.Textures;
         int w = _surfaceData.Width;
@@ -144,7 +149,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             }
         }
 
-        return game.Textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
+        _terrainTexture = game.Textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -36,9 +36,14 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     private SurfaceMapSelection _lastClickObject = new(SurfaceMapObjectType.None);
     private float _lastClickTime;
 
+    public PlanetSurfaceMapPanel(TextureManager textures) : base(textures)
+    {
+    }
+
     // -----------------------------------------------------------------
     //  LIFECYCLE
     // -----------------------------------------------------------------
+
 
     /// <summary>Open the panel with surface data and positions.</summary>
     public void OpenWithData(Game game, StarSystemData starSystem, PlanetData planet,
@@ -61,7 +66,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         _lastClickTime = 0f;
 
         // Create terrain overview texture
-        _terrainTexture = CreateTerrainTexture(game);
+        CreateTerrainTexture(game);
     }
 
     /// <summary>Center on the player position instead of terrain center.</summary>

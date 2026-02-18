@@ -68,7 +68,7 @@ public class SolarSystemState : GameState
     private readonly bool _autoOpenGalaxyMap;
 
     // Planet landing overlay
-    private readonly PlanetLandingOverlay _planetLandingOverlay = new();
+    private PlanetLandingOverlay _planetLandingOverlay = null!;
     private readonly PlanetData? _autoOpenPlanet;
 
     // In-game menu overlay
@@ -123,6 +123,8 @@ public class SolarSystemState : GameState
 
     public override void Enter(Game game)
     {
+        _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
+
         // Music
         game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
 
