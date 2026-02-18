@@ -44,37 +44,44 @@ public class StationRenderer : IDisposable
         for (int i = 0; i < stationEntities.Count; i++)
         {
             var stTransform = ecsWorld.Get<Transform>(stationEntities[i]);
-            float stRotation = (float)(globalTime * 10) % 360f;
-            renderer.DrawTexture(camera, _texture, stTransform.Position, 280, 280, stRotation);
 
-            // Blinking lights overlay (on the outer ring)
-            double blinkPhase = globalTime % BlinkPeriod;
-
-            for (int l = 0; l < NumLightsOuterRing; l++)
-            {
-                float angle = (float)(l * MathF.PI * 2f / NumLightsOuterRing);
-                // Rotate with station
-                float totalAngle = angle + stRotation * MathF.PI / 180f;
-                Vector2 offset = new Vector2(MathF.Cos(totalAngle), MathF.Sin(totalAngle)) * OuterRingRadius;
-                Vector2 lightPos = stTransform.Position + offset;
-
-                // Alternate blinking color for each light
-                bool blinkState = (l % 2 == 0) ? (blinkPhase < BlinkPeriod / 2) : (blinkPhase >= BlinkPeriod / 2);
-                Color4 color = blinkState ? BlinkColor1 : BlinkColor2;
-                renderer.DrawFilledCircle(camera, lightPos, OuterRingLightRadius, color);
-            }
-
-            // Center light
-            {
-                Vector2 lightPos = stTransform.Position;
-
-                // Alternate blinking color for each light
-                bool blinkState = blinkPhase >= BlinkPeriod / 2;
-                Color4 color = blinkState ? BlinkColor1 : BlinkColor2; //Inverted colors for inner ring
-                renderer.DrawFilledCircle(camera, lightPos, CenterLightRadius, color);
-                }
+            RenderStation(renderer, camera, stTransform.Position, globalTime);
         }
     }
+
+    public void RenderStation(SpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
+    {
+        float stRotation = (float)(globalTime * 10) % 360f;
+        renderer.DrawTexture(camera, _texture, position, 280, 280, stRotation);
+
+        // Blinking lights overlay (on the outer ring)
+        double blinkPhase = globalTime % BlinkPeriod;
+
+        for (int l = 0; l < NumLightsOuterRing; l++)
+        {
+            float angle = (float)(l * MathF.PI * 2f / NumLightsOuterRing);
+            // Rotate with station
+            float totalAngle = angle + stRotation * MathF.PI / 180f;
+            Vector2 offset = new Vector2(MathF.Cos(totalAngle), MathF.Sin(totalAngle)) * OuterRingRadius;
+            Vector2 lightPos = position + offset;
+
+            // Alternate blinking color for each light
+            bool blinkState = (l % 2 == 0) ? (blinkPhase < BlinkPeriod / 2) : (blinkPhase >= BlinkPeriod / 2);
+            Color4 color = blinkState ? BlinkColor1 : BlinkColor2;
+            renderer.DrawFilledCircle(camera, lightPos, OuterRingLightRadius, color);
+        }
+
+        // Center light
+        {
+            Vector2 lightPos = position;
+
+            // Alternate blinking color for each light
+            bool blinkState = blinkPhase >= BlinkPeriod / 2;
+            Color4 color = blinkState ? BlinkColor1 : BlinkColor2; //Inverted colors for inner ring
+            renderer.DrawFilledCircle(camera, lightPos, CenterLightRadius, color);
+        }
+    }
+    
 
     private static nint GenerateStationTexture(TextureManager textures)
     {

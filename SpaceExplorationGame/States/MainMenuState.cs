@@ -37,6 +37,12 @@ public class MainMenuState : GameState
     // Auto-launch: if not None, skip menu and launch this option immediately
     private readonly StartOption _autoLaunchOption;
 
+    private Camera _fakeCamera = new(GameConfig.WindowWidth, GameConfig.WindowHeight)
+    {
+        Position = new Vector2(GameConfig.WindowWidth / 2f, GameConfig.WindowHeight / 2f),
+        Zoom = 1f
+    };
+
     public MainMenuState(StartOption autoLaunchOption = StartOption.None)
     {
         _autoLaunchOption = autoLaunchOption;
@@ -319,6 +325,24 @@ public class MainMenuState : GameState
             float blink = (byte)Math.Clamp(brightness + 30 * MathF.Sin(_animTimer * speed * 2f + x), 20, 200);
             renderer.DrawRectScreen(x, y, 2, 2, new Color3((byte)blink, (byte)blink, (byte)(blink * 0.9f)));
         }
+
+        // --- Space stations in background ---
+        float centerX = GameConfig.WindowWidth / 2f;
+        float centerY = GameConfig.WindowHeight / 2f;
+        var spaceStation1pos = new Vector2(centerX - 600f, centerY - 180f);
+        var spaceStation2pos = new Vector2(centerX + 600f, centerY + 180f);
+        game.StationRenderer.RenderStation(
+            renderer,
+            _fakeCamera,
+            spaceStation1pos,
+            game.GlobalTime
+        );
+        game.StationRenderer.RenderStation(
+            renderer,
+            _fakeCamera,
+            spaceStation2pos,
+            game.GlobalTime + 0.5f
+        );
 
         // Title
         string title = "SPACE EXPLORATION";
