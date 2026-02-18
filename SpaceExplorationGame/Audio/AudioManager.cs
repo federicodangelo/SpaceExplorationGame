@@ -13,7 +13,7 @@ public sealed class AudioManager : IDisposable
     public const int SampleRate = 44100;
     public const int ChannelCount = 2; // stereo, interleaved L/R
 
-    private const int GenerateFrames = 2048;     // ~46 ms per chunk at 44100 Hz
+    private const int GenerateFrames = 512;      // ~11.6 ms per chunk at 44100 Hz (low latency)
     private const int MaxSimultaneousSfx = 16;
     private const float CrossfadeSpeed = 2f;     // volume units / second
 
@@ -162,9 +162,9 @@ public sealed class AudioManager : IDisposable
 
         UpdateFade(dt);
 
-        // Keep ≈ 0.2 s of audio buffered
+        // Keep ≈ 80 ms of audio buffered (low latency for responsive SFX)
         int available = SDL.GetAudioStreamAvailable(_stream);
-        int targetBytes = SampleRate * ChannelCount * sizeof(float) / 5;
+        int targetBytes = SampleRate * ChannelCount * sizeof(float) * 80 / 1000;
 
         while (available < targetBytes)
         {
