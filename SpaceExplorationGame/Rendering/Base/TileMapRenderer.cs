@@ -39,22 +39,32 @@ public static class TileMapRenderer
                 var color = getColor(x, y);
                 if (color == null) continue;
 
-                var (r, g, b) = color.Value;
-
-                int hash = (x * 374761393 + y * 668265263) ^ (x * y);
-                float variation = ((hash & 0xFF) - 128) / variationDivisor;
-                byte vr = (byte)Math.Clamp(r + r * variation, 0, 255);
-                byte vg = (byte)Math.Clamp(g + g * variation, 0, 255);
-                byte vb = (byte)Math.Clamp(b + b * variation, 0, 255);
+                int hash = GetTileHash(x,y);
+                var variationColor = GetColorVariation(color.Value, x, y, variationDivisor);
 
                 var worldPos = new Vector2(
                     x * GameConfig.TileSize + GameConfig.TileSize / 2f,
                     y * GameConfig.TileSize + GameConfig.TileSize / 2f);
 
-                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, new Color3(vr, vg, vb));
+                renderer.DrawRect(camera, worldPos, GameConfig.TileSize, GameConfig.TileSize, variationColor);
 
                 renderDetail?.Invoke(x, y, worldPos, hash);
             }
         }
+    }
+
+    public static int GetTileHash(int x, int y)
+    {
+        return (x * 374761393 + y * 668265263) ^ (x * y);
+    }
+
+    public static Color3 GetColorVariation(Color3 baseColor, int x, int y, float variationDivisor)
+    {
+        int hash = GetTileHash(x,y);
+        float variation = ((hash & 0xFF) - 128) / variationDivisor;
+        byte vr = (byte)Math.Clamp(baseColor.R + baseColor.R * variation, 0, 255);
+        byte vg = (byte)Math.Clamp(baseColor.G + baseColor.G * variation, 0, 255);
+        byte vb = (byte)Math.Clamp(baseColor.B + baseColor.B * variation, 0, 255);
+        return new Color3(vr, vg, vb);
     }
 }

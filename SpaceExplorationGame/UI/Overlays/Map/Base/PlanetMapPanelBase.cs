@@ -120,15 +120,14 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             for (int x = 0; x < w; x++)
             {
                 var terrain = _surfaceData.Tiles[x, y];
-                var (r, g, b) = PlanetSurfaceGenerator.GetTerrainColor(terrain);
+                var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
 
-                int hash = (x * 374761393 + y * 668265263) ^ (x * y);
-                float variation = ((hash & 0xFF) - 128) / 800f;
+                var variationColor = TileMapRenderer.GetColorVariation(color, x, y, 800f);
 
                 int idx = (y * w + x) * 4;
-                pixels[idx + 0] = (byte)Math.Clamp(r + r * variation, 0, 255);
-                pixels[idx + 1] = (byte)Math.Clamp(g + g * variation, 0, 255);
-                pixels[idx + 2] = (byte)Math.Clamp(b + b * variation, 0, 255);
+                pixels[idx + 0] = variationColor.R;
+                pixels[idx + 1] = variationColor.G;
+                pixels[idx + 2] = variationColor.B;
                 pixels[idx + 3] = 255;
             }
         }
