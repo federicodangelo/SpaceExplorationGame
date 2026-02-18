@@ -12,10 +12,12 @@ namespace SpaceExplorationGame.Rendering;
 public class AvatarRenderer : IDisposable
 {
     private const int AvatarSize = 28;
+    private readonly TextureManager _textures;
     private nint _texture;
 
     public AvatarRenderer(TextureManager textures)
     {
+        _textures = textures;
         _texture = GenerateAvatarTexture(textures);
     }
 
@@ -52,11 +54,8 @@ public class AvatarRenderer : IDisposable
 
     public void Dispose()
     {
-        if (_texture != nint.Zero)
-        {
-            SDL.DestroyTexture(_texture);
-            _texture = nint.Zero;
-        }
+        _textures.DestroyTexture(_texture);
+        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

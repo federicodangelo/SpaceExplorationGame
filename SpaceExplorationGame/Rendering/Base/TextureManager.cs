@@ -65,6 +65,13 @@ public class TextureManager : IDisposable
         }
     }
 
+    /// <summary>Destroys an SDL texture. Safe to call with <see cref="nint.Zero"/>.</summary>
+    public void DestroyTexture(nint texture)
+    {
+        if (texture != nint.Zero)
+            SDL.DestroyTexture(texture);
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

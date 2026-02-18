@@ -12,12 +12,14 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class SpaceshipRenderer : IDisposable
 {
+    private readonly TextureManager _textures;
     private readonly Dictionary<string, nint> _solarTextures = [];
     private readonly Dictionary<string, nint> _landedTextures = [];
     private nint _flameTexture;
 
     public SpaceshipRenderer(TextureManager textures)
     {
+        _textures = textures;
         // Solar (in-flight) textures per ship type
         _solarTextures["scout"] = GenerateScoutTexture(textures);
         _solarTextures["fighter"] = GenerateFighterTexture(textures);
@@ -356,18 +358,15 @@ public class SpaceshipRenderer : IDisposable
     public void Dispose()
     {
         foreach (var tex in _solarTextures.Values)
-            SDL.DestroyTexture(tex);
+            _textures.DestroyTexture(tex);
         _solarTextures.Clear();
 
         foreach (var tex in _landedTextures.Values)
-            SDL.DestroyTexture(tex);
+            _textures.DestroyTexture(tex);
         _landedTextures.Clear();
 
-        if (_flameTexture != nint.Zero)
-        {
-            SDL.DestroyTexture(_flameTexture);
-            _flameTexture = nint.Zero;
-        }
+        _textures.DestroyTexture(_flameTexture);
+        _flameTexture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

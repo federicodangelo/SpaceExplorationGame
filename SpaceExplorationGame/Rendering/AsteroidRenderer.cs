@@ -13,10 +13,12 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class AsteroidRenderer : IDisposable
 {
+    private readonly TextureManager _textures;
     private nint _texture;
 
     public AsteroidRenderer(TextureManager textures)
     {
+        _textures = textures;
         _texture = GenerateAsteroidTexture(textures);
     }
 
@@ -81,11 +83,8 @@ public class AsteroidRenderer : IDisposable
 
     public void Dispose()
     {
-        if (_texture != nint.Zero)
-        {
-            SDL.DestroyTexture(_texture);
-            _texture = nint.Zero;
-        }
+        _textures.DestroyTexture(_texture);
+        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

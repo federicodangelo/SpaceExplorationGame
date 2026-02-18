@@ -84,7 +84,7 @@ public class StarRenderer : IDisposable
     {
         if (texture != nint.Zero)
         {
-            SDL.DestroyTexture(texture);
+            _textures.DestroyTexture(texture);
             _createdTextures.Remove(texture);
         }
     }
@@ -94,7 +94,7 @@ public class StarRenderer : IDisposable
     {
         foreach (var tex in _createdTextures)
         {
-            SDL.DestroyTexture(tex);
+            _textures.DestroyTexture(tex);
         }
         _createdTextures.Clear();
     }

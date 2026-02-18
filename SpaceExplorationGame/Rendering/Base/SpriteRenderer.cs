@@ -10,7 +10,6 @@ namespace SpaceExplorationGame.Rendering.Base;
 public class SpriteRenderer : IDisposable
 {
     private readonly nint _renderer;
-    private readonly List<nint> _textures = [];
     private readonly FontRenderer _fontRenderer;
 
     public SpriteRenderer(nint renderer, TextureManager textures)
@@ -32,27 +31,6 @@ public class SpriteRenderer : IDisposable
     public void ClearClipRect()
     {
         SDL.SetRenderClipRect(_renderer, nint.Zero);
-    }
-
-    /// <summary>Load a texture from file and return its index.</summary>
-    public int LoadTexture(string path)
-    {
-        var surface = SDL.LoadBMP(path);
-        if (surface == nint.Zero)
-        {
-            throw new Exception($"Failed to load image: {path} - {SDL.GetError()}");
-        }
-
-        var texture = SDL.CreateTextureFromSurface(_renderer, surface);
-        SDL.DestroySurface(surface);
-
-        if (texture == nint.Zero)
-        {
-            throw new Exception($"Failed to create texture: {SDL.GetError()}");
-        }
-
-        _textures.Add(texture);
-        return _textures.Count - 1;
     }
 
     /// <summary>Draw a filled rectangle in world space (transformed by camera).</summary>
@@ -225,11 +203,6 @@ public class SpriteRenderer : IDisposable
     public void Dispose()
     {
         _fontRenderer.Dispose();
-        foreach (var tex in _textures)
-        {
-            SDL.DestroyTexture(tex);
-        }
-        _textures.Clear();
         GC.SuppressFinalize(this);
     }
 }

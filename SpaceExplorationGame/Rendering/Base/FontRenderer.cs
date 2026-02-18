@@ -269,11 +269,8 @@ public class FontRenderer : IDisposable
     {
         foreach (ref var atlas in _fontAtlases.AsSpan())
         {
-            if (atlas.Texture != nint.Zero)
-            {
-                SDL.DestroyTexture(atlas.Texture);
-                atlas.Texture = nint.Zero;
-            }
+            _textures.DestroyTexture(atlas.Texture);
+            atlas.Texture = nint.Zero;
         }
         _fontAtlases = [];
         GC.SuppressFinalize(this);

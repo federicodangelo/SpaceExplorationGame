@@ -13,10 +13,12 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class StationRenderer : IDisposable
 {
+    private readonly TextureManager _textures;
     private nint _texture;
 
     public StationRenderer(TextureManager textures)
     {
+        _textures = textures;
         _texture = GenerateStationTexture(textures);
     }
 
@@ -117,11 +119,8 @@ public class StationRenderer : IDisposable
 
     public void Dispose()
     {
-        if (_texture != nint.Zero)
-        {
-            SDL.DestroyTexture(_texture);
-            _texture = nint.Zero;
-        }
+        _textures.DestroyTexture(_texture);
+        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

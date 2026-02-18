@@ -262,10 +262,10 @@ public class EnemyShipRenderer : IDisposable
 
     public void Dispose()
     {
-        SDL3.SDL.DestroyTexture(_pirateTexture);
-        SDL3.SDL.DestroyTexture(_traderTexture);
-        SDL3.SDL.DestroyTexture(_patrolTexture);
-        SDL3.SDL.DestroyTexture(_flameTexture);
+        _textures.DestroyTexture(_pirateTexture);
+        _textures.DestroyTexture(_traderTexture);
+        _textures.DestroyTexture(_patrolTexture);
+        _textures.DestroyTexture(_flameTexture);
         GC.SuppressFinalize(this);
     }
 }

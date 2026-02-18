@@ -14,6 +14,7 @@ namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 /// </summary>
 public abstract class PlanetMapPanelBase : MapPanelBase
 {
+    protected TextureManager _textures = null!;
     protected StarSystemData _starSystem = null!;
     protected PlanetData _planet = null!;
     protected PlanetSurfaceData _surfaceData = null!;
@@ -37,11 +38,8 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     /// <summary>Destroy the cached terrain texture.</summary>
     public void Cleanup()
     {
-        if (_terrainTexture != nint.Zero)
-        {
-            SDL.DestroyTexture(_terrainTexture);
-            _terrainTexture = nint.Zero;
-        }
+        _textures.DestroyTexture(_terrainTexture);
+        _terrainTexture = nint.Zero;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -107,6 +105,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     /// <summary>Create a 1-pixel-per-tile terrain overview texture.</summary>
     protected nint CreateTerrainTexture(Game game)
     {
+        _textures = game.Textures;
         int w = _surfaceData.Width;
         int h = _surfaceData.Height;
         var pixels = new byte[w * h * 4];
@@ -145,22 +144,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             }
         }
 
-        unsafe
-        {
-            fixed (byte* pixelPtr = pixels)
-            {
-                var surface = SDL.CreateSurfaceFrom(w, h, SDL.PixelFormat.ABGR8888, (nint)pixelPtr, w * 4);
-                if (surface == nint.Zero) return nint.Zero;
-
-                var texture = SDL.CreateTextureFromSurface(game.Renderer, surface);
-                SDL.DestroySurface(surface);
-
-                if (texture != nint.Zero)
-                    SDL.SetTextureScaleMode(texture, SDL.ScaleMode.Nearest);
-
-                return texture;
-            }
-        }
+        return game.Textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
     }
 
     // ─────────────────────────────────────────────────────────────

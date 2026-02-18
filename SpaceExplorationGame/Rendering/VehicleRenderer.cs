@@ -12,10 +12,12 @@ namespace SpaceExplorationGame.Rendering;
 public class VehicleRenderer : IDisposable
 {
     private const int VehicleSize = 40;
+    private readonly TextureManager _textures;
     private nint _texture;
 
     public VehicleRenderer(TextureManager textures)
     {
+        _textures = textures;
         _texture = GenerateVehicleTexture(textures);
     }
 
@@ -113,11 +115,8 @@ public class VehicleRenderer : IDisposable
 
     public void Dispose()
     {
-        if (_texture != nint.Zero)
-        {
-            SDL.DestroyTexture(_texture);
-            _texture = nint.Zero;
-        }
+        _textures.DestroyTexture(_texture);
+        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }
