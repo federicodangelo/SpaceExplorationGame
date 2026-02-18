@@ -700,6 +700,13 @@ public class SolarSystemState : GameState
         // Run AI system
         _enemyAISystem.Update(in dt);
 
+        // SFX for NPC weapon fire (distance-attenuated)
+        var playerPos = game.EcsWorld.IsAlive(_playerShip)
+            ? game.EcsWorld.Get<Transform>(_playerShip).Position
+            : _camera.Position;
+        foreach (var spawn in _enemyAISystem.ProjectilesSpawnedLastUpdate)
+            game.Audio.PlaySfxAtDistance(SfxType.EnemyLaser, spawn.Pos, playerPos, 0.5f);
+
         // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
 
         // Run projectile system (collision detection with ships + asteroids)
@@ -710,9 +717,6 @@ public class SolarSystemState : GameState
 
         // Process damage events (visual effects + mining HUD tracking)
         CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
-        var playerPos = game.EcsWorld.IsAlive(_playerShip)
-            ? game.EcsWorld.Get<Transform>(_playerShip).Position
-            : _camera.Position;
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
             // SFX for damage hits — volume attenuated by distance to the player

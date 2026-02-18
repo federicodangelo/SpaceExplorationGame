@@ -598,6 +598,10 @@ public class PlanetSurfaceState : GameState
 
             // Surface enemy AI
             _surfaceAISystem.Update(in dt);
+
+            // SFX for NPC weapon fire (distance-attenuated)
+            foreach (var spawn in _surfaceAISystem.ProjectilesSpawnedLastUpdate)
+                game.Audio.PlaySfxAtDistance(SfxType.EnemyLaser, spawn.Pos, avatarTransform.Position, 0.4f);
         }
 
         // Projectile system (collisions)

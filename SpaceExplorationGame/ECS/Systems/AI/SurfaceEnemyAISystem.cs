@@ -21,6 +21,9 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
     // Projectiles spawned this frame (created after query completes to avoid mutation during iteration)
     private readonly List<SurfaceProjectileSpawn> _pendingProjectiles = [];
 
+    /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
+    public IReadOnlyList<SurfaceProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
+
     // Per-frame cached state for [Query] method access
     private float _dt;
     private Vector2 _playerPos;

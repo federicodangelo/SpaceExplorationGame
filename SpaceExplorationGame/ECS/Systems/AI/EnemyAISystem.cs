@@ -21,6 +21,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     // Projectiles spawned this frame (to be created after query completes)
     private readonly List<ProjectileSpawn> _pendingProjectiles = [];
 
+    /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
+    public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
+
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
 
