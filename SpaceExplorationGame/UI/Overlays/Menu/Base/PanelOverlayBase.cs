@@ -108,7 +108,7 @@ public abstract class PanelOverlayBase : OverlayBase
         }
 
         // Click outside panel to close
-        if (CloseOnClickOutside && input.IsMousePressed(1) &&
+        if (CloseOnClickOutside && input.IsMouseReleased(1) &&
             !IsPointInPanel(input.MouseX, input.MouseY))
         {
             Close();

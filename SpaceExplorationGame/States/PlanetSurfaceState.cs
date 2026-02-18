@@ -141,6 +141,18 @@ public class PlanetSurfaceState : GameState
     {
         _surfaceMapOverlay = new PlanetSurfaceMapOverlay(game.Textures);
 
+        // Wire up map option in the in-game menu
+        _inGameMenuOverlay.OnMapRequested = g =>
+        {
+            var avatarPos = g.EcsWorld.Get<Transform>(_playerAvatar).Position;
+            var shipPos = g.EcsWorld.Get<Transform>(_shipEntity).Position;
+            Vector2? vehiclePos = _vehicleDeployed
+                ? g.EcsWorld.Get<Transform>(_vehicleEntity).Position
+                : null;
+            _surfaceMapOverlay.Open(g, _starSystem, _planet, _surfaceData,
+                shipPos, avatarPos, vehiclePos);
+        };
+
         // Generate planet surface
         var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
         _surfaceData = PlanetSurfaceGenerator.Generate(rng, _planet);

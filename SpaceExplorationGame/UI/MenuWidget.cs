@@ -148,7 +148,7 @@ public class MenuWidget<T> where T : struct, Enum
                     my >= r.Y && my <= r.Y + r.H)
                 {
                     _selected = i;
-                    if (input.IsMousePressed(1) && _options[i].Enabled)
+                    if (input.IsMouseReleased(1) && _options[i].Enabled)
                         return _options[i].Value;
                     break;
                 }

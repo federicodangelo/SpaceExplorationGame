@@ -14,6 +14,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     public enum InGameMenuOption
     {
         Resume,
+        Map,
         Missions,
         Controls,
         MainMenu
@@ -22,6 +23,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     private static readonly MenuOption<InGameMenuOption>[] DefaultMenuOptions =
     [
         new(InGameMenuOption.Resume, "RESUME"),
+        new(InGameMenuOption.Map, "MAP"),
         new(InGameMenuOption.Missions, "MISSIONS"),
         new(InGameMenuOption.Controls, "CONTROLS"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
@@ -33,6 +35,9 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         get => _controlsOverlay.StateType;
         set => _controlsOverlay.StateType = value;
     }
+
+    /// <summary>Callback invoked when the player selects the Map option. Set by each game state.</summary>
+    public Action<Game>? OnMapRequested { get; set; }
 
     private readonly MissionsListOverlay _missionsOverlay = new();
     private readonly ControlsOverlay _controlsOverlay = new();
@@ -69,6 +74,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     public void Open(Game game)
     {
         Menu.SelectedIndex = 0;
+        UpdateMapOption();
         UpdateMissionsOption(game);
         base.Open();
     }
@@ -88,6 +94,13 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
             case InGameMenuOption.Resume:
                 Close();
                 break;
+            case InGameMenuOption.Map:
+                if (OnMapRequested != null)
+                {
+                    Close();
+                    OnMapRequested(game);
+                }
+                break;
             case InGameMenuOption.Missions:
                 _missionsOverlay.Open(game);
                 break;
@@ -104,15 +117,22 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     protected override void OnUpdate(Game game, float dt)
     {
+        UpdateMapOption();
         UpdateMissionsOption(game);
     }
 
     // ── Helpers ──
 
+    private void UpdateMapOption()
+    {
+        bool hasMap = OnMapRequested != null;
+        Menu.SetOption(1, new(InGameMenuOption.Map, "MAP", Enabled: hasMap, DisabledHint: hasMap ? null : "Not available"));
+    }
+
     private void UpdateMissionsOption(Game game)
     {
         int missionCount = game.Player.ActiveMissions.Count;
         string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
-        Menu.SetOption(1, new(InGameMenuOption.Missions, label));
+        Menu.SetOption(2, new(InGameMenuOption.Missions, label));
     }
 }

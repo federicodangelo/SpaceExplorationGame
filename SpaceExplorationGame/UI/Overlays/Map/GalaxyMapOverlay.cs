@@ -23,6 +23,7 @@ public class GalaxyMapOverlay : MapOverlayBase
 
     // ── Current mode ──
     private MapViewMode _viewMode = MapViewMode.SolarSystem;
+    private bool _justOpened = false;
 
     public GalaxyMapOverlay()
     {
@@ -44,6 +45,7 @@ public class GalaxyMapOverlay : MapOverlayBase
     {
         IsOpen = true;
         _viewMode = initialMode;
+        _justOpened = true;
 
         ComputeLayout();
         ApplyLayoutToPanel(_solarPanel);
@@ -84,6 +86,11 @@ public class GalaxyMapOverlay : MapOverlayBase
     public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
+        if (_justOpened)
+        {
+            _justOpened = false;
+            return true; // Skip input on the frame we open, to avoid accidental actions
+        }
         var input = game.Input;
 
         // Escape closes

@@ -125,6 +125,9 @@ public class SolarSystemState : GameState
     {
         _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
 
+        // Wire up map option in the in-game menu
+        _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
+
         // Music
         game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
 
