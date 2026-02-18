@@ -12,6 +12,7 @@ namespace SpaceExplorationGame.Rendering.Base;
 public class FontRenderer : IDisposable
 {
     private readonly nint _renderer;
+    private readonly TextureManager _textures;
 
     // ── Multi-scale font atlases ──────────────────────────────────────
     private const float AtlasScaleMin = 0.5f;
@@ -34,9 +35,10 @@ public class FontRenderer : IDisposable
     private SDL.Vertex[] _vertexBuf = new SDL.Vertex[256]; // grows as needed
     private int[] _indexBuf = new int[384];                  // grows as needed
 
-    public FontRenderer(nint renderer)
+    public FontRenderer(nint renderer, TextureManager textures)
     {
         _renderer = renderer;
+        _textures = textures;
         BuildFontAtlases();
     }
 
@@ -113,21 +115,8 @@ public class FontRenderer : IDisposable
                 col++;
             }
 
-            // Create SDL texture
-            nint texture;
-            unsafe
-            {
-                fixed (byte* ptr = pixels)
-                {
-                    var surface = SDL.CreateSurfaceFrom(atlasW, atlasH,
-                        SDL.PixelFormat.ABGR8888, (nint)ptr, atlasW * 4);
-                    texture = SDL.CreateTextureFromSurface(_renderer, surface);
-                    SDL.DestroySurface(surface);
-                }
-            }
-
-            SDL.SetTextureBlendMode(texture, SDL.BlendMode.Blend);
-            SDL.SetTextureScaleMode(texture, SDL.ScaleMode.Nearest);
+            // Create SDL texture via TextureManager
+            nint texture = _textures.CreateTextureFromPixels(pixels, atlasW, atlasH, SDL.ScaleMode.Nearest);
 
             _fontAtlases[si] = new FontAtlasEntry
             {

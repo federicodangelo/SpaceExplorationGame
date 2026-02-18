@@ -80,11 +80,11 @@ public class Game : IDisposable
         // ECS world
         EcsWorld = World.Create();
 
-        // Sprite renderer
-        SpriteRenderer = new SpriteRenderer(Renderer);
-
         // Texture manager (procedural pixel art)
         Textures = new TextureManager(Renderer);
+
+        // Sprite renderer
+        SpriteRenderer = new SpriteRenderer(Renderer, Textures);
 
         // Entity renderers
         AvatarRenderer = new AvatarRenderer(Textures);

@@ -13,12 +13,12 @@ public class SpriteRenderer : IDisposable
     private readonly List<nint> _textures = [];
     private readonly FontRenderer _fontRenderer;
 
-    public SpriteRenderer(nint renderer)
+    public SpriteRenderer(nint renderer, TextureManager textures)
     {
         _renderer = renderer;
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-        _fontRenderer = new FontRenderer(renderer);
+        _fontRenderer = new FontRenderer(renderer, textures);
     }
 
     /// <summary>Set a clip rectangle — all subsequent draw calls are confined to this area.</summary>
