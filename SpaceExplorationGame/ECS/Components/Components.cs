@@ -1,9 +1,11 @@
 using System.Numerics;
+using Arch.AOT.SourceGenerator;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Components;
 
 /// <summary>Position and rotation in world space.</summary>
+[Component]
 public struct Transform
 {
     public Vector2 Position;
@@ -23,6 +25,7 @@ public struct Transform
 }
 
 /// <summary>Linear and angular velocity.</summary>
+[Component]
 public struct Velocity
 {
     public Vector2 Value;
@@ -40,9 +43,11 @@ public struct Velocity
 }
 
 /// <summary>Marks an entity as the player-controlled entity.</summary>
+[Component]
 public struct PlayerControlled;
 
 /// <summary>Sprite rendering info.</summary>
+[Component]
 public struct Sprite
 {
     public int TextureId;       // index into SpriteRenderer's texture list
@@ -65,6 +70,7 @@ public struct Sprite
 }
 
 /// <summary>Tag for celestial bodies (stars, planets, moons).</summary>
+[Component]
 public struct CelestialBody
 {
     public CelestialType Type;
@@ -84,6 +90,7 @@ public enum CelestialType
 }
 
 /// <summary>Orbital mechanics around a parent body.</summary>
+[Component]
 public struct Orbit
 {
     public Arch.Core.Entity Parent;    // entity being orbited
@@ -103,12 +110,14 @@ public struct Orbit
 }
 
 /// <summary>Circular collision shape.</summary>
+[Component]
 public struct CircleCollider
 {
     public float Radius;
 }
 
 /// <summary>Marks an entity as interactable (e.g., land on planet, dock at station)</summary>
+[Component]
 public struct Interactable
 {
     public InteractionType Type;
@@ -122,6 +131,7 @@ public enum InteractionType
 }
 
 /// <summary>Used for star system markers on the galaxy map.</summary>
+[Component]
 public struct StarSystemMarker
 {
     public int SystemIndex;
@@ -141,6 +151,7 @@ public enum StarClass
 }
 
 /// <summary>Label that renders text near an entity.</summary>
+[Component]
 public struct Label
 {
     public string Text;
@@ -161,6 +172,7 @@ public enum Faction
 }
 
 /// <summary>Health and shields for a combat-capable entity.</summary>
+[Component]
 public struct Health
 {
     public float Hull;
@@ -204,6 +216,7 @@ public struct Health
 }
 
 /// <summary>A projectile entity that travels in a direction and deals damage on hit.</summary>
+[Component]
 public struct Projectile
 {
     public float Damage;
@@ -228,6 +241,7 @@ public sealed record EnemyAIConfig(
     float MaxRotationSpeed = 180f);
 
 /// <summary>AI-controlled ship with combat behavior. Config holds immutable stats; mutable state lives here.</summary>
+[Component]
 public struct EnemyAI
 {
     public EnemyAIConfig Config;
@@ -247,6 +261,7 @@ public enum AIState
 }
 
 /// <summary>Loot table for an enemy entity — dropped on destruction.</summary>
+[Component]
 public struct LootDrop
 {
     public int MinCredits;
@@ -257,6 +272,7 @@ public struct LootDrop
 }
 
 /// <summary>Marks an entity as a mineable asteroid that drops resources when destroyed.</summary>
+[Component]
 public struct AsteroidField
 {
     public ResourceType Resource;
@@ -275,6 +291,7 @@ public sealed record SurfaceAIConfig(
     float ProjectileSpeed);
 
 /// <summary>AI for surface enemies (fauna and bandits). Config holds immutable stats; mutable state lives here.</summary>
+[Component]
 public struct SurfaceAI
 {
     public SurfaceAIConfig Config;

@@ -48,10 +48,15 @@ jobs:
           dotnet publish ${{ env.PROJECT_PATH }}
           -c Release
           -r ${{ matrix.rid }}
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish
+
+      - name: Remove PDB files
+        run: Remove-Item -Path publish/*.pdb -Force -ErrorAction SilentlyContinue
+        if: runner.os == 'Windows'
+
+      - name: Remove PDB files
+        run: rm -f publish/*.pdb
+        if: runner.os != 'Windows'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
