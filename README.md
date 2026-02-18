@@ -1,5 +1,8 @@
 # Space Exploration Game
 
+[![Build](https://github.com/federicodangelo/SpaceExplorationGame/actions/workflows/build.yml/badge.svg)](https://github.com/federicodangelo/SpaceExplorationGame/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/federicodangelo/SpaceExplorationGame)](https://github.com/federicodangelo/SpaceExplorationGame/releases/latest)
+
 A 2D procedural space exploration game built entirely using AI coding agents — an experiment to test the limits of AI-assisted game development.
 
 ## About This Project
