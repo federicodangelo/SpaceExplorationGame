@@ -718,9 +718,18 @@ public static class MiniBitmapFont
         Glyphs[c] = pixels;
     }
 
+    /// <summary>Character width in pixels.</summary>
+    public const int GlyphWidth = 5;
+
+    /// <summary>Character height in pixels.</summary>
+    public const int GlyphHeight = 8;
+
     /// <summary>Get the pixel data for a character, or null if not defined.</summary>
     public static bool[]? GetChar(char c)
     {
         return Glyphs.GetValueOrDefault(c);
     }
+
+    /// <summary>Returns all defined glyph entries (character → pixel data).</summary>
+    public static IReadOnlyDictionary<char, bool[]> GetAllGlyphs() => Glyphs;
 }
