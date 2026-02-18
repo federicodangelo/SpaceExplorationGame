@@ -1,5 +1,5 @@
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;
 

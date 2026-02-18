@@ -1,8 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
 
-namespace SpaceExplorationGame.Rendering;
+namespace SpaceExplorationGame.Rendering.Base;
 
 /// <summary>
 /// Shared utility for rendering tile-based maps with per-tile color variation.

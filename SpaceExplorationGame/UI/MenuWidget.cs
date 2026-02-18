@@ -1,6 +1,6 @@
 using SDL3;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.UI;
 

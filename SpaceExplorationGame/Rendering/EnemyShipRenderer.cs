@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
 

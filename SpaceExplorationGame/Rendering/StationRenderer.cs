@@ -4,6 +4,7 @@ using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
 

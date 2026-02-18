@@ -1,7 +1,7 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Rendering;
+namespace SpaceExplorationGame.Rendering.Base;
 
 /// <summary>
 /// Provides low-level texture creation utilities used by entity renderers.

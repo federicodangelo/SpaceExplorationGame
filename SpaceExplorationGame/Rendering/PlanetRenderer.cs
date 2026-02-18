@@ -5,6 +5,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
 

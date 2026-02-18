@@ -2,7 +2,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Rendering;
+namespace SpaceExplorationGame.Rendering.Base;
 
 /// <summary>
 /// Handles rendering sprites, colored rectangles, and basic shapes using SDL3.

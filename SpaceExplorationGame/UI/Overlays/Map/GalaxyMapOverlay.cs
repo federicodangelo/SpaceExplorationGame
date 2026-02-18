@@ -1,7 +1,7 @@
 using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;
