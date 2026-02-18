@@ -126,7 +126,9 @@ public static class GalaxyGenerator
 
     private static ColoredRadius GetStarProperties(StarClass starClass, SeededRandom rng)
     {
-        return starClass switch
+        const float StarSizeScale = 2.0f; // Scale factor to make stars larger for better visuals
+
+        ColoredRadius star = starClass switch
         {
             StarClass.O => new(new Color3(100, 140, 255), rng.NextFloat(200, 300)),   // Blue
             StarClass.B => new(new Color3(150, 180, 255), rng.NextFloat(160, 240)),   // Blue-white
@@ -134,8 +136,10 @@ public static class GalaxyGenerator
             StarClass.F => new(new Color3(255, 255, 220), rng.NextFloat(120, 180)),   // Yellow-white
             StarClass.G => new(new Color3(255, 255, 100), rng.NextFloat(100, 160)),   // Yellow
             StarClass.K => new(new Color3(255, 180, 80), rng.NextFloat(100, 140)),    // Orange
-            StarClass.M => new(new Color3(255, 100, 60), rng.NextFloat(80, 120)),     // Red
+            StarClass.M => new(new Color3(255, 100, 60), rng.NextFloat(100, 120)),     // Red
             _ => new(new Color3(255, 255, 255), 120)
         };
+
+        return new ColoredRadius(star.Color, star.Radius * StarSizeScale);
     }
 }

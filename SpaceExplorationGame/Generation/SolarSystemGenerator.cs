@@ -244,18 +244,23 @@ public static class SolarSystemGenerator
 
     private static ColoredRadius GetPlanetProperties(PlanetType type, SeededRandom rng)
     {
-        return type switch
+        const float MinStarRadius = 200f;
+        const float MaxPlanetRadius = 400f;
+
+        ColoredRadius planet = type switch
         {
             PlanetType.Rocky => new(new Color3((byte)rng.NextInt(130, 180), (byte)rng.NextInt(110, 150), (byte)rng.NextInt(90, 130)), rng.NextFloat(160, 280)),
             PlanetType.Terrestrial => new(new Color3((byte)rng.NextInt(40, 100), (byte)rng.NextInt(100, 200), (byte)rng.NextInt(50, 150)), rng.NextFloat(240, 360)),
             PlanetType.Desert => new(new Color3((byte)rng.NextInt(180, 230), (byte)rng.NextInt(140, 180), (byte)rng.NextInt(60, 100)), rng.NextFloat(200, 320)),
-            PlanetType.GasGiant => new(new Color3((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140)), rng.NextFloat(500, 800)),
-            PlanetType.IceGiant => new(new Color3((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255)), rng.NextFloat(400, 640)),
+            PlanetType.GasGiant => new(new Color3((byte)rng.NextInt(180, 240), (byte)rng.NextInt(150, 200), (byte)rng.NextInt(80, 140)), rng.NextFloat(360, 400)),
+            PlanetType.IceGiant => new(new Color3((byte)rng.NextInt(80, 140), (byte)rng.NextInt(140, 200), (byte)rng.NextInt(200, 255)), rng.NextFloat(360, 400)),
             PlanetType.Volcanic => new(new Color3((byte)rng.NextInt(200, 255), (byte)rng.NextInt(60, 100), (byte)rng.NextInt(20, 60)), rng.NextFloat(160, 280)),
             PlanetType.Ocean => new(new Color3((byte)rng.NextInt(20, 60), (byte)rng.NextInt(80, 140), (byte)rng.NextInt(180, 240)), rng.NextFloat(240, 360)),
             PlanetType.Frozen => new(new Color3((byte)rng.NextInt(180, 220), (byte)rng.NextInt(200, 240), (byte)rng.NextInt(230, 255)), rng.NextFloat(200, 320)),
             _ => new(new Color3(128, 128, 128), 240)
         };
+        // Clamp planet radius
+        return new ColoredRadius(planet.Color, planet.Radius * (MinStarRadius / MaxPlanetRadius) * 0.9f); // planets should be smaller than stars, scaled by max radius
     }
 
     private static List<MoonData> GenerateMoons(SeededRandom rng, int count, float parentRadius, string parentName)
