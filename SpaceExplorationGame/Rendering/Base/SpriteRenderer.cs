@@ -86,16 +86,7 @@ public class SpriteRenderer : IDisposable
         var center = camera.WorldToScreen(worldCenter);
         var radius = worldRadius * camera.Zoom;
 
-        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
-
-        // Simple scanline fill
-        for (int y = (int)(-radius); y <= (int)radius; y++)
-        {
-            float x = MathF.Sqrt(radius * radius - y * y);
-            SDL.RenderLine(_renderer,
-                center.X - x, center.Y + y,
-                center.X + x, center.Y + y);
-        }
+        DrawFilledCircleScreen(center.X, center.Y, radius, color);
     }
 
     /// <summary>Draw a line in world space.</summary>
@@ -196,14 +187,66 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Draw a filled circle in screen space.</summary>
-    public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color)
+    /// <summary>Draw a filled circle in screen space using a triangle fan.</summary>
+    /// <param name="cx">Center X</param>
+    /// <param name="cy">Center Y</param>
+    /// <param name="radius">Radius</param>
+    /// <param name="color">Fill color</param>
+    /// <param name="segments">Number of segments (vertices), default 32</param>
+    // Reusable buffers for batched tile rendering (avoids per-frame allocs).
+    private static SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
+    private static int[] _indexBuf = new int[1536];
+    public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
     {
-        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
-        for (int y = (int)(-radius); y <= (int)radius; y++)
+        if (segments < 3) segments = 3;
+
+        SDL.FColor fcolor = new SDL.FColor
         {
-            float x = MathF.Sqrt(radius * radius - y * y);
-            SDL.RenderLine(_renderer, cx - x, cy + y, cx + x, cy + y);
+            R = color.R / 255.0f,
+            G = color.G / 255.0f,
+            B = color.B / 255.0f,
+            A = color.A / 255.0f
+        };
+
+        // Prepare vertices for a triangle fan
+        int requiredVerts = segments + 2;
+        int requiredIndices = (segments + 1) * 3;
+        if (_vertexBuf.Length < requiredVerts)
+            _vertexBuf = new SDL.Vertex[requiredVerts];
+        if (_indexBuf.Length < requiredIndices)
+            _indexBuf = new int[requiredIndices];
+        var vertices = _vertexBuf;
+        var indices = _indexBuf;
+
+        // Center vertex
+        vertices[0] = new SDL.Vertex
+        {
+            Position = new SDL.FPoint() { X = cx, Y = cy },
+            Color = fcolor,
+        };
+
+        float angleStep = MathF.PI * 2f / segments;
+        for (int i = 0; i <= segments; i++)
+        {
+            float angle = i * angleStep;
+            float x = cx + MathF.Cos(angle) * radius;
+            float y = cy + MathF.Sin(angle) * radius;
+            vertices[i + 1] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint() { X = x, Y = y },
+                Color = fcolor,
+            };
         }
+
+        // Indices for triangle fan
+        for (int i = 0; i < segments; i++)
+        {
+            indices[i * 3 + 0] = 0;
+            indices[i * 3 + 1] = i + 1;
+            indices[i * 3 + 2] = i + 2;
+        }
+
+        SDL.RenderGeometry(_renderer, nint.Zero, vertices, requiredVerts, indices, requiredIndices);
     }
 
     public void Dispose()
