@@ -693,7 +693,7 @@ public class SolarSystemState : GameState
 
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
                     weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100));
-                game.Audio.PlaySfx(SfxType.LaserFire);
+                game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
             }
         }
 

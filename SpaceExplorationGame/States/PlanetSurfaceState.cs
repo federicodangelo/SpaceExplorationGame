@@ -593,7 +593,7 @@ public class PlanetSurfaceState : GameState
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, aimDir,
                     weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
                     new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime);
-                game.Audio.PlaySfx(SfxType.LaserFire, 0.8f);
+                game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
             }
 
             // Surface enemy AI
