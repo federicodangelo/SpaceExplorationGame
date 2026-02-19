@@ -11,13 +11,20 @@ public class SpriteRenderer : IDisposable
 {
     private readonly nint _renderer;
     private readonly FontRenderer _fontRenderer;
+    private readonly TextureManager _textures;
+
+    // Cached circle texture (RGBA) used for drawing filled circles up to 256x256
+    private nint _cachedCircleTexture = nint.Zero;
+    private const int CachedCircleSize = 64; // max texture size (pixels)
 
     public SpriteRenderer(nint renderer, TextureManager textures)
     {
         _renderer = renderer;
+        _textures = textures;
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
         _fontRenderer = new FontRenderer(renderer, textures);
+        _cachedCircleTexture = CreateCachedCircleTexture();
     }
 
     /// <summary>Set a clip rectangle — all subsequent draw calls are confined to this area.</summary>
@@ -150,6 +157,40 @@ public class SpriteRenderer : IDisposable
             SDL.SetTextureAlphaMod(texture, 255);
     }
 
+    /// <summary>Draw a texture in world space with a color tint (RGBA).</summary>
+    public void DrawTexture(Camera camera, nint texture, Vector2 worldPos, int width, int height, Color4 color, float rotationDeg = 0f)
+    {
+        if (texture == nint.Zero) return;
+        var screenPos = camera.WorldToScreen(worldPos);
+        float scaledW = width * camera.Zoom;
+        float scaledH = height * camera.Zoom;
+
+        var dstRect = new SDL.FRect
+        {
+            X = screenPos.X - scaledW / 2f,
+            Y = screenPos.Y - scaledH / 2f,
+            W = scaledW,
+            H = scaledH
+        };
+
+        SDL.SetTextureColorMod(texture, color.R, color.G, color.B);
+        SDL.SetTextureAlphaMod(texture, color.A);
+
+        if (rotationDeg != 0f)
+        {
+            var center = new SDL.FPoint { X = scaledW / 2f, Y = scaledH / 2f };
+            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
+        }
+        else
+        {
+            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
+        }
+
+        // Reset mods
+        SDL.SetTextureColorMod(texture, 255, 255, 255);
+        SDL.SetTextureAlphaMod(texture, 255);
+    }
+
     /// <summary>Draw a texture directly in screen space, centered on the position.</summary>
     public void DrawTextureScreen(nint texture, float x, float y, float w, float h, float rotationDeg = 0f, byte alpha = 255)
     {
@@ -180,10 +221,40 @@ public class SpriteRenderer : IDisposable
             SDL.SetTextureAlphaMod(texture, 255);
     }
 
-    /// <summary>Render pre-built colored geometry (no texture) in a single batched draw call.</summary>
-    public void DrawGeometry(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices)
+    /// <summary>Draw a texture in screen space with a color tint (RGBA).</summary>
+    public void DrawTextureScreen(nint texture, float x, float y, float w, float h, Color4 color, float rotationDeg = 0f)
     {
-        SDL.RenderGeometry(_renderer, nint.Zero, vertices, numVertices, indices, numIndices);
+        if (texture == nint.Zero) return;
+
+        var dstRect = new SDL.FRect
+        {
+            X = x - w / 2f,
+            Y = y - h / 2f,
+            W = w,
+            H = h
+        };
+
+        SDL.SetTextureColorMod(texture, color.R, color.G, color.B);
+        SDL.SetTextureAlphaMod(texture, color.A);
+
+        if (rotationDeg != 0f)
+        {
+            var center = new SDL.FPoint { X = w / 2f, Y = h / 2f };
+            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
+        }
+        else
+        {
+            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
+        }
+
+        SDL.SetTextureColorMod(texture, 255, 255, 255);
+        SDL.SetTextureAlphaMod(texture, 255);
+    }
+
+    /// <summary>Render pre-built colored geometry (no texture) in a single batched draw call.</summary>
+    public void DrawGeometry(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices, nint? texture = null)
+    {
+        SDL.RenderGeometry(_renderer, texture ?? nint.Zero, vertices, numVertices, indices, numIndices);
     }
 
     /// <summary>Draw a filled circle in screen space.</summary>
@@ -200,7 +271,17 @@ public class SpriteRenderer : IDisposable
     {
         if (segments < 3) segments = 3;
 
-        SDL.FColor fcolor = new SDL.FColor
+        float diameter = radius * 2f;
+
+        // If the requested circle fits inside the cached texture, draw it using a textured quad
+        if (diameter <= CachedCircleSize)
+        {
+            DrawTextureScreen(_cachedCircleTexture, cx, cy, diameter, diameter, color);
+            return;
+        }
+
+        // Fallback: prepare vertices for a triangle fan
+        SDL.FColor fcolor2 = new SDL.FColor
         {
             R = color.R / 255.0f,
             G = color.G / 255.0f,
@@ -208,21 +289,19 @@ public class SpriteRenderer : IDisposable
             A = color.A / 255.0f
         };
 
-        // Prepare vertices for a triangle fan
         int requiredVerts = segments + 2;
         int requiredIndices = (segments + 1) * 3;
         if (_vertexBuf.Length < requiredVerts)
             _vertexBuf = new SDL.Vertex[requiredVerts];
         if (_indexBuf.Length < requiredIndices)
             _indexBuf = new int[requiredIndices];
-        var vertices = _vertexBuf;
-        var indices = _indexBuf;
+        var v = _vertexBuf;
+        var id = _indexBuf;
 
-        // Center vertex
-        vertices[0] = new SDL.Vertex
+        v[0] = new SDL.Vertex
         {
             Position = new SDL.FPoint() { X = cx, Y = cy },
-            Color = fcolor,
+            Color = fcolor2,
         };
 
         float angleStep = MathF.PI * 2f / segments;
@@ -231,27 +310,68 @@ public class SpriteRenderer : IDisposable
             float angle = i * angleStep;
             float x = cx + MathF.Cos(angle) * radius;
             float y = cy + MathF.Sin(angle) * radius;
-            vertices[i + 1] = new SDL.Vertex
+            v[i + 1] = new SDL.Vertex
             {
                 Position = new SDL.FPoint() { X = x, Y = y },
-                Color = fcolor,
+                Color = fcolor2,
             };
         }
 
-        // Indices for triangle fan
         for (int i = 0; i < segments; i++)
         {
-            indices[i * 3 + 0] = 0;
-            indices[i * 3 + 1] = i + 1;
-            indices[i * 3 + 2] = i + 2;
+            id[i * 3 + 0] = 0;
+            id[i * 3 + 1] = i + 1;
+            id[i * 3 + 2] = i + 2;
         }
 
-        SDL.RenderGeometry(_renderer, nint.Zero, vertices, requiredVerts, indices, requiredIndices);
+        DrawGeometry(v, requiredVerts, id, requiredIndices);
     }
 
     public void Dispose()
     {
+        _textures.DestroyTexture(_cachedCircleTexture);
+        _cachedCircleTexture = nint.Zero;
+
         _fontRenderer.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private nint CreateCachedCircleTexture()
+    {
+        int w = CachedCircleSize;
+        int h = CachedCircleSize;
+        byte[] pixels = new byte[w * h * 4];
+        float cx = w / 2f;
+        float cy = h / 2f;
+        float r = w / 2f;
+        float r2 = r * r;
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float dx = x + 0.5f - cx;
+                float dy = y + 0.5f - cy;
+                float dist2 = dx * dx + dy * dy;
+                int idx = (y * w + x) * 4;
+                if (dist2 <= r2)
+                {
+                    pixels[idx + 0] = 255; // R
+                    pixels[idx + 1] = 255; // G
+                    pixels[idx + 2] = 255; // B
+                    pixels[idx + 3] = 255; // A
+                }
+                else
+                {
+                    pixels[idx + 0] = 0;
+                    pixels[idx + 1] = 0;
+                    pixels[idx + 2] = 0;
+                    pixels[idx + 3] = 0;
+                }
+            }
+        }
+
+        // Use TextureManager helper to create a texture from pixel data.
+        return _textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
     }
 }
