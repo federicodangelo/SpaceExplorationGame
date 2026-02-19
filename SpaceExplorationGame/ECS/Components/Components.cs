@@ -293,3 +293,43 @@ public struct SurfaceAI
     public float WanderAngle;        // current wander direction
     public float WanderTimer;        // time until next wander direction change
 }
+
+/// <summary>
+/// Configurable particle emitter attached to an entity.
+/// Set <see cref="IsEnabled"/> to toggle emission on/off.
+/// </summary>
+[Component]
+public struct ParticleEmitter
+{
+    public bool IsEnabled;
+    public float SpawnInterval;
+    public float SpawnAccumulator;
+
+    public float SternOffset;
+    public Vector2 AccelerationDirection;
+    public Vector2 CarrierVelocity;
+
+    public float EjectSpeedMin;
+    public float EjectSpeedMax;
+    public float LateralDrift;
+
+    public float ParticleLifeMin;
+    public float ParticleLifeMax;
+    public float ParticleSizeMin;
+    public float ParticleSizeMax;
+    public float ParticleDrag;
+    public Color3 ParticleColor;
+}
+
+/// <summary>Single particle state (position comes from Transform).</summary>
+[Component]
+public struct Particle
+{
+    public Vector2 Velocity;
+    public float Age;
+    public float Lifetime;
+    public float StartSize;
+    public float EndSize;
+    public float Drag;
+    public Color3 Color;
+}
