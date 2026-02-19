@@ -292,7 +292,7 @@ public class SolarSystemState : GameState
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
 
-        for (int i = 0; i < 8000; i++)
+        for (int i = 0; i < 4000; i++)
         {
             _bgStars.Add(new BackgroundStar(
                 bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
@@ -301,7 +301,7 @@ public class SolarSystemState : GameState
             ));
         }
 
-        for (int i = 0; i < 128; i++)
+        for (int i = 0; i < 32; i++)
         {
             byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
             int ci = nebRng.NextInt(0, 3);

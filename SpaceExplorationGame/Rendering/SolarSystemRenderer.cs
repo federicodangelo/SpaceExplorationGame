@@ -18,8 +18,8 @@ public static class SolarSystemRenderer
     {
         foreach (var (x, y, brightness) in bgStars)
         {
-            var parallaxPos = new Vector2(x, y);
-            var screenPos = camera.WorldToScreen(parallaxPos);
+            var pos = new Vector2(x, y);
+            var screenPos = camera.WorldToScreen(pos) * 0.9f; // Move stars slightly slower for parallax effect
 
             if (screenPos.X >= 0 && screenPos.X < GameConfig.WindowWidth &&
                 screenPos.Y >= 0 && screenPos.Y < GameConfig.WindowHeight)
