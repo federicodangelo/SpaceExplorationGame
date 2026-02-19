@@ -109,13 +109,6 @@ public struct Orbit
     }
 }
 
-/// <summary>Circular collision shape.</summary>
-[Component]
-public struct CircleCollider
-{
-    public float Radius;
-}
-
 /// <summary>Marks an entity as interactable (e.g., land on planet, dock at station)</summary>
 [Component]
 public struct Interactable

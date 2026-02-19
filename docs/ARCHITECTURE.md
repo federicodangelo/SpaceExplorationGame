@@ -283,7 +283,6 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `Sprite` — rendering info (texture or colored rect via `ColoredRect()` factory)
 - `CelestialBody` — star/planet/moon/station properties (type, name, radius, data index, has solid surface)
 - `Orbit` — orbital mechanics (parent entity, radius, speed, base angle, current angle)
-- `CircleCollider` — circular collision shape
 - `PlayerControlled` — tag for player entity
 - `Label` — text displayed near entity (with Y offset)
 - `Interactable` — landing/docking capability (`InteractionType`: LandOnPlanet / DockAtStation)
