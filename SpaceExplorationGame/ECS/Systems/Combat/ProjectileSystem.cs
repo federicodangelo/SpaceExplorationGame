@@ -13,6 +13,9 @@ public readonly record struct ProjectileHit(Entity Projectile, Entity Target, fl
 /// <summary>Per-frame snapshot of a live projectile's state for collision checking.</summary>
 public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position, Projectile Proj);
 
+/// <summary>Per-frame snapshot of a potential hit target.</summary>
+public readonly record struct TargetSnapshot(Entity Entity, Vector2 Position, float Radius, Faction? Faction);
+
 /// <summary>An entity destroyed by projectile damage this frame.</summary>
 public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction);
 
@@ -27,19 +30,16 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 {
     // Collision results per frame
     private readonly List<ProjectileHit> _hits = [];
-    private readonly HashSet<Entity> _expired = new();
-
-    // Cached query description for collision checking
-    private static readonly QueryDescription _healthQuery = new QueryDescription().WithAll<Transform, Health>();
-
-    // Per-frame data
+    private readonly HashSet<Entity> _expired = [];
     private readonly List<ProjectileSnapshot> _projectileData = [];
+    private readonly List<TargetSnapshot> _targetData = [];
+    private readonly HashSet<Entity> _processedProjectiles = [];
     private float _dt;
 
-    /// <summary>Entities destroyed this frame (for loot/explosion handling).</summary>
+    /// <summary>Entities destroyed by projectile hits last update.</summary>
     public List<DestroyedEntity> DestroyedLastUpdate { get; } = [];
 
-    /// <summary>Damage events from last update (for visual effects).</summary>
+    /// <summary>Damage events from last update.</summary>
     public List<DamageEvent> DamageEventsLastUpdate { get; } = [];
 
     public ProjectileSystem(World world) : base(world)
@@ -48,81 +48,68 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        _hits.Clear();
-        _expired.Clear();
         DestroyedLastUpdate.Clear();
         DamageEventsLastUpdate.Clear();
+        _hits.Clear();
+        _expired.Clear();
         _projectileData.Clear();
+        _targetData.Clear();
+        _processedProjectiles.Clear();
         _dt = dt;
 
         // 1. Collect projectile data and find expired — via source-generated query
         CollectProjectilesQuery(World);
 
-        // 2. Check collisions — done outside the nested query to avoid ref-capture issues
+        // 2. Collect potential targets (only if there are projectiles)
+        if (_projectileData.Count > 0)
+            CollectTargetsQuery(World);
+
+        // 3. Check collisions
         foreach (var snapshot in _projectileData)
         {
             var projEntity = snapshot.Entity;
             var projPos = snapshot.Position;
             var proj = snapshot.Proj;
 
-            World.Query(in _healthQuery, (Entity target, ref Transform targetTransform, ref Health targetHealth) =>
+            foreach (var target in _targetData)
             {
-                if (target == projEntity) return;
-                if (targetHealth.IsDead) return;
-
-                // Determine target's faction
-                Faction? targetFaction = null;
-                if (World.Has<EnemyAI>(target))
-                    targetFaction = World.Get<EnemyAI>(target).Config.Faction;
-                else if (World.Has<SurfaceAI>(target))
-                    targetFaction = World.Get<SurfaceAI>(target).Config.Faction;
-                else if (World.Has<PlayerControlled>(target))
-                    targetFaction = Faction.Player;
+                if (target.Entity == projEntity) continue;
 
                 // Don't hit entities of the same faction
-                if (targetFaction == proj.OwnerFaction) return;
+                if (target.Faction == proj.OwnerFaction) continue;
 
                 // Player projectiles skip player-controlled entities
-                if (proj.OwnerFaction == Faction.Player && World.Has<PlayerControlled>(target))
-                    return;
+                if (proj.OwnerFaction == Faction.Player && target.Faction == Faction.Player)
+                    continue;
 
                 // Pirate projectiles should not hit other pirates
-                if (proj.OwnerFaction == Faction.Pirate && targetFaction == Faction.Pirate)
-                    return;
+                if (proj.OwnerFaction == Faction.Pirate && target.Faction == Faction.Pirate)
+                    continue;
                 // Patrol/trader projectiles should not hit player or each other (friendly fire off)
                 if ((proj.OwnerFaction == Faction.Patrol || proj.OwnerFaction == Faction.Trader) &&
-                    (targetFaction == Faction.Player || (targetFaction.HasValue && targetFaction != Faction.Pirate)))
-                    return;
-                // Fauna/Bandit projectiles should not hit each other 
+                    (target.Faction == Faction.Player || (target.Faction.HasValue && target.Faction != Faction.Pirate)))
+                    continue;
+                // Fauna/Bandit projectiles should not hit each other
                 if ((proj.OwnerFaction == Faction.Fauna || proj.OwnerFaction == Faction.Bandit) &&
-                    (targetFaction == Faction.Fauna || targetFaction == Faction.Bandit))
-                    return;
+                    (target.Faction == Faction.Fauna || target.Faction == Faction.Bandit))
+                    continue;
 
-                // Distance check
-                float dist = Vector2.Distance(projPos, targetTransform.Position);
-                float targetRadius = 16f; // default collision radius
-                if (World.Has<Sprite>(target))
+                float dist = Vector2.Distance(projPos, target.Position);
+                if (dist < proj.CollisionRadius + target.Radius)
                 {
-                    var sprite = World.Get<Sprite>(target);
-                    targetRadius = MathF.Max(sprite.Width, sprite.Height) / 2f;
+                    _hits.Add(new ProjectileHit(projEntity, target.Entity, proj.Damage, proj.OwnerFaction));
                 }
-
-                if (dist < proj.CollisionRadius + targetRadius)
-                {
-                    _hits.Add(new ProjectileHit(projEntity, target, proj.Damage, proj.OwnerFaction));
-                }
-            });
+            }
         }
 
-        // 3. Process hits
-        var processedProjectiles = new HashSet<Entity>();
+        // 4. Process hits
         foreach (var hit in _hits)
         {
-            if (processedProjectiles.Contains(hit.Projectile)) continue;
+            if (_processedProjectiles.Contains(hit.Projectile)) continue;
             if (!World.IsAlive(hit.Target)) continue;
             if (!World.IsAlive(hit.Projectile)) continue;
 
-            processedProjectiles.Add(hit.Projectile);
+            _processedProjectiles.Add(hit.Projectile);
 
             ref var health = ref World.Get<Health>(hit.Target);
             bool hadShield = health.Shield > 0;
@@ -166,7 +153,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             }
         }
 
-        // 4. Destroy expired/hit projectiles
+        // 5. Destroy expired/hit projectiles
         foreach (var entity in _expired)
         {
             if (World.IsAlive(entity))
@@ -188,5 +175,30 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
         // Collect for collision phase (copy values out of the ref context)
         _projectileData.Add(new ProjectileSnapshot(entity, transform.Position, proj));
+    }
+
+    /// <summary>Source-generated query: collects potential hit targets for this update.</summary>
+    [Query]
+    [All(typeof(Transform), typeof(Health))]
+    public void CollectTargets(Entity target, ref Transform targetTransform, ref Health targetHealth)
+    {
+        if (targetHealth.IsDead) return;
+
+        Faction? targetFaction = null;
+        if (World.Has<EnemyAI>(target))
+            targetFaction = World.Get<EnemyAI>(target).Config.Faction;
+        else if (World.Has<SurfaceAI>(target))
+            targetFaction = World.Get<SurfaceAI>(target).Config.Faction;
+        else if (World.Has<PlayerControlled>(target))
+            targetFaction = Faction.Player;
+
+        float targetRadius = 16f; // default collision radius
+        if (World.Has<Sprite>(target))
+        {
+            var sprite = World.Get<Sprite>(target);
+            targetRadius = MathF.Max(sprite.Width, sprite.Height) / 2f;
+        }
+
+        _targetData.Add(new TargetSnapshot(target, targetTransform.Position, targetRadius, targetFaction));
     }
 }
