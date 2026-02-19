@@ -462,7 +462,7 @@ public static class HudRenderer
             float distFraction = dist / maxDistance;
             byte alpha = (byte)(255 * (1f - distFraction * distFraction)); // quadratic falloff
 
-            RenderOffscreenIndicator(renderer, camera, transform.Position, 255, 80, 80, alpha: alpha);
+            RenderOffscreenIndicator(renderer, camera, transform.Position, new Color4(255, 80, 80, alpha));
         }
     }
 
@@ -493,8 +493,8 @@ public static class HudRenderer
             byte pr = i < planets.Count ? planets[i].Color.R : (byte)180;
             byte pg = i < planets.Count ? planets[i].Color.G : (byte)180;
             byte pb = i < planets.Count ? planets[i].Color.B : (byte)180;
-            RenderOffscreenIndicator(renderer, camera, pos, pr, pg, pb,
-                prefix: name + " ", dotRadius: 4f, arrowSize: 9f, alpha: alpha);
+            RenderOffscreenIndicator(renderer, camera, pos, new Color4(pr, pg, pb, alpha),
+                prefix: name + " ", arrowSize: 9f);
         }
 
         // Stations
@@ -510,8 +510,8 @@ public static class HudRenderer
             float distFraction = dist / maxDistance;
             byte alpha = (byte)(255 * (1f - distFraction * distFraction));
             string name = i < stations.Count ? stations[i].Name.ToUpper() : "STATION";
-            RenderOffscreenIndicator(renderer, camera, pos, 100, 200, 255,
-                prefix: name + " ", dotRadius: 4f, arrowSize: 9f, alpha: alpha);
+            RenderOffscreenIndicator(renderer, camera, pos, new Color4(100, 200, 255, alpha),
+                prefix: name + " ", arrowSize: 9f);
         }
     }
 
@@ -519,14 +519,14 @@ public static class HudRenderer
     public static void RenderStarOffscreenIndicator(SpriteRenderer renderer, Camera camera,
         Vector2 starCenter)
     {
-        RenderOffscreenIndicator(renderer, camera, starCenter, 255, 220, 80, prefix: "* ", dotRadius: 4f, arrowSize: 10f);
+        RenderOffscreenIndicator(renderer, camera, starCenter, new Color3(255, 220, 80), prefix: "SUN ", arrowSize: 10f);
     }
 
     /// <summary>Render an off-screen indicator pointing toward the player's landed spaceship.</summary>
     public static void RenderShipOffscreenIndicator(SpriteRenderer renderer, Camera camera,
         Vector2 shipWorldPos)
     {
-        RenderOffscreenIndicator(renderer, camera, shipWorldPos, 120, 200, 255, prefix: "SHIP ", dotRadius: 4f, arrowSize: 10f);
+        RenderOffscreenIndicator(renderer, camera, shipWorldPos, new Color3(120, 200, 255), prefix: "SHIP ", arrowSize: 10f);
     }
 
     /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
@@ -544,7 +544,7 @@ public static class HudRenderer
             float cx = (s.TileRect.X + s.TileRect.Width / 2f) * GameConfig.TileSize;
             float cy = (s.TileRect.Y + s.TileRect.Height / 2f) * GameConfig.TileSize;
             RenderOffscreenIndicator(renderer, camera, new Vector2(cx, cy),
-                200, 180, 80, prefix: s.Name + " ", dotRadius: 3f, arrowSize: 8f);
+                new Color3(200, 180, 80), prefix: s.Name + " ", arrowSize: 8f);
         }
     }
 
@@ -570,7 +570,7 @@ public static class HudRenderer
                             if (!ecsWorld.IsAlive(stationEntities[s])) continue;
                             var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
                             RenderOffscreenIndicator(renderer, camera, pos,
-                                mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                                mc, prefix: mission.TypeLabel + " ", arrowSize: 10f);
                         }
                         break;
 
@@ -583,7 +583,7 @@ public static class HudRenderer
                             {
                                 var pos = ecsWorld.Get<Transform>(planetEntity).Position;
                                 RenderOffscreenIndicator(renderer, camera, pos,
-                                    mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                                    mc, prefix: mission.TypeLabel + " ", arrowSize: 10f);
                             }
                         }
                         break;
@@ -598,7 +598,7 @@ public static class HudRenderer
                     if (!ecsWorld.IsAlive(stationEntities[s])) continue;
                     var pos = ecsWorld.Get<Transform>(stationEntities[s]).Position;
                     RenderOffscreenIndicator(renderer, camera, pos,
-                        100, 255, 100, prefix: "TURN IN ", dotRadius: 4f, arrowSize: 10f);
+                        new Color3(100, 255, 100), prefix: "TURN IN ", arrowSize: 10f);
                 }
             }
         }
@@ -623,7 +623,7 @@ public static class HudRenderer
                     float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
                     float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
                     RenderOffscreenIndicator(renderer, camera, new Vector2(sx, sy),
-                        mc.R, mc.G, mc.B, prefix: mission.TypeLabel + " ", dotRadius: 4f, arrowSize: 10f);
+                        mc, prefix: mission.TypeLabel + " ", arrowSize: 10f);
                 }
             }
         }
@@ -631,8 +631,7 @@ public static class HudRenderer
 
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
     private static void RenderOffscreenIndicator(SpriteRenderer renderer, Camera camera,
-        Vector2 worldPos, byte cr, byte cg, byte cb, string? prefix = null,
-        float dotRadius = 3f, float arrowSize = 8f, byte alpha = 255)
+        Vector2 worldPos, Color4 color, string? prefix = null, float arrowSize = 8f)
     {
         const float margin = 30f;
         float screenW = GameConfig.WindowWidth;
@@ -657,8 +656,12 @@ public static class HudRenderer
         float scaleY = MathF.Abs(dy) > 0.001f ? halfH / MathF.Abs(dy) : float.MaxValue;
         float scale = MathF.Min(scaleX, scaleY);
 
+        // Indicator position at edge of screen (middle of the base of the arrow)
         float ix = cx + dx * scale;
         float iy = cy + dy * scale;
+
+        float leftOrRight = Math.Clamp(dx / cx, -1.0f, 1.0f); // -1 on left edge, +1 on right edge
+        float upOrDown = Math.Clamp(dy / cy, -1.0f, 1.0f);    // -1 on top edge, +1 on bottom edge
 
         // Triangle arrow pointing outward
         float angle = MathF.Atan2(dy, dx);
@@ -669,16 +672,10 @@ public static class HudRenderer
         float baseX2 = ix + MathF.Cos(angle - 2.5f) * arrowSize;
         float baseY2 = iy + MathF.Sin(angle - 2.5f) * arrowSize;
 
-        byte a1 = alpha;
-        byte a2 = (byte)Math.Min((int)alpha, 200);
-        renderer.DrawLineScreen(tipX, tipY, baseX1, baseY1, new Color4(cr, cg, cb, a1));
-        renderer.DrawLineScreen(tipX, tipY, baseX2, baseY2, new Color4(cr, cg, cb, a1));
-        renderer.DrawLineScreen(baseX1, baseY1, baseX2, baseY2, new Color4(cr, cg, cb, a1));
-        renderer.DrawLineScreen(ix, iy, tipX, tipY, new Color4(cr, cg, cb, a1));
-        renderer.DrawLineScreen(ix, iy, baseX1, baseY1, new Color4(cr, cg, cb, a2));
-        renderer.DrawLineScreen(ix, iy, baseX2, baseY2, new Color4(cr, cg, cb, a2));
+        byte a2 = (byte)Math.Min((int)color.A, 200);
 
-        renderer.DrawFilledCircleScreen(ix, iy, dotRadius, new Color4(cr, cg, cb, (byte)Math.Min((int)alpha, 220)));
+        renderer.DrawFilledTriangleScreen(tipX, tipY, baseX1, baseY1, baseX2, baseY2, color);
+        renderer.DrawFilledTriangleScreen(ix, iy, baseX1, baseY1, baseX2, baseY2, color.WithAlpha(a2));
 
         // Distance label: world distance from screen edge to target
         float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
@@ -686,10 +683,17 @@ public static class HudRenderer
         string distText = worldDist < 1000 ? $"{worldDist:F0}" : $"{worldDist / 1000f:F1}K";
         string label = prefix != null ? prefix + distText : distText;
 
-        float labelW = renderer.MeasureText(label, 1f);
-        float labelOffX = -MathF.Cos(angle) * 16f - labelW / 2f;
-        float labelOffY = -MathF.Sin(angle) * 16f - 4f;
-        renderer.DrawTextScreen(ix + labelOffX, iy + labelOffY, label, new Color4(cr, cg, cb, alpha), 1f);
+        const float labelFontScale = 1.3f;
+        float labelW = renderer.MeasureText(label, labelFontScale);
+        float labelH = labelFontScale * MiniBitmapFont.GlyphHeight;
+        float labelOffX = -MathF.Cos(angle) * 20f - (1 + leftOrRight) * labelW / 2f;
+        float labelOffY = -MathF.Sin(angle) * 20f - (1 + upOrDown) * labelH / 2f;
+        float labelX = ix + labelOffX;
+        float labelY = iy + labelOffY;
+
+        // Draw a semi-transparent background for the label for better readability
+        renderer.DrawRectScreen(labelX - 4, labelY - 2, labelW + 8, labelH + 4, new Color4(0, 0, 0, a2));
+        renderer.DrawTextScreen(labelX, labelY, label, color, labelFontScale);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -909,8 +913,7 @@ public static class HudRenderer
         Vector2 targetWorldPos, string targetName, Color3 targetColor)
     {
         RenderOffscreenIndicator(renderer, camera, targetWorldPos,
-            targetColor.R, targetColor.G, targetColor.B,
-            prefix: $"TARGET: {targetName}", dotRadius: 5f, arrowSize: 10f);
+            targetColor, prefix: $"TARGET: {targetName}", arrowSize: 10f);
     }
 
     /// <summary>

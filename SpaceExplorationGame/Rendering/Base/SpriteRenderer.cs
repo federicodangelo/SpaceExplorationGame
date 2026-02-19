@@ -252,9 +252,39 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Render pre-built colored geometry (no texture) in a single batched draw call.</summary>
-    public void DrawGeometry(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices, nint? texture = null)
+    public void DrawGeometryScreen(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices, nint? texture = null)
     {
         SDL.RenderGeometry(_renderer, texture ?? nint.Zero, vertices, numVertices, indices, numIndices);
+    }
+
+    public void DrawTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
+    {
+        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
+        SDL.RenderLine(_renderer, x1, y1, x2, y2);
+        SDL.RenderLine(_renderer, x2, y2, x3, y3);
+        SDL.RenderLine(_renderer, x3, y3, x1, y1);
+    }
+
+    public void DrawFilledTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
+    {
+        var fcolor = new SDL.FColor
+        {
+            R = color.R / 255f,
+            G = color.G / 255f,
+            B = color.B / 255f,
+            A = color.A / 255f
+        };
+
+        SDL.Vertex[] vertices = new SDL.Vertex[3]
+        {
+            new SDL.Vertex { Position = new SDL.FPoint { X = x1, Y = y1 }, Color = fcolor },
+            new SDL.Vertex { Position = new SDL.FPoint { X = x2, Y = y2 }, Color = fcolor },
+            new SDL.Vertex { Position = new SDL.FPoint { X = x3, Y = y3 }, Color = fcolor }
+        };
+
+        int[] indices = new int[3] { 0, 1, 2 };
+
+        DrawGeometryScreen(vertices, vertices.Length, indices, indices.Length);
     }
 
     /// <summary>Draw a filled circle in screen space.</summary>
@@ -324,7 +354,7 @@ public class SpriteRenderer : IDisposable
             id[i * 3 + 2] = i + 2;
         }
 
-        DrawGeometry(v, requiredVerts, id, requiredIndices);
+        DrawGeometryScreen(v, requiredVerts, id, requiredIndices);
     }
 
     public void Dispose()

@@ -121,7 +121,7 @@ public static class TileMapRenderer
         }
 
         if (vi > 0)
-            renderer.DrawGeometry(_vertexBuf, vi, _indexBuf, ii);
+            renderer.DrawGeometryScreen(_vertexBuf, vi, _indexBuf, ii);
 
         // ── Pass 2: render per-tile details ──
         if (renderDetail != null)
