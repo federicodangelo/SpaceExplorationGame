@@ -242,9 +242,9 @@ public static class HudRenderer
         renderer.DrawTextScreen(x, y + 2, label, lc, TextScale);
 
         float barX = x + labelW;
-        renderer.DrawRectScreen(barX, y + 4, BarWidth, BarHeight, new Color3(40, 40, 40));
+        renderer.DrawRectScreen(barX, y + 1, BarWidth, BarHeight, new Color3(40, 40, 40));
         float pct = max > 0 ? current / max : 0;
-        renderer.DrawRectScreen(barX, y + 4, BarWidth * pct, BarHeight, fillColor);
+        renderer.DrawRectScreen(barX, y + 1, BarWidth * pct, BarHeight, fillColor);
         renderer.DrawTextScreen(barX + BarWidth + 5, y + 2,
             $"{(int)current}/{(int)max}", lc, TextScale);
     }
