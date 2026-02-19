@@ -102,6 +102,9 @@ public record ShipPartStats(
     float FtlRange = 0f,
     float ShieldStrength = 0f,   // future: damage absorption
     float WeaponDamage = 0f,     // weapon damage / mining beam DPS
+    float WeaponFireRate = 0f,   // seconds between shots
+    float WeaponRange = 0f,      // weapon effective range
+    float ProjectileSpeed = 0f,  // weapon projectile speed
     float FuelEfficiency = 0f,   // multiplier reduction on fuel cost (0.1 = 10% less fuel)
     float CargoCapacity = 0f     // bonus cargo capacity (added to ship base)
 );
@@ -172,15 +175,15 @@ public static class ShipPartCatalog
 
         new("weapon_laser",    "Pulse Laser",        ShipSlotType.Weapon1, 1, 0,   35,
             "Basic energy weapon. Low damage, no ammo.",
-            new ShipPartStats(WeaponDamage: 10f)),
+            new ShipPartStats(WeaponDamage: 5f, WeaponFireRate: 0.5f, WeaponRange: 320f, ProjectileSpeed: 600f)),
 
         new("weapon_cannon",   "Kinetic Cannon",     ShipSlotType.Weapon1, 2, 350, 175,
             "Ballistic rounds with solid punch.",
-            new ShipPartStats(WeaponDamage: 25f)),
+            new ShipPartStats(WeaponDamage: 7f, WeaponFireRate: 0.75f, WeaponRange: 300f, ProjectileSpeed: 520f)),
 
         new("weapon_missile",  "Missile Launcher",   ShipSlotType.Weapon1, 3, 750, 375,
             "Guided missiles. High damage, slow fire rate.",
-            new ShipPartStats(WeaponDamage: 45f)),
+            new ShipPartStats(WeaponDamage: 10f, WeaponFireRate: 1.0f, WeaponRange: 420f, ProjectileSpeed: 420f)),
 
         // ── Utility ──────────────────────────────────────────────
         new("util_none",       "(Empty)",            ShipSlotType.Utility, 0, 0, 0,

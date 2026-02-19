@@ -95,7 +95,7 @@ public readonly record struct SystemPlanetSettlement(
 
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
-    Vector2 Pos, Vector2 Dir, float Damage, float Speed,
+    Vector2 Pos, Vector2 Dir, float Damage, float Speed, float Lifetime,
     Faction Faction, Color3 Color);
 
 /// <summary>Pending projectile spawn data for surface combat AI (includes lifetime).</summary>
@@ -105,6 +105,19 @@ public readonly record struct SurfaceProjectileSpawn(
 
 /// <summary>Result of an AI target search.</summary>
 public readonly record struct TargetInfo(Vector2 Position, bool HasTarget, Entity? Entity);
+
+/// <summary>Derived stats for an NPC ship built from a ship type and parts.</summary>
+public readonly record struct NpcShipStats(
+    int SpriteSize,
+    float MaxHull,
+    float MaxShield,
+    float MaxSpeed,
+    float RotationSpeed,
+    float Acceleration,
+    float WeaponDamage,
+    float WeaponFireRate,
+    float WeaponRange,
+    float ProjectileSpeed);
 
 // ── Surface spawns ───────────────────────────────────────────────
 

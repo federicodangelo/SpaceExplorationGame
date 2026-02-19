@@ -91,30 +91,7 @@ public class PlayerData
     /// <summary>Sum up stats from all equipped parts. Acceleration/MaxSpeed are reduced by ship weight.</summary>
     public ShipPartStats GetCombinedStats()
     {
-        float accel = 0, maxSpd = 0, rot = 0, hull = 0, fuel = 0, ftl = 0;
-        float shield = 0, dmg = 0, fuelEff = 0, cargo = 0;
-
-        foreach (var part in EquippedParts.Values)
-        {
-            var s = part.Stats;
-            accel += s.Acceleration;
-            maxSpd += s.MaxSpeed;
-            rot += s.RotationSpeed;
-            hull += s.MaxHull;
-            fuel += s.MaxFuel;
-            ftl += s.FtlRange;
-            shield += s.ShieldStrength;
-            dmg += s.WeaponDamage;
-            fuelEff += s.FuelEfficiency;
-            cargo += s.CargoCapacity;
-        }
-
-        // Apply ship weight: heavier ships are slower
-        float weight = CurrentShipType.Weight;
-        accel /= weight;
-        maxSpd /= weight;
-
-        return new ShipPartStats(accel, maxSpd, rot, hull, fuel, ftl, shield, dmg, fuelEff, cargo);
+        return ShipStatsHelper.GetCombinedStats(CurrentShipType, EquippedParts.Values);
     }
 
     /// <summary>Deduct fuel for an FTL jump. Returns false if not enough fuel.</summary>

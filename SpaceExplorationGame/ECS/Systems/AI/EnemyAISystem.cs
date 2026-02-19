@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
@@ -52,9 +51,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         ProcessEnemyAIQuery(World);
 
         // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, faction, color) in _pendingProjectiles)
+        foreach (var (pos, dir, damage, speed, lifetime, faction, color) in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color);
+            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime);
         }
     }
 
@@ -91,6 +90,8 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private void UpdatePirate(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 playerPos, bool playerAlive, Vector2 targetPos, bool hasTarget)
     {
+        float maxSpeed = velocity.MaxSpeed;
+        float thrust = ai.Config.Acceleration;
         float hullPercent = health.HullPercent;
 
         // Flee if low health
@@ -99,7 +100,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Flee;
             var fleeDir = Vector2.Normalize(transform.Position - targetPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Value += fleeDir * GameConfig.PirateSpeed * 0.5f * dt;
+            velocity.Value += fleeDir * thrust * 0.5f * dt;
             TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
             return;
         }
@@ -116,11 +117,12 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * GameConfig.PirateSpeed * 0.2f * dt;
+            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f * dt;
 
             // Clamp speed to patrol speed
-            if (velocity.Value.LengthSquared() > 100f * 100f)
-                velocity.Value = Vector2.Normalize(velocity.Value) * 100f;
+            float patrolMax = maxSpeed * 0.3f;
+            if (velocity.Value.LengthSquared() > patrolMax * patrolMax)
+                velocity.Value = Vector2.Normalize(velocity.Value) * patrolMax;
             return;
         }
 
@@ -137,18 +139,18 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             if (distToTarget < ai.Config.EngageDistance * 0.7f)
             {
                 // Too close — back up slightly
-                velocity.Value -= dirToTarget * GameConfig.PirateSpeed * 0.3f * dt;
+                velocity.Value -= dirToTarget * thrust * 0.3f * dt;
             }
             else if (distToTarget > ai.Config.EngageDistance * 1.3f)
             {
                 // Too far — close in
-                velocity.Value += dirToTarget * GameConfig.PirateSpeed * 0.5f * dt;
+                velocity.Value += dirToTarget * thrust * 0.5f * dt;
             }
             else
             {
                 // Strafe
                 var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Value += strafeDir * GameConfig.PirateSpeed * 0.3f * dt *
+                velocity.Value += strafeDir * thrust * 0.3f * dt *
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
             }
 
@@ -160,7 +162,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Chase;
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
             TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-            velocity.Value += dirToTarget * GameConfig.PirateSpeed * 0.6f * dt;
+            velocity.Value += dirToTarget * thrust * 0.6f * dt;
         }
 
         // Apply friction
@@ -170,6 +172,8 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private void UpdateTrader(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 playerPos, bool playerAlive)
     {
+        float maxSpeed = velocity.MaxSpeed;
+        float thrust = ai.Config.Acceleration;
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
         var nearestPirate = FindNearestPirate(transform.Position, 400f);
 
@@ -179,7 +183,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Flee;
             var fleeDir = Vector2.Normalize(transform.Position - nearestPirate.Value);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Value += fleeDir * GameConfig.TraderSpeed * 0.7f * dt;
+            velocity.Value += fleeDir * thrust * 0.7f * dt;
             TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
         }
         else
@@ -193,13 +197,12 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float cruiseRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * GameConfig.TraderSpeed * 0.3f * dt;
+            velocity.Value += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * thrust * 0.3f * dt;
         }
 
         // Clamp speed
-        float maxSpd = GameConfig.TraderSpeed;
-        if (velocity.Value.LengthSquared() > maxSpd * maxSpd)
-            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpd;
+        if (velocity.Value.LengthSquared() > maxSpeed * maxSpeed)
+            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpeed;
 
         velocity.Value *= 0.99f;
 
@@ -210,6 +213,8 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private void UpdatePatrol(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 targetPos, bool hasTarget)
     {
+        float maxSpeed = velocity.MaxSpeed;
+        float thrust = ai.Config.Acceleration;
         // Patrols hunt pirates and defend traders
         if (hasTarget)
         {
@@ -223,11 +228,11 @@ public partial class EnemyAISystem : BaseSystem<World, float>
 
                 // Strafe while attacking
                 var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Value += strafeDir * GameConfig.PatrolSpeed * 0.3f * dt *
+                velocity.Value += strafeDir * thrust * 0.3f * dt *
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.7f));
 
                 if (distToTarget > ai.Config.EngageDistance)
-                    velocity.Value += dirToTarget * GameConfig.PatrolSpeed * 0.4f * dt;
+                    velocity.Value += dirToTarget * thrust * 0.4f * dt;
 
                 TryFireProjectile(ref transform, ref ai, dirToTarget);
             }
@@ -235,7 +240,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             {
                 ai.State = AIState.Chase;
                 TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-                velocity.Value += dirToTarget * GameConfig.PatrolSpeed * 0.5f * dt;
+                velocity.Value += dirToTarget * thrust * 0.5f * dt;
             }
         }
         else
@@ -249,13 +254,12 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * GameConfig.PatrolSpeed * 0.2f * dt;
+            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f * dt;
         }
 
         // Clamp speed
-        float maxSpd = GameConfig.PatrolSpeed;
-        if (velocity.Value.LengthSquared() > maxSpd * maxSpd)
-            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpd;
+        if (velocity.Value.LengthSquared() > maxSpeed * maxSpeed)
+            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpeed;
 
         velocity.Value *= 0.98f;
         ClampToMap(ref transform);
@@ -349,7 +353,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         if (!CanFireProjectile(ref transform, ref ai, dirToTarget)) return;
         ai.FireCooldown = ai.Config.FireRate;
         var facing = FacingDirection(transform.Rotation);
-        FireProjectile(transform.Position, facing, ai.Config.WeaponDamage, ai.Config.ProjectileSpeed, ai.Config.Faction);
+        float lifetime = CombatHelper.ResolveProjectileLifetime(ai.Config.WeaponRange, ai.Config.ProjectileSpeed);
+        FireProjectile(transform.Position, facing, ai.Config.WeaponDamage, ai.Config.ProjectileSpeed,
+            lifetime, ai.Config.Faction);
     }
 
     private static Vector2 FacingDirection(float rotationDeg)
@@ -358,7 +364,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         return new Vector2(MathF.Cos(rad), MathF.Sin(rad));
     }
 
-    private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed, Faction faction)
+    private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed, float lifetime, Faction faction)
     {
         // Offset spawn position slightly ahead of the ship
         var spawnPos = origin + direction * 20f;
@@ -372,7 +378,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             _ => new Color3(255, 255, 255)
         };
 
-        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, faction, color));
+        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color));
     }
 
     private void ClampToMap(ref Transform transform)

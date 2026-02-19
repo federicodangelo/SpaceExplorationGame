@@ -18,9 +18,9 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
     private readonly Entity _entity;
 
     // Configurable physics params (updated each frame from ship stats)
-    public float MaxSpeed { get; set; } = GameConfig.ShipMaxSpeed;
-    public float RotationSpeed { get; set; } = GameConfig.ShipRotationSpeed;
-    public float Acceleration { get; set; } = GameConfig.ShipAcceleration;
+    public float MaxSpeed { get; set; } = 0;
+    public float RotationSpeed { get; set; } = 0;
+    public float Acceleration { get; set; } = 0;
     public float BrakeMultiplier { get; set; } = 0.95f;
 
     public ShipMovementSystem(World world, InputManager input, Entity entity) : base(world)

@@ -231,6 +231,7 @@ public sealed record EnemyAIConfig(
     int LootCredits,
     float EngageDistance,
     float FleeHealthPercent,
+    float Acceleration,
     float MaxRotationSpeed = 180f);
 
 /// <summary>AI-controlled ship with combat behavior. Config holds immutable stats; mutable state lives here.</summary>

@@ -54,11 +54,6 @@ public static class GameConfig
     public const int PlanetSurfaceWidth = 256;  // in tiles
     public const int PlanetSurfaceHeight = 256;
 
-    // Player Ship
-    public const float ShipAcceleration = 200f;     // pixels/sec^2
-    public const float ShipMaxSpeed = 400f;          // pixels/sec
-    public const float ShipRotationSpeed = 180f;     // degrees/sec
-
     // FTL Travel
     public const float FuelPerDistanceUnit = 0.002f; // fuel cost per world-pixel of distance
     public const float FtlMaxRange = 25000f;         // max FTL jump range in world-pixels
@@ -74,10 +69,7 @@ public static class GameConfig
 
     // ── Combat ──────────────────────────────────────────────────
     // Projectiles
-    public const float ProjectileSpeed = 600f;         // pixels/sec (player projectile)
-    public const float ProjectileLifetime = 2.0f;      // seconds before despawn
     public const float ProjectileRadius = 4f;          // collision radius
-    public const float PlayerFireRate = 0.25f;         // seconds between player shots
 
     // Enemy ships
     public const int MinEnemiesPerSystem = 0;
@@ -87,14 +79,8 @@ public static class GameConfig
     public const int MinPatrolsPerSystem = 0;
     public const int MaxPatrolsPerSystem = 20;
     public const float EnemyDetectRange = 300f;        // range to notice targets
-    public const float EnemyWeaponRange = 300f;        // range to start firing
     public const float EnemyEngageDistance = 200f;      // preferred combat distance
     public const float EnemyFleeHealthPercent = 0.2f;   // flee below 20% hull
-    public const float EnemyProjectileSpeed = 300f;     // slightly slower than player
-    public const float EnemyFireRate = 1.4f;            // seconds between shots
-    public const float TraderSpeed = 150f * 3.0f;              // trader max speed
-    public const float PirateSpeed = 300f * 3.0f;              // pirate max speed
-    public const float PatrolSpeed = 250f * 3.0f;              // patrol max speed
 
     // Shields
     public const float BaseShieldRegenRate = 5f;        // shield points per second

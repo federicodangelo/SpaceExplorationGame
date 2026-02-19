@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
@@ -99,4 +100,13 @@ public static class CombatHelper
         ProjectileRenderer.UpdateDamageEffects(popups, dt);
         ProjectileRenderer.UpdateExplosions(explosions, dt);
     }
+
+    public static float ResolveProjectileLifetime(float range, float speed)
+    {
+        Debug.Assert(range > 0f && speed > 0f, "Missing weapon range or projectile speed in EnemyAIConfig. Check EntityFactory.CreateEnemyShip for defaults.");
+        if (range > 0f && speed > 0f)
+            return Math.Max(0.1f, range / speed);
+        return 0.1f;
+    }
+
 }

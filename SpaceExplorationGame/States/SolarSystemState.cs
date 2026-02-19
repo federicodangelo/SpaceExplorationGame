@@ -281,9 +281,8 @@ public class SolarSystemState : GameState
         // Create player ship
         int shipSize = game.Player.CurrentShipType.SpriteSize;
         var playerStats = game.Player.GetCombinedStats();
-        float playerMaxShield = playerStats.ShieldStrength;
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, shipStartPos, shipSize,
-            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
+            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
 
         // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
@@ -567,9 +566,9 @@ public class SolarSystemState : GameState
 
         // --- Player ship controls ---
         var shipStats = game.Player.GetCombinedStats();
-        _shipMovementSystem.MaxSpeed = shipStats.MaxSpeed > 0 ? shipStats.MaxSpeed : GameConfig.ShipMaxSpeed;
-        _shipMovementSystem.RotationSpeed = shipStats.RotationSpeed > 0 ? shipStats.RotationSpeed : GameConfig.ShipRotationSpeed;
-        _shipMovementSystem.Acceleration = shipStats.Acceleration > 0 ? shipStats.Acceleration : GameConfig.ShipAcceleration;
+        _shipMovementSystem.MaxSpeed = shipStats.MaxSpeed;
+        _shipMovementSystem.RotationSpeed = shipStats.RotationSpeed;
+        _shipMovementSystem.Acceleration = shipStats.Acceleration;
         _shipMovementSystem.Update(in dt);
 
         // Apply velocity (speed clamping + position update via system)
@@ -632,19 +631,20 @@ public class SolarSystemState : GameState
         int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
         int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
         int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
-
-        float hullMultiplier = 1f + (dangerLevel - 1) * 0.4f;
-        float damageMultiplier = 1f + (dangerLevel - 1) * 0.3f;
-        int creditMultiplier = dangerLevel;
+        int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
 
         // Spawn pirates
         for (int i = 0; i < pirateCount; i++)
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 250f);
 
+            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Pirate, dangerLevel, enemyRng);
+            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Pirate, qualityTier, enemyRng);
+            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+            int lootCredits = NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout);
+
             var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), dangerLevel, hullMultiplier, damageMultiplier,
-                creditMultiplier, enemyRng.NextFloat(0, 2f));
+                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, enemyRng.NextFloat(0, 2f));
             _enemyEntities.Add(entity);
         }
 
@@ -653,8 +653,12 @@ public class SolarSystemState : GameState
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
+            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Trader, dangerLevel, enemyRng);
+            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Trader, qualityTier, enemyRng);
+            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+
             var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360));
+                enemyRng.NextFloat(0, 360), stats);
             _enemyEntities.Add(entity);
         }
 
@@ -663,8 +667,12 @@ public class SolarSystemState : GameState
         {
             var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
 
+            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Patrol, dangerLevel, enemyRng);
+            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Patrol, qualityTier, enemyRng);
+            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+
             var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360));
+                enemyRng.NextFloat(0, 360), stats);
             _enemyEntities.Add(entity);
         }
     }
@@ -706,14 +714,19 @@ public class SolarSystemState : GameState
             float weaponDamage = stats.WeaponDamage;
             if (weaponDamage > 0)
             {
-                _playerFireCooldown = GameConfig.PlayerFireRate;
+                float fireRate = stats.WeaponFireRate;
+                _playerFireCooldown = fireRate;
                 ref var shipT = ref game.EcsWorld.Get<Transform>(_playerShip);
                 float rad = shipT.Rotation * MathF.PI / 180f;
                 var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
                 var spawnPos = shipT.Position + dir * 20f;
 
+                float projectileSpeed = stats.ProjectileSpeed;
+                float weaponRange = stats.WeaponRange;
+                float projectileLifetime = CombatHelper.ResolveProjectileLifetime(weaponRange, projectileSpeed);
+
                 EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                    weaponDamage, GameConfig.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100));
+                    weaponDamage, projectileSpeed, Faction.Player, new Color3(100, 255, 100), projectileLifetime);
                 game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
             }
         }
@@ -923,10 +936,8 @@ public class SolarSystemState : GameState
         // Recreate player ship entity
         int shipSize = game.Player.CurrentShipType.SpriteSize;
         var playerStats = game.Player.GetCombinedStats();
-        float playerMaxShield = playerStats.ShieldStrength;
-
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, respawnPos, shipSize,
-            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
+            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
 
         // Recreate movement system with new entity
         _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);

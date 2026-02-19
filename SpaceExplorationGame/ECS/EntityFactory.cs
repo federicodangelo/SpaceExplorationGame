@@ -222,53 +222,50 @@ public static class EntityFactory
 
     /// <summary>Create a pirate NPC ship entity.</summary>
     public static Entity CreatePirateShip(World world, Vector2 position, float rotation,
-        int dangerLevel, float hullMultiplier, float damageMultiplier, int creditMultiplier,
-        float fireCooldown)
+        NpcShipStats stats, int dangerLevel, int lootCredits, float fireCooldown)
     {
-        float baseHull = 40f + dangerLevel * 20f;
-        float baseShield = dangerLevel >= 3 ? 15f + dangerLevel * 10f : 0f;
-
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(28, 28, new Color3(255, 80, 80)),
-            new Velocity(GameConfig.PirateSpeed),
-            new Health(baseHull * hullMultiplier, baseShield,
+            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(255, 80, 80)),
+            new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new Health(stats.MaxHull, stats.MaxShield,
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Pirate,
-                    FireRate: GameConfig.EnemyFireRate / (1f + dangerLevel * 0.1f),
-                    WeaponDamage: (5f + dangerLevel * 3f) * damageMultiplier,
-                    WeaponRange: GameConfig.EnemyWeaponRange,
+                    FireRate: stats.WeaponFireRate,
+                    WeaponDamage: stats.WeaponDamage,
+                    WeaponRange: stats.WeaponRange,
                     DetectRange: GameConfig.EnemyDetectRange,
-                    ProjectileSpeed: GameConfig.EnemyProjectileSpeed,
-                    LootCredits: GameConfig.BaseLootCredits * creditMultiplier,
+                    ProjectileSpeed: stats.ProjectileSpeed,
+                    LootCredits: lootCredits,
                     EngageDistance: GameConfig.EnemyEngageDistance,
                     FleeHealthPercent: GameConfig.EnemyFleeHealthPercent,
-                    MaxRotationSpeed: 180f),
+                    Acceleration: stats.Acceleration,
+                    MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
                 FireCooldown = fireCooldown
             },
             new LootDrop
             {
-                MinCredits = GameConfig.BaseLootCredits * creditMultiplier / 2,
-                MaxCredits = GameConfig.BaseLootCredits * creditMultiplier * 2,
+                MinCredits = Math.Max(1, lootCredits / 2),
+                MaxCredits = lootCredits * 2,
                 ResourceDropChance = GameConfig.ResourceDropChance,
-                PartDropChance = GameConfig.PartDropChance * (1f + dangerLevel * 0.05f),
+                PartDropChance = GameConfig.PartDropChance,
                 DangerLevel = dangerLevel
             }
         );
     }
 
     /// <summary>Create a trader NPC ship entity.</summary>
-    public static Entity CreateTraderShip(World world, Vector2 position, float rotation)
+    public static Entity CreateTraderShip(World world, Vector2 position, float rotation, NpcShipStats stats)
     {
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(32, 32, new Color3(200, 160, 80)),
-            new Velocity(GameConfig.TraderSpeed),
-            new Health(80f, 0f, 0f, 0f),
+            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(200, 160, 80)),
+            new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
                 Config = new EnemyAIConfig(
@@ -281,7 +278,8 @@ public static class EntityFactory
                     LootCredits: 0,
                     EngageDistance: 0f,
                     FleeHealthPercent: 0.5f,
-                    MaxRotationSpeed: 90f),
+                    Acceleration: stats.Acceleration,
+                    MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
                 FireCooldown = 0
             }
@@ -289,26 +287,27 @@ public static class EntityFactory
     }
 
     /// <summary>Create a patrol NPC ship entity.</summary>
-    public static Entity CreatePatrolShip(World world, Vector2 position, float rotation)
+    public static Entity CreatePatrolShip(World world, Vector2 position, float rotation, NpcShipStats stats)
     {
         return world.Create(
             new Transform(position, rotation),
-            Sprite.ColoredRect(30, 30, new Color3(80, 140, 220)),
-            new Velocity(GameConfig.PatrolSpeed),
-            new Health(120f, 50f, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
+            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(80, 140, 220)),
+            new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Patrol,
-                    FireRate: 0.5f,
-                    WeaponDamage: 12f,
-                    WeaponRange: GameConfig.EnemyWeaponRange * 1.2f,
+                    FireRate: stats.WeaponFireRate > 0 ? stats.WeaponFireRate : 0.5f,
+                    WeaponDamage: stats.WeaponDamage,
+                    WeaponRange: stats.WeaponRange,
                     DetectRange: GameConfig.EnemyDetectRange * 1.5f,
-                    ProjectileSpeed: GameConfig.EnemyProjectileSpeed * 1.1f,
+                    ProjectileSpeed: stats.ProjectileSpeed,
                     LootCredits: 0,
                     EngageDistance: GameConfig.EnemyEngageDistance,
                     FleeHealthPercent: 0f,
-                    MaxRotationSpeed: 150f),
+                    Acceleration: stats.Acceleration,
+                    MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
                 FireCooldown = 0
             }
@@ -320,7 +319,7 @@ public static class EntityFactory
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Vector2 position, Vector2 direction,
         float damage, float speed, Faction ownerFaction, Color3 color,
-        float lifetime = GameConfig.ProjectileLifetime)
+        float lifetime)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
         return world.Create(
