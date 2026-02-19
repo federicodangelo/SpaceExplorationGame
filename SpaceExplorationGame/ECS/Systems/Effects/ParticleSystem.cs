@@ -24,6 +24,21 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
     private const int MaxParticleEntities = 1500;
 
+    private bool _validateEmitterBounds;
+    private VisibleBounds _emitterBounds;
+    private float _outsideMarginPercent = 0.2f;
+
+    /// <summary>
+    /// Sets world-space bounds used to validate emitter updates.
+    /// Emitters beyond the bounds expanded by <paramref name="outsideMarginPercent"/> are disabled.
+    /// </summary>
+    public void SetEmitterValidationBounds(VisibleBounds bounds, float outsideMarginPercent = 0.2f)
+    {
+        _emitterBounds = bounds;
+        _outsideMarginPercent = Math.Max(0f, outsideMarginPercent);
+        _validateEmitterBounds = true;
+    }
+
     public override void Update(in float dt)
     {
         float deltaTime = dt;
@@ -53,6 +68,12 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
         World.Query(in _emitterQuery, (ref Transform transform, ref ParticleEmitter emitter) =>
         {
             if (!emitter.IsEnabled)
+            {
+                emitter.SpawnAccumulator = 0f;
+                return;
+            }
+
+            if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(transform.Position))
             {
                 emitter.SpawnAccumulator = 0f;
                 return;
@@ -122,6 +143,21 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
     private float NextFloat(float min, float max)
         => min + _random.NextSingle() * (max - min);
+
+    private bool IsWithinEmitterValidationBounds(Vector2 worldPos)
+    {
+        float worldW = _emitterBounds.BottomRight.X - _emitterBounds.TopLeft.X;
+        float worldH = _emitterBounds.BottomRight.Y - _emitterBounds.TopLeft.Y;
+        float marginX = worldW * _outsideMarginPercent;
+        float marginY = worldH * _outsideMarginPercent;
+
+        float minX = _emitterBounds.TopLeft.X - marginX;
+        float maxX = _emitterBounds.BottomRight.X + marginX;
+        float minY = _emitterBounds.TopLeft.Y - marginY;
+        float maxY = _emitterBounds.BottomRight.Y + marginY;
+
+        return worldPos.X >= minX && worldPos.X <= maxX && worldPos.Y >= minY && worldPos.Y <= maxY;
+    }
 
     private readonly record struct ParticleSpawn(
         Vector2 Position,

@@ -519,6 +519,7 @@ public class SolarSystemState : GameState
     {
         // Update emitter state and particles even while overlays are open (for smooth fade-out).
         UpdateThrusterEmitters(game);
+        _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds(), 0.2f);
         _particleSystem.Update(in dt);
 
         // In-game menu active — no simulation
