@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace SpaceExplorationGame.Generation;
 
 /// <summary>
@@ -74,6 +76,7 @@ public class SeededRandom
     /// <summary>Pick a random item from a list.</summary>
     public T Pick<T>(IReadOnlyList<T> items)
     {
+        Debug.Assert(items.Count > 0, "SeededRandom.Pick received an empty collection.");
         return items[NextInt(items.Count)];
     }
 
