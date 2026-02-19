@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Collections.Generic;
 using Arch.AOT.SourceGenerator;
 using SpaceExplorationGame.Core;
 
@@ -223,11 +224,8 @@ public struct Projectile
 /// <summary>Immutable configuration shared across enemies of the same type.</summary>
 public sealed record EnemyAIConfig(
     Faction Faction,
-    float FireRate,
-    float WeaponDamage,
-    float WeaponRange,
+    ShipWeaponSpec[] Weapons,
     float DetectRange,
-    float ProjectileSpeed,
     int LootCredits,
     float EngageDistance,
     float FleeHealthPercent,
@@ -241,7 +239,7 @@ public struct EnemyAI
     public EnemyAIConfig Config;
     public AIState State;
     public float StateTimer;         // time in current state
-    public float FireCooldown;       // seconds until next shot
+    public float[] WeaponCooldowns;  // per-weapon fire cooldowns
 }
 
 public enum AIState

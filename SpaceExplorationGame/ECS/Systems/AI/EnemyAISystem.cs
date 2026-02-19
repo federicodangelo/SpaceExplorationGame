@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Arch.Core;
 using Arch.System;
@@ -66,7 +67,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         if (health.IsDead) return;
 
         ai.StateTimer += _dt;
-        ai.FireCooldown -= _dt;
+        UpdateWeaponCooldowns(ref ai);
         velocity.RotationVelocity = 0f; // Reset each frame; TurnToward sets it when needed
 
         // Find the best target based on faction
@@ -127,8 +128,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         }
 
         float distToTarget = Vector2.Distance(transform.Position, targetPos);
+        float weaponRange = GetWeaponRange(ai.Config.Weapons);
 
-        if (distToTarget <= ai.Config.WeaponRange)
+        if (distToTarget <= weaponRange)
         {
             // Attack
             ai.State = AIState.Attack;
@@ -154,7 +156,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
             }
 
-            TryFireProjectile(ref transform, ref ai, dirToTarget);
+            TryFireProjectiles(ref transform, ref ai, dirToTarget);
         }
         else if (distToTarget <= ai.Config.DetectRange)
         {
@@ -220,8 +222,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         {
             float distToTarget = Vector2.Distance(transform.Position, targetPos);
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
+            float weaponRange = GetWeaponRange(ai.Config.Weapons);
 
-            if (distToTarget <= ai.Config.WeaponRange)
+            if (distToTarget <= weaponRange)
             {
                 ai.State = AIState.Attack;
                 TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
@@ -234,7 +237,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 if (distToTarget > ai.Config.EngageDistance)
                     velocity.Value += dirToTarget * thrust * 0.4f * dt;
 
-                TryFireProjectile(ref transform, ref ai, dirToTarget);
+                TryFireProjectiles(ref transform, ref ai, dirToTarget);
             }
             else
             {
@@ -339,23 +342,50 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         return bestPos;
     }
 
-    /// <summary>Whether the fire cooldown has elapsed and the ship is facing close enough to the target (~18° cone).</summary>
-    private static bool CanFireProjectile(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
+    private void UpdateWeaponCooldowns(ref EnemyAI ai)
     {
-        if (ai.FireCooldown > 0) return false;
+        var weapons = ai.Config.Weapons;
+        if (weapons.Length == 0) return;
+
+        if (ai.WeaponCooldowns == null || ai.WeaponCooldowns.Length != weapons.Length)
+            ai.WeaponCooldowns = new float[weapons.Length];
+
+        for (int i = 0; i < ai.WeaponCooldowns.Length; i++)
+            ai.WeaponCooldowns[i] -= _dt;
+    }
+
+    /// <summary>Whether the ship is facing close enough to the target (~18° cone).</summary>
+    private static bool IsFacingTarget(ref Transform transform, Vector2 dirToTarget)
+    {
         var facing = FacingDirection(transform.Rotation);
         return Vector2.Dot(facing, dirToTarget) > 0.95f;
     }
 
-    /// <summary>Checks CanFireProjectile and, if true, resets cooldown and enqueues the projectile.</summary>
-    private void TryFireProjectile(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
+    /// <summary>Fires any ready weapons when facing the target.</summary>
+    private void TryFireProjectiles(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
     {
-        if (!CanFireProjectile(ref transform, ref ai, dirToTarget)) return;
-        ai.FireCooldown = ai.Config.FireRate;
+        if (ai.Config.Weapons.Length == 0) return;
+        if (!IsFacingTarget(ref transform, dirToTarget)) return;
+
         var facing = FacingDirection(transform.Rotation);
-        float lifetime = CombatHelper.ResolveProjectileLifetime(ai.Config.WeaponRange, ai.Config.ProjectileSpeed);
-        FireProjectile(transform.Position, facing, ai.Config.WeaponDamage, ai.Config.ProjectileSpeed,
-            lifetime, ai.Config.Faction);
+        int weaponCount = ai.Config.Weapons.Length;
+        float lateralOffset = weaponCount > 1 ? 6f : 0f;
+
+        for (int i = 0; i < weaponCount; i++)
+        {
+            if (ai.WeaponCooldowns[i] > 0f) continue;
+
+            var weapon = ai.Config.Weapons[i];
+            if (weapon.Damage <= 0f || weapon.FireRate <= 0f ||
+                weapon.Range <= 0f || weapon.ProjectileSpeed <= 0f)
+                continue;
+
+            ai.WeaponCooldowns[i] = weapon.FireRate;
+            float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
+            float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
+            FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
+                lifetime, ai.Config.Faction, sideOffset);
+        }
     }
 
     private static Vector2 FacingDirection(float rotationDeg)
@@ -364,10 +394,21 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         return new Vector2(MathF.Cos(rad), MathF.Sin(rad));
     }
 
-    private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed, float lifetime, Faction faction)
+    private static float GetWeaponRange(IReadOnlyList<ShipWeaponSpec> weapons)
+    {
+        float maxRange = 0f;
+        for (int i = 0; i < weapons.Count; i++)
+            maxRange = MathF.Max(maxRange, weapons[i].Range);
+
+        return maxRange;
+    }
+
+    private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
+        float lifetime, Faction faction, float lateralOffset)
     {
         // Offset spawn position slightly ahead of the ship
-        var spawnPos = origin + direction * 20f;
+        var lateral = new Vector2(-direction.Y, direction.X);
+        var spawnPos = origin + direction * 20f + lateral * lateralOffset;
 
         // Color by faction
         var color = faction switch

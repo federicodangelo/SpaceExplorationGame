@@ -94,7 +94,7 @@ public class SolarSystemState : GameState
 
     // Combat state
     private List<Entity> _enemyEntities = [];
-    private float _playerFireCooldown;
+    private float[] _playerWeaponCooldowns = new float[2];
     private bool _playerDead;
     private float _respawnTimer;
     private const float RespawnDelay = 3f;
@@ -641,10 +641,11 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Pirate, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Pirate, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
             int lootCredits = NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout);
 
             var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, enemyRng.NextFloat(0, 2f));
+                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, enemyRng.NextFloat(0, 2f), weapons);
             _enemyEntities.Add(entity);
         }
 
@@ -656,9 +657,10 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Trader, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Trader, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
 
             var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats);
+                enemyRng.NextFloat(0, 360), stats, weapons);
             _enemyEntities.Add(entity);
         }
 
@@ -670,9 +672,10 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Patrol, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Patrol, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
 
             var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats);
+                enemyRng.NextFloat(0, 360), stats, weapons);
             _enemyEntities.Add(entity);
         }
     }
@@ -684,6 +687,25 @@ public class SolarSystemState : GameState
         float angle = rng.NextFloat(0, MathF.PI * 2f);
         float dist = rng.NextFloat(minRadius, maxRadius);
         return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
+    }
+
+    private static bool TryGetWeaponSpec(Dictionary<ShipSlotType, ShipPart> equipped,
+        ShipSlotType slot, out ShipWeaponSpec weapon)
+    {
+        weapon = default;
+        if (!equipped.TryGetValue(slot, out var part)) return false;
+
+        var stats = part.Stats;
+        if (stats.WeaponDamage <= 0f || stats.WeaponFireRate <= 0f ||
+            stats.WeaponRange <= 0f || stats.ProjectileSpeed <= 0f)
+            return false;
+
+        weapon = new ShipWeaponSpec(
+            stats.WeaponDamage,
+            stats.WeaponFireRate,
+            stats.WeaponRange,
+            stats.ProjectileSpeed);
+        return true;
     }
 
     /// <summary>Update combat: player shooting, AI, projectiles, asteroid mining, damage, death.</summary>
@@ -707,27 +729,50 @@ public class SolarSystemState : GameState
         }
 
         // Player shooting (Space key)
-        _playerFireCooldown -= dt;
-        if (input.IsKeyDown(SDL.Scancode.Space) && _playerFireCooldown <= 0)
+        for (int i = 0; i < _playerWeaponCooldowns.Length; i++)
+            _playerWeaponCooldowns[i] -= dt;
+
+        if (input.IsKeyDown(SDL.Scancode.Space))
         {
-            var stats = game.Player.GetCombinedStats();
-            float weaponDamage = stats.WeaponDamage;
-            if (weaponDamage > 0)
+            var equipped = game.Player.EquippedParts;
+            bool hasWeapon1 = TryGetWeaponSpec(equipped, ShipSlotType.Weapon1, out var weapon1);
+            bool hasWeapon2 = TryGetWeaponSpec(equipped, ShipSlotType.Weapon2, out var weapon2);
+            if (!hasWeapon1) _playerWeaponCooldowns[0] = 0f;
+            if (!hasWeapon2) _playerWeaponCooldowns[1] = 0f;
+
+            int activeWeapons = (hasWeapon1 ? 1 : 0) + (hasWeapon2 ? 1 : 0);
+            if (activeWeapons > 0)
             {
-                float fireRate = stats.WeaponFireRate;
-                _playerFireCooldown = fireRate;
                 ref var shipT = ref game.EcsWorld.Get<Transform>(_playerShip);
                 float rad = shipT.Rotation * MathF.PI / 180f;
                 var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-                var spawnPos = shipT.Position + dir * 20f;
+                var forwardPos = shipT.Position + dir * 20f;
+                var lateralDir = new Vector2(-dir.Y, dir.X);
+                float lateralOffset = activeWeapons > 1 ? 6f : 0f;
+                bool firedAny = false;
 
-                float projectileSpeed = stats.ProjectileSpeed;
-                float weaponRange = stats.WeaponRange;
-                float projectileLifetime = CombatHelper.ResolveProjectileLifetime(weaponRange, projectileSpeed);
+                if (hasWeapon1 && _playerWeaponCooldowns[0] <= 0f)
+                {
+                    float lifetime = CombatHelper.ResolveProjectileLifetime(weapon1.Range, weapon1.ProjectileSpeed);
+                    var spawnPos = forwardPos + lateralDir * -lateralOffset;
+                    EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
+                        weapon1.Damage, weapon1.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime);
+                    _playerWeaponCooldowns[0] = weapon1.FireRate;
+                    firedAny = true;
+                }
 
-                EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                    weaponDamage, projectileSpeed, Faction.Player, new Color3(100, 255, 100), projectileLifetime);
-                game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
+                if (hasWeapon2 && _playerWeaponCooldowns[1] <= 0f)
+                {
+                    float lifetime = CombatHelper.ResolveProjectileLifetime(weapon2.Range, weapon2.ProjectileSpeed);
+                    var spawnPos = forwardPos + lateralDir * lateralOffset;
+                    EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
+                        weapon2.Damage, weapon2.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime);
+                    _playerWeaponCooldowns[1] = weapon2.FireRate;
+                    firedAny = true;
+                }
+
+                if (firedAny)
+                    game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
             }
         }
 

@@ -14,6 +14,8 @@ namespace SpaceExplorationGame.Core;
 /// </summary>
 public static class CombatHelper
 {
+    static private Random _random = new();
+
     /// <summary>
     /// Create damage popups from projectile system damage events.
     /// </summary>
@@ -21,8 +23,30 @@ public static class CombatHelper
         List<DamagePopup> popups,
         IReadOnlyList<DamageEvent> damageEvents)
     {
-        foreach (var evt in damageEvents)
-            popups.Add(new DamagePopup(evt.Position, evt.Damage, evt.ShieldHit));
+        for (int i = 0; i < damageEvents.Count; i++)
+        {
+            var evt = damageEvents[i];
+            var offset = ComputePopupOffset(8f);
+            float duration = ComputePopupDuration(0.9f, 1.2f);
+            popups.Add(new DamagePopup(evt.Position + offset, evt.Damage, evt.ShieldHit, duration));
+        }
+    }
+
+    private static Vector2 ComputePopupOffset(float maxOffset)
+    {
+        float rx = NextUnitFloat();
+        float ry = NextUnitFloat();
+        return new Vector2((rx * 2f - 1f) * maxOffset, (ry * 2f - 1f) * maxOffset);
+    }
+
+    private static float ComputePopupDuration(float min, float max)
+    {
+        return min + (max - min) * NextUnitFloat();;
+    }
+
+    private static float NextUnitFloat()
+    {
+        return _random.NextSingle();
     }
 
     /// <summary>

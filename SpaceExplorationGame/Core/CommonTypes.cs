@@ -93,6 +93,13 @@ public readonly record struct SystemPlanetSettlement(
 
 // ── Projectiles ──────────────────────────────────────────────────
 
+/// <summary>Weapon stats for a single ship weapon mount.</summary>
+public readonly record struct ShipWeaponSpec(
+    float Damage,
+    float FireRate,
+    float Range,
+    float ProjectileSpeed);
+
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed, float Lifetime,

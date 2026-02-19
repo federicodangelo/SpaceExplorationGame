@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
@@ -222,7 +223,8 @@ public static class EntityFactory
 
     /// <summary>Create a pirate NPC ship entity.</summary>
     public static Entity CreatePirateShip(World world, Vector2 position, float rotation,
-        NpcShipStats stats, int dangerLevel, int lootCredits, float fireCooldown)
+        NpcShipStats stats, int dangerLevel, int lootCredits, float fireCooldown,
+        ShipWeaponSpec[] weapons)
     {
         return world.Create(
             new Transform(position, rotation),
@@ -234,18 +236,15 @@ public static class EntityFactory
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Pirate,
-                    FireRate: stats.WeaponFireRate,
-                    WeaponDamage: stats.WeaponDamage,
-                    WeaponRange: stats.WeaponRange,
                     DetectRange: GameConfig.EnemyDetectRange,
-                    ProjectileSpeed: stats.ProjectileSpeed,
+                    Weapons: weapons,
                     LootCredits: lootCredits,
                     EngageDistance: GameConfig.EnemyEngageDistance,
                     FleeHealthPercent: GameConfig.EnemyFleeHealthPercent,
                     Acceleration: stats.Acceleration,
                     MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
-                FireCooldown = fireCooldown
+                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, fireCooldown)
             },
             new LootDrop
             {
@@ -259,7 +258,8 @@ public static class EntityFactory
     }
 
     /// <summary>Create a trader NPC ship entity.</summary>
-    public static Entity CreateTraderShip(World world, Vector2 position, float rotation, NpcShipStats stats)
+    public static Entity CreateTraderShip(World world, Vector2 position, float rotation, NpcShipStats stats,
+        ShipWeaponSpec[] weapons)
     {
         return world.Create(
             new Transform(position, rotation),
@@ -270,24 +270,22 @@ public static class EntityFactory
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Trader,
-                    FireRate: 1f,
-                    WeaponDamage: 0f,
-                    WeaponRange: 0f,
                     DetectRange: 300f,
-                    ProjectileSpeed: 0f,
+                    Weapons: weapons,
                     LootCredits: 0,
                     EngageDistance: 0f,
                     FleeHealthPercent: 0.5f,
                     Acceleration: stats.Acceleration,
                     MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
-                FireCooldown = 0
+                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
             }
         );
     }
 
     /// <summary>Create a patrol NPC ship entity.</summary>
-    public static Entity CreatePatrolShip(World world, Vector2 position, float rotation, NpcShipStats stats)
+    public static Entity CreatePatrolShip(World world, Vector2 position, float rotation, NpcShipStats stats,
+        ShipWeaponSpec[] weapons)
     {
         return world.Create(
             new Transform(position, rotation),
@@ -298,20 +296,28 @@ public static class EntityFactory
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Patrol,
-                    FireRate: stats.WeaponFireRate > 0 ? stats.WeaponFireRate : 0.5f,
-                    WeaponDamage: stats.WeaponDamage,
-                    WeaponRange: stats.WeaponRange,
                     DetectRange: GameConfig.EnemyDetectRange * 1.5f,
-                    ProjectileSpeed: stats.ProjectileSpeed,
+                    Weapons: weapons,
                     LootCredits: 0,
                     EngageDistance: GameConfig.EnemyEngageDistance,
                     FleeHealthPercent: 0f,
                     Acceleration: stats.Acceleration,
                     MaxRotationSpeed: stats.RotationSpeed),
                 State = AIState.Patrol,
-                FireCooldown = 0
+                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
             }
         );
+    }
+
+    private static float[] InitializeWeaponCooldowns(int count, float initialCooldown)
+    {
+        if (count <= 0) return Array.Empty<float>();
+
+        var cooldowns = new float[count];
+        for (int i = 0; i < count; i++)
+            cooldowns[i] = initialCooldown;
+
+        return cooldowns;
     }
 
     // ── Projectiles ─────────────────────────────────────────────────
