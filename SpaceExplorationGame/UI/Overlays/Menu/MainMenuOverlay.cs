@@ -252,13 +252,13 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         renderer.DrawLineScreen(panelX + 15, infoY - 4, panelX + panelW - 15, infoY - 4, new Color3(60, 80, 140));
 
         // Seed line
-        renderer.DrawTextScreen(panelX + 15, infoY, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f);
+        renderer.DrawTextScreen(panelX + 15, infoY + 4, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f);
 
         // Location preview (two lines)
         if (!string.IsNullOrEmpty(LocationPreview))
         {
             string[] lines = LocationPreview.Split('\n');
-            float lineY = infoY + 20;
+            float lineY = infoY + 24;
             foreach (var line in lines)
             {
                 renderer.DrawTextScreen(panelX + 15, lineY, line, new Color3(160, 180, 210), 1.5f);
