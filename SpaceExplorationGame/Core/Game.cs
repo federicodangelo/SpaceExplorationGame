@@ -112,6 +112,16 @@ public class Game : IDisposable
         IsRunning = true;
     }
 
+    /// <summary>
+    /// Regenerate the galaxy with a new seed. Must be called from the main menu state.
+    /// </summary>
+    public void RegenerateGalaxy(ulong newSeed)
+    {
+        Seeds = new SeedManager(newSeed);
+        GalaxyData = GalaxyGenerator.Generate(Seeds.GetGalaxyRandom());
+        Player.Reset();
+    }
+
     public void ChangeState(GameState newState)
     {
         _pendingState = newState;
