@@ -676,6 +676,8 @@ public static class HudRenderer
 
         renderer.DrawFilledTriangleScreen(tipX, tipY, baseX1, baseY1, baseX2, baseY2, color);
         renderer.DrawFilledTriangleScreen(ix, iy, baseX1, baseY1, baseX2, baseY2, color.WithAlpha(a2));
+        // Draw a black border around the arrow for better visibility
+        renderer.DrawTriangleScreen(tipX, tipY, baseX1, baseY1, baseX2, baseY2, new Color4(0, 0, 0, a2));
 
         // Distance label: world distance from screen edge to target
         float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
