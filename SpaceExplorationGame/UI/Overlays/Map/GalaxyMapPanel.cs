@@ -137,7 +137,7 @@ public class GalaxyMapPanel : MapPanelBase
             _nebulae.Add(new NebulaCloud(
                 nebRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
                 nebRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
-                nebRng.NextFloat(200, 600),
+                nebRng.NextFloat(1200, 5000),
                 new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
         }
     }

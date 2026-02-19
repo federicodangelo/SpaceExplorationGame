@@ -13,22 +13,30 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public static class SolarSystemRenderer
 {
-    /// <summary>Renders parallax background stars.</summary>
-    public static void RenderBackgroundStars(SpriteRenderer renderer, Camera camera,
-        List<BackgroundStar> bgStars, Vector2 starCenter)
+    /// <summary>Renders background stars.</summary>
+    public static void RenderBackgroundStars(SpriteRenderer renderer, Camera camera, List<BackgroundStar> bgStars)
     {
         foreach (var (x, y, brightness) in bgStars)
         {
             var parallaxPos = new Vector2(x, y);
             var screenPos = camera.WorldToScreen(parallaxPos);
-            screenPos.X -= (camera.Position.X - starCenter.X) * 0.3f * camera.Zoom;
-            screenPos.Y -= (camera.Position.Y - starCenter.Y) * 0.3f * camera.Zoom;
 
             if (screenPos.X >= 0 && screenPos.X < GameConfig.WindowWidth &&
                 screenPos.Y >= 0 && screenPos.Y < GameConfig.WindowHeight)
             {
-                renderer.DrawRectScreen(screenPos.X, screenPos.Y, 1, 1, new Color3(brightness, brightness, brightness));
+                renderer.DrawRectScreen(screenPos.X - 0.5f, screenPos.Y - 0.5f, 2, 2, new Color3(brightness, brightness, brightness));
             }
+        }
+    }
+
+    /// <summary>Renders background nebulae.</summary>
+    public static void RenderBackgroundNebulae(SpriteRenderer renderer, Camera camera, List<NebulaCloud> nebulae)
+    {
+        foreach (var (nx, ny, nr, nColor) in nebulae)
+        {
+            renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nColor.WithAlpha(20));
+            renderer.DrawFilledCircle(camera, new Vector2(nx + nr * 0.3f, ny - nr * 0.2f), nr * 0.7f, nColor.WithAlpha(15));
+            renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nColor.WithAlpha(10));
         }
     }
 

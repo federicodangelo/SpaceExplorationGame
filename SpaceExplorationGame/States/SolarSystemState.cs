@@ -54,6 +54,7 @@ public class SolarSystemState : GameState
 
     // Background stars
     private List<BackgroundStar> _bgStars = [];
+    private List<NebulaCloud> _bgNebulae = [];
 
     // Camera
     private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
@@ -284,21 +285,35 @@ public class SolarSystemState : GameState
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, shipStartPos, shipSize,
             game.Player.ShipMaxHealth, game.Player.ShipHealth, playerMaxShield, GameConfig.ShipMaxSpeed);
 
-        // Background stars
+        // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
+        var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
+        
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
 
-        // --- Spawn NPC ships (pirates, traders, patrols) based on danger level ---
-        SpawnNPCShips(game, center, mapW, mapH);
-        for (int i = 0; i < 800; i++)
+        for (int i = 0; i < 8000; i++)
         {
             _bgStars.Add(new BackgroundStar(
                 bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
                 bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
-                (byte)bgRng.NextInt(20, 100)
+                (byte)bgRng.NextInt(50, 150)
             ));
         }
+
+        for (int i = 0; i < 128; i++)
+        {
+            byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
+            int ci = nebRng.NextInt(0, 3);
+            _bgNebulae.Add(new NebulaCloud(
+                bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
+                bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
+                nebRng.NextFloat(1200, 5000),
+                new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
+        }
+
+        // --- Spawn NPC ships (pirates, traders, patrols) based on danger level ---
+        SpawnNPCShips(game, center, mapW, mapH);
 
         // Create textures for celestial bodies
         int starTexSize = (int)(_starSystem.StarRadius * 6);
@@ -421,6 +436,7 @@ public class SolarSystemState : GameState
         _moonEntities.Clear();
         _asteroidEntities.Clear();
         _bgStars.Clear();
+        _bgNebulae.Clear();
         _enemyEntities.Clear();
         _damagePopups.Clear();
         _explosions.Clear();
@@ -972,8 +988,9 @@ public class SolarSystemState : GameState
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
-        // Background stars (parallax)
-        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _bgStars, starCenter);
+        // Background stars and nebulae
+        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _bgStars);
+        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _bgNebulae);
 
         // Orbit lines
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _planets, starCenter);
