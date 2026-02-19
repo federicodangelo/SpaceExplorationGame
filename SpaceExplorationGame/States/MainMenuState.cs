@@ -8,26 +8,26 @@ using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 
+/// <summary>Starting location types (also used for CLI auto-launch).</summary>
 public enum StartOption
 {
     None = -1,
-    GalaxyMap,
-    StarSystem ,
+    StarSystem,
     PlanetSurface,
     SpaceStation,
     SpaceStationInside,
     Settlement,
-    SettlementInside
+    SettlementInside,
 }
 
 /// <summary>
-/// Main menu: lets the player choose where to start the game.
+/// Main menu: lets the player configure danger, location type, seed, then start.
 /// </summary>
 public class MainMenuState : GameState
 {
     public override GameStateType Type => GameStateType.MainMenu;
 
-    private float _animTimer = 0f;
+    private float _animTimer;
 
     // Background stars for visual flair
     private List<AnimatedStar> _bgStars = [];
@@ -43,12 +43,14 @@ public class MainMenuState : GameState
         Zoom = 1f
     };
 
-    // Preview state for the selected starting option
+    // Preview state for the selected starting location
     private StarSystemData? _previewSystem;
     private PlanetData? _previewPlanet;
     private SpaceStationData? _previewStation;
-    private int _rerollCounter = 0; // Used to generate different random locations
-    private StartOption _lastPreviewedOption = StartOption.None; // Track when to update preview
+    private int _rerollCounter;
+    private ulong _lastPreviewSeed;
+    private StartOption _lastPreviewedLocationType = StartOption.None;
+    private int _lastPreviewedDanger = -1;
 
     public MainMenuState(StartOption autoLaunchOption = StartOption.None)
     {
@@ -57,26 +59,18 @@ public class MainMenuState : GameState
 
     public override void Enter(Game game)
     {
-        // Reset player data for a fresh start
         game.Player.Reset();
-
-        // Music
         game.Audio.SetMusicTheme(MusicTheme.MainMenu);
 
-        // Auto-launch if requested (from command line)
         if (_autoLaunchOption != StartOption.None)
         {
-            LaunchOption(game, _autoLaunchOption);
+            LaunchGame(game, _autoLaunchOption, dangerFilter: 0);
             return;
         }
 
-        // Open the menu overlay
         _menuOverlay.Open();
-
-        // Generate initial location preview
         UpdateLocationPreview(game);
 
-        // Generate background stars
         var rng = new Random(42);
         for (int i = 0; i < 200; i++)
         {
@@ -90,7 +84,6 @@ public class MainMenuState : GameState
     }
 
     public override void Exit(Game game) { }
-
     public override void HandleEvent(Game game, SDL.Event e) { }
 
     public override void UpdateInput(Game game)
@@ -107,7 +100,6 @@ public class MainMenuState : GameState
             UpdateLocationPreview(game);
         }
 
-        // Handle random seed
         if (_menuOverlay.RandomizeSeed)
         {
             ulong newSeed = (ulong)Random.Shared.NextInt64();
@@ -118,20 +110,29 @@ public class MainMenuState : GameState
             UpdateLocationPreview(game);
         }
 
-        // Handle re-roll location
-        if (_menuOverlay.RerollLocation)
+        // Handle randomize location (re-roll)
+        if (_menuOverlay.RandomizeLocation)
         {
             _rerollCounter++;
-            _menuOverlay.RerollLocation = false;
+            _menuOverlay.RandomizeLocation = false;
             game.Audio.PlaySfx(SfxType.MenuSelect);
             UpdateLocationPreview(game);
         }
 
-        if (_menuOverlay.SelectedOption is { } option)
+        // Handle filter changes (danger or location type cycling)
+        if (_menuOverlay.FiltersChanged)
+        {
+            _menuOverlay.FiltersChanged = false;
+            _rerollCounter = 0; // Reset re-roll on filter change
+            UpdateLocationPreview(game);
+        }
+
+        // Handle start game
+        if (_menuOverlay.StartRequested)
         {
             game.Audio.PlaySfx(SfxType.MenuSelect);
-            _menuOverlay.SelectedOption = null;
-            LaunchOption(game, option);
+            _menuOverlay.StartRequested = false;
+            LaunchGame(game, _menuOverlay.LocationType, _menuOverlay.DangerFilter);
         }
     }
 
@@ -139,35 +140,34 @@ public class MainMenuState : GameState
     {
         _animTimer += dt;
         _menuOverlay.Update(game, dt);
-
-        // Update the seed display
         _menuOverlay.CurrentSeed = game.Seeds.GalaxySeed;
 
-        // Only update location preview when selection actually changes
-        var currentOption = _menuOverlay.SelectedValue;
-        if (currentOption != _lastPreviewedOption)
+        // Refresh preview when filters or seed change
+        var locType = _menuOverlay.LocationType;
+        var danger = _menuOverlay.DangerFilter;
+        var seed = game.Seeds.GalaxySeed;
+        if (locType != _lastPreviewedLocationType || danger != _lastPreviewedDanger || seed != _lastPreviewSeed)
         {
-            _lastPreviewedOption = currentOption;
+            _lastPreviewedLocationType = locType;
+            _lastPreviewedDanger = danger;
+            _lastPreviewSeed = seed;
             UpdateLocationPreview(game);
         }
     }
 
-    private void LaunchOption(Game game, StartOption option)
-    {
-        switch (option)
-        {
-            case StartOption.GalaxyMap:
-            {
-                // Start in the previewed solar system with the galaxy map overlay auto-opened
-                var system = _previewSystem ?? PickRandomSystem(game);
-                game.Player.CurrentStarSystemIndex = system.Index;
-                game.ChangeState(new SolarSystemState(system, autoOpenGalaxyMap: true));
-                break;
-            }
+    // ── Launch ──
 
+    private void LaunchGame(Game game, StartOption locationType, int dangerFilter)
+    {
+        // Ensure we have a preview matching the requested type
+        if (_previewSystem == null || _lastPreviewedLocationType != locationType)
+            UpdateLocationPreview(game);
+
+        switch (locationType)
+        {
             case StartOption.StarSystem:
             {
-                var system = _previewSystem ?? PickRandomSystem(game);
+                var system = _previewSystem ?? PickRandomSystem(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.ChangeState(new SolarSystemState(system));
                 break;
@@ -175,9 +175,9 @@ public class MainMenuState : GameState
 
             case StartOption.PlanetSurface:
             {
-                var (system, planet) = _previewSystem != null && _previewPlanet != null 
-                    ? (new SystemPlanet(_previewSystem, _previewPlanet)) 
-                    : PickRandomPlanet(game);
+                var (system, planet) = _previewSystem != null && _previewPlanet != null
+                    ? new SystemPlanet(_previewSystem, _previewPlanet)
+                    : PickRandomPlanet(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.ChangeState(new SolarSystemState(system, autoOpenPlanet: planet));
                 break;
@@ -186,8 +186,8 @@ public class MainMenuState : GameState
             case StartOption.SpaceStation:
             {
                 var (system, station) = _previewSystem != null && _previewStation != null
-                    ? (new SystemStation(_previewSystem, _previewStation))
-                    : PickRandomStation(game);
+                    ? new SystemStation(_previewSystem, _previewStation)
+                    : PickRandomStation(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                 game.Player.ReturnStationIndex = station.Index;
@@ -198,8 +198,8 @@ public class MainMenuState : GameState
             case StartOption.SpaceStationInside:
             {
                 var (system, station) = _previewSystem != null && _previewStation != null
-                    ? (new SystemStation(_previewSystem, _previewStation))
-                    : PickRandomStation(game);
+                    ? new SystemStation(_previewSystem, _previewStation)
+                    : PickRandomStation(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                 game.Player.ReturnStationIndex = station.Index;
@@ -211,13 +211,12 @@ public class MainMenuState : GameState
             case StartOption.Settlement:
             {
                 var (system, planet) = _previewSystem != null && _previewPlanet != null
-                    ? (new SystemPlanet(_previewSystem, _previewPlanet))
-                    : PickRandomSettlement(game);
+                    ? new SystemPlanet(_previewSystem, _previewPlanet)
+                    : PickRandomSettlement(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = planet.Index;
 
-                // Generate surface to find a settlement position
                 var surfRng = game.Seeds.GetPlanetSurfaceRandom(system.Index, planet.Index);
                 var surfaceData = PlanetSurfaceGenerator.Generate(surfRng, planet);
                 int lx = surfaceData.Width / 2;
@@ -235,8 +234,8 @@ public class MainMenuState : GameState
             case StartOption.SettlementInside:
             {
                 var (system, planet, settlement) = _previewSystem != null && _previewPlanet != null
-                    ? (GetSettlementData(game, _previewSystem, _previewPlanet))
-                    : PickRandomSettlementWithData(game);
+                    ? GetSettlementData(game, _previewSystem, _previewPlanet)
+                    : PickRandomSettlementWithData(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = planet.Index;
@@ -247,27 +246,18 @@ public class MainMenuState : GameState
         }
     }
 
-    private SystemPlanetSettlement GetSettlementData(Game game, StarSystemData system, PlanetData planet)
-    {
-        var surfRng = game.Seeds.GetPlanetSurfaceRandom(system.Index, planet.Index);
-        var surfaceData = PlanetSurfaceGenerator.Generate(surfRng, planet);
-        var settlement = surfaceData.Settlements.Count > 0 
-            ? surfaceData.Settlements[0] 
-            : surfaceData.Settlements[0]; // Fallback (should always have at least one)
-        return new SystemPlanetSettlement(system, planet, settlement);
-    }
-
+    // ── Preview ──
 
     private void UpdateLocationPreview(Game game)
     {
-        var selectedOption = _menuOverlay.SelectedValue;
+        var locationType = _menuOverlay.LocationType;
+        int danger = _menuOverlay.DangerFilter;
 
-        switch (selectedOption)
+        switch (locationType)
         {
-            case StartOption.GalaxyMap:
             case StartOption.StarSystem:
             {
-                _previewSystem = PickRandomSystem(game);
+                _previewSystem = PickRandomSystem(game, danger);
                 _previewPlanet = null;
                 _previewStation = null;
                 _menuOverlay.LocationPreview = $"System: {_previewSystem.Name} (Danger {_previewSystem.DangerLevel})\nCoords: ({_previewSystem.GalaxyPosition.X:F0}, {_previewSystem.GalaxyPosition.Y:F0})";
@@ -276,55 +266,70 @@ public class MainMenuState : GameState
 
             case StartOption.PlanetSurface:
             {
-                var (system, planet) = PickRandomPlanet(game);
+                var (system, planet) = PickRandomPlanet(game, danger);
                 _previewSystem = system;
                 _previewPlanet = planet;
                 _previewStation = null;
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {_previewSystem.DangerLevel})\nPlanet: {planet.Name} ({planet.Type})";
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type})";
                 break;
             }
 
             case StartOption.SpaceStation:
             case StartOption.SpaceStationInside:
             {
-                var (system, station) = PickRandomStation(game);
+                var (system, station) = PickRandomStation(game, danger);
                 _previewSystem = system;
                 _previewPlanet = null;
                 _previewStation = station;
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {_previewSystem.DangerLevel})\nStation: {station.Name}";
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nStation: {station.Name}";
                 break;
             }
 
             case StartOption.Settlement:
             case StartOption.SettlementInside:
             {
-                var (system, planet) = PickRandomSettlement(game);
+                var (system, planet) = PickRandomSettlement(game, danger);
                 _previewSystem = system;
                 _previewPlanet = planet;
                 _previewStation = null;
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {_previewSystem.DangerLevel})\nPlanet: {planet.Name} (Settlement)";
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} (Settlement)";
                 break;
             }
-
-            default:
-                _menuOverlay.LocationPreview = null;
-                break;
         }
     }
 
-    private StarSystemData PickRandomSystem(Game game)
+    private SystemPlanetSettlement GetSettlementData(Game game, StarSystemData system, PlanetData planet)
     {
-        var systems = game.GalaxyData;
-        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 1));
+        var surfRng = game.Seeds.GetPlanetSurfaceRandom(system.Index, planet.Index);
+        var surfaceData = PlanetSurfaceGenerator.Generate(surfRng, planet);
+        if (surfaceData.Settlements.Count == 0)
+            throw new InvalidOperationException($"Planet {planet.Name} has no settlements but was selected as a settlement start");
+        return new SystemPlanetSettlement(system, planet, surfaceData.Settlements[0]);
+    }
+
+    // ── Filtered random pickers ──
+
+    private List<StarSystemData> GetFilteredSystems(Game game, int dangerFilter)
+    {
+        if (dangerFilter == 0)
+            return game.GalaxyData;
+        return game.GalaxyData.Where(s => s.DangerLevel == dangerFilter).ToList();
+    }
+
+    private StarSystemData PickRandomSystem(Game game, int dangerFilter)
+    {
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData; // fallback if no match
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(1 + _rerollCounter * 7));
         return systems[rng.NextInt(0, systems.Count)];
     }
 
-    private SystemPlanet PickRandomPlanet(Game game)
+    private SystemPlanet PickRandomPlanet(Game game, int dangerFilter)
     {
-        var systems = game.GalaxyData;
-        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 2 + _rerollCounter * 1000));
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(2 + _rerollCounter * 7));
 
-        // Try to find a system with a solid-surface planet
         for (int attempt = 0; attempt < 20; attempt++)
         {
             var system = systems[rng.NextInt(0, systems.Count)];
@@ -333,40 +338,32 @@ public class MainMenuState : GameState
 
             var landable = planets.Where(p => p.HasSolidSurface).ToList();
             if (landable.Count > 0)
-            {
                 return new SystemPlanet(system, landable[rng.NextInt(0, landable.Count)]);
-            }
         }
 
-        // Fallback: first system, first planet
-        var fallbackSystem = systems[0];
-        var fallbackRng = game.Seeds.GetStarSystemRandom(fallbackSystem.Index);
-        var (fallbackPlanets, _, _) = SolarSystemGenerator.Generate(fallbackRng, fallbackSystem);
-        return new SystemPlanet(fallbackSystem, fallbackPlanets[0]);
+        var fb = systems[0];
+        var fbRng = game.Seeds.GetStarSystemRandom(fb.Index);
+        var (fbPlanets, _, _) = SolarSystemGenerator.Generate(fbRng, fb);
+        return new SystemPlanet(fb, fbPlanets[0]);
     }
 
-    private SystemStation PickRandomStation(Game game)
+    private SystemStation PickRandomStation(Game game, int dangerFilter)
     {
-        var systems = game.GalaxyData;
-        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 3 + _rerollCounter * 1000));
+        var systems = GetFilteredSystems(game, dangerFilter).Where(s => s.HasSpaceStation).ToList();
+        if (systems.Count == 0) systems = game.GalaxyData.Where(s => s.HasSpaceStation).ToList();
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(3 + _rerollCounter * 7));
 
-        // Find a system with a station
         for (int attempt = 0; attempt < 20; attempt++)
         {
             var system = systems[rng.NextInt(0, systems.Count)];
-            if (!system.HasSpaceStation) continue;
-
             var sysRng = game.Seeds.GetStarSystemRandom(system.Index);
             var (_, _, stations) = SolarSystemGenerator.Generate(sysRng, system);
 
             if (stations.Count > 0)
-            {
                 return new SystemStation(system, stations[rng.NextInt(0, stations.Count)]);
-            }
         }
 
-        // Fallback: find any system with a station
-        foreach (var system in systems.Where(s => s.HasSpaceStation))
+        foreach (var system in systems)
         {
             var sysRng = game.Seeds.GetStarSystemRandom(system.Index);
             var (_, _, stations) = SolarSystemGenerator.Generate(sysRng, system);
@@ -374,19 +371,18 @@ public class MainMenuState : GameState
                 return new SystemStation(system, stations[0]);
         }
 
-        // Last resort: first system
-        var fb = systems[0];
+        var fb = game.GalaxyData[0];
         var fbRng = game.Seeds.GetStarSystemRandom(fb.Index);
         var (_, _, fbStations) = SolarSystemGenerator.Generate(fbRng, fb);
         return new SystemStation(fb, fbStations[0]);
     }
 
-    private SystemPlanet PickRandomSettlement(Game game)
+    private SystemPlanet PickRandomSettlement(Game game, int dangerFilter)
     {
-        var systems = game.GalaxyData;
-        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 4 + _rerollCounter * 1000));
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(4 + _rerollCounter * 7));
 
-        // Find a planet with settlements
         for (int attempt = 0; attempt < 30; attempt++)
         {
             var system = systems[rng.NextInt(0, systems.Count)];
@@ -395,21 +391,18 @@ public class MainMenuState : GameState
 
             var settled = planets.Where(p => p.HasSettlement && p.HasSolidSurface).ToList();
             if (settled.Count > 0)
-            {
                 return new SystemPlanet(system, settled[rng.NextInt(0, settled.Count)]);
-            }
         }
 
-        // Fallback: any solid planet
-        return PickRandomPlanet(game);
+        return PickRandomPlanet(game, dangerFilter);
     }
 
-    private SystemPlanetSettlement PickRandomSettlementWithData(Game game)
+    private SystemPlanetSettlement PickRandomSettlementWithData(Game game, int dangerFilter)
     {
-        var systems = game.GalaxyData;
-        var rng = new SeededRandom((ulong)(game.GlobalTime * 1000 + 6 + _rerollCounter * 1000));
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(6 + _rerollCounter * 7));
 
-        // Find a planet with settlements and return the settlement data
         for (int attempt = 0; attempt < 30; attempt++)
         {
             var system = systems[rng.NextInt(0, systems.Count)];
@@ -430,45 +423,33 @@ public class MainMenuState : GameState
             }
         }
 
-        // Fallback: use PickRandomSettlement and generate surface to get settlement data
-        var (fbSystem, fbPlanet) = PickRandomSettlement(game);
+        var (fbSystem, fbPlanet) = PickRandomSettlement(game, dangerFilter);
         var fbSurfRng = game.Seeds.GetPlanetSurfaceRandom(fbSystem.Index, fbPlanet.Index);
         var fbSurface = PlanetSurfaceGenerator.Generate(fbSurfRng, fbPlanet);
         return new SystemPlanetSettlement(fbSystem, fbPlanet, fbSurface.Settlements[0]);
     }
 
+    // ── Render ──
+
     public override void Render(Game game)
     {
         var renderer = game.SpriteRenderer;
 
-        // Dark space background
         SDL.SetRenderDrawColor(game.Renderer, 2, 2, 8, 255);
         SDL.RenderClear(game.Renderer);
 
-        // Animated background stars
         foreach (var (x, y, brightness, speed) in _bgStars)
         {
             float blink = (byte)Math.Clamp(brightness + 30 * MathF.Sin(_animTimer * speed * 2f + x), 20, 200);
             renderer.DrawRectScreen(x, y, 2, 2, new Color3((byte)blink, (byte)blink, (byte)(blink * 0.9f)));
         }
 
-        // --- Space stations in background ---
         float centerX = GameConfig.WindowWidth / 2f;
         float centerY = GameConfig.WindowHeight / 2f;
-        var spaceStation1pos = new Vector2(centerX - 600f, centerY - 180f);
-        var spaceStation2pos = new Vector2(centerX + 600f, centerY + 180f);
-        game.StationRenderer.RenderStation(
-            renderer,
-            _fakeCamera,
-            spaceStation1pos,
-            game.GlobalTime
-        );
-        game.StationRenderer.RenderStation(
-            renderer,
-            _fakeCamera,
-            spaceStation2pos,
-            game.GlobalTime + 0.5f
-        );
+        game.StationRenderer.RenderStation(renderer, _fakeCamera,
+            new Vector2(centerX - 600f, centerY - 180f), game.GlobalTime);
+        game.StationRenderer.RenderStation(renderer, _fakeCamera,
+            new Vector2(centerX + 600f, centerY + 180f), game.GlobalTime + 0.5f);
 
         // Title
         string title = "SPACE EXPLORATION";
@@ -477,13 +458,11 @@ public class MainMenuState : GameState
         float titleX = GameConfig.WindowWidth / 2f - titleW / 2f;
         float titleY = _menuOverlay.PanelTop - 80;
 
-        // Title glow effect
         byte glowR = (byte)(120 + 40 * MathF.Sin(_animTimer * 0.8f));
         byte glowG = (byte)(150 + 40 * MathF.Sin(_animTimer * 0.8f + 0.5f));
         byte glowB = (byte)(220 + 35 * MathF.Sin(_animTimer * 0.8f + 1f));
         renderer.DrawTextScreen(titleX, titleY, title, new Color3(glowR, glowG, glowB), titleScale);
 
-        // Menu overlay (renders the panel with options and seed controls)
         _menuOverlay.Render(game);
     }
 }

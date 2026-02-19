@@ -39,20 +39,11 @@ public class TextInputOverlay : PanelOverlayBase
     {
         _prompt = prompt;
         _defaultValue = defaultValue;
-        _currentInput = defaultValue ?? "";
+        _currentInput = ""; // Start empty; default shown as placeholder
         _numericOnly = numericOnly;
         _maxLength = maxLength;
         ConfirmedValue = null;
         base.Open();
-
-        // Start SDL text input
-        SDL.StartTextInput(IntPtr.Zero);
-    }
-
-    public override void Close()
-    {
-        base.Close();
-        SDL.StopTextInput(IntPtr.Zero);
     }
 
     protected override void OnEscapePressed()
@@ -72,9 +63,15 @@ public class TextInputOverlay : PanelOverlayBase
         // Enter - confirm
         if (input.IsKeyPressed(SDL.Scancode.Return))
         {
+            // If user typed something, use that; otherwise fall back to default
             if (_currentInput.Length > 0)
             {
                 ConfirmedValue = _currentInput;
+                Close();
+            }
+            else if (_defaultValue != null)
+            {
+                ConfirmedValue = _defaultValue;
                 Close();
             }
         }
@@ -87,27 +84,29 @@ public class TextInputOverlay : PanelOverlayBase
     {
         if (_currentInput.Length >= _maxLength) return;
 
-        // Number keys (checking by scancode value - SDL uses values 30-39 for 1-0)
-        for (int i = 0; i <= 9; i++)
-        {
-            SDL.Scancode scancode = (SDL.Scancode)(30 + (i == 0 ? 9 : i - 1)); // 1-9 are 30-38, 0 is 39
-            if (input.IsKeyPressed(scancode))
-            {
-                _currentInput += i.ToString();
-                return;
-            }
-        }
+        // Number row keys
+        if (input.IsKeyPressed(SDL.Scancode.Alpha0)) { _currentInput += "0"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha1)) { _currentInput += "1"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha2)) { _currentInput += "2"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha3)) { _currentInput += "3"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha4)) { _currentInput += "4"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha5)) { _currentInput += "5"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha6)) { _currentInput += "6"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha7)) { _currentInput += "7"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha8)) { _currentInput += "8"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Alpha9)) { _currentInput += "9"; return; }
 
-        // Keypad numbers (scancodes 89-98)
-        for (int i = 0; i <= 9; i++)
-        {
-            SDL.Scancode scancode = (SDL.Scancode)(89 + i);
-            if (input.IsKeyPressed(scancode))
-            {
-                _currentInput += i.ToString();
-                return;
-            }
-        }
+        // Keypad number keys
+        if (input.IsKeyPressed(SDL.Scancode.Kp0)) { _currentInput += "0"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp1)) { _currentInput += "1"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp2)) { _currentInput += "2"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp3)) { _currentInput += "3"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp4)) { _currentInput += "4"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp5)) { _currentInput += "5"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp6)) { _currentInput += "6"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp7)) { _currentInput += "7"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp8)) { _currentInput += "8"; return; }
+        if (input.IsKeyPressed(SDL.Scancode.Kp9)) { _currentInput += "9"; return; }
 
         if (!_numericOnly)
         {
@@ -158,41 +157,37 @@ public class TextInputOverlay : PanelOverlayBase
         renderer.DrawRectScreen(boxX, boxY, boxW, boxH, new Color4(20, 25, 40, 255));
         renderer.DrawRectScreen(boxX - 2, boxY - 2, boxW + 4, boxH + 4, new Color4(80, 120, 200, 150));
 
-        // Input text or default value hint
-        string displayText = _currentInput;
-        Color3 textColor = new(220, 240, 255);
-
-        if (string.IsNullOrEmpty(displayText) && !string.IsNullOrEmpty(_defaultValue))
+        // Input text or placeholder
+        if (_currentInput.Length > 0)
         {
-            displayText = _defaultValue;
-            textColor = new Color3(120, 120, 140);
-        }
-
-        if (!string.IsNullOrEmpty(displayText))
-        {
-            // Cursor blink
+            // Show typed text with blinking cursor
+            string displayText = _currentInput;
             float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
-            if (cursorBlink > 0 && _currentInput.Length > 0)
-            {
+            if (cursorBlink > 0)
                 displayText += "|";
-            }
-
-            renderer.DrawTextScreen(boxX + 10, boxY + 10, displayText, textColor, 2f);
+            renderer.DrawTextScreen(boxX + 10, boxY + 10, displayText, new Color3(220, 240, 255), 2f);
+        }
+        else if (!string.IsNullOrEmpty(_defaultValue))
+        {
+            // Show default value as placeholder
+            renderer.DrawTextScreen(boxX + 10, boxY + 10, _defaultValue, new Color3(0, 0, 100), 2f);
+            // Blinking cursor at start
+            float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
+            if (cursorBlink > 0)
+                renderer.DrawTextScreen(boxX + 6, boxY + 10, "|", new Color3(220, 240, 255), 2f);
         }
         else
         {
             // Show blinking cursor when empty
             float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
             if (cursorBlink > 0)
-            {
-                renderer.DrawTextScreen(boxX + 10, boxY + 10, "|", textColor, 2f);
-            }
+                renderer.DrawTextScreen(boxX + 10, boxY + 10, "|", new Color3(220, 240, 255), 2f);
         }
 
-        // Hint text
+        // Hint text below the input box
         if (_defaultValue != null && _currentInput.Length == 0)
         {
-            string hint = "(leave empty for default)";
+            string hint = "Type to replace, or ENTER to keep current";
             float hintW = renderer.MeasureText(hint, 1.5f);
             renderer.DrawTextScreen(centerX - hintW / 2f, centerY + 50, hint, new Color3(120, 140, 160), 1.5f);
         }

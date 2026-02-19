@@ -6,27 +6,60 @@ using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;
 
-/// <summary>
-/// Overlay for the main menu start-option selection.
-/// Renders inside a styled panel with the game title above and seed/controls below.
-/// </summary>
-public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
+/// <summary>Menu actions for the main menu widget.</summary>
+public enum MenuAction
 {
-    private static readonly MenuOption<StartOption>[] Options =
+    None = -1,
+    DangerLevel,
+    LocationType,
+    RandomizeLocation,
+    EditSeed,
+    RandomSeed,
+    StartGame,
+}
+
+/// <summary>
+/// Overlay for the main menu. Uses cycling entries for danger/location,
+/// action entries for seed/randomize, and a prominent START GAME button.
+/// </summary>
+public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
+{
+    // Indices into the Options array for dynamic label updates
+    private const int DangerIdx = 0;
+    private const int LocationIdx = 1;
+    private const int RandomizeIdx = 2;
+    private const int EditSeedIdx = 3;
+    private const int RandomSeedIdx = 4;
+    private const int StartGameIdx = 5;
+
+    private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
+    private static readonly string[] LocationLabels = ["STAR SYSTEM", "SPACE STATION", "INSIDE SPACE STATION", "PLANET SURFACE", "SETTLEMENT", "INSIDE SETTLEMENT"];
+    private static readonly StartOption[] LocationValues = [StartOption.StarSystem, StartOption.SpaceStation, StartOption.SpaceStationInside, StartOption.PlanetSurface, StartOption.Settlement, StartOption.SettlementInside];
+
+    private static MenuOption<MenuAction>[] BuildOptions() =>
     [
-        new(StartOption.StarSystem, "STAR SYSTEM", "Start inside a random star system, ready to explore"),
-        new(StartOption.GalaxyMap, "GALAXY MAP", "Begin at the galaxy overview and choose your destination"),
-        new(StartOption.SpaceStation, "SPACE STATION", "Dock at a random space station"),
-        new(StartOption.SpaceStationInside, "INSIDE SPACE STATION", "Walk around inside a random space station"),
-        new(StartOption.PlanetSurface, "PLANET SURFACE", "Land directly on a random planet's surface"),
-        new(StartOption.Settlement, "SETTLEMENT", "Start at a settlement on an inhabited planet"),
-        new(StartOption.SettlementInside, "INSIDE SETTLEMENT", "Walk around inside a random settlement")
+        new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Press ENTER or LEFT/RIGHT to change danger level filter"),
+        new(MenuAction.LocationType, $"START AT: {LocationLabels[0]}", "Press ENTER or LEFT/RIGHT to change starting location type"),
+        new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
+        new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
+        new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
+        new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"),
     ];
 
     private readonly TextInputOverlay _seedInputOverlay = new();
 
-    /// <summary>Fired when the player confirms a start option.</summary>
-    public StartOption? SelectedOption { get; set; }
+    // Persist filter selections across menu recreations
+    private static int s_savedDangerIndex;
+    private static int s_savedLocationIndex;
+
+    // Current cycling state
+    private int _dangerIndex = s_savedDangerIndex;
+    private int _locationIndex = s_savedLocationIndex;
+
+    // ── Public state for MainMenuState ──
+
+    /// <summary>When set, the player confirmed START GAME.</summary>
+    public bool StartRequested { get; set; }
 
     /// <summary>Fired when the player wants to change the seed.</summary>
     public ulong? NewSeed { get; set; }
@@ -34,8 +67,17 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
     /// <summary>Fired when the player wants to randomize the seed.</summary>
     public bool RandomizeSeed { get; set; }
 
-    /// <summary>Fired when the player wants to re-roll the starting location.</summary>
-    public bool RerollLocation { get; set; }
+    /// <summary>Fired when the location was randomized (re-roll).</summary>
+    public bool RandomizeLocation { get; set; }
+
+    /// <summary>Current danger filter: 0=ANY, 1-5=specific level.</summary>
+    public int DangerFilter => _dangerIndex;
+
+    /// <summary>Selected starting location type.</summary>
+    public StartOption LocationType => LocationValues[_locationIndex];
+
+    /// <summary>True when danger or location cycling changed (consumed by MainMenuState).</summary>
+    public bool FiltersChanged { get; set; }
 
     /// <summary>Top Y position of the panel, for external layout (e.g. title positioning).</summary>
     public float PanelTop => PanelY;
@@ -43,28 +85,24 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
     /// <summary>Current seed to display.</summary>
     public ulong CurrentSeed { get; set; }
 
-    /// <summary>Location preview text.</summary>
+    /// <summary>Location preview text (set by MainMenuState).</summary>
     public string? LocationPreview { get; set; }
-
-    /// <summary>Currently selected start option value.</summary>
-    public StartOption SelectedValue => Menu.SelectedValue;
 
     // ── Panel configuration ──
 
-    protected override string Title => "CHOOSE YOUR STARTING POINT";
+    protected override string Title => "CHOOSE YOUR ADVENTURE";
     protected override Color3 TitleColor => new(180, 200, 255);
     protected override float PanelWidth => 640;
-    //protected override float PanelHeight => base.PanelHeight + 240; // Increased to fit seed controls and location preview
-    protected override float BottomPadding => base.BottomPadding + 190;
+    protected override float BottomPadding => base.BottomPadding + 75;
     protected override bool CloseOnClickOutside => false;
     protected override byte DimAlpha => 0; // MainMenuState draws its own background
-    protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: CONFIRM  R: RE-ROLL  S: EDIT SEED  N: RANDOM SEED";
+    protected override string? ControlsHint => "UP/DOWN: NAVIGATE  ENTER/LEFT/RIGHT: CHANGE  ENTER: CONFIRM";
 
     // ── Constructor ──
 
     public MainMenuOverlay()
     {
-        Menu = new MenuWidget<StartOption>(Options)
+        Menu = new MenuWidget<MenuAction>(BuildOptions())
         {
             CenterAlign = true,
             ItemHeight = 50f,
@@ -86,11 +124,14 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
     public override void Open()
     {
         base.Open();
-        SelectedOption = null;
+        StartRequested = false;
         NewSeed = null;
         RandomizeSeed = false;
-        RerollLocation = false;
+        RandomizeLocation = false;
+        FiltersChanged = false;
         LocationPreview = null;
+        // Keep _dangerIndex and _locationIndex from previous session
+        UpdateCyclingLabels();
     }
 
     // ── Escape does nothing on main menu ──
@@ -99,9 +140,57 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
 
     // ── Selection ──
 
-    protected override void OnOptionSelected(Game game, StartOption option)
+    protected override void OnOptionSelected(Game game, MenuAction option)
     {
-        SelectedOption = option;
+        switch (option)
+        {
+            case MenuAction.DangerLevel:
+                CycleDanger(1);
+                break;
+            case MenuAction.LocationType:
+                CycleLocation(1);
+                break;
+            case MenuAction.RandomizeLocation:
+                RandomizeLocation = true;
+                break;
+            case MenuAction.EditSeed:
+                _seedInputOverlay.Open("ENTER GALAXY SEED", CurrentSeed.ToString(), numericOnly: true, maxLength: 20);
+                break;
+            case MenuAction.RandomSeed:
+                RandomizeSeed = true;
+                break;
+            case MenuAction.StartGame:
+                StartRequested = true;
+                break;
+        }
+    }
+
+    // ── Cycling helpers ──
+
+    private void CycleDanger(int direction)
+    {
+        _dangerIndex = (_dangerIndex + direction + DangerLabels.Length) % DangerLabels.Length;
+        s_savedDangerIndex = _dangerIndex;
+        UpdateCyclingLabels();
+        FiltersChanged = true;
+    }
+
+    private void CycleLocation(int direction)
+    {
+        _locationIndex = (_locationIndex + direction + LocationLabels.Length) % LocationLabels.Length;
+        s_savedLocationIndex = _locationIndex;
+        UpdateCyclingLabels();
+        FiltersChanged = true;
+    }
+
+    private void UpdateCyclingLabels()
+    {
+        Menu.SetOption(DangerIdx, new MenuOption<MenuAction>(MenuAction.DangerLevel,
+            $"DANGER: < {DangerLabels[_dangerIndex]} >",
+            "Press ENTER or LEFT/RIGHT to change danger level filter"));
+        Menu.SetOption(LocationIdx, new MenuOption<MenuAction>(MenuAction.LocationType,
+            $"START AT: < {LocationLabels[_locationIndex]} >",
+            "Press ENTER or LEFT/RIGHT to change starting location type"));
     }
 
     // ── Custom input processing ──
@@ -120,29 +209,23 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
 
         // Don't process other input while seed input is open
         if (_seedInputOverlay.IsOpen)
-        {
             return;
-        }
 
-        // 'S' key - Change seed
-        if (input.IsKeyPressed(SDL3.SDL.Scancode.S))
+        // Left/Right to cycle the currently selected option
+        var selected = Menu.SelectedValue;
+        if (selected == MenuAction.DangerLevel)
         {
-            _seedInputOverlay.Open("ENTER GALAXY SEED", CurrentSeed.ToString(), numericOnly: true, maxLength: 20);
-            return;
+            if (input.IsKeyPressed(SDL3.SDL.Scancode.Left))
+            { CycleDanger(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            if (input.IsKeyPressed(SDL3.SDL.Scancode.Right))
+            { CycleDanger(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
         }
-
-        // 'N' key - Random seed
-        if (input.IsKeyPressed(SDL3.SDL.Scancode.N))
+        else if (selected == MenuAction.LocationType)
         {
-            RandomizeSeed = true;
-            return;
-        }
-
-        // 'R' key - Re-roll location
-        if (input.IsKeyPressed(SDL3.SDL.Scancode.R))
-        {
-            RerollLocation = true;
-            return;
+            if (input.IsKeyPressed(SDL3.SDL.Scancode.Left))
+            { CycleLocation(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            if (input.IsKeyPressed(SDL3.SDL.Scancode.Right))
+            { CycleLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
         }
 
         // Default menu input processing
@@ -156,66 +239,31 @@ public class MainMenuOverlay : MenuPanelOverlayBase<StartOption>
         // Render the menu
         Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
 
-        // Render separator line below menu
-        renderer.DrawLineScreen(panelX + 15, MenuY + Menu.TotalHeight + 5, panelX + panelW - 15, MenuY + Menu.TotalHeight + 5, new Color3(60, 80, 140));        
+        // Separator between config and actions
+        float sep1Y = MenuY + 2 * Menu.ItemHeight;
+        renderer.DrawLineScreen(panelX + 15, sep1Y, panelX + panelW - 15, sep1Y, new Color3(60, 80, 140));
 
-        // Seed control section
-        float seedSectionY = MenuY + Menu.TotalHeight + 20;
-        RenderSeedSection(renderer, panelX, seedSectionY, panelW);
+        // Separator before START GAME
+        float sep2Y = MenuY + (Menu.ItemCount - 1) * Menu.ItemHeight;
+        renderer.DrawLineScreen(panelX + 15, sep2Y, panelX + panelW - 15, sep2Y, new Color3(60, 80, 140));
 
-        // Location preview section
-        float previewSectionY = seedSectionY + 80;
-        RenderLocationPreview(renderer, panelX, previewSectionY, panelW);
-    }
+        // Compact info section below menu
+        float infoY = MenuY + Menu.TotalHeight + 8;
+        renderer.DrawLineScreen(panelX + 15, infoY - 4, panelX + panelW - 15, infoY - 4, new Color3(60, 80, 140));
 
-    private void RenderSeedSection(SpriteRenderer renderer, float panelX, float y, float panelW)
-    {
-        // Section header
-        renderer.DrawTextScreen(panelX + 15, y, "GALAXY SEED", new Color3(180, 200, 220), 2f);
+        // Seed line
+        renderer.DrawTextScreen(panelX + 15, infoY, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f);
 
-        // Seed value background box
-        float boxX = panelX + 15;
-        float boxY = y + 30;
-        float boxW = panelW - 30;
-        float boxH = 35;
-
-        renderer.DrawRectScreen(boxX, boxY, boxW, boxH, new Color4(20, 30, 50, 200));
-        renderer.DrawRectScreen(boxX - 1, boxY - 1, boxW + 2, boxH + 2, new Color4(60, 80, 140, 150));
-
-        // Seed value text
-        string seedText = CurrentSeed.ToString();
-        renderer.DrawTextScreen(boxX + 10, boxY + 8, seedText, new Color3(120, 200, 255), 2f);
-    }
-
-    private void RenderLocationPreview(SpriteRenderer renderer, float panelX, float y, float panelW)
-    {
-        // Section header
-        renderer.DrawTextScreen(panelX + 15, y, "STARTING LOCATION", new Color3(180, 200, 220), 2f);
-
-        // Preview box
-        float boxX = panelX + 15;
-        float boxY = y + 30;
-        float boxW = panelW - 30;
-        float boxH = 42;
-
-        renderer.DrawRectScreen(boxX, boxY, boxW, boxH, new Color4(20, 30, 50, 200));
-        renderer.DrawRectScreen(boxX - 1, boxY - 1, boxW + 2, boxH + 2, new Color4(60, 80, 140, 150));
-
-        // Preview text
+        // Location preview (two lines)
         if (!string.IsNullOrEmpty(LocationPreview))
         {
-            // Split into multiple lines if needed
             string[] lines = LocationPreview.Split('\n');
-            float lineY = boxY + 8;
+            float lineY = infoY + 20;
             foreach (var line in lines)
             {
-                renderer.DrawTextScreen(boxX + 10, lineY, line, new Color3(200, 220, 240), 1.5f);
+                renderer.DrawTextScreen(panelX + 15, lineY, line, new Color3(160, 180, 210), 1.5f);
                 lineY += 18;
             }
-        }
-        else
-        {
-            renderer.DrawTextScreen(boxX + 10, boxY + 20, "Select a starting point above", new Color3(140, 140, 160), 1.5f);
         }
     }
 }
