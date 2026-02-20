@@ -37,17 +37,17 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
         // Clear per-frame intent
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = 0f;
-        bool isBraking = _input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down);
+        bool isBraking = _input.IsActionDown(InputAction.MoveDown);
         velocity.Damping = isBraking ? BrakeMultiplier : 1f;
 
         // Rotation intent
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
+        if (_input.IsActionDown(InputAction.MoveLeft))
             velocity.RotationVelocity -= RotationSpeed;
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
+        if (_input.IsActionDown(InputAction.MoveRight))
             velocity.RotationVelocity += RotationSpeed;
 
         // Thrust intent along facing direction
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.W) || _input.IsKeyDown(SDL3.SDL.Scancode.Up))
+        if (_input.IsActionDown(InputAction.MoveUp))
         {
             float rad = transform.Rotation * MathF.PI / 180f;
             velocity.Acceleration += new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * Acceleration;

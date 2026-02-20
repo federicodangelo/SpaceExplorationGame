@@ -16,7 +16,16 @@ public class HealthStationOverlay : PanelOverlayBase
     protected override float PanelWidth => 500;
     protected override float PanelHeight => 400;
     protected override bool ShowCredits => true;
-    protected override string? ControlsHint => "[ENTER] HEAL  ESC: CLOSE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"[{input.GetActionHelpText(InputAction.MenuConfirm)}] HEAL  {input.GetActionHelpText(InputAction.MenuBack)}: CLOSE";
+        }
+    }
 
     protected override void OnConfirmAction(Game game)
     {
@@ -56,7 +65,8 @@ public class HealthStationOverlay : PanelOverlayBase
 
             bool canAfford = game.Player.Credits >= cost;
             if (canAfford)
-                renderer.DrawTextScreen(panelX + 20, contentY + 145, "[ENTER] HEAL ALL",
+                renderer.DrawTextScreen(panelX + 20, contentY + 145,
+                    $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] HEAL ALL",
                     new Color3(100, 200, 255), 2f);
             else
                 renderer.DrawTextScreen(panelX + 20, contentY + 145, "INSUFFICIENT CREDITS",

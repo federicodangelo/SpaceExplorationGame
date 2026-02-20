@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering.Base;
@@ -57,8 +56,9 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
     {
         if (!IsOpen) return false;
 
-        // Escape or M closes
-        if (game.Input.IsKeyPressed(SDL.Scancode.Escape) || game.Input.IsKeyPressed(SDL.Scancode.M))
+        // Back or Map closes
+        if (game.Input.IsActionPressed(InputAction.MenuBack)
+            || game.Input.IsActionPressed(InputAction.ToggleMap))
         {
             Cleanup();
             Close();

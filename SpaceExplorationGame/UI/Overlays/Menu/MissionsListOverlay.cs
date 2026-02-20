@@ -26,8 +26,18 @@ public class MissionsListOverlay : ListPanelOverlay
     {
         get
         {
+            var input = CurrentInput;
+            if (input == null) return "";
+
             int count = _game?.Player.ActiveMissions.Count ?? 0;
-            return count > 0 ? "W/S: SELECT  ENTER: TRACK  X: ABANDON  ESC: BACK" : "ESC: BACK";
+            
+            if (count <= 0)
+                return $"{input.GetActionHelpText(InputAction.MenuBack)}: BACK";
+
+            return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: SELECT  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: TRACK  " +
+                   $"{input.GetActionHelpText(InputAction.MenuSecondaryAction)}: ABANDON  " +
+                   $"{input.GetActionHelpText(InputAction.MenuBack)}: BACK";
         }
     }
 

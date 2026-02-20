@@ -16,7 +16,18 @@ public class ShipDealerOverlay : ListPanelOverlay
     protected override float PanelWidth => 900;
     protected override float PanelHeight => 550;
     protected override bool ShowCredits => true;
-    protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: BUY SHIP  ESC: CLOSE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: SELECT  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: BUY SHIP  " +
+                   $"{input.GetActionHelpText(InputAction.MenuBack)}: CLOSE";
+        }
+    }
 
     protected override int ItemCount => _ships.Length;
     protected override float ItemHeight => 70f;

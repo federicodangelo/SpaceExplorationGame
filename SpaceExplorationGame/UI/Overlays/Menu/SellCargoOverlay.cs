@@ -17,7 +17,18 @@ public class SellCargoOverlay : ListPanelOverlay
     protected override float PanelHeight => 160 + Math.Max(_cargoKeys.Length, 1) * 26
                                             + (_cargoKeys.Length > 0 ? 40 : 0);
     protected override bool ShowCredits => true;
-    protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: SELL  ESC: CLOSE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: SELECT  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: SELL  " +
+                   $"{input.GetActionHelpText(InputAction.MenuBack)}: CLOSE";
+        }
+    }
 
     // Item count includes cargo items + 1 "SELL ALL" option (when cargo exists)
     protected override int ItemCount =>

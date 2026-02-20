@@ -25,16 +25,7 @@ public partial class AvatarMovementSystem : BaseSystem<World, float>
     [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity))]
     public void MovePlayer(ref Transform transform, ref Velocity velocity)
     {
-        Vector2 moveDir = Vector2.Zero;
-
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.W) || _input.IsKeyDown(SDL3.SDL.Scancode.Up))
-            moveDir.Y -= 1;
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down))
-            moveDir.Y += 1;
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
-            moveDir.X -= 1;
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
-            moveDir.X += 1;
+        Vector2 moveDir = _input.GetMovementDirection();
 
         if (moveDir != Vector2.Zero)
         {

@@ -135,10 +135,10 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         // Arrow keys to nudge cursor
         int nudgeX = 0, nudgeY = 0;
-        if (input.IsKeyPressed(SDL.Scancode.Left)) nudgeX = -5;
-        if (input.IsKeyPressed(SDL.Scancode.Right)) nudgeX = 5;
-        if (input.IsKeyPressed(SDL.Scancode.Up)) nudgeY = -5;
-        if (input.IsKeyPressed(SDL.Scancode.Down)) nudgeY = 5;
+        if (input.IsActionPressed(InputAction.MenuLeft)) nudgeX = -5;
+        if (input.IsActionPressed(InputAction.MenuRight)) nudgeX = 5;
+        if (input.IsActionPressed(InputAction.MenuUp)) nudgeY = -5;
+        if (input.IsActionPressed(InputAction.MenuDown)) nudgeY = 5;
         if (nudgeX != 0 || nudgeY != 0)
         {
             _cursorTile = new TilePos(
@@ -148,7 +148,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         }
 
         // Confirm landing
-        if (_hasCursor && (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E)))
+        if (_hasCursor && (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact)))
             TryLand(game);
 
         return true;
@@ -161,10 +161,10 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         var input = game.Input;
         float camSpeed = 500f / Camera.Zoom;
-        if (input.IsKeyDown(SDL.Scancode.W)) Camera.Position -= new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.S)) Camera.Position += new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.A)) Camera.Position -= new Vector2(camSpeed * dt, 0);
-        if (input.IsKeyDown(SDL.Scancode.D)) Camera.Position += new Vector2(camSpeed * dt, 0);
+        if (input.IsActionDown(InputAction.MoveUp)) Camera.Position -= new Vector2(0, camSpeed * dt);
+        if (input.IsActionDown(InputAction.MoveDown)) Camera.Position += new Vector2(0, camSpeed * dt);
+        if (input.IsActionDown(InputAction.MoveLeft)) Camera.Position -= new Vector2(camSpeed * dt, 0);
+        if (input.IsActionDown(InputAction.MoveRight)) Camera.Position += new Vector2(camSpeed * dt, 0);
 
         ClampCameraPosition();
     }
@@ -275,12 +275,22 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         // Controls
         float ctrlStartY = IpY + IpH - 110;
+        string panText =
+            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+        string nudgeText =
+            $"{game.Input.GetActionHelpText(InputAction.MenuUp)}/{game.Input.GetActionHelpText(InputAction.MenuDown)}/{game.Input.GetActionHelpText(InputAction.MenuLeft)}/{game.Input.GetActionHelpText(InputAction.MenuRight)}: NUDGE CURSOR";
         renderer.DrawRectScreen(px, ctrlStartY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        renderer.DrawTextScreen(px, ctrlStartY + 8, "CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 24, "WASD/DRAG: PAN", new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(px, ctrlStartY + 8,
+            $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT SITE",
+            new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 56, "ARROWS: NUDGE CURSOR", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 72, "DBLCLICK/ENTER: LAND", new Color3(100, 255, 100), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 88, "ESC: CANCEL", new Color3(255, 150, 150), 1.3f);
+        renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
+        renderer.DrawTextScreen(px, ctrlStartY + 72,
+            $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
+            new Color3(100, 255, 100), 1.3f);
+        renderer.DrawTextScreen(px, ctrlStartY + 88,
+            $"{game.Input.GetActionHelpText(InputAction.MenuBack)}: CANCEL",
+            new Color3(255, 150, 150), 1.3f);
     }
 }

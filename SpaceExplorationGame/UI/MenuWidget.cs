@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 
@@ -98,13 +97,13 @@ public class MenuWidget<T> where T : struct, Enum
     {
         if (_options.Length == 0) return null;
 
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        if (input.IsActionPressed(InputAction.MenuUp))
             _selected = (_selected - 1 + _options.Length) % _options.Length;
 
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        if (input.IsActionPressed(InputAction.MenuDown))
             _selected = (_selected + 1) % _options.Length;
 
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.MenuConfirm))
         {
             if (_options[_selected].Enabled)
                 return _options[_selected].Value;
@@ -174,13 +173,13 @@ public class MenuWidget<T> where T : struct, Enum
 
         // Keyboard navigation — suppress mouse hover when used
         bool keyNav = false;
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        if (input.IsActionPressed(InputAction.MenuUp))
         {
             _selected = (_selected - 1 + _options.Length) % _options.Length;
             keyNav = true;
         }
 
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        if (input.IsActionPressed(InputAction.MenuDown))
         {
             _selected = (_selected + 1) % _options.Length;
             keyNav = true;
@@ -189,7 +188,7 @@ public class MenuWidget<T> where T : struct, Enum
         if (keyNav)
             _ignoreMouseHover = true;
 
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.MenuConfirm))
         {
             if (_options[_selected].Enabled)
                 return _options[_selected].Value;

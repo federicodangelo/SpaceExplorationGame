@@ -38,8 +38,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     private static MenuOption<MenuAction>[] BuildOptions() =>
     [
-        new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Press ENTER or LEFT/RIGHT to change danger level filter"),
-        new(MenuAction.LocationType, $"START AT: {LocationLabels[0]}", "Press ENTER or LEFT/RIGHT to change starting location type"),
+        new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Adjust danger level filter"),
+        new(MenuAction.LocationType, $"START AT: {LocationLabels[0]}", "Adjust starting location type"),
         new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
         new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
         new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
@@ -96,7 +96,18 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     protected override float BottomPadding => base.BottomPadding + 75;
     protected override bool CloseOnClickOutside => false;
     protected override byte DimAlpha => 0; // MainMenuState draws its own background
-    protected override string? ControlsHint => "UP/DOWN: NAVIGATE  ENTER/LEFT/RIGHT: CHANGE  ENTER: CONFIRM";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: NAVIGATE  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}/{input.GetActionHelpText(InputAction.MenuLeft)}/{input.GetActionHelpText(InputAction.MenuRight)}: CHANGE  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: CONFIRM";
+        }
+    }
 
     // ── Constructor ──
 
@@ -185,18 +196,24 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     private void UpdateCyclingLabels()
     {
+        string confirm = CurrentInput?.GetActionHelpText(InputAction.MenuConfirm).ToUpper() ?? "CONFIRM";
+        string left = CurrentInput?.GetActionHelpText(InputAction.MenuLeft).ToUpper() ?? "LEFT";
+        string right = CurrentInput?.GetActionHelpText(InputAction.MenuRight).ToUpper() ?? "RIGHT";
+
         Menu.SetOption(DangerIdx, new MenuOption<MenuAction>(MenuAction.DangerLevel,
             $"DANGER: < {DangerLabels[_dangerIndex]} >",
-            "Press ENTER or LEFT/RIGHT to change danger level filter"));
+            $"Press {confirm} or {left}/{right} to change danger level filter"));
         Menu.SetOption(LocationIdx, new MenuOption<MenuAction>(MenuAction.LocationType,
             $"START AT: < {LocationLabels[_locationIndex]} >",
-            "Press ENTER or LEFT/RIGHT to change starting location type"));
+            $"Press {confirm} or {left}/{right} to change starting location type"));
     }
 
     // ── Custom input processing ──
 
     protected override void ProcessInput(Game game, InputManager input)
     {
+        UpdateCyclingLabels();
+
         // Check if seed input was confirmed
         if (!_seedInputOverlay.IsOpen)
         {
@@ -215,16 +232,16 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         var selected = Menu.SelectedValue;
         if (selected == MenuAction.DangerLevel)
         {
-            if (input.IsKeyPressed(SDL3.SDL.Scancode.Left))
+            if (input.IsActionPressed(InputAction.MenuLeft))
             { CycleDanger(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
-            if (input.IsKeyPressed(SDL3.SDL.Scancode.Right))
+            if (input.IsActionPressed(InputAction.MenuRight))
             { CycleDanger(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
         }
         else if (selected == MenuAction.LocationType)
         {
-            if (input.IsKeyPressed(SDL3.SDL.Scancode.Left))
+            if (input.IsActionPressed(InputAction.MenuLeft))
             { CycleLocation(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
-            if (input.IsKeyPressed(SDL3.SDL.Scancode.Right))
+            if (input.IsActionPressed(InputAction.MenuRight))
             { CycleLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
         }
 

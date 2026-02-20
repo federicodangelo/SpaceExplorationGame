@@ -108,7 +108,7 @@ public class GalaxyMapPanel : MapPanelBase
             IsPanning = false;
         }
 
-        if (input.IsKeyPressed(SDL.Scancode.Return) && _selectedSystemIndex >= 0)
+        if (input.IsActionPressed(InputAction.MenuConfirm) && _selectedSystemIndex >= 0)
             TravelToSelected(game);
 
         return true;
@@ -400,7 +400,9 @@ public class GalaxyMapPanel : MapPanelBase
             if (isCurrentSystem)
             {
                 renderer.DrawTextScreen(cx, missionY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
-                renderer.DrawTextScreen(cx, missionY + 20, "[ENTER] CLOSE MAP", new Color3(100, 255, 100), 1.5f);
+                renderer.DrawTextScreen(cx, missionY + 20,
+                    $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] CLOSE MAP",
+                    new Color3(100, 255, 100), 1.5f);
             }
             else
             {
@@ -415,7 +417,9 @@ public class GalaxyMapPanel : MapPanelBase
                 else if (!canAfford)
                     renderer.DrawTextScreen(cx, missionY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
                 else
-                    renderer.DrawTextScreen(cx, missionY + 40, "[ENTER] TRAVEL", new Color3(100, 255, 100), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40,
+                        $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] TRAVEL",
+                        new Color3(100, 255, 100), 1.5f);
             }
         }
         else
@@ -427,10 +431,16 @@ public class GalaxyMapPanel : MapPanelBase
         // Controls
         float ctrlY = IpY + IpH - 110;
         renderer.DrawRectScreen(cx, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        renderer.DrawTextScreen(cx, ctrlY + 8, "WASD/ARROWS/DRAG: PAN", new Color3(180, 180, 180), 1.3f);
+        string panText =
+            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+        renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 56, "DBLCLICK/ENTER: TRAVEL", new Color3(100, 255, 100), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 72, "M: SOLAR SYSTEM  ESC: CLOSE", new Color3(255, 150, 150), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 56,
+            $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
+            new Color3(100, 255, 100), 1.3f);
+        renderer.DrawTextScreen(cx, ctrlY + 72,
+            $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: SOLAR SYSTEM  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+            new Color3(255, 150, 150), 1.3f);
     }
 }

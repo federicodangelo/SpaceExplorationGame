@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 
@@ -60,14 +59,11 @@ public abstract class MapPanelBase
     {
         var input = game.Input;
         float camSpeed = 500f / Camera.Zoom;
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up))
-            Camera.Position -= new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down))
-            Camera.Position += new Vector2(0, camSpeed * dt);
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left))
-            Camera.Position -= new Vector2(camSpeed * dt, 0);
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right))
-            Camera.Position += new Vector2(camSpeed * dt, 0);
+        Vector2 moveDir = input.GetMovementDirection();
+        if (moveDir.Y < 0) Camera.Position -= new Vector2(0, camSpeed * dt);
+        if (moveDir.Y > 0) Camera.Position += new Vector2(0, camSpeed * dt);
+        if (moveDir.X < 0) Camera.Position -= new Vector2(camSpeed * dt, 0);
+        if (moveDir.X > 0) Camera.Position += new Vector2(camSpeed * dt, 0);
     }
 
     // ─────────────────────────────────────────────────────────────

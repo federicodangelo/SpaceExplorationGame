@@ -473,14 +473,14 @@ public class SolarSystemState : GameState
         // In-game menu overlay
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
             return;
         }
 
         // Interact
-        if (input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.Interact))
         {
             if (_nearbyStationIndex >= 0)
             {
@@ -502,7 +502,7 @@ public class SolarSystemState : GameState
         }
 
         // Open galaxy map overlay
-        if (input.IsKeyPressed(SDL.Scancode.M))
+        if (input.IsActionPressed(InputAction.ToggleMap))
         {
             _galaxyMapOverlay.Open(game);
         }
@@ -755,7 +755,7 @@ public class SolarSystemState : GameState
         for (int i = 0; i < _playerWeaponCooldowns.Length; i++)
             _playerWeaponCooldowns[i] -= dt;
 
-        if (input.IsKeyDown(SDL.Scancode.Space))
+        if (input.IsActionDown(InputAction.FireWeapon))
         {
             var equipped = game.Player.EquippedParts;
             bool hasWeapon1 = TryGetWeaponSpec(equipped, ShipSlotType.Weapon1, out var weapon1);
@@ -1120,7 +1120,7 @@ public class SolarSystemState : GameState
         {
             ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
             int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
-            bool isThrusting = game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up);
+            bool isThrusting = game.Input.IsActionDown(InputAction.MoveUp);
             game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
         }
@@ -1197,7 +1197,8 @@ public class SolarSystemState : GameState
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,
             _nearbyPlanetIndex, _nearbyMoonIndex, _nearbyMoonPlanetIndex,
-            _nearbyStationIndex, _planets, _stations);
+            _nearbyStationIndex, _planets, _stations,
+            game.Input.GetActionHelpText(InputAction.Interact));
 
 
 

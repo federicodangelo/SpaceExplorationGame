@@ -346,7 +346,8 @@ public static class HudRenderer
     public static void RenderSolarSystemPrompt(SpriteRenderer renderer,
         int nearbyPlanetIndex, int nearbyMoonIndex, int nearbyMoonPlanetIndex,
         int nearbyStationIndex,
-        List<PlanetData> planets, List<SpaceStationData> stations)
+        List<PlanetData> planets, List<SpaceStationData> stations,
+        string interactHelpText)
     {
         if (nearbyPlanetIndex >= 0)
         {
@@ -356,7 +357,7 @@ public static class HudRenderer
             string settText = planet.HasSettlement ? "SETTLEMENTS: YES" : "NO SETTLEMENTS";
 
             RenderPromptPanel(renderer,
-                [$"[E] LAND ON {planet.Name.ToUpper()}",
+                [$"[{interactHelpText}] LAND ON {planet.Name.ToUpper()}",
                  $"TYPE: {planet.Type.ToString().ToUpper()}",
                  details,
                  settText],
@@ -372,7 +373,7 @@ public static class HudRenderer
             var moon = planets[nearbyMoonPlanetIndex].Moons[nearbyMoonIndex];
             var parent = planets[nearbyMoonPlanetIndex];
             RenderPromptPanel(renderer,
-                [$"[E] LAND ON {moon.Name.ToUpper()}",
+                [$"[{interactHelpText}] LAND ON {moon.Name.ToUpper()}",
                  $"TYPE: {moon.Type.ToString().ToUpper()}",
                  $"ORBITS: {parent.Name.ToUpper()}"],
                 [new Color3(180, 255, 180),
@@ -381,7 +382,7 @@ public static class HudRenderer
         }
         else if (nearbyStationIndex >= 0)
         {
-            RenderPrompt(renderer, $"[E] DOCK AT {stations[nearbyStationIndex].Name.ToUpper()}",
+            RenderPrompt(renderer, $"[{interactHelpText}] DOCK AT {stations[nearbyStationIndex].Name.ToUpper()}",
                 100, 200, 255);
         }
     }
@@ -389,44 +390,45 @@ public static class HudRenderer
     /// <summary>Render planet surface interaction prompts (board ship, mount vehicle, enter settlement).</summary>
     public static void RenderPlanetSurfacePrompt(SpriteRenderer renderer,
         bool inVehicle, bool nearShip, bool nearVehicle, bool vehicleDeployed,
-        SettlementData? nearSettlement)
+        SettlementData? nearSettlement, string interactHelpText)
     {
         if (inVehicle && nearShip)
-            RenderPrompt(renderer, "[E] BOARD STARSHIP", 100, 255, 100);
+            RenderPrompt(renderer, $"[{interactHelpText}] BOARD STARSHIP", 100, 255, 100);
         else if (inVehicle)
-            RenderPrompt(renderer, "[E] DISMOUNT", 255, 200, 100);
+            RenderPrompt(renderer, $"[{interactHelpText}] DISMOUNT", 255, 200, 100);
         else if (nearShip)
-            RenderPrompt(renderer, "[E] BOARD STARSHIP", 100, 255, 100);
+            RenderPrompt(renderer, $"[{interactHelpText}] BOARD STARSHIP", 100, 255, 100);
         else if (nearVehicle && vehicleDeployed)
-            RenderPrompt(renderer, "[E] MOUNT VEHICLE", 255, 200, 100);
+            RenderPrompt(renderer, $"[{interactHelpText}] MOUNT VEHICLE", 255, 200, 100);
         else if (nearSettlement != null)
-            RenderPrompt(renderer, $"[E] ENTER {nearSettlement.Name.ToUpper()}", 255, 255, 100);
+            RenderPrompt(renderer, $"[{interactHelpText}] ENTER {nearSettlement.Name.ToUpper()}", 255, 255, 100);
     }
 
     /// <summary>Render interior interaction prompts (interactables and NPCs).</summary>
     public static void RenderInteriorPrompt(SpriteRenderer renderer,
-        InteriorInteractable? nearestInteractable, InteriorNpc? nearestNpc)
+        InteriorInteractable? nearestInteractable, InteriorNpc? nearestNpc,
+        string interactHelpText)
     {
         if (nearestInteractable != null)
         {
             string prompt = nearestInteractable.Type switch
             {
-                InteractableType.ExitDoor => "[E] EXIT",
-                InteractableType.RepairStation => "[E] REPAIR",
-                InteractableType.HealthStation => "[E] HEALTH STATION",
-                InteractableType.MissionBoard => "[E] MISSIONS",
-                InteractableType.ShipCustomization => "[E] SHIP CUSTOMIZATION",
-                InteractableType.AvatarCustomization => "[E] AVATAR CUSTOMIZATION",
-                InteractableType.VehicleCustomization => "[E] VEHICLE CUSTOMIZATION",
-                InteractableType.ShipDealer => "[E] SHIP DEALER",
-                InteractableType.CargoTerminal => "[E] SELL CARGO",
-                _ => "[E] INTERACT"
+                InteractableType.ExitDoor => $"[{interactHelpText}] EXIT",
+                InteractableType.RepairStation => $"[{interactHelpText}] REPAIR",
+                InteractableType.HealthStation => $"[{interactHelpText}] HEALTH STATION",
+                InteractableType.MissionBoard => $"[{interactHelpText}] MISSIONS",
+                InteractableType.ShipCustomization => $"[{interactHelpText}] SHIP CUSTOMIZATION",
+                InteractableType.AvatarCustomization => $"[{interactHelpText}] AVATAR CUSTOMIZATION",
+                InteractableType.VehicleCustomization => $"[{interactHelpText}] VEHICLE CUSTOMIZATION",
+                InteractableType.ShipDealer => $"[{interactHelpText}] SHIP DEALER",
+                InteractableType.CargoTerminal => $"[{interactHelpText}] SELL CARGO",
+                _ => $"[{interactHelpText}] INTERACT"
             };
             RenderPrompt(renderer, prompt, 100, 255, 200);
         }
         else if (nearestNpc != null)
         {
-            RenderPrompt(renderer, $"[E] TALK TO {nearestNpc.Name.ToUpper()}", 200, 200, 255);
+            RenderPrompt(renderer, $"[{interactHelpText}] TALK TO {nearestNpc.Name.ToUpper()}", 200, 200, 255);
         }
     }
 

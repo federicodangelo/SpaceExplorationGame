@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
@@ -11,7 +10,7 @@ public enum MapViewMode { SolarSystem, Galaxy }
 
 /// <summary>
 /// Full-screen overlay container that switches between a solar system map and galaxy star chart.
-/// Opened with M key from SolarSystemState. Tab/M toggles between modes.
+/// Opened with M key from SolarSystemState. M toggles between modes.
 /// Delegates all mode-specific logic to <see cref="SolarSystemMapPanel"/> and <see cref="GalaxyMapPanel"/>.
 /// </summary>
 public class GalaxyMapOverlay : MapOverlayBase
@@ -20,6 +19,7 @@ public class GalaxyMapOverlay : MapOverlayBase
     private readonly SolarSystemMapPanel _solarPanel = new();
     private readonly GalaxyMapPanel _galaxyPanel = new();
     private MapPanelBase _activePanel;
+    private string _toggleMapLabel = "M";
 
     // ── Current mode ──
     private MapViewMode _viewMode = MapViewMode.SolarSystem;
@@ -46,6 +46,7 @@ public class GalaxyMapOverlay : MapOverlayBase
         IsOpen = true;
         _viewMode = initialMode;
         _justOpened = true;
+        _toggleMapLabel = game.Input.GetActionHelpText(InputAction.ToggleMap).ToUpper();
 
         ComputeLayout();
         ApplyLayoutToPanel(_solarPanel);
@@ -93,15 +94,15 @@ public class GalaxyMapOverlay : MapOverlayBase
         }
         var input = game.Input;
 
-        // Escape closes
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        // Back closes
+        if (input.IsActionPressed(InputAction.MenuBack))
         {
             Close(game);
             return true;
         }
 
-        // M or Tab toggles between modes
-        if (input.IsKeyPressed(SDL.Scancode.M) || input.IsKeyPressed(SDL.Scancode.Tab))
+        // M toggles between modes
+        if (input.IsActionPressed(InputAction.ToggleMap))
         {
             SwitchMode(game);
             return true;
@@ -153,7 +154,7 @@ public class GalaxyMapOverlay : MapOverlayBase
         var solarBg = solarActive ? new Color4(40, 55, 100, 240) : new Color4(20, 25, 50, 200);
         var solarText = solarActive ? new Color3(200, 220, 255) : new Color3(100, 110, 140);
         renderer.DrawRectScreen(FrameX, FrameY, halfW, HeaderHeight - 1, solarBg);
-        string solarLabel = "SOLAR SYSTEM [M]";
+        string solarLabel = $"SOLAR SYSTEM [{_toggleMapLabel}]";
         float solarLabelW = renderer.MeasureText(solarLabel, 1.6f);
         renderer.DrawTextScreen(FrameX + halfW / 2f - solarLabelW / 2f, FrameY + 6, solarLabel, solarText, 1.6f);
 
@@ -162,7 +163,7 @@ public class GalaxyMapOverlay : MapOverlayBase
         var galaxyBg = galaxyActive ? new Color4(40, 55, 100, 240) : new Color4(20, 25, 50, 200);
         var galaxyText = galaxyActive ? new Color3(200, 220, 255) : new Color3(100, 110, 140);
         renderer.DrawRectScreen(FrameX + halfW, FrameY, halfW, HeaderHeight - 1, galaxyBg);
-        string galaxyLabel = "STAR CHART [M]";
+        string galaxyLabel = $"STAR CHART [{_toggleMapLabel}]";
         float galaxyLabelW = renderer.MeasureText(galaxyLabel, 1.6f);
         renderer.DrawTextScreen(FrameX + halfW + halfW / 2f - galaxyLabelW / 2f, FrameY + 6, galaxyLabel, galaxyText, 1.6f);
 

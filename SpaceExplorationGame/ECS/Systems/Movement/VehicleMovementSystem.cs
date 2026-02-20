@@ -46,20 +46,20 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
 
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = 0f;
-        bool isBraking = _input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down);
+        bool isBraking = _input.IsActionDown(InputAction.MoveDown);
         velocity.Damping = _friction * (isBraking ? _brakeMultiplier : 1f);
 
         // Rotation intent
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
+        if (_input.IsActionDown(InputAction.MoveLeft))
             velocity.RotationVelocity -= _rotationSpeed;
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
+        if (_input.IsActionDown(InputAction.MoveRight))
             velocity.RotationVelocity += _rotationSpeed;
 
         // Forward acceleration intent
         float rad = transform.Rotation * MathF.PI / 180f;
         var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
 
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.W) || _input.IsKeyDown(SDL3.SDL.Scancode.Up))
+        if (_input.IsActionDown(InputAction.MoveUp))
         {
             velocity.Acceleration += forward * _acceleration;
         }

@@ -171,8 +171,8 @@ public class SolarSystemMapPanel : MapPanelBase
         else if (input.IsMouseReleased(1))
             IsPanning = false;
 
-        // T or Enter to toggle nav target
-        if ((input.IsKeyPressed(SDL.Scancode.T) || input.IsKeyPressed(SDL.Scancode.Return))
+        // T toggles nav target
+        if (input.IsActionPressed(InputAction.ToggleNavTarget)
             && _selectedObject.Type != SolarMapObjectType.None)
         {
             ToggleNavTarget(game.Player);
@@ -488,10 +488,16 @@ public class SolarSystemMapPanel : MapPanelBase
         // Controls
         float ctrlY = IpY + IpH - 80;
         renderer.DrawRectScreen(px, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        renderer.DrawTextScreen(px, ctrlY + 8, "WASD/DRAG: PAN", new Color3(180, 180, 180), 1.3f);
+        string panText =
+            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+        renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 40, "T/ENTER: SET TARGET", new Color3(255, 200, 100), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 56, "M: STAR CHART  ESC: CLOSE", new Color3(255, 150, 150), 1.3f);
+        renderer.DrawTextScreen(px, ctrlY + 40,
+            $"{game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+            new Color3(255, 200, 100), 1.3f);
+        renderer.DrawTextScreen(px, ctrlY + 56,
+            $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+            new Color3(255, 150, 150), 1.3f);
     }
 
     private void RenderSelectedObjectInfo(Game game, SpriteRenderer renderer, float px, float py)
@@ -514,7 +520,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 renderer.DrawTextScreen(px, py, $"RADIUS: {_currentStarSystem.StarRadius:F0}",
                     new Color3(200, 200, 200), 1.5f);
                 py += 28;
-                RenderTargetButton(renderer, px, py, isTarget);
+                RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SolarMapObjectType.Planet when sel.PlanetIndex >= 0 && sel.PlanetIndex < _planets.Count:
@@ -548,7 +554,7 @@ public class SolarSystemMapPanel : MapPanelBase
                         new Color3(255, 80, 80), 1.5f);
                 }
                 py += 28;
-                RenderTargetButton(renderer, px, py, isTarget);
+                RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SolarMapObjectType.Moon when sel.PlanetIndex >= 0 && sel.PlanetIndex < _planets.Count
@@ -569,7 +575,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 renderer.DrawTextScreen(px, py, "LANDABLE: YES",
                     new Color3(100, 255, 100), 1.5f);
                 py += 28;
-                RenderTargetButton(renderer, px, py, isTarget);
+                RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SolarMapObjectType.Station when sel.StationIndex >= 0 && sel.StationIndex < _stations.Count:
@@ -584,17 +590,20 @@ public class SolarSystemMapPanel : MapPanelBase
                     : "ORBITS: STAR";
                 renderer.DrawTextScreen(px, py, orbitLabel, new Color3(200, 200, 200), 1.5f);
                 py += 20;
-                renderer.DrawTextScreen(px, py, "DOCK: FLY NEAR & PRESS E",
+                renderer.DrawTextScreen(px, py,
+                    $"DOCK: FLY NEAR & PRESS {game.Input.GetActionHelpText(InputAction.Interact).ToUpper()}",
                     new Color3(100, 200, 255), 1.5f);
                 py += 28;
-                RenderTargetButton(renderer, px, py, isTarget);
+                RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
         }
     }
 
-    private void RenderTargetButton(SpriteRenderer renderer, float px, float py, bool isTarget)
+    private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
     {
-        string btnText = isTarget ? "[T] CLEAR TARGET" : "[T] SET AS TARGET";
+        string btnText = isTarget
+            ? $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] CLEAR TARGET"
+            : $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] SET AS TARGET";
         var btnColor = isTarget ? new Color3(255, 100, 100) : new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
         float btnW = renderer.MeasureText(btnText, 1.5f);

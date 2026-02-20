@@ -56,7 +56,7 @@ public class PlanetLandingOverlay : MapOverlayBase
         if (!IsOpen) return false;
 
         // Escape cancels landing
-        if (game.Input.IsKeyPressed(SDL.Scancode.Escape))
+        if (game.Input.IsActionPressed(InputAction.MenuBack))
         {
             Cleanup();
             Close();
@@ -95,8 +95,10 @@ public class PlanetLandingOverlay : MapOverlayBase
         if (_panel.HasCursor)
         {
             bool canLand = _panel.CanLandAtCursor;
+            string confirmText = game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper();
+            string clickText = game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
             string prompt = canLand
-                ? "[DBLCLICK/ENTER] CONFIRM LANDING"
+                ? $"[DBLCLICK/{confirmText}/{clickText}] CONFIRM LANDING"
                 : "CANNOT LAND ON " + _panel.CursorTerrainName;
             byte pr = canLand ? (byte)100 : (byte)255;
             byte pg = canLand ? (byte)255 : (byte)80;

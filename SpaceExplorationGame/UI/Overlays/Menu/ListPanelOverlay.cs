@@ -53,28 +53,28 @@ public abstract class ListPanelOverlay : PanelOverlayBase
     protected override void ProcessInput(Game game, InputManager input)
     {
         // Tab / column navigation (always available, even with empty lists)
-        if (input.IsKeyPressed(SDL.Scancode.Left) || input.IsKeyPressed(SDL.Scancode.A))
+        if (input.IsActionPressed(InputAction.MenuLeft))
             OnNavigateLeft(game);
 
-        if (input.IsKeyPressed(SDL.Scancode.Right) || input.IsKeyPressed(SDL.Scancode.D))
+        if (input.IsActionPressed(InputAction.MenuRight))
             OnNavigateRight(game);
 
         int count = ItemCount;
         if (count <= 0) return;
 
         // Up/Down navigation
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        if (input.IsActionPressed(InputAction.MenuUp))
             _selectedIndex = (_selectedIndex - 1 + count) % count;
 
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        if (input.IsActionPressed(InputAction.MenuDown))
             _selectedIndex = (_selectedIndex + 1) % count;
 
         // Confirm selected item
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.MenuConfirm))
             OnItemConfirmed(game, _selectedIndex);
 
         // Secondary action (sell, abandon, etc.)
-        if (input.IsKeyPressed(SDL.Scancode.X) || input.IsKeyPressed(SDL.Scancode.Delete))
+        if (input.IsActionPressed(InputAction.MenuSecondaryAction))
             OnItemSecondary(game, _selectedIndex);
 
         // Mouse hover + click on list items

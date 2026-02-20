@@ -1,12 +1,39 @@
+using System.Numerics;
 using SDL3;
 
 namespace SpaceExplorationGame.Core;
+
+public enum InputAction
+{
+    MenuConfirm,
+    MenuUp,
+    MenuDown,
+    MenuLeft,
+    MenuRight,
+    MenuBack,
+    MenuSecondaryAction,
+
+    MoveUp,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
+    FireWeapon,
+    Interact,
+    ToggleMap,
+    ToggleNavTarget,
+}
 
 /// <summary>
 /// Input snapshot captured each frame. Provides current and previous state for edge detection.
 /// </summary>
 public class InputManager
 {
+    private readonly record struct InputBinding(SDL.Scancode? Scancode, int? MouseButton)
+    {
+        public static InputBinding Key(SDL.Scancode scancode) => new(scancode, null);
+        public static InputBinding Mouse(int button) => new(null, button);
+    }
+
     private readonly HashSet<SDL.Scancode> _keysDown = [];
     private readonly HashSet<SDL.Scancode> _keysPressed = [];  // just pressed this frame
     private readonly HashSet<SDL.Scancode> _keysReleased = []; // just released this frame
@@ -14,6 +41,26 @@ public class InputManager
     private readonly HashSet<int> _mouseDown = [];
     private readonly HashSet<int> _mousePressed = [];
     private readonly HashSet<int> _mouseReleased = [];
+
+    private readonly Dictionary<InputAction, List<InputBinding>> _bindings = new()
+    {
+        [InputAction.MenuConfirm] = [InputBinding.Key(SDL.Scancode.Return), InputBinding.Key(SDL.Scancode.Space)],
+        [InputAction.MenuUp] = [InputBinding.Key(SDL.Scancode.Up), InputBinding.Key(SDL.Scancode.W)],
+        [InputAction.MenuDown] = [InputBinding.Key(SDL.Scancode.Down), InputBinding.Key(SDL.Scancode.S)],
+        [InputAction.MenuLeft] = [InputBinding.Key(SDL.Scancode.Left), InputBinding.Key(SDL.Scancode.A)],
+        [InputAction.MenuRight] = [InputBinding.Key(SDL.Scancode.Right), InputBinding.Key(SDL.Scancode.D)],
+        [InputAction.MenuBack] = [InputBinding.Key(SDL.Scancode.Escape), InputBinding.Key(SDL.Scancode.Backspace)],
+        [InputAction.MenuSecondaryAction] = [InputBinding.Key(SDL.Scancode.X), InputBinding.Key(SDL.Scancode.Delete)],
+
+        [InputAction.MoveUp] = [InputBinding.Key(SDL.Scancode.W), InputBinding.Key(SDL.Scancode.Up)],
+        [InputAction.MoveDown] = [InputBinding.Key(SDL.Scancode.S), InputBinding.Key(SDL.Scancode.Down)],
+        [InputAction.MoveLeft] = [InputBinding.Key(SDL.Scancode.A), InputBinding.Key(SDL.Scancode.Left)],
+        [InputAction.MoveRight] = [InputBinding.Key(SDL.Scancode.D), InputBinding.Key(SDL.Scancode.Right)],
+        [InputAction.FireWeapon] = [InputBinding.Key(SDL.Scancode.Space), InputBinding.Mouse(SDL.ButtonLeft)],
+        [InputAction.Interact] = [InputBinding.Key(SDL.Scancode.E)],
+        [InputAction.ToggleMap] = [InputBinding.Key(SDL.Scancode.M)],
+        [InputAction.ToggleNavTarget] = [InputBinding.Key(SDL.Scancode.T), InputBinding.Key(SDL.Scancode.Return)],
+    };
 
     public float MouseX { get; private set; }
     public float MouseY { get; private set; }
@@ -111,8 +158,91 @@ public class InputManager
     public bool IsKeyPressed(SDL.Scancode key) => _keysPressed.Contains(key);
     public bool IsKeyReleased(SDL.Scancode key) => _keysReleased.Contains(key);
 
+    public bool IsActionDown(InputAction action) => IsAnyBindingActive(action, _keysDown, _mouseDown);
+    public bool IsActionPressed(InputAction action) => IsAnyBindingActive(action, _keysPressed, _mousePressed);
+    public bool IsActionReleased(InputAction action) => IsAnyBindingActive(action, _keysReleased, _mouseReleased);
+
+    public Vector2 GetMovementDirection()
+    {
+        Vector2 direction = Vector2.Zero;
+        if (IsActionDown(InputAction.MoveUp)) direction.Y -= 1f;
+        if (IsActionDown(InputAction.MoveDown)) direction.Y += 1f;
+        if (IsActionDown(InputAction.MoveLeft)) direction.X -= 1f;
+        if (IsActionDown(InputAction.MoveRight)) direction.X += 1f;
+        return direction;
+    }
+
+    public string GetActionHelpText(InputAction action)
+    {
+        if (!_bindings.TryGetValue(action, out List<InputBinding>? bindingList) || bindingList.Count == 0)
+            return string.Empty;
+
+        List<string> labels = [];
+        foreach (InputBinding binding in bindingList)
+        {
+            string label = GetBindingLabel(binding);
+            if (!string.IsNullOrWhiteSpace(label) && !labels.Contains(label))
+                labels.Add(label);
+        }
+
+        return string.Join("/", labels);
+    }
+
+    public string GetKeyHelpText(SDL.Scancode scancode) => GetBindingLabel(InputBinding.Key(scancode));
+
+    public string GetMouseButtonHelpText(int button) => GetBindingLabel(InputBinding.Mouse(button));
+
     // Mouse queries (SDL.ButtonLeft=1, SDL.ButtonMiddle=2, SDL.ButtonRight=3)
     public bool IsMouseDown(int button) => _mouseDown.Contains(button);
     public bool IsMousePressed(int button) => _mousePressed.Contains(button);
     public bool IsMouseReleased(int button) => _mouseReleased.Contains(button);
+
+    private bool IsAnyBindingActive(InputAction action, HashSet<SDL.Scancode> keySet, HashSet<int> mouseSet)
+    {
+        if (!_bindings.TryGetValue(action, out List<InputBinding>? bindingList))
+            return false;
+
+        foreach (InputBinding binding in bindingList)
+        {
+            if (binding.Scancode.HasValue && keySet.Contains(binding.Scancode.Value))
+                return true;
+
+            if (binding.MouseButton.HasValue && mouseSet.Contains(binding.MouseButton.Value))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string GetBindingLabel(InputBinding binding)
+    {
+        if (binding.Scancode.HasValue)
+        {
+            return binding.Scancode.Value switch
+            {
+                SDL.Scancode.Return => "Enter",
+                SDL.Scancode.Space => "Space",
+                SDL.Scancode.Escape => "Esc",
+                SDL.Scancode.Backspace => "Backspace",
+                SDL.Scancode.Up => "Up",
+                SDL.Scancode.Down => "Down",
+                SDL.Scancode.Left => "Left",
+                SDL.Scancode.Right => "Right",
+                _ => binding.Scancode.Value.ToString(),
+            };
+        }
+
+        if (binding.MouseButton.HasValue)
+        {
+            return binding.MouseButton.Value switch
+            {
+                SDL.ButtonLeft => "LMB",
+                SDL.ButtonRight => "RMB",
+                SDL.ButtonMiddle => "MMB",
+                _ => $"Mouse{binding.MouseButton.Value}",
+            };
+        }
+
+        return string.Empty;
+    }
 }

@@ -33,7 +33,18 @@ public class TextInputOverlay : PanelOverlayBase
     protected override float PanelWidth => 600;
     protected override float PanelHeight => 200;
     protected override bool CloseOnClickOutside => false;
-    protected override string? ControlsHint => "ENTER: CONFIRM   ESC: CANCEL   BACKSPACE: DELETE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"{input.GetKeyHelpText(SDL.Scancode.Return)}: CONFIRM   " +
+                   $"{input.GetKeyHelpText(SDL.Scancode.Escape)}: CANCEL   " +
+                   $"{input.GetKeyHelpText(SDL.Scancode.Backspace)}: DELETE";
+        }
+    }
 
     public void Open(string prompt, string? defaultValue = null, bool numericOnly = false, int maxLength = 32)
     {

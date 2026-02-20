@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
@@ -25,10 +24,26 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     protected override float PanelWidth => 900;
     protected override bool ShowCredits => true;
 
-    protected override string? ControlsHint =>
-        _activeColumn == Column.Slots
-            ? "UP/DOWN: SELECT SLOT  ENTER/RIGHT: BROWSE PARTS  ESC: CLOSE"
-            : "UP/DOWN: SELECT  ENTER: EQUIP/BUY  X: SELL  LEFT/ESC: BACK";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null)
+                return "";
+
+            string upDown = $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}";
+            string confirm = input.GetActionHelpText(InputAction.MenuConfirm);
+            string right = input.GetActionHelpText(InputAction.MenuRight);
+            string left = input.GetActionHelpText(InputAction.MenuLeft);
+            string back = input.GetActionHelpText(InputAction.MenuBack);
+            string secondary = input.GetActionHelpText(InputAction.MenuSecondaryAction);
+
+            return _activeColumn == Column.Slots
+                ? $"{upDown}: SELECT SLOT  {confirm}/{right}: BROWSE PARTS  {back}: CLOSE"
+                : $"{upDown}: SELECT  {confirm}: EQUIP/BUY  {secondary}: SELL  {left}/{back}: BACK";
+        }
+    }
 
     // ── Abstract configuration (subclass provides) ──
 
@@ -101,18 +116,18 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     private void ProcessSlotsInput(Game game, InputManager input)
     {
         // Keyboard navigation
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        if (input.IsActionPressed(InputAction.MenuUp))
         {
             _selectedSlot = (_selectedSlot - 1 + SlotCount) % SlotCount;
             RefreshAvailableParts();
         }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        if (input.IsActionPressed(InputAction.MenuDown))
         {
             _selectedSlot = (_selectedSlot + 1) % SlotCount;
             RefreshAvailableParts();
         }
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E)
-            || input.IsKeyPressed(SDL.Scancode.Right) || input.IsKeyPressed(SDL.Scancode.D))
+        if (input.IsActionPressed(InputAction.MenuConfirm)
+            || input.IsActionPressed(InputAction.MenuRight))
         {
             _activeColumn = Column.Parts;
             _selectedPart = 0;
@@ -147,26 +162,26 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     private void ProcessPartsInput(Game game, InputManager input)
     {
         // Back to slots
-        if (input.IsKeyPressed(SDL.Scancode.Left) || input.IsKeyPressed(SDL.Scancode.A))
+        if (input.IsActionPressed(InputAction.MenuLeft))
         {
             _activeColumn = Column.Slots;
             return;
         }
 
         // Keyboard navigation
-        if (input.IsKeyPressed(SDL.Scancode.Up) || input.IsKeyPressed(SDL.Scancode.W))
+        if (input.IsActionPressed(InputAction.MenuUp))
         {
             if (_availableParts.Length > 0)
                 _selectedPart = (_selectedPart - 1 + _availableParts.Length) % _availableParts.Length;
         }
-        if (input.IsKeyPressed(SDL.Scancode.Down) || input.IsKeyPressed(SDL.Scancode.S))
+        if (input.IsActionPressed(InputAction.MenuDown))
         {
             if (_availableParts.Length > 0)
                 _selectedPart = (_selectedPart + 1) % _availableParts.Length;
         }
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.MenuConfirm))
             TryEquipOrBuy(game);
-        if (input.IsKeyPressed(SDL.Scancode.X) || input.IsKeyPressed(SDL.Scancode.Delete))
+        if (input.IsActionPressed(InputAction.MenuSecondaryAction))
             TrySellPart(game);
 
         // Mouse: hover to select part, click to equip/buy

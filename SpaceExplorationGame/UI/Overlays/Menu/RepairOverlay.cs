@@ -17,7 +17,16 @@ public class RepairOverlay : PanelOverlayBase
     protected override float PanelWidth => 500;
     protected override float PanelHeight => 400;
     protected override bool ShowCredits => true;
-    protected override string? ControlsHint => "[ENTER] REPAIR  ESC: CLOSE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"[{input.GetActionHelpText(InputAction.MenuConfirm)}] REPAIR  {input.GetActionHelpText(InputAction.MenuBack)}: CLOSE";
+        }
+    }
 
     protected override void OnConfirmAction(Game game)
     {
@@ -57,7 +66,8 @@ public class RepairOverlay : PanelOverlayBase
 
             bool canAfford = game.Player.Credits >= cost;
             if (canAfford)
-                renderer.DrawTextScreen(panelX + 20, contentY + 145, "[ENTER] REPAIR ALL",
+                renderer.DrawTextScreen(panelX + 20, contentY + 145,
+                    $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] REPAIR ALL",
                     new Color3(100, 255, 100), 2f);
             else
                 renderer.DrawTextScreen(panelX + 20, contentY + 145, "INSUFFICIENT CREDITS",

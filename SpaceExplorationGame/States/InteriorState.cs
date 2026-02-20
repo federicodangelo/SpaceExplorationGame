@@ -173,8 +173,7 @@ public class InteriorState : GameState
         // Handle dialogue
         if (_showingDialogue)
         {
-            if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E) ||
-                input.IsKeyPressed(SDL.Scancode.Space))
+            if (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact))
             {
                 _dialogueLine++;
                 if (_dialogueNpc == null || _dialogueLine >= _dialogueNpc.DialogueLines.Length)
@@ -184,7 +183,7 @@ public class InteriorState : GameState
                     _dialogueLine = 0;
                 }
             }
-            if (input.IsKeyPressed(SDL.Scancode.Escape))
+            if (input.IsActionPressed(InputAction.MenuBack))
             {
                 _showingDialogue = false;
                 _dialogueNpc = null;
@@ -196,14 +195,14 @@ public class InteriorState : GameState
         // In-game menu overlay
         if (_inGameMenuOverlay.UpdateInput(game))
             return;
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
             return;
         }
 
         // Interact
-        if (input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.Interact))
         {
             // Prefer interactable over NPC when both are nearby
             if (_nearestInteractable != null)
@@ -381,7 +380,8 @@ public class InteriorState : GameState
         // Interaction prompts
         if (!anyOverlayOpen)
         {
-            HudRenderer.RenderInteriorPrompt(renderer, _nearestInteractable, _nearestNpc);
+            HudRenderer.RenderInteriorPrompt(renderer, _nearestInteractable, _nearestNpc,
+                game.Input.GetActionHelpText(InputAction.Interact));
         }
 
         // Dialogue box

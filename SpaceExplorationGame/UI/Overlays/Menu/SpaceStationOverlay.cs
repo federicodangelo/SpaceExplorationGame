@@ -45,7 +45,18 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
     protected override float PanelHeight => 110 + Menu.TotalHeight + 20 + 110 + 40;
     protected override bool ShowCredits => true;
     protected override bool CloseOnClickOutside => false;
-    protected override string? ControlsHint => "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: SELECT  " +
+                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: CONFIRM  " +
+                   $"{input.GetActionHelpText(InputAction.MenuBack)}: EXIT";
+        }
+    }
     protected override float PanelY => 80;
 
     // ── Menu layout ──
@@ -180,6 +191,8 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
     {
         if (!IsOpen) return;
 
+        _currentInput = game.Input;
+
         var renderer = game.SpriteRenderer;
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
@@ -221,7 +234,8 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         renderer.DrawRectScreen(barX, statusY + 60, barW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 12, new Color3(100, 200, 255));
 
         // Controls
-        renderer.DrawTextScreen(px + 20, py + ph - 30, "UP/DOWN: SELECT  ENTER: CONFIRM  ESC: EXIT", new Color3(100, 100, 130), 1.5f);
+        if (ControlsHint != null)
+            renderer.DrawTextScreen(px + 20, py + ph - 30, ControlsHint, new Color3(100, 100, 130), 1.5f);
 
         // Sub-overlays on top
         RenderSubOverlays(game);

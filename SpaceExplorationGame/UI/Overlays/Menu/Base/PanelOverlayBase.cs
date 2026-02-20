@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.UI.Overlays.Base;
@@ -15,6 +14,9 @@ public abstract class PanelOverlayBase : OverlayBase
     private string? _statusMessage;
     private float _statusTimer;
     private bool _statusIsPositive;
+    protected InputManager? _currentInput;
+
+    protected InputManager? CurrentInput => _currentInput;
 
     // ── Configuration (override in subclasses) ──
 
@@ -101,7 +103,7 @@ public abstract class PanelOverlayBase : OverlayBase
         var input = game.Input;
 
         // Escape to close (or back)
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        if (input.IsActionPressed(InputAction.MenuBack))
         {
             OnEscapePressed();
             return true;
@@ -128,7 +130,7 @@ public abstract class PanelOverlayBase : OverlayBase
     /// </summary>
     protected virtual void ProcessInput(Game game, InputManager input)
     {
-        if (input.IsKeyPressed(SDL.Scancode.Return) || input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.MenuConfirm))
             OnConfirmAction(game);
     }
 
@@ -172,6 +174,8 @@ public abstract class PanelOverlayBase : OverlayBase
     public override void Render(Game game)
     {
         if (!IsOpen) return;
+
+        _currentInput = game.Input;
 
         var renderer = game.SpriteRenderer;
 

@@ -341,14 +341,14 @@ public class PlanetSurfaceState : GameState
 
         var input = game.Input;
 
-        if (input.IsKeyPressed(SDL.Scancode.Escape))
+        if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
             return;
         }
 
         // Open surface map overlay
-        if (input.IsKeyPressed(SDL.Scancode.M))
+        if (input.IsActionPressed(InputAction.ToggleMap))
         {
             var avatarPos = game.EcsWorld.Get<Transform>(_playerAvatar).Position;
             var shipPos = game.EcsWorld.Get<Transform>(_shipEntity).Position;
@@ -364,7 +364,7 @@ public class PlanetSurfaceState : GameState
         ref var avatarTransform = ref game.EcsWorld.Get<Transform>(_playerAvatar);
 
         // Unified interaction with E key (priority: ship > vehicle > settlement)
-        if (input.IsKeyPressed(SDL.Scancode.E))
+        if (input.IsActionPressed(InputAction.Interact))
         {
             if (_inVehicle)
             {
@@ -443,11 +443,7 @@ public class PlanetSurfaceState : GameState
         }
 
         // Track player facing direction from movement input
-        Vector2 moveDir = Vector2.Zero;
-        if (input.IsKeyDown(SDL.Scancode.W) || input.IsKeyDown(SDL.Scancode.Up)) moveDir.Y -= 1;
-        if (input.IsKeyDown(SDL.Scancode.S) || input.IsKeyDown(SDL.Scancode.Down)) moveDir.Y += 1;
-        if (input.IsKeyDown(SDL.Scancode.A) || input.IsKeyDown(SDL.Scancode.Left)) moveDir.X -= 1;
-        if (input.IsKeyDown(SDL.Scancode.D) || input.IsKeyDown(SDL.Scancode.Right)) moveDir.X += 1;
+        Vector2 moveDir = input.GetMovementDirection();
         if (moveDir != Vector2.Zero) _lastMoveDir = Vector2.Normalize(moveDir);
     }
 
@@ -616,7 +612,7 @@ public class PlanetSurfaceState : GameState
             // Player shooting (Space key or left mouse button)
             _playerFireCooldown -= dt;
             var input = game.Input;
-            if ((input.IsKeyDown(SDL.Scancode.Space) || input.IsMouseDown(1)) && _playerFireCooldown <= 0 && !_inVehicle)
+            if (input.IsActionDown(InputAction.FireWeapon) && _playerFireCooldown <= 0 && !_inVehicle)
             {
                 var avatarStats = game.Player.GetCombinedAvatarStats();
                 float weaponDamage = GameConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
@@ -850,7 +846,8 @@ public class PlanetSurfaceState : GameState
         if (!_playerDead && !_playerInsideShip)
         {
             HudRenderer.RenderPlanetSurfacePrompt(renderer,
-                _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement);
+                _inVehicle, _nearShip, _nearVehicle, _vehicleDeployed, _nearSettlement,
+                game.Input.GetActionHelpText(InputAction.Interact));
         }
 
         // Unified HUD (top-left: location, player info, health)

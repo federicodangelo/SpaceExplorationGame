@@ -24,9 +24,23 @@ public class MissionOverlay : ListPanelOverlay
     protected override Color3 TitleColor => new(100, 180, 255);
     protected override float PanelWidth => 650;
     protected override float PanelHeight => 580;
-    protected override string? ControlsHint => _currentTab == Tab.Available
-        ? "A/D: TABS  W/S: SELECT  ENTER: ACCEPT  ESC: CLOSE"
-        : "A/D: TABS  W/S: SELECT  ENTER: TURN IN  X: ABANDON  ESC: CLOSE";
+    protected override string? ControlsHint
+    {
+        get
+        {
+            var input = CurrentInput;
+            if (input == null) return "";
+
+            string tabs = $"{input.GetActionHelpText(InputAction.MenuLeft)}/{input.GetActionHelpText(InputAction.MenuRight)}";
+            string nav = $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}";
+            string confirm = input.GetActionHelpText(InputAction.MenuConfirm);
+            string back = input.GetActionHelpText(InputAction.MenuBack);
+
+            return _currentTab == Tab.Available
+                ? $"{tabs}: TABS  {nav}: SELECT  {confirm}: ACCEPT  {back}: CLOSE"
+                : $"{tabs}: TABS  {nav}: SELECT  {confirm}: TURN IN  {input.GetActionHelpText(InputAction.MenuSecondaryAction)}: ABANDON  {back}: CLOSE";
+        }
+    }
 
     protected override int ItemCount => _currentTab switch
     {
@@ -282,7 +296,7 @@ public class MissionOverlay : ListPanelOverlay
                 bool canTurnIn = _currentSystem != null && m.TurnIn.IsSystem(_currentSystem.Index);
                 if (canTurnIn)
                     renderer.DrawTextScreen(panelX + 25, y + 62,
-                        "PRESS ENTER TO TURN IN", new Color3(100, 255, 100), 1.2f);
+                        $"PRESS {game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()} TO TURN IN", new Color3(100, 255, 100), 1.2f);
                 else
                     renderer.DrawTextScreen(panelX + 25, y + 62,
                         $"TURN IN AT {m.TurnIn.SystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f);
