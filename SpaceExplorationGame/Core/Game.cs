@@ -58,7 +58,7 @@ public class Game : IDisposable
     public void Initialize(ulong? galaxySeed = null)
     {
         // Init SDL
-        if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio))
+        if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
         {
             throw new Exception($"SDL init failed: {SDL.GetError()}");
         }
