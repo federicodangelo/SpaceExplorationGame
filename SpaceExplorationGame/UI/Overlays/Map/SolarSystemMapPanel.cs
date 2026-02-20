@@ -75,17 +75,20 @@ public class SolarSystemMapPanel : MapPanelBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game)
+    public override bool UpdateInput(Game game, float dt)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
         float time = (float)game.GlobalTime;
 
         HandleZoomAndPan(input, currentMouse);
+        HandleGamepadTriggerZoom(input, dt);
 
         // Hover detection
         _hoveredObject = new(SolarMapObjectType.None);
-        if (IsMouseInMap(currentMouse))
+        if (usingGamepad || IsMouseInMap(currentMouse))
         {
             float bestDist = float.MaxValue;
 
@@ -94,7 +97,7 @@ public class SolarSystemMapPanel : MapPanelBase
             float cy = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
             var starScreen = Camera.WorldToScreen(new Vector2(cx, cy));
             float starHit = MathF.Max((_currentStarSystem?.StarRadius ?? 10f) * 2f * Camera.Zoom, 15f);
-            float starDist = (currentMouse - starScreen).LengthSquared();
+            float starDist = (selectionPoint - starScreen).LengthSquared();
             if (starDist < starHit * starHit && starDist < bestDist)
             {
                 bestDist = starDist;
@@ -107,7 +110,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 var pPos = GetPlanetWorldPos(_planets[i], time);
                 var pScreen = Camera.WorldToScreen(pPos);
                 float pHitR = MathF.Max(_planets[i].Radius * Camera.Zoom, 12f);
-                float pDist = (currentMouse - pScreen).LengthSquared();
+                float pDist = (selectionPoint - pScreen).LengthSquared();
                 if (pDist < pHitR * pHitR && pDist < bestDist)
                 {
                     bestDist = pDist;
@@ -119,7 +122,7 @@ public class SolarSystemMapPanel : MapPanelBase
                     var mPos = GetMoonWorldPos(_planets[i], _planets[i].Moons[j], time);
                     var mScreen = Camera.WorldToScreen(mPos);
                     float mHitR = MathF.Max(_planets[i].Moons[j].Radius * Camera.Zoom, 10f);
-                    float mDist = (currentMouse - mScreen).LengthSquared();
+                    float mDist = (selectionPoint - mScreen).LengthSquared();
                     if (mDist < mHitR * mHitR && mDist < bestDist)
                     {
                         bestDist = mDist;
@@ -134,7 +137,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 var sPos = GetStationWorldPos(_stations[i], time);
                 var sScreen = Camera.WorldToScreen(sPos);
                 float sHitR = MathF.Max(8f * Camera.Zoom, 10f);
-                float sDist = (currentMouse - sScreen).LengthSquared();
+                float sDist = (selectionPoint - sScreen).LengthSquared();
                 if (sDist < sHitR * sHitR && sDist < bestDist)
                 {
                     bestDist = sDist;
@@ -170,6 +173,12 @@ public class SolarSystemMapPanel : MapPanelBase
         }
         else if (input.IsMouseReleased(1))
             IsPanning = false;
+
+        if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm)
+            && _hoveredObject.Type != SolarMapObjectType.None)
+        {
+            _selectedObject = _hoveredObject;
+        }
 
         // T toggles nav target
         if (input.IsActionPressed(InputAction.ToggleNavTarget)
@@ -426,6 +435,9 @@ public class SolarSystemMapPanel : MapPanelBase
         renderer.DrawCircle(camera, shipPos, Math.Max(7f, 3.5f / camera.Zoom), new Color3(0, 255, 100));
         renderer.DrawText(camera, shipPos + new Vector2(0, Math.Max(8f, 4f / camera.Zoom)),
             "YOU", new Color3(0, 255, 100), Math.Max(1f, camera.Zoom * 14f));
+
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+            RenderCenterSelectionReticle(renderer, new Color4(255, 230, 120, 220));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -488,16 +500,32 @@ public class SolarSystemMapPanel : MapPanelBase
         // Controls
         float ctrlY = IpY + IpH - 80;
         renderer.DrawRectScreen(px, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        string panText =
-            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
-        renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 40,
-            $"{game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
-            new Color3(255, 200, 100), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 56,
-            $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-            new Color3(255, 150, 150), 1.3f);
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}: PAN";
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 40,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT CENTER  {game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+                new Color3(255, 200, 100), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
+        else
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 40,
+                $"{game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+                new Color3(255, 200, 100), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
     }
 
     private void RenderSelectedObjectInfo(Game game, SpriteRenderer renderer, float px, float py)

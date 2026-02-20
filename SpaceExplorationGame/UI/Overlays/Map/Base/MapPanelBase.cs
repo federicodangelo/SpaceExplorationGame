@@ -46,7 +46,7 @@ public abstract class MapPanelBase
     public abstract void SetupCamera(Game game);
 
     /// <summary>Handle panel-specific input (zoom, pan, hover, click). Returns true if input was consumed.</summary>
-    public abstract bool UpdateInput(Game game);
+    public abstract bool UpdateInput(Game game, float dt);
 
     /// <summary>Render the map content inside the clipped map area.</summary>
     public abstract void RenderContent(Game game, SpriteRenderer renderer);
@@ -60,10 +60,7 @@ public abstract class MapPanelBase
         var input = game.Input;
         float camSpeed = 500f / Camera.Zoom;
         Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
-        if (moveDir.Y < 0) Camera.Position -= new Vector2(0, camSpeed * dt);
-        if (moveDir.Y > 0) Camera.Position += new Vector2(0, camSpeed * dt);
-        if (moveDir.X < 0) Camera.Position -= new Vector2(camSpeed * dt, 0);
-        if (moveDir.X > 0) Camera.Position += new Vector2(camSpeed * dt, 0);
+        Camera.Position += moveDir * camSpeed * dt;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -101,6 +98,33 @@ public abstract class MapPanelBase
     protected bool IsMouseInMap(Vector2 mouse) =>
         mouse.X >= MapX && mouse.X < MapX + MapW &&
         mouse.Y >= MapY && mouse.Y < MapY + MapH;
+
+    protected Vector2 GetMapScreenCenter() => new(MapX + MapW * 0.5f, MapY + MapH * 0.5f);
+
+    protected void HandleGamepadTriggerZoom(InputManager input, float dt)
+    {
+        if (input.ActiveInputMethod != InputMethod.Gamepad)
+            return;
+
+        bool zoomOut = input.IsActionDown(InputAction.MapZoomOut);
+        bool zoomIn = input.IsActionDown(InputAction.MapZoomIn);
+        if (!zoomIn && !zoomOut)
+            return;
+
+        Vector2 zoomCenter = GetMapScreenCenter();
+        var worldBeforeZoom = Camera.ScreenToWorld(zoomCenter);
+
+        const float triggerZoomPerSecond = 1.8f;
+        float zoomDelta = 0f;
+        if (zoomIn) zoomDelta += triggerZoomPerSecond * dt;
+        if (zoomOut) zoomDelta -= triggerZoomPerSecond * dt;
+
+        Camera.Zoom *= 1f + zoomDelta;
+        Camera.ClampZoom();
+
+        var worldAfterZoom = Camera.ScreenToWorld(zoomCenter);
+        Camera.Position += worldBeforeZoom - worldAfterZoom;
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  SHARED RENDER HELPERS
@@ -154,5 +178,17 @@ public abstract class MapPanelBase
         renderer.DrawRectScreen(IpX, IpY + 29, InfoPanelW, 1, new Color4(60, 80, 140, 200));
         float headerW = renderer.MeasureText(title, 1.8f);
         renderer.DrawTextScreen(IpX + InfoPanelW / 2f - headerW / 2f, IpY + 6, title, new Color3(140, 170, 220), 1.8f);
+    }
+
+    protected void RenderCenterSelectionReticle(SpriteRenderer renderer, Color4 color)
+    {
+        Vector2 c = GetMapScreenCenter();
+        const float outer = 9f;
+        const float inner = 3f;
+
+        renderer.DrawLineScreen(c.X - outer, c.Y, c.X - inner, c.Y, color);
+        renderer.DrawLineScreen(c.X + inner, c.Y, c.X + outer, c.Y, color);
+        renderer.DrawLineScreen(c.X, c.Y - outer, c.X, c.Y - inner, color);
+        renderer.DrawLineScreen(c.X, c.Y + inner, c.X, c.Y + outer, color);
     }
 }

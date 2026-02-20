@@ -25,7 +25,7 @@ public abstract class GameState
     public abstract void Exit(Game game);
 
     /// <summary>Called once per frame for input handling.</summary>
-    public abstract void UpdateInput(Game game);
+    public abstract void UpdateInput(Game game, float dt);
 
     /// <summary>Fixed timestep update for simulation (can run multiple times per frame).</summary>
     public abstract void Update(Game game, float dt);

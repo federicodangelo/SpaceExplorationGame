@@ -76,7 +76,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     //  INPUT
     // -----------------------------------------------------------------
 
-    public override bool UpdateInput(Game game)
+    public override bool UpdateInput(Game game, float dt)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);

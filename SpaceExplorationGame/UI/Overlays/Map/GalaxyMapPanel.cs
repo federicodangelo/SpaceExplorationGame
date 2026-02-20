@@ -65,22 +65,25 @@ public class GalaxyMapPanel : MapPanelBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game)
+    public override bool UpdateInput(Game game, float dt)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
 
         HandleZoomAndPan(input, currentMouse);
+        HandleGamepadTriggerZoom(input, dt);
 
         // Hover
         _hoveredSystemIndex = -1;
-        if (IsMouseInMap(currentMouse))
+        if (usingGamepad || IsMouseInMap(currentMouse))
         {
             float bestDist = float.MaxValue;
             for (int i = 0; i < _starSystems.Count; i++)
             {
                 var screenPos = Camera.WorldToScreen(_starSystems[i].GalaxyPosition);
-                float distSq = (currentMouse - screenPos).LengthSquared();
+                float distSq = (selectionPoint - screenPos).LengthSquared();
                 float hitR = MathF.Max(_starSystems[i].StarRadius * 2f * Camera.Zoom, 20f);
                 if (distSq < hitR * hitR && distSq < bestDist) { bestDist = distSq; _hoveredSystemIndex = i; }
             }
@@ -108,8 +111,17 @@ public class GalaxyMapPanel : MapPanelBase
             IsPanning = false;
         }
 
-        if (input.IsActionPressed(InputAction.MenuConfirm) && _selectedSystemIndex >= 0)
+        if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm))
+        {
+            if (_hoveredSystemIndex >= 0 && _selectedSystemIndex != _hoveredSystemIndex)
+                _selectedSystemIndex = _hoveredSystemIndex;
+            else if (_selectedSystemIndex >= 0)
+                TravelToSelected(game);
+        }
+        else if (input.IsActionPressed(InputAction.MenuConfirm) && _selectedSystemIndex >= 0)
+        {
             TravelToSelected(game);
+        }
 
         return true;
     }
@@ -307,6 +319,9 @@ public class GalaxyMapPanel : MapPanelBase
             var playerSys = _starSystems[currentSys];
             renderer.DrawCircle(camera, playerSys.GalaxyPosition, playerSys.StarRadius * 2f + 10, new Color3(0, 255, 100));
         }
+
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+            RenderCenterSelectionReticle(renderer, new Color4(255, 230, 120, 220));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -431,16 +446,35 @@ public class GalaxyMapPanel : MapPanelBase
         // Controls
         float ctrlY = IpY + IpH - 110;
         renderer.DrawRectScreen(cx, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        string panText =
-            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
-        renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 56,
-            $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
-            new Color3(100, 255, 100), 1.3f);
-        renderer.DrawTextScreen(cx, ctrlY + 72,
-            $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: SOLAR SYSTEM  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-            new Color3(255, 150, 150), 1.3f);
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}: PAN";
+            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 40,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT CENTER",
+                new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
+                new Color3(100, 255, 100), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 72,
+                $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
+        else
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 56,
+                $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
+                new Color3(100, 255, 100), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 72,
+                $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: SOLAR SYSTEM  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
     }
 }

@@ -458,20 +458,20 @@ public class SolarSystemState : GameState
     {
     }
 
-    public override void UpdateInput(Game game)
+    public override void UpdateInput(Game game, float dt)
     {
         var input = game.Input;
 
         // Overlays take priority over game input
-        if (_planetLandingOverlay.UpdateInput(game))
+        if (_planetLandingOverlay.UpdateInput(game, dt))
             return;
-        if (_galaxyMapOverlay.UpdateInput(game))
+        if (_galaxyMapOverlay.UpdateInput(game, dt))
             return;
-        if (_stationOverlay.UpdateInput(game))
+        if (_stationOverlay.UpdateInput(game, dt))
             return;
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game))
+        if (_inGameMenuOverlay.UpdateInput(game, dt))
             return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {

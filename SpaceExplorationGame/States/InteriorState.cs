@@ -146,28 +146,28 @@ public class InteriorState : GameState
     {
     }
 
-    public override void UpdateInput(Game game)
+    public override void UpdateInput(Game game, float dt)
     {
         var input = game.Input;
 
         // Handle overlay interactions first
-        if (_repairOverlay.UpdateInput(game))
+        if (_repairOverlay.UpdateInput(game, dt))
             return;
-        if (_healthStationOverlay.UpdateInput(game))
+        if (_healthStationOverlay.UpdateInput(game, dt))
             return;
-        if (_missionOverlay.UpdateInput(game))
+        if (_missionOverlay.UpdateInput(game, dt))
             return;
 
         // Customization/dealer overlays take priority over game input
-        if (_shipCustomization.UpdateInput(game))
+        if (_shipCustomization.UpdateInput(game, dt))
             return;
-        if (_avatarCustomization.UpdateInput(game))
+        if (_avatarCustomization.UpdateInput(game, dt))
             return;
-        if (_vehicleCustomization.UpdateInput(game))
+        if (_vehicleCustomization.UpdateInput(game, dt))
             return;
-        if (_shipDealer.UpdateInput(game))
+        if (_shipDealer.UpdateInput(game, dt))
             return;
-        if (_sellCargo.UpdateInput(game))
+        if (_sellCargo.UpdateInput(game, dt))
             return;
 
         // Handle dialogue
@@ -193,7 +193,7 @@ public class InteriorState : GameState
         }
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game))
+        if (_inGameMenuOverlay.UpdateInput(game, dt))
             return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {

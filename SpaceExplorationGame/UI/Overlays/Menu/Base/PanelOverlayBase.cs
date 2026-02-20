@@ -93,12 +93,12 @@ public abstract class PanelOverlayBase : OverlayBase
 
     // ── Input handling ──
 
-    public sealed override bool UpdateInput(Game game)
+    public sealed override bool UpdateInput(Game game, float dt)
     {
         if (!IsOpen) return false;
 
         // Sub-overlay input takes priority
-        if (ProcessSubOverlayInput(game)) return true;
+        if (ProcessSubOverlayInput(game, dt)) return true;
 
         var input = game.Input;
 
@@ -141,7 +141,7 @@ public abstract class PanelOverlayBase : OverlayBase
     protected virtual void OnConfirmAction(Game game) { }
 
     /// <summary>Override to process sub-overlay input before own input. Return true if consumed.</summary>
-    protected virtual bool ProcessSubOverlayInput(Game game) => false;
+    protected virtual bool ProcessSubOverlayInput(Game game, float dt) => false;
 
     // ── Update ──
 

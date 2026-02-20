@@ -86,9 +86,9 @@ public class MainMenuState : GameState
     public override void Exit(Game game) { }
     public override void HandleEvent(Game game, SDL.Event e) { }
 
-    public override void UpdateInput(Game game)
+    public override void UpdateInput(Game game, float dt)
     {
-        _menuOverlay.UpdateInput(game);
+        _menuOverlay.UpdateInput(game, dt);
 
         // Handle seed changes
         if (_menuOverlay.NewSeed.HasValue)

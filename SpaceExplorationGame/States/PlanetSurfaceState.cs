@@ -315,13 +315,13 @@ public class PlanetSurfaceState : GameState
     {
     }
 
-    public override void UpdateInput(Game game)
+    public override void UpdateInput(Game game, float dt)
     {
         // Block all input during animations
         if (_isTakingOff || _isLanding) return;
 
         // Starship menu overlay (highest priority)
-        if (_starshipMenuOverlay.UpdateInput(game))
+        if (_starshipMenuOverlay.UpdateInput(game, dt))
         {
             // Check if the player made a choice
             if (_starshipMenuOverlay.LastChoice.HasValue)
@@ -332,11 +332,11 @@ public class PlanetSurfaceState : GameState
         }
 
         // Surface map overlay
-        if (_surfaceMapOverlay.UpdateInput(game))
+        if (_surfaceMapOverlay.UpdateInput(game, dt))
             return;
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game))
+        if (_inGameMenuOverlay.UpdateInput(game, dt))
             return;
 
         var input = game.Input;

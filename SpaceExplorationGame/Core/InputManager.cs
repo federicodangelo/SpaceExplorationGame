@@ -18,6 +18,10 @@ public enum InputAction
     MoveLeft,
     MoveRight,
     FireWeapon,
+    MapZoomOut,
+    MapZoomIn,
+    MapPreviousView,
+    MapNextView,
     Interact,
     ToggleMap,
     ToggleNavTarget,
@@ -100,9 +104,17 @@ public class InputManager
             InputBinding.Axis(SDL.GamepadAxis.LeftTrigger),
             InputBinding.Axis(SDL.GamepadAxis.RightTrigger)
         ],
+        [InputAction.MapZoomOut] = [InputBinding.Axis(SDL.GamepadAxis.LeftTrigger)],
+        [InputAction.MapZoomIn] = [InputBinding.Axis(SDL.GamepadAxis.RightTrigger)],
+        [InputAction.MapPreviousView] = [InputBinding.Gamepad(SDL.GamepadButton.LeftShoulder)],
+        [InputAction.MapNextView] = [InputBinding.Gamepad(SDL.GamepadButton.RightShoulder)],
         [InputAction.Interact] = [InputBinding.Key(SDL.Scancode.E), InputBinding.Gamepad(SDL.GamepadButton.South)],
         [InputAction.ToggleMap] = [InputBinding.Key(SDL.Scancode.M), InputBinding.Gamepad(SDL.GamepadButton.Back)],
-        [InputAction.ToggleNavTarget] = [InputBinding.Key(SDL.Scancode.T), InputBinding.Key(SDL.Scancode.Return)],
+        [InputAction.ToggleNavTarget] = [
+            InputBinding.Key(SDL.Scancode.T),
+            InputBinding.Key(SDL.Scancode.Return),
+            InputBinding.Gamepad(SDL.GamepadButton.North)
+        ],
     };
 
     public float MouseX { get; private set; }
@@ -362,10 +374,6 @@ public class InputManager
     public bool IsMousePressed(int button) => _mousePressed.Contains(button);
     public bool IsMouseReleased(int button) => _mouseReleased.Contains(button);
 
-    public bool IsGamepadButtonDown(SDL.GamepadButton button) => _gamepadDown.Contains(button);
-    public bool IsGamepadButtonPressed(SDL.GamepadButton button) => _gamepadPressed.Contains(button);
-    public bool IsGamepadButtonReleased(SDL.GamepadButton button) => _gamepadReleased.Contains(button);
-
     private bool IsAnyBindingActive(
         InputAction action,
         HashSet<SDL.Scancode> keySet,
@@ -532,6 +540,8 @@ public class InputManager
                 SDL.GamepadButton.East => "B",
                 SDL.GamepadButton.West => "X",
                 SDL.GamepadButton.North => "Y",
+                SDL.GamepadButton.LeftShoulder => "LB",
+                SDL.GamepadButton.RightShoulder => "RB",
                 SDL.GamepadButton.Start => "Start",
                 SDL.GamepadButton.Back => "Back",
                 _ => binding.GamepadButton.Value.ToString(),

@@ -80,11 +80,21 @@ public class GalaxyMapOverlay : MapOverlayBase
         _activePanel.SetupCamera(game);
     }
 
+    private void SetMode(Game game, MapViewMode mode)
+    {
+        if (_viewMode == mode)
+            return;
+
+        _viewMode = mode;
+        _activePanel = _viewMode == MapViewMode.Galaxy ? _galaxyPanel : _solarPanel;
+        _activePanel.SetupCamera(game);
+    }
+
     // ─────────────────────────────────────────────────────────────
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game)
+    public override bool UpdateInput(Game game, float dt)
     {
         if (!IsOpen) return false;
         if (_justOpened)
@@ -98,6 +108,19 @@ public class GalaxyMapOverlay : MapOverlayBase
         if (input.IsActionPressed(InputAction.MenuBack))
         {
             Close(game);
+            return true;
+        }
+
+        // Shoulder buttons switch map views directly
+        if (input.IsActionPressed(InputAction.MapPreviousView))
+        {
+            SetMode(game, MapViewMode.SolarSystem);
+            return true;
+        }
+
+        if (input.IsActionPressed(InputAction.MapNextView))
+        {
+            SetMode(game, MapViewMode.Galaxy);
             return true;
         }
 
@@ -119,22 +142,18 @@ public class GalaxyMapOverlay : MapOverlayBase
             {
                 if (currentMouse.X >= tabSolarX && currentMouse.X < tabGalaxyX && _viewMode != MapViewMode.SolarSystem)
                 {
-                    _viewMode = MapViewMode.SolarSystem;
-                    _activePanel = _solarPanel;
-                    _activePanel.SetupCamera(game);
+                    SetMode(game, MapViewMode.SolarSystem);
                     return true;
                 }
                 else if (currentMouse.X >= tabGalaxyX && currentMouse.X < tabSolarX + FrameW && _viewMode != MapViewMode.Galaxy)
                 {
-                    _viewMode = MapViewMode.Galaxy;
-                    _activePanel = _galaxyPanel;
-                    _activePanel.SetupCamera(game);
+                    SetMode(game, MapViewMode.Galaxy);
                     return true;
                 }
             }
         }
 
-        return _activePanel.UpdateInput(game);
+        return _activePanel.UpdateInput(game, dt);
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -99,7 +99,7 @@ public class FTLTransitionState : GameState
         }
     }
 
-    public override void UpdateInput(Game game)
+    public override void UpdateInput(Game game, float dt)
     {
         // No input during FTL animation
     }

@@ -181,7 +181,7 @@ public class Game : IDisposable
             ApplyPendingState();
 
             // Process input once per frame
-            _currentState?.UpdateInput(this);
+            _currentState?.UpdateInput(this, (float)elapsed);
 
             // Fixed timestep updates (may run multiple times per frame)
             int steps = 0;
