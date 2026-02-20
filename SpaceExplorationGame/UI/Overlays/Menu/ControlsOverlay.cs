@@ -75,9 +75,10 @@ public class ControlsOverlay : PanelOverlayBase
         {
         GameStateType.SolarSystem =>
         [
+            "MOUSE .............. HEADING",
             $"{input.GetActionHelpText(InputAction.MoveUp)} ............. THRUST",
-            $"{input.GetActionHelpText(InputAction.MoveLeft)}/{input.GetActionHelpText(InputAction.MoveRight)} .............. ROTATE",
             $"{input.GetActionHelpText(InputAction.MoveDown)} ........... BRAKE",
+            $"{input.GetActionHelpText(InputAction.MoveLeft)}/{input.GetActionHelpText(InputAction.MoveRight)} .............. STRAFE",
             "SCROLL ............. ZOOM",
             $"{interactText} .................. INTERACT",
             $"{mapText} .................. GALAXY MAP",
