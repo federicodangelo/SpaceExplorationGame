@@ -66,7 +66,7 @@ public static class SolarSystemRenderer
             var ai = ecsWorld.Get<EnemyAI>(entity);
             var velocity = ecsWorld.Get<Velocity>(entity);
 
-            bool isMoving = velocity.Value.LengthSquared() > 50f * 50f;
+            bool isMoving = velocity.Velocity.LengthSquared() > 50f * 50f;
             int shipSize = ai.Config.Faction switch
             {
                 Faction.Pirate => 28,

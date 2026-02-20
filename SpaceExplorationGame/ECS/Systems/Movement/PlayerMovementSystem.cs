@@ -7,20 +7,13 @@ using SpaceExplorationGame.ECS.Components;
 namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
-/// Handles top-down 4-way WASD/arrow movement for the player-controlled entity.
-/// Reads input, computes normalized direction, applies speed, and checks collision
-/// via a pluggable delegate before committing the position change.
+/// Handles top-down 4-way WASD/arrow movement intent for the player-controlled entity.
+/// Physics integration is handled by VelocitySystem.
 /// </summary>
 public partial class PlayerMovementSystem : BaseSystem<World, float>
 {
     private readonly InputManager _input;
     private readonly float _speed;
-
-    /// <summary>
-    /// Optional collision check: receives the proposed new position and returns true if movement is allowed.
-    /// If null, all movement is allowed.
-    /// </summary>
-    public Func<Vector2, bool>? CanMoveTo { get; set; }
 
     public PlayerMovementSystem(World world, InputManager input, float speed) : base(world)
     {
@@ -29,8 +22,8 @@ public partial class PlayerMovementSystem : BaseSystem<World, float>
     }
 
     [Query]
-    [All(typeof(PlayerControlled), typeof(Transform))]
-    public void MovePlayer(ref Transform transform, [Data] float dt)
+    [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity))]
+    public void MovePlayer(ref Transform transform, ref Velocity velocity)
     {
         Vector2 moveDir = Vector2.Zero;
 
@@ -43,15 +36,14 @@ public partial class PlayerMovementSystem : BaseSystem<World, float>
         if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
             moveDir.X += 1;
 
-        if (moveDir == Vector2.Zero)
-            return;
-
-        moveDir = Vector2.Normalize(moveDir);
-        var newPos = transform.Position + moveDir * _speed * dt;
-
-        if (CanMoveTo == null || CanMoveTo(newPos))
+        if (moveDir != Vector2.Zero)
         {
-            transform.Position = newPos;
+            moveDir = Vector2.Normalize(moveDir);
         }
+
+        // Critically damped response toward desired walk velocity.
+        var targetVelocity = moveDir * _speed;
+        velocity.Acceleration = (targetVelocity - velocity.Velocity) * 18f;
+        velocity.RotationVelocity = 0f;
     }
 }

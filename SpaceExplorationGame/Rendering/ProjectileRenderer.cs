@@ -19,13 +19,13 @@ public static class ProjectileRenderer
         world.Query(in query, (ref Transform transform, ref Velocity velocity, ref Projectile proj) =>
         {
             var pos = transform.Position;
-            float speed = velocity.Value.Length();
+            float speed = velocity.Velocity.Length();
 
             // Draw projectile as a small elongated shape
             if (speed > 10f)
             {
                 // Trail: draw a line behind the projectile
-                var dir = Vector2.Normalize(velocity.Value);
+                var dir = Vector2.Normalize(velocity.Velocity);
                 var trailEnd = pos - dir * 8f;
 
                 // Main beam

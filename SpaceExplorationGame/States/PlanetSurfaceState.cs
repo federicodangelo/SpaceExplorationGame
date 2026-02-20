@@ -132,7 +132,12 @@ public class PlanetSurfaceState : GameState
             maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
             rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
             friction: GameConfig.VehicleFriction + vStats.Friction);
-        _vehicleMovementSystem.CanMoveTo = CanMoveToTerrain;
+        if (game.EcsWorld.Has<Velocity>(_playerAvatar))
+        {
+            ref var avatarVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
+            avatarVelocity.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed;
+            avatarVelocity.MaxRotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed;
+        }
         _inVehicle = true;
         game.Player.InVehicle = true;
     }
@@ -200,6 +205,8 @@ public class PlanetSurfaceState : GameState
 
         _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, playerStartX, playerStartY, avatarSpeed,
             maxHealth: maxHp, currentHealth: curHp);
+        ref var avatarVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
+        avatarVelocity.CanMoveTo = CanMoveToTerrain;
 
         // Place ship
         _shipEntity = EntityFactory.CreateLandedShip(game.EcsWorld, shipX, shipY);
@@ -217,7 +224,6 @@ public class PlanetSurfaceState : GameState
 
         // Initialize ECS systems
         _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
-        _movementSystem.CanMoveTo = MakeTerrainCollisionCheck();
         _movementSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
@@ -253,20 +259,29 @@ public class PlanetSurfaceState : GameState
         _surfaceAISystem = new SurfaceEnemyAISystem(
             game.EcsWorld,
             () => game.EcsWorld.IsAlive(_playerAvatar) ? game.EcsWorld.Get<Transform>(_playerAvatar).Position : Vector2.Zero,
-            () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead,
-            CanMoveToTerrain);
+            () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead);
         _surfaceAISystem.Initialize();
 
         // Spawn fauna
         foreach (var (fx, fy, angle) in _surfaceData.FaunaSpawns)
         {
-            EntityFactory.CreateFauna(game.EcsWorld, new Vector2(fx, fy), angle);
+            var fauna = EntityFactory.CreateFauna(game.EcsWorld, new Vector2(fx, fy), angle);
+            if (game.EcsWorld.Has<Velocity>(fauna))
+            {
+                ref var faunaVelocity = ref game.EcsWorld.Get<Velocity>(fauna);
+                faunaVelocity.CanMoveTo = CanMoveToTerrain;
+            }
         }
 
         // Spawn bandits
         foreach (var (bx, by, angle) in _surfaceData.BanditSpawns)
         {
-            EntityFactory.CreateBandit(game.EcsWorld, new Vector2(bx, by), angle);
+            var bandit = EntityFactory.CreateBandit(game.EcsWorld, new Vector2(bx, by), angle);
+            if (game.EcsWorld.Has<Velocity>(bandit))
+            {
+                ref var banditVelocity = ref game.EcsWorld.Get<Velocity>(bandit);
+                banditVelocity.CanMoveTo = CanMoveToTerrain;
+            }
         }
 
         // Spawn mineable rocks
@@ -359,7 +374,16 @@ public class PlanetSurfaceState : GameState
                     ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
                     avatarTransform.Position = vehicleTf.Position;
                     avatarTransform.Rotation = 0f;
-                    _vehicleMovementSystem!.Speed = 0f;
+                    if (game.EcsWorld.Has<Velocity>(_playerAvatar))
+                    {
+                        ref var avatarVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
+                        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+                        avatarVelocity.MaxSpeed = avatarSpeed;
+                        avatarVelocity.MaxRotationSpeed = 0f;
+                        avatarVelocity.Velocity = Vector2.Zero;
+                        avatarVelocity.Acceleration = Vector2.Zero;
+                        avatarVelocity.RotationVelocity = 0f;
+                    }
                     _inVehicle = false;
                     game.Player.InVehicle = false;
 
@@ -376,7 +400,16 @@ public class PlanetSurfaceState : GameState
                     ref var vehicleTf = ref game.EcsWorld.Get<Transform>(_vehicleEntity);
                     avatarTransform.Position = vehicleTf.Position + new Vector2(20, 0);
                     avatarTransform.Rotation = 0f;
-                    _vehicleMovementSystem!.Speed = 0f;
+                    if (game.EcsWorld.Has<Velocity>(_playerAvatar))
+                    {
+                        ref var avatarVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
+                        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+                        avatarVelocity.MaxSpeed = avatarSpeed;
+                        avatarVelocity.MaxRotationSpeed = 0f;
+                        avatarVelocity.Velocity = Vector2.Zero;
+                        avatarVelocity.Acceleration = Vector2.Zero;
+                        avatarVelocity.RotationVelocity = 0f;
+                    }
                     _inVehicle = false;
                     game.Player.InVehicle = false;
                 }
@@ -889,12 +922,6 @@ public class PlanetSurfaceState : GameState
 
             HudRenderer.RenderLandingTakeoffOverlay(renderer, landing, progress, remaining);
         }
-    }
-
-    /// <summary>Creates a terrain collision delegate for the movement system.</summary>
-    private Func<Vector2, bool> MakeTerrainCollisionCheck()
-    {
-        return CanMoveToTerrain;
     }
 
     /// <summary>Checks whether a position is on walkable/drivable terrain.</summary>

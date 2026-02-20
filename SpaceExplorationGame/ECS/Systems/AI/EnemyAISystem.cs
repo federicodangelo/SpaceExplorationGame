@@ -69,6 +69,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         ai.StateTimer += _dt;
         UpdateWeaponCooldowns(ref ai);
         velocity.RotationVelocity = 0f; // Reset each frame; TurnToward sets it when needed
+        velocity.Acceleration = Vector2.Zero;
 
         // Find the best target based on faction
         var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
@@ -101,7 +102,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Flee;
             var fleeDir = Vector2.Normalize(transform.Position - targetPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Value += fleeDir * thrust * 0.5f * dt;
+            velocity.Acceleration += fleeDir * thrust * 0.5f;
             TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
             return;
         }
@@ -118,12 +119,8 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f * dt;
-
-            // Clamp speed to patrol speed
-            float patrolMax = maxSpeed * 0.3f;
-            if (velocity.Value.LengthSquared() > patrolMax * patrolMax)
-                velocity.Value = Vector2.Normalize(velocity.Value) * patrolMax;
+            velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
+            ApplyDamping(ref velocity, 0.98f, dt);
             return;
         }
 
@@ -141,18 +138,18 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             if (distToTarget < ai.Config.EngageDistance * 0.7f)
             {
                 // Too close — back up slightly
-                velocity.Value -= dirToTarget * thrust * 0.3f * dt;
+                velocity.Acceleration -= dirToTarget * thrust * 0.3f;
             }
             else if (distToTarget > ai.Config.EngageDistance * 1.3f)
             {
                 // Too far — close in
-                velocity.Value += dirToTarget * thrust * 0.5f * dt;
+                velocity.Acceleration += dirToTarget * thrust * 0.5f;
             }
             else
             {
                 // Strafe
                 var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Value += strafeDir * thrust * 0.3f * dt *
+                velocity.Acceleration += strafeDir * thrust * 0.3f *
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
             }
 
@@ -164,17 +161,16 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Chase;
             var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
             TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-            velocity.Value += dirToTarget * thrust * 0.6f * dt;
+            velocity.Acceleration += dirToTarget * thrust * 0.6f;
         }
 
         // Apply friction
-        velocity.Value *= 0.98f;
+        ApplyDamping(ref velocity, 0.98f, dt);
     }
 
     private void UpdateTrader(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 playerPos, bool playerAlive)
     {
-        float maxSpeed = velocity.MaxSpeed;
         float thrust = ai.Config.Acceleration;
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
         var nearestPirate = FindNearestPirate(transform.Position, 400f);
@@ -185,7 +181,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             ai.State = AIState.Flee;
             var fleeDir = Vector2.Normalize(transform.Position - nearestPirate.Value);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Value += fleeDir * thrust * 0.7f * dt;
+            velocity.Acceleration += fleeDir * thrust * 0.7f;
             TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
         }
         else
@@ -199,23 +195,17 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float cruiseRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * thrust * 0.3f * dt;
+            velocity.Acceleration += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * thrust * 0.3f;
         }
 
-        // Clamp speed
-        if (velocity.Value.LengthSquared() > maxSpeed * maxSpeed)
-            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpeed;
+        ApplyDamping(ref velocity, 0.99f, dt);
 
-        velocity.Value *= 0.99f;
-
-        // Keep within map bounds
-        ClampToMap(ref transform);
+        KeepWithinMap(ref transform, ref velocity, thrust);
     }
 
     private void UpdatePatrol(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 targetPos, bool hasTarget)
     {
-        float maxSpeed = velocity.MaxSpeed;
         float thrust = ai.Config.Acceleration;
         // Patrols hunt pirates and defend traders
         if (hasTarget)
@@ -231,11 +221,11 @@ public partial class EnemyAISystem : BaseSystem<World, float>
 
                 // Strafe while attacking
                 var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Value += strafeDir * thrust * 0.3f * dt *
+                velocity.Acceleration += strafeDir * thrust * 0.3f *
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.7f));
 
                 if (distToTarget > ai.Config.EngageDistance)
-                    velocity.Value += dirToTarget * thrust * 0.4f * dt;
+                    velocity.Acceleration += dirToTarget * thrust * 0.4f;
 
                 TryFireProjectiles(ref transform, ref ai, dirToTarget);
             }
@@ -243,7 +233,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             {
                 ai.State = AIState.Chase;
                 TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-                velocity.Value += dirToTarget * thrust * 0.5f * dt;
+                velocity.Acceleration += dirToTarget * thrust * 0.5f;
             }
         }
         else
@@ -257,15 +247,11 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Value += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f * dt;
+            velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
         }
 
-        // Clamp speed
-        if (velocity.Value.LengthSquared() > maxSpeed * maxSpeed)
-            velocity.Value = Vector2.Normalize(velocity.Value) * maxSpeed;
-
-        velocity.Value *= 0.98f;
-        ClampToMap(ref transform);
+        ApplyDamping(ref velocity, 0.98f, dt);
+        KeepWithinMap(ref transform, ref velocity, thrust);
     }
 
     private TargetInfo FindTarget(Entity self, Faction selfFaction,
@@ -422,11 +408,28 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color));
     }
 
-    private void ClampToMap(ref Transform transform)
+    private void KeepWithinMap(ref Transform transform, ref Velocity velocity, float thrust)
     {
-        float margin = 100f;
-        transform.Position.X = Math.Clamp(transform.Position.X, margin, _mapWidth - margin);
-        transform.Position.Y = Math.Clamp(transform.Position.Y, margin, _mapHeight - margin);
+        float margin = 120f;
+        float edgeSteer = thrust * 0.9f;
+
+        if (transform.Position.X < margin)
+            velocity.Acceleration.X += edgeSteer;
+        else if (transform.Position.X > _mapWidth - margin)
+            velocity.Acceleration.X -= edgeSteer;
+
+        if (transform.Position.Y < margin)
+            velocity.Acceleration.Y += edgeSteer;
+        else if (transform.Position.Y > _mapHeight - margin)
+            velocity.Acceleration.Y -= edgeSteer;
+    }
+
+    private static void ApplyDamping(ref Velocity velocity, float frameMultiplier, float dt)
+    {
+        if (dt <= 0f || frameMultiplier >= 1f) return;
+
+        float factor = Math.Clamp(1f - frameMultiplier, 0f, 1f);
+        velocity.Acceleration += -velocity.Velocity * (factor / dt);
     }
 
     /// <summary>

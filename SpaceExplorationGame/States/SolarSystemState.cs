@@ -584,6 +584,12 @@ public class SolarSystemState : GameState
         _shipMovementSystem.MaxSpeed = shipStats.MaxSpeed;
         _shipMovementSystem.RotationSpeed = shipStats.RotationSpeed;
         _shipMovementSystem.Acceleration = shipStats.Acceleration;
+        if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Velocity>(_playerShip))
+        {
+            ref var playerVelocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
+            playerVelocity.MaxSpeed = shipStats.MaxSpeed;
+            playerVelocity.MaxRotationSpeed = shipStats.RotationSpeed;
+        }
         _shipMovementSystem.Update(in dt);
 
         // Apply velocity (speed clamping + position update via system)
@@ -1028,7 +1034,9 @@ public class SolarSystemState : GameState
 
         // Zero the ship velocity so it doesn't drift when the overlay closes
         ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
-        vel.Value = Vector2.Zero;
+        vel.Velocity = Vector2.Zero;
+        vel.Acceleration = Vector2.Zero;
+        vel.RotationVelocity = 0f;
     }
 
     /// <summary>Move the ship to keep its offset from the anchor entity (call after OrbitSystem).</summary>
@@ -1123,7 +1131,7 @@ public class SolarSystemState : GameState
             if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
             {
                 ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
-                speed = vel.Value.Length();
+                speed = vel.Velocity.Length();
             }
             HudRenderer.RenderSolarSystemHud(renderer, game.Player, _starSystem,
                 game.EcsWorld, _playerShip, speed);
@@ -1239,7 +1247,7 @@ public class SolarSystemState : GameState
         {
             ref var emitter = ref game.EcsWorld.Get<ParticleEmitter>(_playerShip);
             var transform = game.EcsWorld.Get<Transform>(_playerShip);
-            var velocity = game.EcsWorld.Get<Velocity>(_playerShip).Value;
+            var velocity = game.EcsWorld.Get<Velocity>(_playerShip).Velocity;
 
             float rad = transform.Rotation * MathF.PI / 180f;
             var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
@@ -1259,7 +1267,7 @@ public class SolarSystemState : GameState
 
             ref var emitter = ref game.EcsWorld.Get<ParticleEmitter>(enemy);
             var transform = game.EcsWorld.Get<Transform>(enemy);
-            var velocity = game.EcsWorld.Get<Velocity>(enemy).Value;
+            var velocity = game.EcsWorld.Get<Velocity>(enemy).Velocity;
 
             float rad = transform.Rotation * MathF.PI / 180f;
             var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));

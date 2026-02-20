@@ -40,6 +40,7 @@ public class InteriorState : GameState
 
     // ECS Systems
     private PlayerMovementSystem _movementSystem = null!;
+    private VelocitySystem _velocitySystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
 
     // Camera
@@ -104,10 +105,8 @@ public class InteriorState : GameState
         float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
 
         _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, spawnX, spawnY, avatarSpeed);
-
-        // Initialize ECS systems
-        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
-        _movementSystem.CanMoveTo = (newPos) =>
+        ref var playerVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
+        playerVelocity.CanMoveTo = newPos =>
         {
             int tileX = (int)(newPos.X / GameConfig.TileSize);
             int tileY = (int)(newPos.Y / GameConfig.TileSize);
@@ -115,7 +114,13 @@ public class InteriorState : GameState
                    tileY >= 0 && tileY < _interior.Height &&
                    InteriorGenerator.IsWalkable(_interior.Tiles[tileX, tileY]);
         };
+
+        // Initialize ECS systems
+        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
+
+        _velocitySystem = new VelocitySystem(game.EcsWorld);
+        _velocitySystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
@@ -238,6 +243,7 @@ public class InteriorState : GameState
 
         // Player movement (via system with tile collision)
         _movementSystem.Update(in dt);
+        _velocitySystem.Update(in dt);
 
         // Camera follows player + handles zoom
         _cameraFollowSystem.Update(in dt);

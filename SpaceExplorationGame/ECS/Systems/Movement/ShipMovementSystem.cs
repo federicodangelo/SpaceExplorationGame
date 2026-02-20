@@ -34,27 +34,31 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
         ref var transform = ref World.Get<Transform>(_entity);
         ref var velocity = ref World.Get<Velocity>(_entity);
 
-        // Update max speed
-        velocity.MaxSpeed = MaxSpeed;
+        // Clear per-frame intent
+        velocity.Acceleration = Vector2.Zero;
+        velocity.RotationVelocity = 0f;
 
-        // Rotation
+        // Rotation intent
         if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
-            transform.Rotation -= RotationSpeed * dt;
+            velocity.RotationVelocity -= RotationSpeed;
         if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
-            transform.Rotation += RotationSpeed * dt;
+            velocity.RotationVelocity += RotationSpeed;
 
-        // Thrust along facing direction
+        // Thrust intent along facing direction
         if (_input.IsKeyDown(SDL3.SDL.Scancode.W) || _input.IsKeyDown(SDL3.SDL.Scancode.Up))
         {
             float rad = transform.Rotation * MathF.PI / 180f;
-            var thrust = new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * Acceleration * dt;
-            velocity.Value += thrust;
+            velocity.Acceleration += new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * Acceleration;
         }
 
-        // Brake
+        // Brake intent: apply acceleration opposite to current velocity.
         if (_input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down))
         {
-            velocity.Value *= BrakeMultiplier;
+            if (dt > 0f && velocity.Velocity != Vector2.Zero)
+            {
+                float brakeFactor = Math.Clamp(1f - BrakeMultiplier, 0f, 1f);
+                velocity.Acceleration += -velocity.Velocity * (brakeFactor / dt);
+            }
         }
     }
 }

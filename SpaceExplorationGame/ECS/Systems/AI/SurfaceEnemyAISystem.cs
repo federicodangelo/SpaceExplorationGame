@@ -16,7 +16,6 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 {
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
-    private readonly Func<Vector2, bool>? _canMoveTo;
 
     // Projectiles spawned this frame (created after query completes to avoid mutation during iteration)
     private readonly List<SurfaceProjectileSpawn> _pendingProjectiles = [];
@@ -30,12 +29,11 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
     private bool _playerAlive;
 
     public SurfaceEnemyAISystem(World world, Func<Vector2> getPlayerPosition,
-        Func<bool> isPlayerAlive, Func<Vector2, bool>? canMoveTo = null)
+        Func<bool> isPlayerAlive)
         : base(world)
     {
         _getPlayerPosition = getPlayerPosition;
         _isPlayerAlive = isPlayerAlive;
-        _canMoveTo = canMoveTo;
     }
 
     public override void Update(in float dt)
@@ -64,6 +62,8 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 
         ai.StateTimer += _dt;
         ai.FireCooldown -= _dt;
+        velocity.RotationVelocity = 0f;
+        velocity.Acceleration = Vector2.Zero;
 
         float distToPlayer = Vector2.Distance(transform.Position, _playerPos);
 
@@ -88,7 +88,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
-            SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
+            SetAccelerationTowardVelocity(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
 
             // Melee attack: fast short-range projectile when close
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
@@ -111,7 +111,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.3f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed);
+            SetAccelerationTowardVelocity(ref transform, ref velocity, wanderDir * wanderSpeed);
         }
     }
 
@@ -127,7 +127,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
 
-            SetVelocityWithCollision(ref transform, ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
+            SetAccelerationTowardVelocity(ref transform, ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
             return;
         }
 
@@ -140,14 +140,14 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
             {
                 // Close distance
                 ai.State = AIState.Chase;
-                SetVelocityWithCollision(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
+                SetAccelerationTowardVelocity(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
             }
             else
             {
                 // In range — strafe slightly
                 ai.State = AIState.Attack;
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
-                SetVelocityWithCollision(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
+                SetAccelerationTowardVelocity(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
             }
 
             // Fire ranged weapon
@@ -171,26 +171,17 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetVelocityWithCollision(ref transform, ref velocity, wanderDir * wanderSpeed);
+            SetAccelerationTowardVelocity(ref transform, ref velocity, wanderDir * wanderSpeed);
         }
     }
 
     /// <summary>
-    /// Set velocity for VelocitySystem, with a pre-check collision test.
-    /// If the predicted next position is blocked, velocity is zeroed.
+    /// Sets acceleration intent toward a desired velocity, with a pre-check collision test.
+    /// If the predicted next position is blocked, desired velocity is zero.
     /// </summary>
-    private void SetVelocityWithCollision(ref Transform transform, ref Velocity velocity,
+    private void SetAccelerationTowardVelocity(ref Transform transform, ref Velocity velocity,
         Vector2 desiredVelocity)
     {
-        if (_canMoveTo != null)
-        {
-            var nextPos = transform.Position + desiredVelocity * _dt;
-            if (!_canMoveTo(nextPos))
-            {
-                velocity.Value = Vector2.Zero;
-                return;
-            }
-        }
-        velocity.Value = desiredVelocity;
+        velocity.Acceleration += (desiredVelocity - velocity.Velocity) * 14f;
     }
 }

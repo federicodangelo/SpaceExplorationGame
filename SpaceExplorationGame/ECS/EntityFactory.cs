@@ -330,7 +330,7 @@ public static class EntityFactory
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
         return world.Create(
             new Transform(position, angle),
-            new Velocity(speed) { Value = direction * speed },
+            new Velocity(speed) { Velocity = direction * speed },
             new Projectile
             {
                 Damage = damage,

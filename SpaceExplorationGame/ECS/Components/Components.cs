@@ -27,19 +27,23 @@ public struct Transform
 
 /// <summary>Linear and angular velocity.</summary>
 [Component]
-public struct Velocity
+public struct VelocityComponent
 {
-    public Vector2 Value;
+    public Vector2 Velocity;
+    public Vector2 Acceleration;
     public float MaxSpeed;
     public float RotationVelocity;    // degrees per second
     public float MaxRotationSpeed;    // max degrees per second (0 = unlimited)
+    public Func<Vector2, bool>? CanMoveTo;
 
-    public Velocity(float maxSpeed, float maxRotationSpeed = 0f)
+    public VelocityComponent(float maxSpeed, float maxRotationSpeed = 0f)
     {
-        Value = Vector2.Zero;
+        Velocity = Vector2.Zero;
+        Acceleration = Vector2.Zero;
         MaxSpeed = maxSpeed;
         RotationVelocity = 0f;
         MaxRotationSpeed = maxRotationSpeed;
+        CanMoveTo = null;
     }
 }
 

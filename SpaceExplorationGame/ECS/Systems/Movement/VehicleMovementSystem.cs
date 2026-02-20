@@ -3,13 +3,13 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Arch.System;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
-/// Handles vehicle-style movement: rotation with A/D, acceleration with W, braking with S.
-/// The vehicle always moves forward in its facing direction (no drift).
-/// Uses a pluggable collision delegate like PlayerMovementSystem.
+/// Handles vehicle-style movement intent: rotation with A/D, acceleration with W, braking with S.
+/// Physics integration is handled by VelocitySystem.
 /// </summary>
 public partial class VehicleMovementSystem : BaseSystem<World, float>
 {
@@ -19,15 +19,6 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
     private readonly float _rotationSpeed;
     private readonly float _friction;
     private readonly float _brakeMultiplier;
-
-    /// <summary>Current scalar speed along the facing direction.</summary>
-    public float Speed { get; set; }
-
-    /// <summary>
-    /// Optional collision check: receives the proposed new position and returns true if movement is allowed.
-    /// If null, all movement is allowed.
-    /// </summary>
-    public Func<Vector2, bool>? CanMoveTo { get; set; }
 
     /// <summary>The entity being controlled.</summary>
     private readonly Entity _entity;
@@ -50,47 +41,40 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        ref var transform = ref World.Get<ECS.Components.Transform>(_entity);
+        ref var transform = ref World.Get<Transform>(_entity);
+        ref var velocity = ref World.Get<Velocity>(_entity);
 
-        // Rotation
+        velocity.Acceleration = Vector2.Zero;
+        velocity.RotationVelocity = 0f;
+
+        // Rotation intent
         if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
-            transform.Rotation -= _rotationSpeed * dt;
+            velocity.RotationVelocity -= _rotationSpeed;
         if (_input.IsKeyDown(SDL3.SDL.Scancode.D) || _input.IsKeyDown(SDL3.SDL.Scancode.Right))
-            transform.Rotation += _rotationSpeed * dt;
+            velocity.RotationVelocity += _rotationSpeed;
 
-        // Accelerate / brake
+        // Forward acceleration intent
+        float rad = transform.Rotation * MathF.PI / 180f;
+        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+
         if (_input.IsKeyDown(SDL3.SDL.Scancode.W) || _input.IsKeyDown(SDL3.SDL.Scancode.Up))
         {
-            Speed += _acceleration * dt;
+            velocity.Acceleration += forward * _acceleration;
         }
         else if (_input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down))
         {
-            Speed *= _brakeMultiplier;
+            if (dt > 0f)
+            {
+                float brakeFactor = Math.Clamp(1f - _brakeMultiplier, 0f, 1f);
+                velocity.Acceleration += -velocity.Velocity * (brakeFactor / dt);
+            }
         }
 
-        // Friction
-        Speed *= _friction;
-
-        // Clamp
-        Speed = Math.Clamp(Speed, 0f, _maxSpeed);
-
-        // Kill tiny residual speed
-        if (Speed < 1f) Speed = 0f;
-
-        // Build velocity along facing direction
-        float rad = transform.Rotation * MathF.PI / 180f;
-        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-        var velocity = forward * Speed;
-
-        // Apply with collision check
-        var newPos = transform.Position + velocity * dt;
-        if (CanMoveTo == null || CanMoveTo(newPos))
+        // Friction as acceleration opposite to current velocity
+        if (dt > 0f)
         {
-            transform.Position = newPos;
-        }
-        else
-        {
-            Speed = 0f;
+            float frictionFactor = Math.Clamp(1f - _friction, 0f, 1f);
+            velocity.Acceleration += -velocity.Velocity * (frictionFactor / dt);
         }
     }
 }
