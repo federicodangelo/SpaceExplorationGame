@@ -10,12 +10,12 @@ namespace SpaceExplorationGame.ECS.Systems.Movement;
 /// Handles top-down 4-way WASD/arrow movement intent for the player-controlled entity.
 /// Physics integration is handled by VelocitySystem.
 /// </summary>
-public partial class PlayerMovementSystem : BaseSystem<World, float>
+public partial class AvatarMovementSystem : BaseSystem<World, float>
 {
     private readonly InputManager _input;
     private readonly float _speed;
 
-    public PlayerMovementSystem(World world, InputManager input, float speed) : base(world)
+    public AvatarMovementSystem(World world, InputManager input, float speed) : base(world)
     {
         _input = input;
         _speed = speed;

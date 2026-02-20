@@ -11,7 +11,7 @@ namespace SpaceExplorationGame.ECS.Systems.AI;
 /// AI behavior system for NPC ships (pirates, traders, patrols).
 /// Uses Arch source generator for the main entity query; manual queries for target finding.
 /// </summary>
-public partial class EnemyAISystem : BaseSystem<World, float>
+public partial class ShipEnemyAISystem : BaseSystem<World, float>
 {
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
@@ -33,7 +33,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private Vector2 _playerPos;
     private bool _playerAlive;
 
-    public EnemyAISystem(World world, Func<Vector2> getPlayerPosition, Func<bool> isPlayerAlive,
+    public ShipEnemyAISystem(World world, Func<Vector2> getPlayerPosition, Func<bool> isPlayerAlive,
         float mapWidth, float mapHeight)
         : base(world)
     {

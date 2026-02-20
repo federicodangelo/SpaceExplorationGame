@@ -39,7 +39,7 @@ public class InteriorState : GameState
     private const float InteractionRadius = 1.5f; // in tiles
 
     // ECS Systems
-    private PlayerMovementSystem _movementSystem = null!;
+    private AvatarMovementSystem _movementSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
 
@@ -116,7 +116,7 @@ public class InteriorState : GameState
         };
 
         // Initialize ECS systems
-        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
+        _movementSystem = new AvatarMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 
         _velocitySystem = new VelocitySystem(game.EcsWorld);

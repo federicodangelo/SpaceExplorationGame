@@ -12,7 +12,7 @@ namespace SpaceExplorationGame.ECS.Systems.AI;
 /// Walk-based movement (no rotation physics) with simple chase/attack logic.
 /// Uses Arch source generator for the main entity query.
 /// </summary>
-public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
+public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 {
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
@@ -28,7 +28,7 @@ public partial class SurfaceEnemyAISystem : BaseSystem<World, float>
     private Vector2 _playerPos;
     private bool _playerAlive;
 
-    public SurfaceEnemyAISystem(World world, Func<Vector2> getPlayerPosition,
+    public AvatarEnemyAISystem(World world, Func<Vector2> getPlayerPosition,
         Func<bool> isPlayerAlive)
         : base(world)
     {

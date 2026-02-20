@@ -40,7 +40,7 @@ public class PlanetSurfaceState : GameState
     private bool _vehicleDeployed;
 
     // ECS Systems
-    private PlayerMovementSystem _movementSystem = null!;
+    private AvatarMovementSystem _movementSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
     private VehicleMovementSystem? _vehicleMovementSystem;
 
@@ -51,7 +51,7 @@ public class PlanetSurfaceState : GameState
     // Combat systems
     private VelocitySystem _velocitySystem = null!;
     private ProjectileSystem _projectileSystem = null!;
-    private SurfaceEnemyAISystem _surfaceAISystem = null!;
+    private AvatarEnemyAISystem _enemyAISystem = null!;
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
     private float _playerFireCooldown;
@@ -223,7 +223,7 @@ public class PlanetSurfaceState : GameState
         }
 
         // Initialize ECS systems
-        _movementSystem = new PlayerMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
+        _movementSystem = new AvatarMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
@@ -256,11 +256,11 @@ public class PlanetSurfaceState : GameState
         _velocitySystem.Initialize();
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
         _projectileSystem.Initialize();
-        _surfaceAISystem = new SurfaceEnemyAISystem(
+        _enemyAISystem = new AvatarEnemyAISystem(
             game.EcsWorld,
             () => game.EcsWorld.IsAlive(_playerAvatar) ? game.EcsWorld.Get<Transform>(_playerAvatar).Position : Vector2.Zero,
             () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead);
-        _surfaceAISystem.Initialize();
+        _enemyAISystem.Initialize();
 
         // Spawn fauna
         foreach (var (fx, fy, angle) in _surfaceData.FaunaSpawns)
@@ -644,10 +644,10 @@ public class PlanetSurfaceState : GameState
             }
 
             // Surface enemy AI
-            _surfaceAISystem.Update(in dt);
+            _enemyAISystem.Update(in dt);
 
             // SFX for NPC weapon fire (distance-attenuated)
-            foreach (var spawn in _surfaceAISystem.ProjectilesSpawnedLastUpdate)
+            foreach (var spawn in _enemyAISystem.ProjectilesSpawnedLastUpdate)
                 game.Audio.PlaySfxAtDistance(SfxType.EnemyLaser, spawn.Pos, avatarTransform.Position, 0.4f);
         }
 

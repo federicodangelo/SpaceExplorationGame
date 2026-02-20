@@ -92,7 +92,7 @@ public class SolarSystemState : GameState
     // Combat systems
     private ProjectileSystem _projectileSystem = null!;
     private ShieldRegenSystem _shieldRegenSystem = null!;
-    private EnemyAISystem _enemyAISystem = null!;
+    private ShipEnemyAISystem _enemyAISystem = null!;
     private ParticleSystem _particleSystem = null!;
 
     // Combat state
@@ -379,7 +379,7 @@ public class SolarSystemState : GameState
 
         float totalMapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float totalMapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-        _enemyAISystem = new EnemyAISystem(game.EcsWorld,
+        _enemyAISystem = new ShipEnemyAISystem(game.EcsWorld,
             () => game.EcsWorld.IsAlive(_playerShip) ? game.EcsWorld.Get<Transform>(_playerShip).Position : center,
             () => !_playerDead && game.EcsWorld.IsAlive(_playerShip),
             totalMapW, totalMapH);
