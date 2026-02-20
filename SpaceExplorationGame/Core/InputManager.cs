@@ -26,6 +26,7 @@ public enum InputAction
 public enum InputActionAxis
 {
     Movement,
+    Heading,
 }
 
 /// <summary>
@@ -172,6 +173,7 @@ public class InputManager
         return axis switch
         {
             InputActionAxis.Movement => GetDirectionFromActions(InputAction.MoveUp, InputAction.MoveDown, InputAction.MoveLeft, InputAction.MoveRight),
+            InputActionAxis.Heading => GetDirectionFromScreenCenterToMouse(),
             _ => Vector2.Zero,
         };
     }
@@ -225,6 +227,14 @@ public class InputManager
         if (IsActionDown(downAction)) direction.Y += 1f;
         if (IsActionDown(leftAction)) direction.X -= 1f;
         if (IsActionDown(rightAction)) direction.X += 1f;
+        return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
+    }
+
+    private Vector2 GetDirectionFromScreenCenterToMouse()
+    {
+        Vector2 screenCenter = new(GameConfig.WindowWidth / 2f, GameConfig.WindowHeight / 2f);
+        Vector2 mousePosition = new(MouseX, MouseY);
+        Vector2 direction = mousePosition - screenCenter;
         return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
     }
 
