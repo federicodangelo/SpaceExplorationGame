@@ -20,6 +20,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
 
     // Projectiles spawned this frame (to be created after query completes)
     private readonly List<ProjectileSpawn> _pendingProjectiles = [];
+    private readonly Dictionary<Entity, Vector2> _cruiseTargets = [];
 
     /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
@@ -64,7 +65,11 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     public void ProcessEnemyAI(Entity entity, ref Transform transform, ref Velocity velocity,
         ref EnemyAI ai, ref Health health)
     {
-        if (health.IsDead) return;
+        if (health.IsDead)
+        {
+            _cruiseTargets.Remove(entity);
+            return;
+        }
 
         ai.StateTimer += _dt;
         UpdateWeaponCooldowns(ref ai);
@@ -75,27 +80,27 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         // Find the best target based on faction
         var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
 
-        UpdateShipAIByFaction(ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
+        UpdateShipAIByFaction(entity, ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
     }
 
-    private void UpdateShipAIByFaction(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private void UpdateShipAIByFaction(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 targetPos, bool hasTarget)
     {
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdatePirate(ref transform, ref velocity, ref ai, ref health, dt, targetPos, hasTarget);
+                UpdatePirate(entity, ref transform, ref velocity, ref ai, ref health, dt, targetPos, hasTarget);
                 break;
             case Faction.Trader:
-                UpdateTrader(ref transform, ref velocity, ref ai, dt);
+                UpdateTrader(entity, ref transform, ref velocity, ref ai, dt);
                 break;
             case Faction.Patrol:
-                UpdatePatrol(ref transform, ref velocity, ref ai, dt, targetPos, hasTarget);
+                UpdatePatrol(entity, ref transform, ref velocity, ref ai, dt, targetPos, hasTarget);
                 break;
         }
     }
 
-    private void UpdatePirate(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private void UpdatePirate(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 targetPos, bool hasTarget)
     {
         // Flee if low health
@@ -109,10 +114,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         if (!hasTarget)
         {
             // Patrol: drift slowly in a pseudo-random direction
-            float angleOffset = (float)(Math.Sin(transform.Position.X * 0.01 + transform.Position.Y * 0.01) * 0.5);
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                turnInterval: 3f,
-                turnOffsetRadians: angleOffset,
+            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.2f,
                 damping: 0.999f);
             return;
@@ -130,7 +132,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             closeInWhenOutsideEngageDistance: false);
     }
 
-    private void UpdateTrader(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private void UpdateTrader(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         float dt)
     {
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
@@ -142,15 +144,13 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         }
         else
         {
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                turnInterval: 5f,
-                turnOffsetRadians: 0.3f,
+            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.3f,
                 damping: 1f);
         }
     }
 
-    private void UpdatePatrol(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private void UpdatePatrol(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         float dt, Vector2 targetPos, bool hasTarget)
     {
         // Patrols hunt pirates and defend traders
@@ -169,9 +169,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         }
         else
         {
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                turnInterval: 4f,
-                turnOffsetRadians: 0.4f,
+            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.2f,
                 damping: 0.999f);
         }
@@ -189,20 +187,84 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
     }
 
-    private void ApplyCruiseBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        float dt, float turnInterval, float turnOffsetRadians, float thrustMultiplier, float damping)
+    private void ApplyCruiseBehavior(Entity entity, ref Transform transform, ref Velocity velocity,
+        ref EnemyAI ai, float dt, float thrustMultiplier, float damping)
     {
         ai.State = AIState.Patrol;
-        if (ai.StateTimer > turnInterval)
+
+        if (!_cruiseTargets.TryGetValue(entity, out var targetPos) ||
+            !IsInsideCruiseBounds(targetPos) ||
+            Vector2.Distance(transform.Position, targetPos) < 180f)
         {
-            ai.StateTimer = 0f;
-            float angle = transform.Rotation * MathF.PI / 180f + turnOffsetRadians;
-            TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
+            targetPos = PickRandomCruiseTarget(transform.Position, minDistance: 350f);
+            _cruiseTargets[entity] = targetPos;
         }
 
-        var facing = FacingDirection(transform.Rotation);
-        velocity.Acceleration += facing * ai.Config.Acceleration * thrustMultiplier;
+        var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
+        if (float.IsNaN(dirToTarget.X))
+            dirToTarget = FacingDirection(transform.Rotation);
+
+        ApplyDirectionalBrake(ref velocity, dirToTarget, ai.Config.Acceleration,
+            minSpeedForBrake: 50f,
+            misalignmentThreshold: 0.25f,
+            maxBrakeMultiplier: 1.2f);
+
+        TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
+        velocity.Acceleration += dirToTarget * ai.Config.Acceleration * thrustMultiplier;
         velocity.Damping = damping;
+    }
+
+    private static void ApplyDirectionalBrake(ref Velocity velocity, Vector2 desiredDirection,
+        float baseAcceleration, float minSpeedForBrake, float misalignmentThreshold, float maxBrakeMultiplier)
+    {
+        float speed = velocity.Velocity.Length();
+        if (speed < minSpeedForBrake)
+            return;
+
+        var moveDir = velocity.Velocity / speed;
+        float alignment = Vector2.Dot(moveDir, desiredDirection);
+        if (alignment >= misalignmentThreshold)
+            return;
+
+        // Stronger braking the more misaligned we are (alignment in [-1, threshold)).
+        float t = (misalignmentThreshold - alignment) / (misalignmentThreshold + 1f);
+        float brakeMultiplier = 0.5f + t * (maxBrakeMultiplier - 0.5f);
+        velocity.Acceleration -= moveDir * baseAcceleration * brakeMultiplier;
+    }
+
+    private bool IsInsideCruiseBounds(Vector2 pos)
+    {
+        const float edgePadding = 128f;
+        float minX = edgePadding;
+        float minY = edgePadding;
+        float maxX = MathF.Max(minX, _mapWidth - edgePadding);
+        float maxY = MathF.Max(minY, _mapHeight - edgePadding);
+
+        return pos.X >= minX && pos.X <= maxX && pos.Y >= minY && pos.Y <= maxY;
+    }
+
+    private Vector2 PickRandomCruiseTarget(Vector2 currentPos, float minDistance)
+    {
+        const float edgePadding = 128f;
+        if (_mapWidth <= edgePadding * 2f || _mapHeight <= edgePadding * 2f)
+            return currentPos;
+
+        float minX = edgePadding;
+        float minY = edgePadding;
+        float maxX = _mapWidth - edgePadding;
+        float maxY = _mapHeight - edgePadding;
+
+        for (int i = 0; i < 8; i++)
+        {
+            var candidate = new Vector2(
+                Random.Shared.NextSingle() * (maxX - minX) + minX,
+                Random.Shared.NextSingle() * (maxY - minY) + minY);
+
+            if (Vector2.Distance(currentPos, candidate) >= minDistance)
+                return candidate;
+        }
+
+        return new Vector2(_mapWidth * 0.5f, _mapHeight * 0.5f);
     }
 
     private void ApplyCombatBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
