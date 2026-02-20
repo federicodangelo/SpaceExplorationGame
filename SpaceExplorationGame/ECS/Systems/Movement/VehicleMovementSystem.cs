@@ -46,6 +46,8 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
 
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = 0f;
+        bool isBraking = _input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down);
+        velocity.Damping = _friction * (isBraking ? _brakeMultiplier : 1f);
 
         // Rotation intent
         if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
@@ -61,20 +63,7 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
         {
             velocity.Acceleration += forward * _acceleration;
         }
-        else if (_input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down))
-        {
-            if (dt > 0f)
-            {
-                float brakeFactor = Math.Clamp(1f - _brakeMultiplier, 0f, 1f);
-                velocity.Acceleration += -velocity.Velocity * (brakeFactor / dt);
-            }
-        }
 
-        // Friction as acceleration opposite to current velocity
-        if (dt > 0f)
-        {
-            float frictionFactor = Math.Clamp(1f - _friction, 0f, 1f);
-            velocity.Acceleration += -velocity.Velocity * (frictionFactor / dt);
-        }
+        // Damping/braking are handled centrally by VelocitySystem.
     }
 }

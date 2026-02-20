@@ -34,6 +34,7 @@ public struct VelocityComponent
     public float MaxSpeed;
     public float RotationVelocity;    // degrees per second
     public float MaxRotationSpeed;    // max degrees per second (0 = unlimited)
+    public float Damping;             // per-physics-tick multiplier [0..1], 1 = no damping
     public Func<Vector2, bool>? CanMoveTo;
 
     public VelocityComponent(float maxSpeed, float maxRotationSpeed = 0f)
@@ -43,6 +44,7 @@ public struct VelocityComponent
         MaxSpeed = maxSpeed;
         RotationVelocity = 0f;
         MaxRotationSpeed = maxRotationSpeed;
+        Damping = 1f;
         CanMoveTo = null;
     }
 }

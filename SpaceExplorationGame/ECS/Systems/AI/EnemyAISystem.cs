@@ -70,6 +70,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         UpdateWeaponCooldowns(ref ai);
         velocity.RotationVelocity = 0f; // Reset each frame; TurnToward sets it when needed
         velocity.Acceleration = Vector2.Zero;
+        velocity.Damping = 1f;
 
         // Find the best target based on faction
         var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
@@ -92,7 +93,6 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     private void UpdatePirate(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         ref Health health, float dt, Vector2 playerPos, bool playerAlive, Vector2 targetPos, bool hasTarget)
     {
-        float maxSpeed = velocity.MaxSpeed;
         float thrust = ai.Config.Acceleration;
         float hullPercent = health.HullPercent;
 
@@ -120,7 +120,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
             velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
-            ApplyDamping(ref velocity, 0.98f, dt);
+            velocity.Damping = 0.999f;
             return;
         }
 
@@ -153,6 +153,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                     MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
             }
 
+            // Slightly more damping when attacking to prevent overshooting
+            velocity.Damping = 0.98f;
+
             TryFireProjectiles(ref transform, ref ai, dirToTarget);
         }
         else if (distToTarget <= ai.Config.DetectRange)
@@ -163,9 +166,6 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
             velocity.Acceleration += dirToTarget * thrust * 0.6f;
         }
-
-        // Apply friction
-        ApplyDamping(ref velocity, 0.98f, dt);
     }
 
     private void UpdateTrader(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
@@ -197,10 +197,6 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             float cruiseRad = transform.Rotation * MathF.PI / 180f;
             velocity.Acceleration += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * thrust * 0.3f;
         }
-
-        ApplyDamping(ref velocity, 0.99f, dt);
-
-        KeepWithinMap(ref transform, ref velocity, thrust);
     }
 
     private void UpdatePatrol(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
@@ -227,6 +223,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
                 if (distToTarget > ai.Config.EngageDistance)
                     velocity.Acceleration += dirToTarget * thrust * 0.4f;
 
+                // Slightly more damping when attacking to prevent overshooting
+                velocity.Damping = 0.98f;
+
                 TryFireProjectiles(ref transform, ref ai, dirToTarget);
             }
             else
@@ -248,10 +247,8 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             }
             float patrolRad = transform.Rotation * MathF.PI / 180f;
             velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
+            velocity.Damping = 0.999f;
         }
-
-        ApplyDamping(ref velocity, 0.98f, dt);
-        KeepWithinMap(ref transform, ref velocity, thrust);
     }
 
     private TargetInfo FindTarget(Entity self, Faction selfFaction,
@@ -406,30 +403,6 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         };
 
         _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color));
-    }
-
-    private void KeepWithinMap(ref Transform transform, ref Velocity velocity, float thrust)
-    {
-        float margin = 120f;
-        float edgeSteer = thrust * 0.9f;
-
-        if (transform.Position.X < margin)
-            velocity.Acceleration.X += edgeSteer;
-        else if (transform.Position.X > _mapWidth - margin)
-            velocity.Acceleration.X -= edgeSteer;
-
-        if (transform.Position.Y < margin)
-            velocity.Acceleration.Y += edgeSteer;
-        else if (transform.Position.Y > _mapHeight - margin)
-            velocity.Acceleration.Y -= edgeSteer;
-    }
-
-    private static void ApplyDamping(ref Velocity velocity, float frameMultiplier, float dt)
-    {
-        if (dt <= 0f || frameMultiplier >= 1f) return;
-
-        float factor = Math.Clamp(1f - frameMultiplier, 0f, 1f);
-        velocity.Acceleration += -velocity.Velocity * (factor / dt);
     }
 
     /// <summary>

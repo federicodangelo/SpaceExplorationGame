@@ -37,6 +37,8 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
         // Clear per-frame intent
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = 0f;
+        bool isBraking = _input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down);
+        velocity.Damping = isBraking ? BrakeMultiplier : 1f;
 
         // Rotation intent
         if (_input.IsKeyDown(SDL3.SDL.Scancode.A) || _input.IsKeyDown(SDL3.SDL.Scancode.Left))
@@ -51,14 +53,6 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
             velocity.Acceleration += new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * Acceleration;
         }
 
-        // Brake intent: apply acceleration opposite to current velocity.
-        if (_input.IsKeyDown(SDL3.SDL.Scancode.S) || _input.IsKeyDown(SDL3.SDL.Scancode.Down))
-        {
-            if (dt > 0f && velocity.Velocity != Vector2.Zero)
-            {
-                float brakeFactor = Math.Clamp(1f - BrakeMultiplier, 0f, 1f);
-                velocity.Acceleration += -velocity.Velocity * (brakeFactor / dt);
-            }
-        }
+        // Braking is handled by VelocitySystem via Damping.
     }
 }
