@@ -178,7 +178,7 @@ public class InputManager
         };
     }
 
-    public string GetActionHelpText(InputAction action)
+    public string GetActionHelpText(InputAction action, bool includeSecondary = false)
     {
         if (!_bindings.TryGetValue(action, out List<InputBinding>? bindingList) || bindingList.Count == 0)
             return string.Empty;
@@ -191,7 +191,15 @@ public class InputManager
                 labels.Add(label);
         }
 
+        if (!includeSecondary && labels.Count > 1)
+            return labels[0];
+
         return string.Join("/", labels);
+    }
+
+    public string GetActionHelpTextFull(InputAction action)
+    {
+        return GetActionHelpText(action, includeSecondary: true);
     }
 
     public string GetKeyHelpText(SDL.Scancode scancode) => GetBindingLabel(InputBinding.Key(scancode));

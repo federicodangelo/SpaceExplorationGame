@@ -62,23 +62,23 @@ public class ControlsOverlay : PanelOverlayBase
     private static string[] GetControlsForState(GameStateType state, InputManager input)
     {
         string moveText = string.Join('/',
-            input.GetActionHelpText(InputAction.MoveUp),
-            input.GetActionHelpText(InputAction.MoveDown),
-            input.GetActionHelpText(InputAction.MoveLeft),
-            input.GetActionHelpText(InputAction.MoveRight));
-        string interactText = input.GetActionHelpText(InputAction.Interact);
-        string fireText = input.GetActionHelpText(InputAction.FireWeapon);
-        string backText = input.GetActionHelpText(InputAction.MenuBack);
-        string mapText = input.GetActionHelpText(InputAction.ToggleMap);
+            input.GetActionHelpTextFull(InputAction.MoveUp),
+            input.GetActionHelpTextFull(InputAction.MoveDown),
+            input.GetActionHelpTextFull(InputAction.MoveLeft),
+            input.GetActionHelpTextFull(InputAction.MoveRight));
+        string interactText = input.GetActionHelpTextFull(InputAction.Interact);
+        string fireText = input.GetActionHelpTextFull(InputAction.FireWeapon);
+        string backText = input.GetActionHelpTextFull(InputAction.MenuBack);
+        string mapText = input.GetActionHelpTextFull(InputAction.ToggleMap);
 
         return state switch
         {
         GameStateType.SolarSystem =>
         [
             "MOUSE .............. HEADING",
-            $"{input.GetActionHelpText(InputAction.MoveUp)} ............. THRUST",
-            $"{input.GetActionHelpText(InputAction.MoveDown)} ........... BRAKE",
-            $"{input.GetActionHelpText(InputAction.MoveLeft)}/{input.GetActionHelpText(InputAction.MoveRight)} .............. STRAFE",
+            $"{input.GetActionHelpTextFull(InputAction.MoveUp)} ............. THRUST",
+            $"{input.GetActionHelpTextFull(InputAction.MoveDown)} ........... BRAKE",
+            $"{input.GetActionHelpTextFull(InputAction.MoveLeft)}/{input.GetActionHelpTextFull(InputAction.MoveRight)} .............. STRAFE",
             "SCROLL ............. ZOOM",
             $"{interactText} .................. INTERACT",
             $"{mapText} .................. GALAXY MAP",
