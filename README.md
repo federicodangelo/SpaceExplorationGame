@@ -9,6 +9,7 @@ A 2D procedural space exploration game built entirely using AI coding agents —
 
 This project was created as an experiment to push the boundaries of what's possible when using **AI coding agents** for game development. The entire codebase — rendering, procedural generation, ECS architecture, audio synthesis, UI, and gameplay — was written by [Claude Opus 4.6](https://www.anthropic.com/claude) through iterative prompting.
 
+Initial version (v1.0.0 — information below doest not include post-v1.0.0 changes):
 - **AI Model:** Claude Opus 4.6
 - **Total Cost:** ~$50 USD in API/token usage
 - **Development Time:** ~4 days of on-and-off work
