@@ -91,7 +91,7 @@ public static class GameConfig
     public const int MaxDangerLevel = 5;
 
     // Death penalty
-    public const float DeathHullPercent = 0.5f;         // respawn with 50% hull
+    public const float DeathHullPercent = 1.0f;         // respawn with 100% hull (no hull loss on death)
     public const float DeathCargoLossPercent = 0.25f;    // lose 25% of cargo
     public const float DeathCreditsLossPercent = 0.10f;  // lose 10% of credits
 

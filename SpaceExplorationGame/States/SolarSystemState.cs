@@ -1012,7 +1012,7 @@ public class SolarSystemState : GameState
         _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
 
         _camera.Position = respawnPos;
-        _combatMessage = "RESPAWNED — HULL AT 50%";
+        _combatMessage = "RESPAWNED";
         _combatMessageTimer = 3f;
 
         // Dock at the nearest station and open the station menu
