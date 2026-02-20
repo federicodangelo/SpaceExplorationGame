@@ -59,7 +59,7 @@ public abstract class MapPanelBase
     {
         var input = game.Input;
         float camSpeed = 500f / Camera.Zoom;
-        Vector2 moveDir = input.GetMovementDirection();
+        Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
         if (moveDir.Y < 0) Camera.Position -= new Vector2(0, camSpeed * dt);
         if (moveDir.Y > 0) Camera.Position += new Vector2(0, camSpeed * dt);
         if (moveDir.X < 0) Camera.Position -= new Vector2(camSpeed * dt, 0);

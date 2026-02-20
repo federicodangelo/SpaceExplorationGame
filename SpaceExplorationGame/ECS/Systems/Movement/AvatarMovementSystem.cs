@@ -25,12 +25,7 @@ public partial class AvatarMovementSystem : BaseSystem<World, float>
     [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity))]
     public void MovePlayer(ref Transform transform, ref Velocity velocity)
     {
-        Vector2 moveDir = _input.GetMovementDirection();
-
-        if (moveDir != Vector2.Zero)
-        {
-            moveDir = Vector2.Normalize(moveDir);
-        }
+        Vector2 moveDir = _input.GetActionAxisDirection(InputActionAxis.Movement);
 
         // Critically damped response toward desired walk velocity.
         var targetVelocity = moveDir * _speed;

@@ -443,8 +443,8 @@ public class PlanetSurfaceState : GameState
         }
 
         // Track player facing direction from movement input
-        Vector2 moveDir = input.GetMovementDirection();
-        if (moveDir != Vector2.Zero) _lastMoveDir = Vector2.Normalize(moveDir);
+        Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
+        if (moveDir != Vector2.Zero) _lastMoveDir = moveDir;
     }
 
     /// <summary>Board the ship: open the starship menu overlay.</summary>

@@ -23,6 +23,11 @@ public enum InputAction
     ToggleNavTarget,
 }
 
+public enum InputActionAxis
+{
+    Movement,
+}
+
 /// <summary>
 /// Input snapshot captured each frame. Provides current and previous state for edge detection.
 /// </summary>
@@ -162,14 +167,13 @@ public class InputManager
     public bool IsActionPressed(InputAction action) => IsAnyBindingActive(action, _keysPressed, _mousePressed);
     public bool IsActionReleased(InputAction action) => IsAnyBindingActive(action, _keysReleased, _mouseReleased);
 
-    public Vector2 GetMovementDirection()
+    public Vector2 GetActionAxisDirection(InputActionAxis axis)
     {
-        Vector2 direction = Vector2.Zero;
-        if (IsActionDown(InputAction.MoveUp)) direction.Y -= 1f;
-        if (IsActionDown(InputAction.MoveDown)) direction.Y += 1f;
-        if (IsActionDown(InputAction.MoveLeft)) direction.X -= 1f;
-        if (IsActionDown(InputAction.MoveRight)) direction.X += 1f;
-        return direction;
+        return axis switch
+        {
+            InputActionAxis.Movement => GetDirectionFromActions(InputAction.MoveUp, InputAction.MoveDown, InputAction.MoveLeft, InputAction.MoveRight),
+            _ => Vector2.Zero,
+        };
     }
 
     public string GetActionHelpText(InputAction action)
@@ -212,6 +216,16 @@ public class InputManager
         }
 
         return false;
+    }
+
+    private Vector2 GetDirectionFromActions(InputAction upAction, InputAction downAction, InputAction leftAction, InputAction rightAction)
+    {
+        Vector2 direction = Vector2.Zero;
+        if (IsActionDown(upAction)) direction.Y -= 1f;
+        if (IsActionDown(downAction)) direction.Y += 1f;
+        if (IsActionDown(leftAction)) direction.X -= 1f;
+        if (IsActionDown(rightAction)) direction.X += 1f;
+        return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
     }
 
     private static string GetBindingLabel(InputBinding binding)
