@@ -75,180 +75,194 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         // Find the best target based on faction
         var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
 
-        // State machine
+        UpdateShipAIByFaction(ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
+    }
+
+    private void UpdateShipAIByFaction(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+        ref Health health, float dt, Vector2 targetPos, bool hasTarget)
+    {
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdatePirate(ref transform, ref velocity, ref ai, ref health, _dt, _playerPos, _playerAlive, targetPos, hasTarget);
+                UpdatePirate(ref transform, ref velocity, ref ai, ref health, dt, targetPos, hasTarget);
                 break;
             case Faction.Trader:
-                UpdateTrader(ref transform, ref velocity, ref ai, ref health, _dt, _playerPos, _playerAlive);
+                UpdateTrader(ref transform, ref velocity, ref ai, dt);
                 break;
             case Faction.Patrol:
-                UpdatePatrol(ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
+                UpdatePatrol(ref transform, ref velocity, ref ai, dt, targetPos, hasTarget);
                 break;
         }
     }
 
     private void UpdatePirate(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 playerPos, bool playerAlive, Vector2 targetPos, bool hasTarget)
+        ref Health health, float dt, Vector2 targetPos, bool hasTarget)
     {
-        float thrust = ai.Config.Acceleration;
-        float hullPercent = health.HullPercent;
-
         // Flee if low health
-        if (hullPercent < ai.Config.FleeHealthPercent)
+        if (health.HullPercent < ai.Config.FleeHealthPercent)
         {
-            ai.State = AIState.Flee;
-            var fleeDir = Vector2.Normalize(transform.Position - targetPos);
-            if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Acceleration += fleeDir * thrust * 0.5f;
-            TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
+            var fleeFrom = hasTarget ? targetPos : transform.Position - FacingDirection(transform.Rotation);
+            ApplyFleeBehavior(ref transform, ref velocity, ref ai, dt, fleeFrom, thrustMultiplier: 0.5f);
             return;
         }
 
         if (!hasTarget)
         {
-            // Patrol: drift slowly in a random direction
-            ai.State = AIState.Patrol;
-            if (ai.StateTimer > 3f)
-            {
-                ai.StateTimer = 0;
-                float angle = transform.Rotation * MathF.PI / 180f;
-                angle += (float)(Math.Sin(transform.Position.X * 0.01 + transform.Position.Y * 0.01) * 0.5);
-                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
-            }
-            float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
-            velocity.Damping = 0.999f;
+            // Patrol: drift slowly in a pseudo-random direction
+            float angleOffset = (float)(Math.Sin(transform.Position.X * 0.01 + transform.Position.Y * 0.01) * 0.5);
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
+                turnInterval: 3f,
+                turnOffsetRadians: angleOffset,
+                thrustMultiplier: 0.2f,
+                damping: 0.999f);
             return;
         }
 
-        float distToTarget = Vector2.Distance(transform.Position, targetPos);
-        float weaponRange = GetWeaponRange(ai.Config.Weapons);
-
-        if (distToTarget <= weaponRange)
-        {
-            // Attack
-            ai.State = AIState.Attack;
-            var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
-            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-
-            // Maintain engage distance
-            if (distToTarget < ai.Config.EngageDistance * 0.7f)
-            {
-                // Too close — back up slightly
-                velocity.Acceleration -= dirToTarget * thrust * 0.3f;
-            }
-            else if (distToTarget > ai.Config.EngageDistance * 1.3f)
-            {
-                // Too far — close in
-                velocity.Acceleration += dirToTarget * thrust * 0.5f;
-            }
-            else
-            {
-                // Strafe
-                var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Acceleration += strafeDir * thrust * 0.3f *
-                    MathF.Sign(MathF.Sin(ai.StateTimer * 0.8f));
-            }
-
-            // Slightly more damping when attacking to prevent overshooting
-            velocity.Damping = 0.98f;
-
-            TryFireProjectiles(ref transform, ref ai, dirToTarget);
-        }
-        else if (distToTarget <= ai.Config.DetectRange)
-        {
-            // Chase
-            ai.State = AIState.Chase;
-            var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
-            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-            velocity.Acceleration += dirToTarget * thrust * 0.6f;
-        }
+        ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos,
+            chaseThrustMultiplier: 0.6f,
+            strafeThrustMultiplier: 0.3f,
+            strafeFrequency: 0.8f,
+            maintainEngageBand: true,
+            closeThresholdMultiplier: 0.7f,
+            farThresholdMultiplier: 1.3f,
+            backoffThrustMultiplier: 0.3f,
+            closeInThrustMultiplier: 0.5f,
+            closeInWhenOutsideEngageDistance: false);
     }
 
     private void UpdateTrader(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 playerPos, bool playerAlive)
+        float dt)
     {
-        float thrust = ai.Config.Acceleration;
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
         var nearestPirate = FindNearestPirate(transform.Position, 400f);
 
         if (nearestPirate.HasValue)
         {
-            // Flee from pirate
-            ai.State = AIState.Flee;
-            var fleeDir = Vector2.Normalize(transform.Position - nearestPirate.Value);
-            if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            velocity.Acceleration += fleeDir * thrust * 0.7f;
-            TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
+            ApplyFleeBehavior(ref transform, ref velocity, ref ai, dt, nearestPirate.Value, thrustMultiplier: 0.7f);
         }
         else
         {
-            // Cruise
-            ai.State = AIState.Patrol;
-            if (ai.StateTimer > 5f)
-            {
-                ai.StateTimer = 0;
-                float angle = transform.Rotation * MathF.PI / 180f + 0.3f;
-                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
-            }
-            float cruiseRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Acceleration += new Vector2(MathF.Cos(cruiseRad), MathF.Sin(cruiseRad)) * thrust * 0.3f;
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
+                turnInterval: 5f,
+                turnOffsetRadians: 0.3f,
+                thrustMultiplier: 0.3f,
+                damping: 1f);
         }
     }
 
     private void UpdatePatrol(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 targetPos, bool hasTarget)
+        float dt, Vector2 targetPos, bool hasTarget)
     {
-        float thrust = ai.Config.Acceleration;
         // Patrols hunt pirates and defend traders
         if (hasTarget)
         {
-            float distToTarget = Vector2.Distance(transform.Position, targetPos);
-            var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
-            float weaponRange = GetWeaponRange(ai.Config.Weapons);
-
-            if (distToTarget <= weaponRange)
-            {
-                ai.State = AIState.Attack;
-                TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-
-                // Strafe while attacking
-                var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-                velocity.Acceleration += strafeDir * thrust * 0.3f *
-                    MathF.Sign(MathF.Sin(ai.StateTimer * 0.7f));
-
-                if (distToTarget > ai.Config.EngageDistance)
-                    velocity.Acceleration += dirToTarget * thrust * 0.4f;
-
-                // Slightly more damping when attacking to prevent overshooting
-                velocity.Damping = 0.98f;
-
-                TryFireProjectiles(ref transform, ref ai, dirToTarget);
-            }
-            else
-            {
-                ai.State = AIState.Chase;
-                TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-                velocity.Acceleration += dirToTarget * thrust * 0.5f;
-            }
+            ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos,
+                chaseThrustMultiplier: 0.5f,
+                strafeThrustMultiplier: 0.3f,
+                strafeFrequency: 0.7f,
+                maintainEngageBand: false,
+                closeThresholdMultiplier: 0f,
+                farThresholdMultiplier: 0f,
+                backoffThrustMultiplier: 0f,
+                closeInThrustMultiplier: 0.4f,
+                closeInWhenOutsideEngageDistance: true);
         }
         else
         {
-            // Patrol idle
-            ai.State = AIState.Patrol;
-            if (ai.StateTimer > 4f)
-            {
-                ai.StateTimer = 0;
-                float angle = transform.Rotation * MathF.PI / 180f + 0.4f;
-                TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
-            }
-            float patrolRad = transform.Rotation * MathF.PI / 180f;
-            velocity.Acceleration += new Vector2(MathF.Cos(patrolRad), MathF.Sin(patrolRad)) * thrust * 0.2f;
-            velocity.Damping = 0.999f;
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
+                turnInterval: 4f,
+                turnOffsetRadians: 0.4f,
+                thrustMultiplier: 0.2f,
+                damping: 0.999f);
         }
+    }
+
+    private void ApplyFleeBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+        float dt, Vector2 threatPosition, float thrustMultiplier)
+    {
+        ai.State = AIState.Flee;
+        var fleeDir = Vector2.Normalize(transform.Position - threatPosition);
+        if (float.IsNaN(fleeDir.X))
+            fleeDir = FacingDirection(transform.Rotation);
+
+        velocity.Acceleration += fleeDir * ai.Config.Acceleration * thrustMultiplier;
+        TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
+    }
+
+    private void ApplyCruiseBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+        float dt, float turnInterval, float turnOffsetRadians, float thrustMultiplier, float damping)
+    {
+        ai.State = AIState.Patrol;
+        if (ai.StateTimer > turnInterval)
+        {
+            ai.StateTimer = 0f;
+            float angle = transform.Rotation * MathF.PI / 180f + turnOffsetRadians;
+            TurnToward(ref transform, ref velocity, angle * 180f / MathF.PI, ai.Config.MaxRotationSpeed, dt);
+        }
+
+        var facing = FacingDirection(transform.Rotation);
+        velocity.Acceleration += facing * ai.Config.Acceleration * thrustMultiplier;
+        velocity.Damping = damping;
+    }
+
+    private void ApplyCombatBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+        float dt, Vector2 targetPos, float chaseThrustMultiplier, float strafeThrustMultiplier,
+        float strafeFrequency, bool maintainEngageBand, float closeThresholdMultiplier,
+        float farThresholdMultiplier, float backoffThrustMultiplier,
+        float closeInThrustMultiplier, bool closeInWhenOutsideEngageDistance)
+    {
+        float distToTarget = Vector2.Distance(transform.Position, targetPos);
+        var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
+        if (float.IsNaN(dirToTarget.X))
+            dirToTarget = FacingDirection(transform.Rotation);
+
+        float weaponRange = GetWeaponRange(ai.Config.Weapons);
+        if (distToTarget <= weaponRange)
+        {
+            ai.State = AIState.Attack;
+            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
+
+            if (maintainEngageBand)
+            {
+                if (distToTarget < ai.Config.EngageDistance * closeThresholdMultiplier)
+                {
+                    velocity.Acceleration -= dirToTarget * ai.Config.Acceleration * backoffThrustMultiplier;
+                }
+                else if (distToTarget > ai.Config.EngageDistance * farThresholdMultiplier)
+                {
+                    velocity.Acceleration += dirToTarget * ai.Config.Acceleration * closeInThrustMultiplier;
+                }
+                else if (strafeThrustMultiplier > 0f)
+                {
+                    ApplyStrafe(ref velocity, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
+                }
+            }
+            else
+            {
+                if (strafeThrustMultiplier > 0f)
+                    ApplyStrafe(ref velocity, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
+
+                if (closeInWhenOutsideEngageDistance && distToTarget > ai.Config.EngageDistance)
+                    velocity.Acceleration += dirToTarget * ai.Config.Acceleration * closeInThrustMultiplier;
+            }
+
+            velocity.Damping = 0.98f;
+            TryFireProjectiles(ref transform, ref ai, dirToTarget);
+        }
+        else
+        {
+            ai.State = AIState.Chase;
+            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
+            velocity.Acceleration += dirToTarget * ai.Config.Acceleration * chaseThrustMultiplier;
+        }
+    }
+
+    private static void ApplyStrafe(ref Velocity velocity, ref EnemyAI ai, Vector2 dirToTarget,
+        float strafeThrustMultiplier, float strafeFrequency)
+    {
+        var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
+        velocity.Acceleration += strafeDir * ai.Config.Acceleration * strafeThrustMultiplier *
+            MathF.Sign(MathF.Sin(ai.StateTimer * strafeFrequency));
     }
 
     private TargetInfo FindTarget(Entity self, Faction selfFaction,
@@ -258,51 +272,47 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         float bestDist = float.MaxValue;
         Vector2 bestPos = Vector2.Zero;
 
-        if (selfFaction == Faction.Pirate)
-        {
-            // Pirates target player + traders
-            if (playerAlive)
-            {
-                float distToPlayer = Vector2.Distance(selfPos, playerPos);
-                if (distToPlayer < range && distToPlayer < bestDist)
-                {
-                    bestDist = distToPlayer;
-                    bestPos = playerPos;
-                }
-            }
+        // Optional player target (virtual target; no entity handle)
+        if (playerAlive && ShouldTargetPlayer(selfFaction))
+            TrySelectTarget(playerPos, null, selfPos, range, ref bestDist, ref bestPos, ref bestTarget);
 
-            // Also look for traders
-            World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
-            {
-                if (entity == self || h.IsDead) return;
-                if (ai.Config.Faction != Faction.Trader) return;
-                float dist = Vector2.Distance(selfPos, t.Position);
-                if (dist < range && dist < bestDist)
-                {
-                    bestDist = dist;
-                    bestPos = t.Position;
-                    bestTarget = entity;
-                }
-            });
-        }
-        else if (selfFaction == Faction.Patrol)
+        // Ship-vs-ship target selection policy
+        World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
         {
-            // Patrols target pirates
-            World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
-            {
-                if (entity == self || h.IsDead) return;
-                if (ai.Config.Faction != Faction.Pirate) return;
-                float dist = Vector2.Distance(selfPos, t.Position);
-                if (dist < range && dist < bestDist)
-                {
-                    bestDist = dist;
-                    bestPos = t.Position;
-                    bestTarget = entity;
-                }
-            });
-        }
+            if (entity == self || h.IsDead) return;
+            if (!ShouldTargetFaction(selfFaction, ai.Config.Faction)) return;
+
+            TrySelectTarget(t.Position, entity, selfPos, range, ref bestDist, ref bestPos, ref bestTarget);
+        });
 
         return new TargetInfo(bestPos, bestDist < float.MaxValue, bestTarget);
+    }
+
+    private static bool ShouldTargetPlayer(Faction selfFaction)
+    {
+        return selfFaction == Faction.Pirate;
+    }
+
+    private static bool ShouldTargetFaction(Faction selfFaction, Faction otherFaction)
+    {
+        return selfFaction switch
+        {
+            Faction.Pirate => otherFaction == Faction.Trader,
+            Faction.Patrol => otherFaction == Faction.Pirate,
+            _ => false
+        };
+    }
+
+    private static void TrySelectTarget(Vector2 candidatePos, Entity? candidateEntity,
+        Vector2 selfPos, float range, ref float bestDist, ref Vector2 bestPos, ref Entity? bestTarget)
+    {
+        float dist = Vector2.Distance(selfPos, candidatePos);
+        if (dist >= range || dist >= bestDist)
+            return;
+
+        bestDist = dist;
+        bestPos = candidatePos;
+        bestTarget = candidateEntity;
     }
 
     private Vector2? FindNearestPirate(Vector2 pos, float range)
