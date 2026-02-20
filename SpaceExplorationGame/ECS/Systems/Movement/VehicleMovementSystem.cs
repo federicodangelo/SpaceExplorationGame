@@ -8,7 +8,7 @@ using SpaceExplorationGame.ECS.Components;
 namespace SpaceExplorationGame.ECS.Systems.Movement;
 
 /// <summary>
-/// Handles vehicle-style movement intent: rotation with A/D, acceleration with W, braking with S.
+/// Handles vehicle-style movement intent from the unified movement axis.
 /// Physics integration is handled by VelocitySystem.
 /// </summary>
 public partial class VehicleMovementSystem : BaseSystem<World, float>
@@ -43,25 +43,55 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
     {
         ref var transform = ref World.Get<Transform>(_entity);
         ref var velocity = ref World.Get<Velocity>(_entity);
+        Vector2 movementInput = _input.GetActionAxisDirection(InputActionAxis.Movement);
+        Vector2 headingDirection = _input.GetActionAxisDirection(InputActionAxis.Heading);
+
+        if (_input.MovementMode == MovementInputMode.Absolute &&
+            headingDirection == Vector2.Zero &&
+            movementInput != Vector2.Zero)
+        {
+            headingDirection = Vector2.Normalize(movementInput);
+        }
 
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = 0f;
-        bool isBraking = _input.IsActionDown(InputAction.MoveDown);
-        velocity.Damping = _friction * (isBraking ? _brakeMultiplier : 1f);
 
-        // Rotation intent
-        if (_input.IsActionDown(InputAction.MoveLeft))
-            velocity.RotationVelocity -= _rotationSpeed;
-        if (_input.IsActionDown(InputAction.MoveRight))
-            velocity.RotationVelocity += _rotationSpeed;
-
-        // Forward acceleration intent
-        float rad = transform.Rotation * MathF.PI / 180f;
-        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-
-        if (_input.IsActionDown(InputAction.MoveUp))
+        if (headingDirection != Vector2.Zero && dt > 0f)
         {
-            velocity.Acceleration += forward * _acceleration;
+            float targetRotation = MathF.Atan2(headingDirection.Y, headingDirection.X) * 180f / MathF.PI;
+            float delta = targetRotation - transform.Rotation;
+            delta = ((delta + 540f) % 360f) - 180f;
+
+            float requiredRotationSpeed = delta / dt;
+            velocity.RotationVelocity = Math.Clamp(requiredRotationSpeed, -_rotationSpeed, _rotationSpeed);
+        }
+
+        switch (_input.MovementMode)
+        {
+            case MovementInputMode.Absolute:
+                velocity.Damping = _friction;
+                velocity.Acceleration += movementInput * _acceleration;
+                break;
+
+            case MovementInputMode.HeadingRelative:
+            default:
+            {
+                bool isBraking = movementInput.Y > 0f;
+                velocity.Damping = _friction * (isBraking ? _brakeMultiplier : 1f);
+
+                if (headingDirection != Vector2.Zero)
+                {
+                    Vector2 forward = headingDirection;
+                    Vector2 right = new(-forward.Y, forward.X);
+
+                    float forwardThrust = MathF.Max(0f, -movementInput.Y);
+                    float strafeThrust = movementInput.X;
+
+                    Vector2 localAcceleration = (forward * forwardThrust) + (right * strafeThrust);
+                    velocity.Acceleration += localAcceleration * _acceleration;
+                }
+                break;
+            }
         }
 
         // Damping/braking are handled centrally by VelocitySystem.
