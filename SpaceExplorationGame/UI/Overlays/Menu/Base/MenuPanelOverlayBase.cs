@@ -85,9 +85,15 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     // ── Default content rendering ──
 
     /// <summary>Renders the menu widget. Override for additional content beyond the menu.</summary>
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected sealed override void RenderPanelContent(Game game, SpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
+
+        RenderAdditionalContent(game, renderer, panelX, contentY, panelW, contentH);
     }
+
+    // ── Custom rendering (for unique layouts) ──
+    protected virtual void RenderAdditionalContent(Game game, SpriteRenderer renderer,
+        float panelX, float contentY, float panelW, float contentH) { }
 }

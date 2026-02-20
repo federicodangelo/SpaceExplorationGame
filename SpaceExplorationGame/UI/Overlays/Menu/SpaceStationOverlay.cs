@@ -1,5 +1,6 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
@@ -185,38 +186,15 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         }
     }
 
-    // ── Custom rendering (unique layout with corner accents, station info, ship status) ──
-
-    public override void Render(Game game)
+    protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
-        if (!IsOpen) return;
-
-        _currentInput = game.Input;
-
-        var renderer = game.SpriteRenderer;
-        int w = GameConfig.WindowWidth;
-        int h = GameConfig.WindowHeight;
-
-        renderer.DrawRectScreen(0, 0, w, h, new Color4(0, 0, 0, DimAlpha));
-
-        float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
         int menuHeight = (int)Menu.TotalHeight;
+        float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
 
-        // Panel frame with sci-fi styling
-        DrawFrame(renderer, px, py, pw, ph, 240);
-
-        // Title
-        renderer.DrawTextScreen(px + 20, py + 20, "SPACE STATION", new Color3(100, 200, 255), 3f);
+        // Station info header
         renderer.DrawTextScreen(px + 20, py + 55, _station.Name.ToUpper(), new Color3(200, 200, 200), 2f);
         renderer.DrawTextScreen(px + 20, py + 80, $"IN SYSTEM: {_starSystem.Name}", new Color3(120, 120, 150), 1.5f);
-
         renderer.DrawLineScreen(px + 20, py + 105, px + pw - 20, py + 105, new Color3(60, 80, 140));
-
-        // Credits
-        renderer.DrawTextScreen(px + pw - 200, py + 20, $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
-
-        // Menu
-        Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
 
         // Ship status section
         float statusY = MenuY + menuHeight + 4;
@@ -232,12 +210,5 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         renderer.DrawRectScreen(barX, statusY + 40, barW * (game.Player.ShipHealth / game.Player.ShipMaxHealth), 12, new Color3(100, 255, 100));
         renderer.DrawRectScreen(barX, statusY + 60, barW, 12, new Color3(40, 40, 40));
         renderer.DrawRectScreen(barX, statusY + 60, barW * (game.Player.ShipFuel / game.Player.ShipMaxFuel), 12, new Color3(100, 200, 255));
-
-        // Controls
-        if (ControlsHint != null)
-            renderer.DrawTextScreen(px + 20, py + ph - 30, ControlsHint, new Color3(100, 100, 130), 1.5f);
-
-        // Sub-overlays on top
-        RenderSubOverlays(game);
     }
 }

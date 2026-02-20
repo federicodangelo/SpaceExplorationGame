@@ -251,11 +251,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     // ── Custom content rendering ──
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
+    protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
-        // Render the menu
-        Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
-
         // Separator between config and actions
         float sep1Y = MenuY + 2 * Menu.ItemHeight;
         renderer.DrawLineScreen(panelX + 15, sep1Y, panelX + panelW - 15, sep1Y, new Color3(60, 80, 140));

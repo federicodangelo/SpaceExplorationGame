@@ -14,7 +14,7 @@ public abstract class PanelOverlayBase : OverlayBase
     private string? _statusMessage;
     private float _statusTimer;
     private bool _statusIsPositive;
-    protected InputManager? _currentInput;
+    private InputManager? _currentInput;
 
     protected InputManager? CurrentInput => _currentInput;
 
@@ -93,7 +93,7 @@ public abstract class PanelOverlayBase : OverlayBase
 
     // ── Input handling ──
 
-    public override bool UpdateInput(Game game)
+    public sealed override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
@@ -145,7 +145,7 @@ public abstract class PanelOverlayBase : OverlayBase
 
     // ── Update ──
 
-    public override void Update(Game game, float dt)
+    public sealed override void Update(Game game, float dt)
     {
         if (!IsOpen) return;
 
@@ -171,7 +171,7 @@ public abstract class PanelOverlayBase : OverlayBase
 
     // ── Rendering ──
 
-    public override void Render(Game game)
+    public sealed override void Render(Game game)
     {
         if (!IsOpen) return;
 
