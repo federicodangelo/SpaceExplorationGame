@@ -20,19 +20,20 @@ public static class ProjectileRenderer
         {
             var pos = transform.Position;
             float speed = velocity.Velocity.Length();
+            float rad = transform.Rotation * MathF.PI / 180f;
+            var facingDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
 
             // Draw projectile as a small elongated shape
             if (speed > 10f)
             {
                 // Trail: draw a line behind the projectile
-                var dir = Vector2.Normalize(velocity.Velocity);
-                var trailEnd = pos - dir * 8f;
+                var trailEnd = pos - facingDir * 8f;
 
                 // Main beam
                 renderer.DrawLine(camera, trailEnd, pos, proj.Color);
 
                 // Glow core (brighter, slightly offset lines)
-                var perp = new Vector2(-dir.Y, dir.X) * 0.8f;
+                var perp = new Vector2(-facingDir.Y, facingDir.X) * 0.8f;
                 renderer.DrawLine(camera, trailEnd + perp, pos + perp, proj.Color.WithAlpha(140));
                 renderer.DrawLine(camera, trailEnd - perp, pos - perp, proj.Color.WithAlpha(140));
             }
