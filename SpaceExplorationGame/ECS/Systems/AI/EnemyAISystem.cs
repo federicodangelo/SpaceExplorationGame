@@ -53,9 +53,9 @@ public partial class EnemyAISystem : BaseSystem<World, float>
         ProcessEnemyAIQuery(World);
 
         // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, lifetime, faction, color) in _pendingProjectiles)
+        foreach (var (pos, dir, damage, speed, lifetime, faction, color, inheritedVelocity) in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime);
+            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime, inheritedVelocity);
         }
     }
 
@@ -309,7 +309,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             }
 
             velocity.Damping = 0.98f;
-            TryFireProjectiles(ref transform, ref ai, dirToTarget);
+            TryFireProjectiles(ref transform, ref velocity, ref ai, dirToTarget);
         }
         else
         {
@@ -417,7 +417,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     }
 
     /// <summary>Fires any ready weapons when facing the target.</summary>
-    private void TryFireProjectiles(ref Transform transform, ref EnemyAI ai, Vector2 dirToTarget)
+    private void TryFireProjectiles(ref Transform transform, ref Velocity velocity, ref EnemyAI ai, Vector2 dirToTarget)
     {
         if (ai.Config.Weapons.Length == 0) return;
         if (!IsFacingTarget(ref transform, dirToTarget)) return;
@@ -439,7 +439,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
             float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
             FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                lifetime, ai.Config.Faction, sideOffset);
+                lifetime, ai.Config.Faction, sideOffset, velocity.Velocity);
         }
     }
 
@@ -459,7 +459,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
-        float lifetime, Faction faction, float lateralOffset)
+        float lifetime, Faction faction, float lateralOffset, Vector2 inheritedVelocity)
     {
         // Offset spawn position slightly ahead of the ship
         var lateral = new Vector2(-direction.Y, direction.X);
@@ -474,7 +474,7 @@ public partial class EnemyAISystem : BaseSystem<World, float>
             _ => new Color3(255, 255, 255)
         };
 
-        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color));
+        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color, inheritedVelocity));
     }
 
     /// <summary>

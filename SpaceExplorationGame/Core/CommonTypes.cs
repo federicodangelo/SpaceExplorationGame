@@ -103,7 +103,7 @@ public readonly record struct ShipWeaponSpec(
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed, float Lifetime,
-    Faction Faction, Color3 Color);
+    Faction Faction, Color3 Color, Vector2 InheritedVelocity);
 
 /// <summary>Pending projectile spawn data for surface combat AI (includes lifetime).</summary>
 public readonly record struct SurfaceProjectileSpawn(

@@ -21,16 +21,16 @@ public partial class VelocitySystem : BaseSystem<World, float>
         velocity.Velocity += velocity.Acceleration * dt;
 
         // Clamp linear speed
-        if (velocity.Velocity.LengthSquared() > velocity.MaxSpeed * velocity.MaxSpeed)
+        if (velocity.MaxSpeed > 0f &&
+            velocity.Velocity.LengthSquared() > velocity.MaxSpeed * velocity.MaxSpeed)
         {
             velocity.Velocity = Vector2.Normalize(velocity.Velocity) * velocity.MaxSpeed;
         }
 
         // Centralized damping
-        float damping = Math.Clamp(velocity.Damping, 0f, 1f);
-        if (damping < 1f)
+        if (velocity.Damping < 1f)
         {
-            velocity.Velocity *= damping;
+            velocity.Velocity *= Math.Clamp(velocity.Damping, 0f, 1f);
         }
 
         // Apply linear velocity to position

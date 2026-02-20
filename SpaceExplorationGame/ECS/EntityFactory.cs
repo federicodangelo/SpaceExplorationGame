@@ -325,12 +325,13 @@ public static class EntityFactory
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Vector2 position, Vector2 direction,
         float damage, float speed, Faction ownerFaction, Color3 color,
-        float lifetime)
+        float lifetime, Vector2 inheritedVelocity = default)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
+        var projectileVelocity = direction * speed + inheritedVelocity;
         return world.Create(
             new Transform(position, angle),
-            new Velocity(speed) { Velocity = direction * speed },
+            new Velocity(0f) { Velocity = projectileVelocity },
             new Projectile
             {
                 Damage = damage,

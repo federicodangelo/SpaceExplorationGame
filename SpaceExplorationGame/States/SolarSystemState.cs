@@ -773,13 +773,17 @@ public class SolarSystemState : GameState
                 var lateralDir = new Vector2(-dir.Y, dir.X);
                 float lateralOffset = activeWeapons > 1 ? 6f : 0f;
                 bool firedAny = false;
+                var shipVelocity = game.EcsWorld.Has<Velocity>(_playerShip)
+                    ? game.EcsWorld.Get<Velocity>(_playerShip).Velocity
+                    : Vector2.Zero;
 
                 if (hasWeapon1 && _playerWeaponCooldowns[0] <= 0f)
                 {
                     float lifetime = CombatHelper.ResolveProjectileLifetime(weapon1.Range, weapon1.ProjectileSpeed);
                     var spawnPos = forwardPos + lateralDir * -lateralOffset;
                     EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                        weapon1.Damage, weapon1.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime);
+                        weapon1.Damage, weapon1.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime,
+                        shipVelocity);
                     _playerWeaponCooldowns[0] = weapon1.FireRate;
                     firedAny = true;
                 }
@@ -789,7 +793,8 @@ public class SolarSystemState : GameState
                     float lifetime = CombatHelper.ResolveProjectileLifetime(weapon2.Range, weapon2.ProjectileSpeed);
                     var spawnPos = forwardPos + lateralDir * lateralOffset;
                     EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                        weapon2.Damage, weapon2.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime);
+                        weapon2.Damage, weapon2.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime,
+                        shipVelocity);
                     _playerWeaponCooldowns[1] = weapon2.FireRate;
                     firedAny = true;
                 }

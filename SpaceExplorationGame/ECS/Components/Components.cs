@@ -31,7 +31,7 @@ public struct VelocityComponent
 {
     public Vector2 Velocity;
     public Vector2 Acceleration;
-    public float MaxSpeed;
+    public float MaxSpeed;            // max linear speed (0 = unlimited)
     public float RotationVelocity;    // degrees per second
     public float MaxRotationSpeed;    // max degrees per second (0 = unlimited)
     public float Damping;             // per-physics-tick multiplier [0..1], 1 = no damping
