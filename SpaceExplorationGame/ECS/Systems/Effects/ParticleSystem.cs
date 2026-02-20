@@ -65,23 +65,37 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
         });
 
         // 2) Emit new particles from active emitters.
-        World.Query(in _emitterQuery, (ref Transform transform, ref ParticleEmitter emitter) =>
+        World.Query(in _emitterQuery, (Entity entity, ref Transform transform, ref ParticleEmitter emitter) =>
         {
-            if (!emitter.IsEnabled)
+            if (emitter.EmitCondition == EmitCondition.Never)
             {
-                emitter.SpawnAccumulator = 0f;
                 return;
             }
 
             if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(transform.Position))
             {
-                emitter.SpawnAccumulator = 0f;
                 return;
             }
 
-            var accelDir = emitter.AccelerationDirection;
-            if (accelDir.LengthSquared() < 0.0001f)
+            Vector2 accelDir = Vector2.Zero;
+            Vector2 carrierVelocity = Vector2.Zero;
+            if (World.Has<Velocity>(entity))
             {
+                var velocity = World.Get<Velocity>(entity);
+                accelDir = velocity.Acceleration;
+                carrierVelocity = velocity.Velocity;
+            }
+
+            bool accelerating = accelDir.LengthSquared() >= 0.0001f;
+
+            if (emitter.EmitCondition == EmitCondition.WhenAccelerating && !accelerating)
+            {
+                return;
+            }
+
+            if (!accelerating)
+            {
+                // Not currently accelerating - default to emitting opposite current facing direction.
                 float rad = transform.Rotation * MathF.PI / 180f;
                 accelDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
             }
@@ -100,7 +114,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
                 float ejectSpeed = NextFloat(emitter.EjectSpeedMin, emitter.EjectSpeedMax);
                 float sideDrift = NextFloat(-emitter.LateralDrift, emitter.LateralDrift);
-                var velocity = emitter.CarrierVelocity + ejectDir * ejectSpeed + perp * sideDrift;
+                var velocity = carrierVelocity + ejectDir * ejectSpeed + perp * sideDrift;
 
                 float life = NextFloat(emitter.ParticleLifeMin, emitter.ParticleLifeMax);
                 float size = NextFloat(emitter.ParticleSizeMin, emitter.ParticleSizeMax);

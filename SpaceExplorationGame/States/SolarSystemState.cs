@@ -517,11 +517,6 @@ public class SolarSystemState : GameState
 
     public override void Update(Game game, float dt)
     {
-        // Update emitter state and particles even while overlays are open (for smooth fade-out).
-        UpdateThrusterEmitters(game);
-        _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds(), 0.2f);
-        _particleSystem.Update(in dt);
-
         // In-game menu active — no simulation
         if (_inGameMenuOverlay.IsOpen)
         {
@@ -558,6 +553,10 @@ public class SolarSystemState : GameState
             _cameraFollowSystem.Update(in dt);
             return;
         }
+
+        // Update emitter state and particles even while overlays are open (for smooth fade-out).
+        _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds(), 0.2f);
+        _particleSystem.Update(in dt);
 
         // Clear anchor when returning to normal gameplay
         ClearAnchor(game);
@@ -1237,61 +1236,16 @@ public class SolarSystemState : GameState
         return null;
     }
 
-    private void UpdateThrusterEmitters(Game game)
-    {
-        bool overlaysOpen = _inGameMenuOverlay.IsOpen || _planetLandingOverlay.IsOpen ||
-                            _galaxyMapOverlay.IsOpen || _stationOverlay.IsOpen;
-
-        if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<ParticleEmitter>(_playerShip)
-            && game.EcsWorld.Has<Transform>(_playerShip) && game.EcsWorld.Has<Velocity>(_playerShip))
-        {
-            ref var emitter = ref game.EcsWorld.Get<ParticleEmitter>(_playerShip);
-            var transform = game.EcsWorld.Get<Transform>(_playerShip);
-            var velocity = game.EcsWorld.Get<Velocity>(_playerShip).Velocity;
-
-            float rad = transform.Rotation * MathF.PI / 180f;
-            var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-
-            emitter.AccelerationDirection = forward;
-            emitter.CarrierVelocity = velocity;
-            emitter.SternOffset = game.Player.CurrentShipType.SpriteSize * 0.56f;
-            emitter.IsEnabled = !overlaysOpen && !_playerDead &&
-                                (game.Input.IsKeyDown(SDL.Scancode.W) || game.Input.IsKeyDown(SDL.Scancode.Up));
-        }
-
-        foreach (var enemy in _enemyEntities)
-        {
-            if (!game.EcsWorld.IsAlive(enemy) || !game.EcsWorld.Has<ParticleEmitter>(enemy)) continue;
-            if (!game.EcsWorld.Has<Transform>(enemy) || !game.EcsWorld.Has<Velocity>(enemy)) continue;
-            if (game.EcsWorld.Has<Health>(enemy) && game.EcsWorld.Get<Health>(enemy).IsDead) continue;
-
-            ref var emitter = ref game.EcsWorld.Get<ParticleEmitter>(enemy);
-            var transform = game.EcsWorld.Get<Transform>(enemy);
-            var velocity = game.EcsWorld.Get<Velocity>(enemy).Velocity;
-
-            float rad = transform.Rotation * MathF.PI / 180f;
-            var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-            float speed = velocity.Length();
-            float forwardMotion = speed > 0.001f ? Vector2.Dot(velocity / speed, forward) : 0f;
-
-            emitter.AccelerationDirection = forward;
-            emitter.CarrierVelocity = velocity;
-            emitter.IsEnabled = !overlaysOpen && speed > 20f && forwardMotion > 0.25f;
-        }
-    }
-
     private void ConfigureThrusterEmitter(Game game, Entity entity, int shipSize, Color3 color)
     {
         if (!game.EcsWorld.IsAlive(entity)) return;
 
         var emitter = new ParticleEmitter
         {
-            IsEnabled = false,
+            EmitCondition = EmitCondition.WhenAccelerating,
             SpawnInterval = ThrusterSpawnIntervalSeconds,
             SpawnAccumulator = 0f,
             SternOffset = shipSize * 0.56f,
-            AccelerationDirection = Vector2.UnitX,
-            CarrierVelocity = Vector2.Zero,
             EjectSpeedMin = 115f,
             EjectSpeedMax = 185f,
             LateralDrift = 25f,

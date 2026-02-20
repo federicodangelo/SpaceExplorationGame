@@ -307,13 +307,11 @@ public struct SurfaceAI
 [Component]
 public struct ParticleEmitter
 {
-    public bool IsEnabled;
+    public EmitCondition EmitCondition;
     public float SpawnInterval;
     public float SpawnAccumulator;
 
     public float SternOffset;
-    public Vector2 AccelerationDirection;
-    public Vector2 CarrierVelocity;
 
     public float EjectSpeedMin;
     public float EjectSpeedMax;
@@ -325,6 +323,13 @@ public struct ParticleEmitter
     public float ParticleSizeMax;
     public float ParticleDrag;
     public Color3 ParticleColor;
+}
+
+public enum EmitCondition
+{
+    Always,
+    Never,
+    WhenAccelerating
 }
 
 /// <summary>Single particle state (position comes from Transform).</summary>
