@@ -24,7 +24,6 @@ public enum InputAction
     MapNextView,
     Interact,
     ToggleMap,
-    ToggleNavTarget,
 }
 
 public enum InputActionAxis
@@ -110,11 +109,6 @@ public class InputManager
         [InputAction.MapNextView] = [InputBinding.Gamepad(SDL.GamepadButton.RightShoulder)],
         [InputAction.Interact] = [InputBinding.Key(SDL.Scancode.E), InputBinding.Gamepad(SDL.GamepadButton.South)],
         [InputAction.ToggleMap] = [InputBinding.Key(SDL.Scancode.M), InputBinding.Gamepad(SDL.GamepadButton.Back)],
-        [InputAction.ToggleNavTarget] = [
-            InputBinding.Key(SDL.Scancode.T),
-            InputBinding.Key(SDL.Scancode.Return),
-            InputBinding.Gamepad(SDL.GamepadButton.North)
-        ],
     };
 
     public float MouseX { get; private set; }

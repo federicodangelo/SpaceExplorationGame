@@ -33,8 +33,6 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     // Selection
     private SurfaceMapSelection _hoveredObject = new(SurfaceMapObjectType.None);
     private SurfaceMapSelection _selectedObject = new(SurfaceMapObjectType.None);
-    private SurfaceMapSelection _lastClickObject = new(SurfaceMapObjectType.None);
-    private float _lastClickTime;
 
     public PlanetSurfaceMapPanel(TextureManager textures) : base(textures)
     {
@@ -62,8 +60,6 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
         _hoveredObject = new(SurfaceMapObjectType.None);
         _selectedObject = new(SurfaceMapObjectType.None);
-        _lastClickObject = new(SurfaceMapObjectType.None);
-        _lastClickTime = 0f;
 
         // Create terrain overview texture
         CreateTerrainTexture(game);
@@ -117,7 +113,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             }
         }
 
-        // Click to select / double-click to set target and close
+        // Click to select / click same selection again to set target and close
         if (input.IsMouseReleased(1) && !IsPanning)
         {
             // Determine what was clicked: settlement/ship take priority, otherwise any terrain location
@@ -144,35 +140,20 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
             if (clickTarget.Type != SurfaceMapObjectType.None)
             {
-                float now = (float)game.GlobalTime;
-                if (clickTarget == _lastClickObject && (now - _lastClickTime) < DoubleClickTime)
+                if (clickTarget == _selectedObject)
                 {
-                    // Double-click: set as target and close
                     _selectedObject = clickTarget;
-                    if (!IsCurrentNavTarget(game.Player, _selectedObject))
-                        ToggleNavTarget(game.Player);
+                    SetNavTarget(game.Player);
                     OnRequestClose?.Invoke(game);
                     return true;
                 }
+
                 _selectedObject = clickTarget;
-                _lastClickObject = clickTarget;
-                _lastClickTime = now;
-            }
-            else
-            {
-                _lastClickObject = new(SurfaceMapObjectType.None);
             }
             IsPanning = false;
         }
         else if (input.IsMouseReleased(1))
             IsPanning = false;
-
-        // T toggles nav target
-        if (input.IsActionPressed(InputAction.ToggleNavTarget)
-            && _selectedObject.Type != SurfaceMapObjectType.None)
-        {
-            ToggleNavTarget(game.Player);
-        }
 
         return true;
     }
@@ -196,15 +177,9 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         };
     }
 
-    private void ToggleNavTarget(PlayerData player)
+    private void SetNavTarget(PlayerData player)
     {
         if (_selectedObject.Type == SurfaceMapObjectType.None) return;
-
-        if (IsCurrentNavTarget(player, _selectedObject))
-        {
-            player.ClearNavigationTarget();
-            return;
-        }
 
         float tileSize = GameConfig.TileSize;
 
@@ -435,7 +410,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
         renderer.DrawTextScreen(px, ctrlY + 40,
-            $"{game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+            $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
             new Color3(255, 200, 100), 1.3f);
         renderer.DrawTextScreen(px, ctrlY + 56,
             $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -495,10 +470,11 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
     private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
     {
+        string confirmText = game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
         string btnText = isTarget
-            ? $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] CLEAR TARGET"
-            : $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] SET AS TARGET";
-        var btnColor = isTarget ? new Color3(255, 100, 100) : new Color3(255, 200, 100);
+            ? $"[{confirmText}] SAME SELECTION: TARGET LOCKED"
+            : $"[{confirmText}] SAME SELECTION: SET AS TARGET + CLOSE";
+        var btnColor = new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
         float btnW = renderer.MeasureText(btnText, 1.5f);
         renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f);

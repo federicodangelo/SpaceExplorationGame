@@ -31,8 +31,6 @@ public class SolarSystemMapPanel : MapPanelBase
     private List<SpaceStationData> _stations = [];
     private SolarMapSelection _hoveredObject = new(SolarMapObjectType.None);
     private SolarMapSelection _selectedObject = new(SolarMapObjectType.None);
-    private SolarMapSelection _lastClickObject = new(SolarMapObjectType.None);
-    private float _lastSolarClickTime;
 
     // ─────────────────────────────────────────────────────────────
     //  LIFECYCLE
@@ -146,28 +144,18 @@ public class SolarSystemMapPanel : MapPanelBase
             }
         }
 
-        // Click to select / double-click to set target and close
+        // Click to select / click same object again to set target and close
         if (input.IsMouseReleased(1) && !IsPanning)
         {
             if (_hoveredObject.Type != SolarMapObjectType.None)
             {
-                float now = (float)game.GlobalTime;
-                if (_hoveredObject == _lastClickObject && (now - _lastSolarClickTime) < DoubleClickTime)
+                if (_hoveredObject == _selectedObject)
                 {
-                    // Double-click: set as target and close
-                    _selectedObject = _hoveredObject;
-                    if (!IsCurrentNavTarget(game.Player, _selectedObject))
-                        ToggleNavTarget(game.Player);
+                    SetNavTarget(game.Player);
                     OnRequestClose?.Invoke(game);
                     return true;
                 }
                 _selectedObject = _hoveredObject;
-                _lastClickObject = _hoveredObject;
-                _lastSolarClickTime = now;
-            }
-            else
-            {
-                _lastClickObject = new(SolarMapObjectType.None);
             }
             IsPanning = false;
         }
@@ -177,14 +165,14 @@ public class SolarSystemMapPanel : MapPanelBase
         if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm)
             && _hoveredObject.Type != SolarMapObjectType.None)
         {
-            _selectedObject = _hoveredObject;
-        }
+            if (_hoveredObject == _selectedObject)
+            {
+                SetNavTarget(game.Player);
+                OnRequestClose?.Invoke(game);
+                return true;
+            }
 
-        // T toggles nav target
-        if (input.IsActionPressed(InputAction.ToggleNavTarget)
-            && _selectedObject.Type != SolarMapObjectType.None)
-        {
-            ToggleNavTarget(game.Player);
+            _selectedObject = _hoveredObject;
         }
 
         return true;
@@ -241,15 +229,9 @@ public class SolarSystemMapPanel : MapPanelBase
         };
     }
 
-    private void ToggleNavTarget(PlayerData player)
+    private void SetNavTarget(PlayerData player)
     {
         if (_selectedObject.Type == SolarMapObjectType.None) return;
-
-        if (IsCurrentNavTarget(player, _selectedObject))
-        {
-            player.ClearNavigationTarget();
-            return;
-        }
 
         switch (_selectedObject.Type)
         {
@@ -507,7 +489,7 @@ public class SolarSystemMapPanel : MapPanelBase
             renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 40,
-                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT CENTER  {game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -520,7 +502,7 @@ public class SolarSystemMapPanel : MapPanelBase
             renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 40,
-                $"{game.Input.GetActionHelpText(InputAction.ToggleNavTarget)}: SET TARGET",
+                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -629,10 +611,13 @@ public class SolarSystemMapPanel : MapPanelBase
 
     private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
     {
+        string confirmText = game.Input.ActiveInputMethod == InputMethod.Gamepad
+            ? game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()
+            : game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
         string btnText = isTarget
-            ? $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] CLEAR TARGET"
-            : $"[{game.Input.GetActionHelpText(InputAction.ToggleNavTarget).ToUpper()}] SET AS TARGET";
-        var btnColor = isTarget ? new Color3(255, 100, 100) : new Color3(255, 200, 100);
+            ? $"[{confirmText}] SAME OBJECT: TARGET LOCKED"
+            : $"[{confirmText}] SAME OBJECT: SET AS TARGET + CLOSE";
+        var btnColor = isTarget ? new Color3(255, 200, 100) : new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
         float btnW = renderer.MeasureText(btnText, 1.5f);
         renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f);
