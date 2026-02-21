@@ -277,20 +277,33 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         // Controls
         float ctrlStartY = IpY + IpH - 110;
-        string panText =
-            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
         string nudgeText =
             $"{game.Input.GetActionHelpText(InputAction.MenuUp)}/{game.Input.GetActionHelpText(InputAction.MenuDown)}/{game.Input.GetActionHelpText(InputAction.MenuLeft)}/{game.Input.GetActionHelpText(InputAction.MenuRight)}: NUDGE CURSOR";
         renderer.DrawRectScreen(px, ctrlStartY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        renderer.DrawTextScreen(px, ctrlStartY + 8,
-            $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT SITE",
-            new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlStartY + 72,
-            $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
-            new Color3(100, 255, 100), 1.3f);
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+        {
+            renderer.DrawTextScreen(px, ctrlStartY + 8, "MOUSE CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 24, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 40, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 72,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
+                new Color3(100, 255, 100), 1.3f);
+        }
+        else
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+            renderer.DrawTextScreen(px, ctrlStartY + 8,
+                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT SITE",
+                new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 72,
+                $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
+                new Color3(100, 255, 100), 1.3f);
+        }
         renderer.DrawTextScreen(px, ctrlStartY + 88,
             $"{game.Input.GetActionHelpText(InputAction.MenuBack)}: CANCEL",
             new Color3(255, 150, 150), 1.3f);

@@ -484,8 +484,7 @@ public class SolarSystemMapPanel : MapPanelBase
         renderer.DrawRectScreen(px, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
-            string panText =
-                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}: PAN";
+            string panText = "LEFT STICK: PAN";
             renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 40,

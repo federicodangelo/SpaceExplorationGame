@@ -5,7 +5,7 @@ using SpaceExplorationGame.UI.Overlays.Menu.Base;
 namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 /// <summary>
-/// Overlay that displays context-appropriate keyboard controls.
+/// Overlay that displays context-appropriate controls for the active input method.
 /// Any key press or click outside dismisses it.
 /// </summary>
 public class ControlsOverlay : PanelOverlayBase
@@ -61,6 +61,8 @@ public class ControlsOverlay : PanelOverlayBase
 
     private static string[] GetControlsForState(GameStateType state, InputManager input)
     {
+        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+
         string moveText = string.Join('/',
             input.GetActionHelpTextFull(InputAction.MoveUp),
             input.GetActionHelpTextFull(InputAction.MoveDown),
@@ -74,32 +76,60 @@ public class ControlsOverlay : PanelOverlayBase
         return state switch
         {
         GameStateType.SolarSystem =>
-        [
-            "MOUSE .............. HEADING",
-            $"{input.GetActionHelpTextFull(InputAction.MoveUp)} ............. THRUST",
-            $"{input.GetActionHelpTextFull(InputAction.MoveDown)} ........... BRAKE",
-            $"{input.GetActionHelpTextFull(InputAction.MoveLeft)}/{input.GetActionHelpTextFull(InputAction.MoveRight)} .............. STRAFE",
-            "SCROLL ............. ZOOM",
-            $"{interactText} .................. INTERACT",
-            $"{mapText} .................. GALAXY MAP",
-            $"{fireText} .............. SHOOT",
-            $"{backText} ................ MENU"
-        ],
+            usingGamepad
+                ?
+                [
+                    "RIGHT STICK ......... HEADING",
+                    "LEFT STICK .......... MOVE",
+                    $"{interactText} .................. INTERACT",
+                    $"{mapText} .................. GALAXY MAP",
+                    $"{fireText} .............. SHOOT",
+                    $"{backText} ................ MENU"
+                ]
+                :
+                [
+                    "MOUSE .............. HEADING",
+                    $"{input.GetActionHelpTextFull(InputAction.MoveUp)} ............. THRUST",
+                    $"{input.GetActionHelpTextFull(InputAction.MoveDown)} ........... BRAKE",
+                    $"{input.GetActionHelpTextFull(InputAction.MoveLeft)}/{input.GetActionHelpTextFull(InputAction.MoveRight)} .............. STRAFE",
+                    "SCROLL ............. ZOOM",
+                    $"{interactText} .................. INTERACT",
+                    $"{mapText} .................. GALAXY MAP",
+                    $"{fireText} .............. SHOOT",
+                    $"{backText} ................ MENU"
+                ],
         GameStateType.PlanetSurface =>
-        [
-            $"{moveText} ...... MOVE",
-            "SCROLL ............. ZOOM",
-            $"{interactText} .................. INTERACT",
-            $"{fireText} ........ SHOOT",
-            $"{backText} ................ MENU"
-        ],
+            usingGamepad
+                ?
+                [
+                    "LEFT STICK .......... MOVE",
+                    $"{interactText} .................. INTERACT",
+                    $"{fireText} ........ SHOOT",
+                    $"{backText} ................ MENU"
+                ]
+                :
+                [
+                    $"{moveText} ...... MOVE",
+                    "SCROLL ............. ZOOM",
+                    $"{interactText} .................. INTERACT",
+                    $"{fireText} ........ SHOOT",
+                    $"{backText} ................ MENU"
+                ],
         GameStateType.Interior =>
-        [
-            $"{moveText} ...... MOVE",
-            "SCROLL ............. ZOOM",
-            $"{interactText} .................. INTERACT",
-            $"{backText} ................ MENU"
-        ],
+            usingGamepad
+                ?
+                [
+                    "LEFT STICK .......... MOVE",
+                    $"{interactText} .................. INTERACT",
+                    $"{backText} ................ MENU"
+                ]
+                :
+                [
+                    $"{moveText} ...... MOVE",
+                    "SCROLL ............. ZOOM",
+                    $"{interactText} .................. INTERACT",
+                    $"{backText} ................ MENU"
+                ],
         _ => [$"{backText} ................ MENU"]
         };
     }

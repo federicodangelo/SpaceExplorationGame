@@ -268,7 +268,6 @@ public class InputManager
                 break;
 
             case SDL.EventType.GamepadAxisMotion:
-                ActiveInputMethod = InputMethod.Gamepad;
                 TrackGamepadSource(e.GAxis.Which);
                 if (IsFromActiveGamepad(e.GAxis.Which))
                 {
@@ -287,6 +286,11 @@ public class InputManager
                         case SDL.GamepadAxis.RightY:
                             _rightStickY = normalized;
                             break;
+                    }
+
+                    if (Math.Abs(normalized) >= GamepadDeadZone)
+                    {
+                        ActiveInputMethod = InputMethod.Gamepad;
                     }
 
                     UpdateGamepadAxisState((SDL.GamepadAxis)e.GAxis.Axis, normalized);

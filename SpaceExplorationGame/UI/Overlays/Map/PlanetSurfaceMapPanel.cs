@@ -405,16 +405,30 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         // Controls
         float ctrlY = IpY + IpH - 80;
         renderer.DrawRectScreen(px, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
-        string panText =
-            $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
-        renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 40,
-            $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
-            new Color3(255, 200, 100), 1.3f);
-        renderer.DrawTextScreen(px, ctrlY + 56,
-            $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-            new Color3(255, 150, 150), 1.3f);
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+        {
+            renderer.DrawTextScreen(px, ctrlY + 8, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 40,
+                "MOUSE CLICK: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
+                new Color3(255, 200, 100), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
+        else
+        {
+            string panText =
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 40,
+                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
+                new Color3(255, 200, 100), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                new Color3(255, 150, 150), 1.3f);
+        }
     }
 
     private void RenderSelectedObjectInfo(Game game, SpriteRenderer renderer, float px, float py)

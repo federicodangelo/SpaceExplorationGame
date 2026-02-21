@@ -96,9 +96,11 @@ public class PlanetLandingOverlay : MapOverlayBase
         {
             bool canLand = _panel.CanLandAtCursor;
             string confirmText = game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper();
-            string clickText = game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
+            bool usingGamepad = game.Input.ActiveInputMethod == InputMethod.Gamepad;
             string prompt = canLand
-                ? $"[DBLCLICK/{confirmText}/{clickText}] CONFIRM LANDING"
+                ? usingGamepad
+                    ? $"[{confirmText}] CONFIRM LANDING"
+                    : $"[DBLCLICK/{confirmText}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper()}] CONFIRM LANDING"
                 : "CANNOT LAND ON " + _panel.CursorTerrainName;
             byte pr = canLand ? (byte)100 : (byte)255;
             byte pg = canLand ? (byte)255 : (byte)80;
