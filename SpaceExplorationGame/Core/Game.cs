@@ -53,6 +53,8 @@ public class Game : IDisposable
     // Global simulation time (never resets, used for deterministic orbit positions)
     public double GlobalTime { get; private set; }
 
+    public float DeltaTime {get; private set; }
+
     public bool IsRunning { get; private set; }
 
     public void Initialize(ulong? galaxySeed = null)
@@ -163,6 +165,8 @@ public class Game : IDisposable
             if (elapsed > 0.25) elapsed = 0.25;
             accumulator += elapsed;
 
+            DeltaTime = (float)elapsed;
+
             // Process events
             Input.BeginFrame();
             while (SDL.PollEvent(out var e))
@@ -188,6 +192,7 @@ public class Game : IDisposable
             while (accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
             {
                 GlobalTime += GameConfig.FixedTimeStep;
+                DeltaTime = GameConfig.FixedTimeStep;
                 _currentState?.Update(this, GameConfig.FixedTimeStep);
                 accumulator -= GameConfig.FixedTimeStep;
                 steps++;
