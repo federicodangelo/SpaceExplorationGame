@@ -91,7 +91,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     //  INPUT
     // -----------------------------------------------------------------
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
@@ -155,8 +155,10 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     }
 
     /// <summary>WASD for camera movement, arrow keys reserved for cursor nudge.</summary>
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
+        float dt = game.DeltaTime;
+        
         _selectionPulse += dt * 3f;
 
         var input = game.Input;

@@ -65,7 +65,7 @@ public class GalaxyMapPanel : MapPanelBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
@@ -73,7 +73,7 @@ public class GalaxyMapPanel : MapPanelBase
         Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
 
         HandleZoomAndPan(input, currentMouse);
-        HandleGamepadTriggerZoom(input, dt);
+        HandleGamepadTriggerZoom(input, game.DeltaTime);
 
         // Hover
         _hoveredSystemIndex = -1;

@@ -458,20 +458,20 @@ public class SolarSystemState : GameState
     {
     }
 
-    public override void UpdateInput(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         var input = game.Input;
 
         // Overlays take priority over game input
-        if (_planetLandingOverlay.UpdateInput(game, dt))
+        if (_planetLandingOverlay.UpdateInput(game))
             return;
-        if (_galaxyMapOverlay.UpdateInput(game, dt))
+        if (_galaxyMapOverlay.UpdateInput(game))
             return;
-        if (_stationOverlay.UpdateInput(game, dt))
+        if (_stationOverlay.UpdateInput(game))
             return;
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game, dt))
+        if (_inGameMenuOverlay.UpdateInput(game))
             return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {
@@ -515,8 +515,10 @@ public class SolarSystemState : GameState
         }
     }
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
+        float dt = game.DeltaTime;
+
         // In-game menu active — no simulation
         if (_inGameMenuOverlay.IsOpen)
         {
@@ -528,7 +530,7 @@ public class SolarSystemState : GameState
         // Planet landing overlay takes priority
         if (_planetLandingOverlay.IsOpen)
         {
-            _planetLandingOverlay.Update(game, dt);
+            _planetLandingOverlay.Update(game);
             _orbitSystem.Update(in dt);
             ApplyAnchor(game);
             return;
@@ -537,7 +539,7 @@ public class SolarSystemState : GameState
         // Galaxy map overlay takes priority
         if (_galaxyMapOverlay.IsOpen)
         {
-            _galaxyMapOverlay.Update(game, dt);
+            _galaxyMapOverlay.Update(game);
             _orbitSystem.Update(in dt);
             return;
         }
@@ -545,7 +547,7 @@ public class SolarSystemState : GameState
         // Station overlay takes priority over all solar system input
         if (_stationOverlay.IsOpen)
         {
-            _stationOverlay.Update(game, dt);
+            _stationOverlay.Update(game);
 
             // Still update orbits so the background stays alive
             _orbitSystem.Update(in dt);

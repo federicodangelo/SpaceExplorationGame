@@ -94,7 +94,7 @@ public class GalaxyMapOverlay : MapOverlayBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
         if (_justOpened)
@@ -153,7 +153,7 @@ public class GalaxyMapOverlay : MapOverlayBase
             }
         }
 
-        return _activePanel.UpdateInput(game, dt);
+        return _activePanel.UpdateInput(game);
     }
 
     // ─────────────────────────────────────────────────────────────

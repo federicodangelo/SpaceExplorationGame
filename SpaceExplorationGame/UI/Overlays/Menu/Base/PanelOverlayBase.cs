@@ -93,12 +93,12 @@ public abstract class PanelOverlayBase : OverlayBase
 
     // ── Input handling ──
 
-    public sealed override bool UpdateInput(Game game, float dt)
+    public sealed override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
         // Sub-overlay input takes priority
-        if (ProcessSubOverlayInput(game, dt)) return true;
+        if (ProcessSubOverlayInput(game)) return true;
 
         var input = game.Input;
 
@@ -141,33 +141,33 @@ public abstract class PanelOverlayBase : OverlayBase
     protected virtual void OnConfirmAction(Game game) { }
 
     /// <summary>Override to process sub-overlay input before own input. Return true if consumed.</summary>
-    protected virtual bool ProcessSubOverlayInput(Game game, float dt) => false;
+    protected virtual bool ProcessSubOverlayInput(Game game) => false;
 
     // ── Update ──
 
-    public sealed override void Update(Game game, float dt)
+    public sealed override void Update(Game game)
     {
         if (!IsOpen) return;
 
         // Status message timer
         if (_statusTimer > 0)
         {
-            _statusTimer -= dt;
+            _statusTimer -= game.DeltaTime;
             if (_statusTimer <= 0) _statusMessage = null;
         }
 
         // Sub-overlay updates
-        UpdateSubOverlays(game, dt);
+        UpdateSubOverlays(game);
 
         // Additional update logic
-        OnUpdate(game, dt);
+        OnUpdate(game);
     }
 
     /// <summary>Override to update sub-overlays.</summary>
-    protected virtual void UpdateSubOverlays(Game game, float dt) { }
+    protected virtual void UpdateSubOverlays(Game game) { }
 
     /// <summary>Override for additional update logic beyond status timer.</summary>
-    protected virtual void OnUpdate(Game game, float dt) { }
+    protected virtual void OnUpdate(Game game) { }
 
     // ── Rendering ──
 

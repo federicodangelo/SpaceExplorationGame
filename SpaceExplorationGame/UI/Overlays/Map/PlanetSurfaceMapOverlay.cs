@@ -52,7 +52,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
@@ -65,7 +65,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
             return true;
         }
 
-        return _panel.UpdateInput(game, dt);
+        return _panel.UpdateInput(game);
     }
 
     // ─────────────────────────────────────────────────────────────

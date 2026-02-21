@@ -161,7 +161,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
 
     // ── Update ──
 
-    protected override void OnUpdate(Game game, float dt)
+    protected override void OnUpdate(Game game)
     {
         UpdateMenuOptionStates(game);
     }

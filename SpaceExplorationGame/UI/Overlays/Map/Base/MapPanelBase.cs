@@ -46,7 +46,7 @@ public abstract class MapPanelBase
     public abstract void SetupCamera(Game game);
 
     /// <summary>Handle panel-specific input (zoom, pan, hover, click). Returns true if input was consumed.</summary>
-    public abstract bool UpdateInput(Game game, float dt);
+    public abstract bool UpdateInput(Game game);
 
     /// <summary>Render the map content inside the clipped map area.</summary>
     public abstract void RenderContent(Game game, SpriteRenderer renderer);
@@ -55,12 +55,12 @@ public abstract class MapPanelBase
     public abstract void RenderInfoPanel(Game game, SpriteRenderer renderer);
 
     /// <summary>WASD / arrow key camera movement (shared for all panels).</summary>
-    public virtual void Update(Game game, float dt)
+    public virtual void Update(Game game)
     {
         var input = game.Input;
         float camSpeed = 500f / Camera.Zoom;
         Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
-        Camera.Position += moveDir * camSpeed * dt;
+        Camera.Position += moveDir * camSpeed * game.DeltaTime;
     }
 
     // ─────────────────────────────────────────────────────────────

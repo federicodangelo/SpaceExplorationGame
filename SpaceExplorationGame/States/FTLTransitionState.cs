@@ -99,13 +99,14 @@ public class FTLTransitionState : GameState
         }
     }
 
-    public override void UpdateInput(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         // No input during FTL animation
     }
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
+        float dt = game.DeltaTime;
         _elapsed += dt;
 
         // Play jump SFX at the flash moment

@@ -185,7 +185,7 @@ public class Game : IDisposable
             ApplyPendingState();
 
             // Process input once per frame
-            _currentState?.UpdateInput(this, (float)elapsed);
+            _currentState?.UpdateInput(this);
 
             // Fixed timestep updates (may run multiple times per frame)
             int steps = 0;
@@ -193,7 +193,7 @@ public class Game : IDisposable
             {
                 GlobalTime += GameConfig.FixedTimeStep;
                 DeltaTime = GameConfig.FixedTimeStep;
-                _currentState?.Update(this, GameConfig.FixedTimeStep);
+                _currentState?.Update(this);
                 accumulator -= GameConfig.FixedTimeStep;
                 steps++;
             }

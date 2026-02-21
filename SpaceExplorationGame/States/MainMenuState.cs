@@ -86,9 +86,9 @@ public class MainMenuState : GameState
     public override void Exit(Game game) { }
     public override void HandleEvent(Game game, SDL.Event e) { }
 
-    public override void UpdateInput(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
-        _menuOverlay.UpdateInput(game, dt);
+        _menuOverlay.UpdateInput(game);
 
         // Handle seed changes
         if (_menuOverlay.NewSeed.HasValue)
@@ -136,10 +136,10 @@ public class MainMenuState : GameState
         }
     }
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
-        _animTimer += dt;
-        _menuOverlay.Update(game, dt);
+        _animTimer += game.DeltaTime;
+        _menuOverlay.Update(game);
         _menuOverlay.CurrentSeed = game.Seeds.GalaxySeed;
 
         // Refresh preview when filters or seed change

@@ -74,10 +74,10 @@ public abstract class PlanetMapPanelBase : MapPanelBase
 
     /// <summary>Camera movement + clamping. Override in subclasses that need
     /// different key bindings (e.g. WASD-only with arrows for cursor).</summary>
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
-        _selectionPulse += dt * 3f;
-        base.Update(game, dt);
+        _selectionPulse += game.DeltaTime * 3f;
+        base.Update(game);
         ClampCameraPosition();
     }
 

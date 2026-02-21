@@ -51,7 +51,7 @@ public class PlanetLandingOverlay : MapOverlayBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
 
@@ -63,7 +63,7 @@ public class PlanetLandingOverlay : MapOverlayBase
             return true;
         }
 
-        return _panel.UpdateInput(game, dt);
+        return _panel.UpdateInput(game);
     }
 
     // ─────────────────────────────────────────────────────────────

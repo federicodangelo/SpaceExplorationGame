@@ -15,12 +15,12 @@ public abstract class OverlayBase
     /// Handle input once per frame. Returns true if the overlay consumed input
     /// (blocks underlying state/overlay controls).
     /// </summary>
-    public virtual bool UpdateInput(Game game, float dt) => IsOpen;
+    public virtual bool UpdateInput(Game game) => IsOpen;
 
     /// <summary>
     /// Fixed timestep update for simulation (can run multiple times per frame).
     /// </summary>
-    public virtual void Update(Game game, float dt) { }
+    public virtual void Update(Game game) { }
 
     /// <summary>Render the overlay.</summary>
     public abstract void Render(Game game);

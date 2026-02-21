@@ -86,10 +86,10 @@ public abstract class MapOverlayBase : OverlayBase
     //  UPDATE
     // ─────────────────────────────────────────────────────────────
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
         if (!IsOpen) return;
-        GetActivePanel().Update(game, dt);
+        GetActivePanel().Update(game);
     }
 
     // ─────────────────────────────────────────────────────────────

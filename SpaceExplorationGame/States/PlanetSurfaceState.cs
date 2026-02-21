@@ -315,13 +315,13 @@ public class PlanetSurfaceState : GameState
     {
     }
 
-    public override void UpdateInput(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         // Block all input during animations
         if (_isTakingOff || _isLanding) return;
 
         // Starship menu overlay (highest priority)
-        if (_starshipMenuOverlay.UpdateInput(game, dt))
+        if (_starshipMenuOverlay.UpdateInput(game))
         {
             // Check if the player made a choice
             if (_starshipMenuOverlay.LastChoice.HasValue)
@@ -332,11 +332,11 @@ public class PlanetSurfaceState : GameState
         }
 
         // Surface map overlay
-        if (_surfaceMapOverlay.UpdateInput(game, dt))
+        if (_surfaceMapOverlay.UpdateInput(game))
             return;
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game, dt))
+        if (_inGameMenuOverlay.UpdateInput(game))
             return;
 
         var input = game.Input;
@@ -504,8 +504,10 @@ public class PlanetSurfaceState : GameState
             _inVehicle);
     }
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
+        float dt = game.DeltaTime;
+
         // Landing animation
         if (_isLanding)
         {
@@ -541,7 +543,7 @@ public class PlanetSurfaceState : GameState
         if (_starshipMenuOverlay.IsOpen || _surfaceMapOverlay.IsOpen || _inGameMenuOverlay.IsOpen)
         {
             if (_surfaceMapOverlay.IsOpen)
-                _surfaceMapOverlay.Update(game, dt);
+                _surfaceMapOverlay.Update(game);
             return;
         }
 

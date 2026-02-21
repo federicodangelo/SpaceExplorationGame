@@ -146,28 +146,28 @@ public class InteriorState : GameState
     {
     }
 
-    public override void UpdateInput(Game game, float dt)
+    public override void UpdateInput(Game game)
     {
         var input = game.Input;
 
         // Handle overlay interactions first
-        if (_repairOverlay.UpdateInput(game, dt))
+        if (_repairOverlay.UpdateInput(game))
             return;
-        if (_healthStationOverlay.UpdateInput(game, dt))
+        if (_healthStationOverlay.UpdateInput(game))
             return;
-        if (_missionOverlay.UpdateInput(game, dt))
+        if (_missionOverlay.UpdateInput(game))
             return;
 
         // Customization/dealer overlays take priority over game input
-        if (_shipCustomization.UpdateInput(game, dt))
+        if (_shipCustomization.UpdateInput(game))
             return;
-        if (_avatarCustomization.UpdateInput(game, dt))
+        if (_avatarCustomization.UpdateInput(game))
             return;
-        if (_vehicleCustomization.UpdateInput(game, dt))
+        if (_vehicleCustomization.UpdateInput(game))
             return;
-        if (_shipDealer.UpdateInput(game, dt))
+        if (_shipDealer.UpdateInput(game))
             return;
-        if (_sellCargo.UpdateInput(game, dt))
+        if (_sellCargo.UpdateInput(game))
             return;
 
         // Handle dialogue
@@ -193,7 +193,7 @@ public class InteriorState : GameState
         }
 
         // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game, dt))
+        if (_inGameMenuOverlay.UpdateInput(game))
             return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {
@@ -225,20 +225,22 @@ public class InteriorState : GameState
         }
     }
 
-    public override void Update(Game game, float dt)
+    public override void Update(Game game)
     {
         // Handle customization/dealer overlays that need dt
-        _shipCustomization.Update(game, dt);
-        _avatarCustomization.Update(game, dt);
-        _vehicleCustomization.Update(game, dt);
-        _shipDealer.Update(game, dt);
-        _sellCargo.Update(game, dt);
+        _shipCustomization.Update(game);
+        _avatarCustomization.Update(game);
+        _vehicleCustomization.Update(game);
+        _shipDealer.Update(game);
+        _sellCargo.Update(game);
 
         // Skip simulation when overlays or dialogue are active
         if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
             return;
+
+        float dt = game.DeltaTime;
 
         // Player movement (via system with tile collision)
         _movementSystem.Update(in dt);

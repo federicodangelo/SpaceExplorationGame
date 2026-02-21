@@ -115,7 +115,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     // ── Update ──
 
-    protected override void OnUpdate(Game game, float dt)
+    protected override void OnUpdate(Game game)
     {
         UpdateMapOption();
         UpdateMissionsOption(game);

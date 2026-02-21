@@ -75,7 +75,7 @@ public class SolarSystemMapPanel : MapPanelBase
     //  INPUT
     // ─────────────────────────────────────────────────────────────
 
-    public override bool UpdateInput(Game game, float dt)
+    public override bool UpdateInput(Game game)
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
@@ -84,7 +84,7 @@ public class SolarSystemMapPanel : MapPanelBase
         float time = (float)game.GlobalTime;
 
         HandleZoomAndPan(input, currentMouse);
-        HandleGamepadTriggerZoom(input, dt);
+        HandleGamepadTriggerZoom(input, game.DeltaTime);
 
         // Hover detection
         _hoveredObject = new(SolarMapObjectType.None);

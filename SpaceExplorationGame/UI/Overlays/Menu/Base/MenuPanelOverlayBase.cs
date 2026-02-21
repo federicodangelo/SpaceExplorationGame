@@ -48,20 +48,20 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     /// <summary>All registered sub-overlays.</summary>
     protected IReadOnlyList<OverlayBase> SubOverlays => _subOverlays;
 
-    protected override bool ProcessSubOverlayInput(Game game, float dt)
+    protected override bool ProcessSubOverlayInput(Game game)
     {
         foreach (var sub in _subOverlays)
         {
-            if (sub.UpdateInput(game, dt))
+            if (sub.UpdateInput(game))
                 return true;
         }
         return false;
     }
 
-    protected override void UpdateSubOverlays(Game game, float dt)
+    protected override void UpdateSubOverlays(Game game)
     {
         foreach (var sub in _subOverlays)
-            sub.Update(game, dt);
+            sub.Update(game);
     }
 
     protected override void RenderSubOverlays(Game game)

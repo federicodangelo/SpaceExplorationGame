@@ -25,10 +25,10 @@ public abstract class GameState
     public abstract void Exit(Game game);
 
     /// <summary>Called once per frame for input handling.</summary>
-    public abstract void UpdateInput(Game game, float dt);
+    public abstract void UpdateInput(Game game);
 
     /// <summary>Fixed timestep update for simulation (can run multiple times per frame).</summary>
-    public abstract void Update(Game game, float dt);
+    public abstract void Update(Game game);
 
     /// <summary>Render the current frame.</summary>
     public abstract void Render(Game game);
