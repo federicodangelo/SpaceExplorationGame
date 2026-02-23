@@ -46,20 +46,9 @@ public class SpaceshipRenderer : IDisposable
 
     /// <summary>Renders the ship in flight with optional engine flame effect.</summary>
     public void RenderFlying(SpriteRenderer renderer, Camera camera,
-        Vector2 position, float rotation, string shipTypeId, int spriteSize,
-        bool isThrusting)
+        Vector2 position, float rotation, string shipTypeId, int spriteSize)
     {
         var shipTexture = GetSolarTexture(shipTypeId);
-
-        // Engine flame when thrusting (draw behind ship, offset backward)
-        if (isThrusting)
-        {
-            float shipRad = rotation * MathF.PI / 180f;
-            float flameOffset = spriteSize * 0.56f;
-            var flamePos = position - new Vector2(MathF.Cos(shipRad), MathF.Sin(shipRad)) * flameOffset;
-            int flameSize = (int)(spriteSize * 1.25f);
-            renderer.DrawTexture(camera, _flameTexture, flamePos, flameSize, flameSize, rotation);
-        }
 
         // Ship sprite (rotated to match heading)
         renderer.DrawTexture(camera, shipTexture, position, spriteSize, spriteSize, rotation);

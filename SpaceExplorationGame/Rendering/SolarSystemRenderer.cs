@@ -65,8 +65,6 @@ public static class SolarSystemRenderer
             ref var transform = ref ecsWorld.Get<Transform>(entity);
             var ai = ecsWorld.Get<EnemyAI>(entity);
             var velocity = ecsWorld.Get<Velocity>(entity);
-
-            bool isMoving = velocity.Velocity.LengthSquared() > 50f * 50f;
             int shipSize = ai.Config.Faction switch
             {
                 Faction.Pirate => 28,
@@ -76,7 +74,7 @@ public static class SolarSystemRenderer
             };
 
             enemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
-                ai.Config.Faction, shipSize, isMoving);
+                ai.Config.Faction, shipSize);
 
             // Health bar
             enemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,

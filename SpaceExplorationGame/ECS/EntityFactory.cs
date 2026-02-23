@@ -144,6 +144,7 @@ public static class EntityFactory
             new Transform(position),
             Sprite.ColoredRect(spriteSize, spriteSize, new Color3(100, 255, 100)),
             new Velocity(maxSpeed),
+            CreateShipThrusterEmitter(spriteSize, new Color3(130, 220, 255)),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
                 GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
@@ -230,6 +231,7 @@ public static class EntityFactory
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(255, 80, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(255, 130, 110)),
             new Health(stats.MaxHull, stats.MaxShield,
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
@@ -265,6 +267,7 @@ public static class EntityFactory
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(200, 160, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(255, 210, 120)),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
@@ -291,6 +294,7 @@ public static class EntityFactory
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(80, 140, 220)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(130, 200, 255)),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
@@ -318,6 +322,26 @@ public static class EntityFactory
             cooldowns[i] = initialCooldown;
 
         return cooldowns;
+    }
+
+    private static ParticleEmitter CreateShipThrusterEmitter(int shipSize, Color3 color)
+    {
+        return new ParticleEmitter
+        {
+            EmitCondition = EmitCondition.WhenAccelerating,
+            SpawnInterval = 0.03f,
+            SpawnAccumulator = 0f,
+            SternOffset = shipSize * 0.56f,
+            EjectSpeedMin = 115f,
+            EjectSpeedMax = 185f,
+            LateralDrift = 25f,
+            ParticleLifeMin = 0.65f,
+            ParticleLifeMax = 0.95f,
+            ParticleSizeMin = 1.4f,
+            ParticleSizeMax = 2.8f,
+            ParticleDrag = 1.4f,
+            ParticleColor = color
+        };
     }
 
     // ── Projectiles ─────────────────────────────────────────────────

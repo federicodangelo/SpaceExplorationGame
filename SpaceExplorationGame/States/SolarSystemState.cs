@@ -108,9 +108,6 @@ public class SolarSystemState : GameState
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
 
-    // Thruster emitter defaults
-    private const float ThrusterSpawnIntervalSeconds = 0.03f;
-
     // Combat music tracking
     private float _combatMusicTimer;
     private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
@@ -289,7 +286,6 @@ public class SolarSystemState : GameState
         var playerStats = game.Player.GetCombinedStats();
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, shipStartPos, shipSize,
             game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
-        ConfigureThrusterEmitter(game, _playerShip, shipSize, new Color3(130, 220, 255));
 
         // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
@@ -556,7 +552,7 @@ public class SolarSystemState : GameState
             return;
         }
 
-        // Update emitter state and particles even while overlays are open (for smooth fade-out).
+        // --- Thrust particles ---
         _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds(), 0.2f);
         _particleSystem.Update(in dt);
 
@@ -669,7 +665,6 @@ public class SolarSystemState : GameState
             var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
                 enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, enemyRng.NextFloat(0, 2f), weapons);
             _enemyEntities.Add(entity);
-            ConfigureThrusterEmitter(game, entity, stats.SpriteSize, new Color3(255, 130, 110));
         }
 
         // Spawn traders
@@ -685,7 +680,6 @@ public class SolarSystemState : GameState
             var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
                 enemyRng.NextFloat(0, 360), stats, weapons);
             _enemyEntities.Add(entity);
-            ConfigureThrusterEmitter(game, entity, stats.SpriteSize, new Color3(255, 210, 120));
         }
 
         // Spawn patrols
@@ -701,7 +695,6 @@ public class SolarSystemState : GameState
             var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
                 enemyRng.NextFloat(0, 360), stats, weapons);
             _enemyEntities.Add(entity);
-            ConfigureThrusterEmitter(game, entity, stats.SpriteSize, new Color3(130, 200, 255));
         }
     }
 
@@ -1013,7 +1006,6 @@ public class SolarSystemState : GameState
         var playerStats = game.Player.GetCombinedStats();
         _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, respawnPos, shipSize,
             game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
-        ConfigureThrusterEmitter(game, _playerShip, shipSize, new Color3(130, 220, 255));
 
         // Recreate movement system with new entity
         _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
@@ -1122,9 +1114,8 @@ public class SolarSystemState : GameState
         {
             ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
             int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
-            bool isThrusting = game.Input.IsActionDown(InputAction.MoveUp);
             game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
-                shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize, isThrusting);
+                shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize);
         }
 
         // Visual effects (damage popups, explosions)
@@ -1242,33 +1233,6 @@ public class SolarSystemState : GameState
                 break;
         }
         return null;
-    }
-
-    private void ConfigureThrusterEmitter(Game game, Entity entity, int shipSize, Color3 color)
-    {
-        if (!game.EcsWorld.IsAlive(entity)) return;
-
-        var emitter = new ParticleEmitter
-        {
-            EmitCondition = EmitCondition.WhenAccelerating,
-            SpawnInterval = ThrusterSpawnIntervalSeconds,
-            SpawnAccumulator = 0f,
-            SternOffset = shipSize * 0.56f,
-            EjectSpeedMin = 115f,
-            EjectSpeedMax = 185f,
-            LateralDrift = 25f,
-            ParticleLifeMin = 0.65f,
-            ParticleLifeMax = 0.95f,
-            ParticleSizeMin = 1.4f,
-            ParticleSizeMax = 2.8f,
-            ParticleDrag = 1.4f,
-            ParticleColor = color
-        };
-
-        if (game.EcsWorld.Has<ParticleEmitter>(entity))
-            game.EcsWorld.Set(entity, emitter);
-        else
-            game.EcsWorld.Add(entity, emitter);
     }
 
 }

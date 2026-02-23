@@ -28,7 +28,7 @@ public class EnemyShipRenderer : IDisposable
 
     /// <summary>Render an NPC ship at a world position with rotation.</summary>
     public void Render(SpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
-        Faction faction, int size, bool isMoving)
+        Faction faction, int size)
     {
         var texture = faction switch
         {
@@ -37,16 +37,6 @@ public class EnemyShipRenderer : IDisposable
             Faction.Patrol => _patrolTexture,
             _ => _pirateTexture
         };
-
-        // Engine flame when moving fast enough
-        if (isMoving)
-        {
-            float rad = rotation * MathF.PI / 180f;
-            float flameOffset = size * 0.5f;
-            var flamePos = position - new Vector2(MathF.Cos(rad), MathF.Sin(rad)) * flameOffset;
-            int flameSize = (int)(size * 0.8f);
-            renderer.DrawTexture(camera, _flameTexture, flamePos, flameSize, flameSize, rotation);
-        }
 
         renderer.DrawTexture(camera, texture, position, size, size, rotation);
     }
