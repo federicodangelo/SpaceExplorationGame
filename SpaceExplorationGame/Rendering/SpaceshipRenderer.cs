@@ -15,7 +15,6 @@ public class SpaceshipRenderer : IDisposable
     private readonly TextureManager _textures;
     private readonly Dictionary<string, nint> _solarTextures = [];
     private readonly Dictionary<string, nint> _landedTextures = [];
-    private nint _flameTexture;
 
     public SpaceshipRenderer(TextureManager textures)
     {
@@ -31,9 +30,6 @@ public class SpaceshipRenderer : IDisposable
         _landedTextures["fighter"] = GenerateLandedShipTexture(textures, 24, 200, 80, 80, 8f, 7f);
         _landedTextures["freighter"] = GenerateLandedShipTexture(textures, 32, 180, 160, 80, 14f, 10f);
         _landedTextures["explorer"] = GenerateLandedShipTexture(textures, 28, 80, 140, 220, 12f, 8f);
-
-        // Engine flame
-        _flameTexture = GenerateFlameTexture(textures);
     }
 
     /// <summary>Gets the in-flight texture for a ship type.</summary>
@@ -266,46 +262,6 @@ public class SpaceshipRenderer : IDisposable
         return textures.CreateTextureFromPixels(pixels, size, size);
     }
 
-    private static nint GenerateFlameTexture(TextureManager textures)
-    {
-        const int size = 32;
-        var pixels = new byte[size * size * 4];
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                int idx = (y * size + x) * 4;
-                int cx = x - 16;
-                int cy = y - 16;
-
-                if (cx >= -14 && cx <= 8)
-                {
-                    float flameLen = (8f - cx) / 22f;
-                    float maxY = 6f * (1f - flameLen * 0.6f);
-
-                    if (Math.Abs(cy) <= maxY)
-                    {
-                        float intensity = 1f - flameLen * 0.7f;
-                        float coreT = 1f - Math.Abs(cy) / maxY;
-
-                        byte fr = (byte)(255 * intensity);
-                        byte fg = (byte)(220 * intensity * coreT + 80 * intensity * (1 - coreT));
-                        byte fb = (byte)(120 * intensity * coreT * coreT);
-                        byte fa = (byte)(240 * intensity * (0.5f + 0.5f * coreT));
-
-                        pixels[idx + 0] = fr;
-                        pixels[idx + 1] = fg;
-                        pixels[idx + 2] = fb;
-                        pixels[idx + 3] = fa;
-                    }
-                }
-            }
-        }
-
-        return textures.CreateTextureFromPixels(pixels, size, size);
-    }
-
     private static nint GenerateLandedShipTexture(TextureManager textures, int size, byte hullR, byte hullG, byte hullB, float hullHalfX, float hullHalfY)
     {
         var pixels = new byte[size * size * 4];
@@ -354,8 +310,6 @@ public class SpaceshipRenderer : IDisposable
             _textures.DestroyTexture(tex);
         _landedTextures.Clear();
 
-        _textures.DestroyTexture(_flameTexture);
-        _flameTexture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }
