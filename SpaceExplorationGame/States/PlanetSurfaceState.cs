@@ -507,6 +507,8 @@ public class PlanetSurfaceState : GameState
     {
         float dt = game.DeltaTime;
 
+        _inGameMenuOverlay.Update(game);
+
         // Landing animation
         if (_isLanding)
         {

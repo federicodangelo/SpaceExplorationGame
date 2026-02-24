@@ -48,6 +48,7 @@ public class PlayerData
         // Economy
         Credits = 10000;
         Cargo.Clear();
+        Cargo.Add(ResourceType.Iron, 10); // start with some cargo for testing
 
         // Vehicle
         HasVehicle = true;
@@ -256,6 +257,28 @@ public class PlayerData
         Credits += earned;
         Cargo.Remove(resource);
         return earned;
+    }
+
+    /// <summary>Discard one unit of a specific cargo resource. Returns true if discarded.</summary>
+    public bool TryDiscardOneCargo(ResourceType resource)
+    {
+        if (!Cargo.TryGetValue(resource, out int amount) || amount <= 0) return false;
+
+        amount--;
+        if (amount <= 0)
+            Cargo.Remove(resource);
+        else
+            Cargo[resource] = amount;
+
+        return true;
+    }
+
+    /// <summary>Discard all cargo and return the total discarded units.</summary>
+    public int DiscardAllCargo()
+    {
+        int total = CargoUsed;
+        Cargo.Clear();
+        return total;
     }
 
     // Vehicle

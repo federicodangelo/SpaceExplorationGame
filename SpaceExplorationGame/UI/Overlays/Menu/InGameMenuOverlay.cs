@@ -16,6 +16,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         Resume,
         Map,
         Missions,
+        Cargo,
         Controls,
         MainMenu
     }
@@ -25,6 +26,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         new(InGameMenuOption.Resume, "RESUME"),
         new(InGameMenuOption.Map, "MAP"),
         new(InGameMenuOption.Missions, "MISSIONS"),
+        new(InGameMenuOption.Cargo, "CARGO"),
         new(InGameMenuOption.Controls, "CONTROLS"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
     ];
@@ -40,6 +42,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     public Action<Game>? OnMapRequested { get; set; }
 
     private readonly MissionsListOverlay _missionsOverlay = new();
+    private readonly CargoListOverlay _cargoOverlay = new();
     private readonly ControlsOverlay _controlsOverlay = new();
 
     // ── Panel configuration ──
@@ -66,6 +69,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         };
 
         RegisterSubOverlay(_missionsOverlay);
+        RegisterSubOverlay(_cargoOverlay);
         RegisterSubOverlay(_controlsOverlay);
     }
 
@@ -76,6 +80,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         Menu.SelectedIndex = 0;
         UpdateMapOption();
         UpdateMissionsOption(game);
+        UpdateCargoOption(game);
         base.Open();
     }
 
@@ -104,6 +109,9 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
             case InGameMenuOption.Missions:
                 _missionsOverlay.Open(game);
                 break;
+            case InGameMenuOption.Cargo:
+                _cargoOverlay.Open();
+                break;
             case InGameMenuOption.Controls:
                 _controlsOverlay.Open();
                 break;
@@ -119,6 +127,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     {
         UpdateMapOption();
         UpdateMissionsOption(game);
+        UpdateCargoOption(game);
     }
 
     // ── Helpers ──
@@ -134,5 +143,14 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         int missionCount = game.Player.ActiveMissions.Count;
         string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
         Menu.SetOption(2, new(InGameMenuOption.Missions, label));
+    }
+
+    private void UpdateCargoOption(Game game)
+    {
+        int cargoUsed = game.Player.CargoUsed;
+        string label = cargoUsed > 0
+            ? $"CARGO ({cargoUsed}/{game.Player.MaxCargo})"
+            : "CARGO";
+        Menu.SetOption(3, new(InGameMenuOption.Cargo, label));
     }
 }

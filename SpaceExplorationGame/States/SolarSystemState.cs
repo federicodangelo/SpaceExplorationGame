@@ -217,7 +217,7 @@ public class SolarSystemState : GameState
             for (int i = 0; i < belt.AsteroidCount; i++)
             {
                 float size = asteroidRng.NextFloat(40, 100);
-                float hp = size * 5f; // bigger asteroids have more HP
+                float hp = size * 0.5f; // bigger asteroids have more HP
 
                 // Pick resource type based on weighted probabilities
                 var resource = asteroidRng.NextFloat() switch
@@ -230,7 +230,7 @@ public class SolarSystemState : GameState
                     _       => ResourceType.Crystal
                 };
 
-                int resourceAmount = (int)(size * asteroidRng.NextFloat(1f, 3f));
+                int resourceAmount = (int)Math.Ceiling(size * asteroidRng.NextFloat(0.1f, 0.3f));
 
                 var entity = EntityFactory.CreateAsteroid(game.EcsWorld, _starEntity, size, hp,
                     resource, resourceAmount,
@@ -470,6 +470,8 @@ public class SolarSystemState : GameState
 
     public override void Update(Game game)
     {
+        _inGameMenuOverlay.Update(game);
+
         float dt = game.DeltaTime;
 
         // In-game menu active — no simulation

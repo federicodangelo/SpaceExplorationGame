@@ -222,6 +222,7 @@ public class InteriorState : GameState
         _vehicleCustomization.Update(game);
         _shipDealer.Update(game);
         _sellCargo.Update(game);
+        _inGameMenuOverlay.Update(game);
 
         // Skip simulation when overlays or dialogue are active
         if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
