@@ -4,54 +4,31 @@ using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation;
 
-public enum DebugGenerationScenario
+internal static class ShowcaseWorldGeneratorHelpers
 {
-    PlanetTypeShowcase,
-    StarTypeShowcase,
-}
-
-public class DebugWorldGenerator : ProceduralWorldGenerator
-{
-    private readonly DebugGenerationScenario _scenario;
-    private readonly StarClass _starClass;
-
-    public DebugWorldGenerator(DebugGenerationScenario scenario, StarClass starClass = StarClass.G)
+    public static StarSystemData BuildSingleSystem(string name, StarClass starClass, int planetCount)
     {
-        _scenario = scenario;
-        _starClass = starClass;
+        var (starColor, starRadius) = GetStarProperties(starClass);
+        return new StarSystemData
+        {
+            Index = 0,
+            Name = name,
+            GalaxyPosition = new Vector2(
+                GameConfig.GalaxyWidth * GameConfig.TileSize / 2f,
+                GameConfig.GalaxyHeight * GameConfig.TileSize / 2f),
+            StarClass = starClass,
+            StarRadius = starRadius,
+            StarColor = starColor,
+            PlanetCount = planetCount,
+            HasSpaceStation = true,
+            DangerLevel = 1,
+        };
     }
 
-    public override List<StarSystemData> GenerateGalaxy(SeedManager seeds)
+    public static List<SpaceStationData> BuildDebugStations()
     {
-        var (starColor, starRadius) = GetDebugStarProperties(_scenario == DebugGenerationScenario.PlanetTypeShowcase ? StarClass.G : _starClass);
-        var systemName = _scenario == DebugGenerationScenario.PlanetTypeShowcase
-            ? "Render Debug"
-            : $"Star Debug {_starClass}";
-
         return
         [
-            new StarSystemData
-            {
-                Index = 0,
-                Name = systemName,
-                GalaxyPosition = new Vector2(GameConfig.GalaxyWidth * GameConfig.TileSize / 2f,
-                    GameConfig.GalaxyHeight * GameConfig.TileSize / 2f),
-                StarClass = _scenario == DebugGenerationScenario.PlanetTypeShowcase ? StarClass.G : _starClass,
-                StarRadius = starRadius,
-                StarColor = starColor,
-                PlanetCount = Enum.GetValues<PlanetType>().Length,
-                HasSpaceStation = true,
-                DangerLevel = 1,
-            }
-        ];
-    }
-
-    public override SolarSystemContent GenerateSolarSystem(SeedManager seeds, StarSystemData starSystem)
-    {
-        var planets = BuildPlanetTypeShowcasePlanets();
-        var belts = new List<AsteroidBeltData>();
-        var stations = new List<SpaceStationData>
-        {
             new SpaceStationData
             {
                 Index = 0,
@@ -61,12 +38,10 @@ public class DebugWorldGenerator : ProceduralWorldGenerator
                 OrbitSpeed = 0.001f,
                 StartAngle = 1.2f,
             }
-        };
-
-        return new SolarSystemContent(planets, belts, stations);
+        ];
     }
 
-    private static ColoredRadius GetDebugStarProperties(StarClass starClass)
+    public static ColoredRadius GetStarProperties(StarClass starClass)
     {
         return starClass switch
         {
@@ -81,7 +56,7 @@ public class DebugWorldGenerator : ProceduralWorldGenerator
         };
     }
 
-    private static List<PlanetData> BuildPlanetTypeShowcasePlanets()
+    public static List<PlanetData> BuildPlanetTypeShowcasePlanets()
     {
         PlanetType[] types = Enum.GetValues<PlanetType>();
         var planets = new List<PlanetData>(types.Length);
@@ -92,7 +67,7 @@ public class DebugWorldGenerator : ProceduralWorldGenerator
         for (int i = 0; i < types.Length; i++)
         {
             var type = types[i];
-            var color = GetDebugPlanetColor(type);
+            var color = GetPlanetColor(type);
             float radius = type switch
             {
                 PlanetType.GasGiant or PlanetType.IceGiant => 215f,
@@ -136,7 +111,7 @@ public class DebugWorldGenerator : ProceduralWorldGenerator
         return planets;
     }
 
-    private static Color3 GetDebugPlanetColor(PlanetType type) => type switch
+    private static Color3 GetPlanetColor(PlanetType type) => type switch
     {
         PlanetType.Rocky => new Color3(155, 135, 115),
         PlanetType.Terrestrial => new Color3(80, 160, 110),

@@ -114,6 +114,13 @@ public class MainMenuState : GameState
                 game.Audio.PlaySfx(SfxType.MenuSelect);
                 LaunchPlanetTypeShowcase(game);
             }
+
+            if (_debugOverlay.StartAsteroidShowcaseRequested)
+            {
+                _debugOverlay.StartAsteroidShowcaseRequested = false;
+                game.Audio.PlaySfx(SfxType.MenuSelect);
+                LaunchAsteroidShowcase(game);
+            }
             return;
         }
 
@@ -290,7 +297,7 @@ public class MainMenuState : GameState
     private void LaunchPlanetTypeShowcase(Game game)
     {
         s_reopenDebugMenu = true;
-        game.SetWorldGenerator(new DebugWorldGenerator(DebugGenerationScenario.PlanetTypeShowcase, StarClass.G));
+        game.SetWorldGenerator(new PlanetTypeShowcaseWorldGenerator());
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));
@@ -299,7 +306,16 @@ public class MainMenuState : GameState
     private void LaunchStarTypeShowcase(Game game, StarClass starClass)
     {
         s_reopenDebugMenu = true;
-        game.SetWorldGenerator(new DebugWorldGenerator(DebugGenerationScenario.StarTypeShowcase, starClass));
+        game.SetWorldGenerator(new StarTypeShowcaseWorldGenerator(starClass));
+        var debugSystem = game.GalaxyData[0];
+        game.Player.CurrentStarSystemIndex = debugSystem.Index;
+        game.ChangeState(new SolarSystemState(debugSystem));
+    }
+
+    private void LaunchAsteroidShowcase(Game game)
+    {
+        s_reopenDebugMenu = true;
+        game.SetWorldGenerator(new AsteroidMiningShowcaseWorldGenerator());
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));

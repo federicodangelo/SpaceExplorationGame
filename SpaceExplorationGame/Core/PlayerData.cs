@@ -48,7 +48,6 @@ public class PlayerData
         // Economy
         Credits = 10000;
         Cargo.Clear();
-        Cargo.Add(ResourceType.Iron, 10); // start with some cargo for testing
 
         // Vehicle
         HasVehicle = true;

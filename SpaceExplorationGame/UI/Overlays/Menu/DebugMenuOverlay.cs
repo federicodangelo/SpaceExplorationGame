@@ -12,6 +12,7 @@ public enum DebugMenuAction
     StarType,
     StarTypeShowcase,
     PlanetTypeShowcase,
+    AsteroidShowcase,
     Back,
 }
 
@@ -35,6 +36,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     /// <summary>When set, start a dedicated solar system showcasing all planet types.</summary>
     public bool StartPlanetTypeShowcaseRequested { get; set; }
+
+    /// <summary>When set, start a dedicated solar system focused on asteroid mining in space.</summary>
+    public bool StartAsteroidShowcaseRequested { get; set; }
 
     protected override string Title => "DEBUG";
     protected override Color3 TitleColor => new(255, 210, 120);
@@ -62,6 +66,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             new(DebugMenuAction.StarType, "STAR TYPE: < G >", "Select the star type used by debug showcase scenarios"),
             new(DebugMenuAction.StarTypeShowcase, "STAR TYPE SHOWCASE", "Start a debug system focused on the selected star type"),
             new(DebugMenuAction.PlanetTypeShowcase, "PLANET TYPE SHOWCASE", "Start in a debug solar system containing all planet types"),
+            new(DebugMenuAction.AsteroidShowcase, "ASTEROID MINING SHOWCASE", "Start in space with dense asteroid belts for mining tests"),
             new(DebugMenuAction.Back, "BACK", "Return to main menu"),
         ])
         {
@@ -87,6 +92,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
         StartStarTypeShowcaseRequested = false;
         StartPlanetTypeShowcaseRequested = false;
+        StartAsteroidShowcaseRequested = false;
         UpdateStarTypeLabel();
     }
 
@@ -113,6 +119,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
                 break;
             case DebugMenuAction.PlanetTypeShowcase:
                 StartPlanetTypeShowcaseRequested = true;
+                break;
+            case DebugMenuAction.AsteroidShowcase:
+                StartAsteroidShowcaseRequested = true;
                 break;
             case DebugMenuAction.Back:
                 Close();
@@ -174,7 +183,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         float y = MenuY + Menu.TotalHeight + 8;
         renderer.DrawLineScreen(panelX + 15, y - 4, panelX + panelW - 15, y - 4, new Color3(90, 70, 30));
         renderer.DrawTextScreen(panelX + 15, y + 6,
-            "Use this menu to launch rendering test scenarios.",
+            "Use this menu to launch debug test scenarios.",
             new Color3(200, 180, 140), 1.4f);
     }
 }
