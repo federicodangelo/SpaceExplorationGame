@@ -1,107 +1,77 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Creates and renders star textures. Tracks all created textures
-/// so they can be bulk-destroyed when leaving a solar system or closing the galaxy map.
+/// Renders stars procedurally using layered circles (core + glow).
 /// </summary>
 public class StarRenderer : IDisposable
 {
-    private readonly TextureManager _textures;
-    private readonly List<nint> _createdTextures = [];
-
-    public StarRenderer(TextureManager textures)
+    public StarRenderer()
     {
-        _textures = textures;
     }
 
-    /// <summary>Creates a star texture with glow gradient. The texture is tracked for later cleanup.</summary>
-    public nint CreateTexture(int size, Color3 color)
-    {
-        var (r, g, b) = color;
-        var pixels = new byte[size * size * 4];
-        float center = size / 2f;
-        float coreRadius = size * 0.2f;
-        float glowRadius = size / 2f;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - center;
-                float dy = y - center;
-                float dist = MathF.Sqrt(dx * dx + dy * dy);
-                int idx = (y * size + x) * 4;
-
-                if (dist <= coreRadius)
-                {
-                    // Bright core (white to star color)
-                    float t = dist / coreRadius;
-                    pixels[idx + 0] = (byte)(255 - (255 - r) * t * 0.5f);
-                    pixels[idx + 1] = (byte)(255 - (255 - g) * t * 0.5f);
-                    pixels[idx + 2] = (byte)(255 - (255 - b) * t * 0.5f);
-                    pixels[idx + 3] = 255;
-                }
-                else if (dist <= glowRadius)
-                {
-                    // Glow falloff
-                    float t = (dist - coreRadius) / (glowRadius - coreRadius);
-                    float intensity = MathF.Pow(1f - t, 2.5f);
-                    pixels[idx + 0] = (byte)(r * intensity);
-                    pixels[idx + 1] = (byte)(g * intensity);
-                    pixels[idx + 2] = (byte)(b * intensity);
-                    pixels[idx + 3] = (byte)(255 * intensity);
-                }
-                else
-                {
-                    pixels[idx + 0] = 0;
-                    pixels[idx + 1] = 0;
-                    pixels[idx + 2] = 0;
-                    pixels[idx + 3] = 0;
-                }
-            }
-        }
-
-        var tex = _textures.CreateTextureFromPixels(pixels, size, size);
-        _createdTextures.Add(tex);
-        return tex;
-    }
-
-    /// <summary>Renders a star at its world position.</summary>
+    /// <summary>Renders a star at world position.</summary>
     public void Render(SpriteRenderer renderer, Camera camera,
-        nint starTexture, Vector2 starCenter, float starDisplayRadius)
+        Vector2 starCenter, float starDisplayRadius, Color3 color, float globalTime)
     {
-        renderer.DrawTexture(camera, starTexture, starCenter,
-            (int)(starDisplayRadius * 3), (int)(starDisplayRadius * 3));
+        RenderStarWorld(renderer, camera, starCenter, starDisplayRadius, color, 255, globalTime);
     }
 
-    /// <summary>Destroys a specific texture and removes it from tracking.</summary>
-    public void DestroyTexture(nint texture)
+    /// <summary>Renders a star directly in screen space.</summary>
+    public void RenderScreen(SpriteRenderer renderer,
+        float x, float y, float displaySize, Color3 color, byte alpha, float globalTime)
     {
-        if (texture != nint.Zero)
-        {
-            _textures.DestroyTexture(texture);
-            _createdTextures.Remove(texture);
-        }
+        float radius = displaySize * 0.5f;
+        float phase = (color.R * 0.013f + color.G * 0.007f + color.B * 0.005f);
+        float flicker = 0.92f + 0.08f * (0.5f + 0.5f * MathF.Sin(globalTime * 7.2f + phase * 2f));
+
+        // Surrounding glow
+        renderer.DrawFilledCircleScreen(x, y, radius * 1.35f,
+            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(90, flicker))),
+            new Color4(color.R, color.G, color.B, 0),
+            radius * 0.45f);
+
+        // Core circle (bright center -> star color)
+        renderer.DrawFilledCircleScreen(x, y, radius * 0.75f,
+            new Color4(255, 245, 220, alpha),
+            new Color4(color.R, color.G, color.B, alpha),
+            0f);
     }
 
-    /// <summary>Destroys all tracked textures. Call when leaving a solar system or closing the galaxy map.</summary>
-    public void DestroyAll()
+    private static byte ScaleAlpha(byte baseAlpha, byte layerAlpha)
     {
-        foreach (var tex in _createdTextures)
-        {
-            _textures.DestroyTexture(tex);
-        }
-        _createdTextures.Clear();
+        return (byte)((baseAlpha * layerAlpha) / 255);
+    }
+
+    private static byte MulByte(byte value, float factor)
+    {
+        return (byte)Math.Clamp((int)(value * factor), 0, 255);
+    }
+
+    private static void RenderStarWorld(SpriteRenderer renderer, Camera camera,
+        Vector2 starCenter, float starDisplayRadius, Color3 color, byte alpha, float globalTime)
+    {
+        float phase = (color.R * 0.013f + color.G * 0.007f + color.B * 0.005f);
+        float flicker = 0.92f + 0.08f * (0.5f + 0.5f * MathF.Sin(globalTime * 7.2f + phase * 2f));
+
+        // Surrounding glow
+        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * 1.35f,
+            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(95, flicker))),
+            new Color4(color.R, color.G, color.B, 0),
+            starDisplayRadius * 0.45f);
+
+        // Core circle (bright center -> star color)
+        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * 0.75f,
+            new Color4(255, 245, 220, alpha),
+            new Color4(color.R, color.G, color.B, alpha),
+            0f);
     }
 
     public void Dispose()
     {
-        DestroyAll();
         GC.SuppressFinalize(this);
     }
 }

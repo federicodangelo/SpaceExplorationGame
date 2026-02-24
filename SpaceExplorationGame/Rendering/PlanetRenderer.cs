@@ -1,7 +1,6 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -10,190 +9,255 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Creates and renders planet/moon textures. Tracks all created textures
-/// so they can be bulk-destroyed when leaving a solar system.
+/// Renders planets and moons procedurally using layered circles.
 /// </summary>
 public class PlanetRenderer : IDisposable
 {
-    private readonly TextureManager _textures;
-    private readonly List<nint> _createdTextures = [];
-
-    public PlanetRenderer(TextureManager textures)
+    public PlanetRenderer()
     {
-        _textures = textures;
     }
 
-    /// <summary>Creates a planet texture with shading and surface detail. The texture is tracked for later cleanup.</summary>
-    public nint CreateTexture(int size, Color3 color, uint detailSeed)
-    {
-        var (r, g, b) = color;
-        var pixels = new byte[size * size * 4]; // RGBA
-        float center = size / 2f;
-        float radius = size / 2f - 1;
-        var rng = new SeededRandom(detailSeed);
-
-        // Generate some surface noise
-        var noise = new float[size, size];
-        for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
-                noise[x, y] = rng.NextFloat(-0.15f, 0.15f);
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - center;
-                float dy = y - center;
-                float dist = MathF.Sqrt(dx * dx + dy * dy);
-                int idx = (y * size + x) * 4;
-
-                if (dist <= radius)
-                {
-                    // Sphere shading: light from top-left
-                    float nx = dx / radius;
-                    float ny = dy / radius;
-                    float nz = MathF.Sqrt(MathF.Max(0, 1f - nx * nx - ny * ny));
-
-                    // Diffuse lighting (light from top-left-front)
-                    float lightX = -0.4f, lightY = -0.5f, lightZ = 0.7f;
-                    float len = MathF.Sqrt(lightX * lightX + lightY * lightY + lightZ * lightZ);
-                    lightX /= len; lightY /= len; lightZ /= len;
-                    float diffuse = MathF.Max(0, nx * lightX + ny * lightY + nz * lightZ);
-
-                    // Ambient + diffuse
-                    float brightness = 0.25f + 0.75f * diffuse;
-
-                    // Surface noise variation
-                    float n = noise[x, y];
-
-                    float fr = Math.Clamp(r * brightness + r * n, 0, 255);
-                    float fg = Math.Clamp(g * brightness + g * n, 0, 255);
-                    float fb = Math.Clamp(b * brightness + b * n, 0, 255);
-
-                    // Edge darkening (atmosphere effect)
-                    float edge = 1f - MathF.Pow(dist / radius, 4);
-                    fr *= edge + (1 - edge) * 0.3f;
-                    fg *= edge + (1 - edge) * 0.3f;
-                    fb *= edge + (1 - edge) * 0.3f;
-
-                    // Specular highlight
-                    float specular = MathF.Pow(MathF.Max(0, nz * lightZ + nx * lightX + ny * lightY), 16);
-                    fr = Math.Min(255, fr + 60 * specular);
-                    fg = Math.Min(255, fg + 60 * specular);
-                    fb = Math.Min(255, fb + 60 * specular);
-
-                    pixels[idx + 0] = (byte)fr;  // R
-                    pixels[idx + 1] = (byte)fg;  // G
-                    pixels[idx + 2] = (byte)fb;  // B
-                    pixels[idx + 3] = 255;        // A
-                }
-                else if (dist <= radius + 1)
-                {
-                    // Anti-alias edge
-                    float alpha = Math.Clamp(radius + 1 - dist, 0, 1);
-                    pixels[idx + 0] = (byte)(r * 0.3f);
-                    pixels[idx + 1] = (byte)(g * 0.3f);
-                    pixels[idx + 2] = (byte)(b * 0.3f);
-                    pixels[idx + 3] = (byte)(alpha * 120);
-                }
-                else
-                {
-                    pixels[idx + 0] = 0;
-                    pixels[idx + 1] = 0;
-                    pixels[idx + 2] = 0;
-                    pixels[idx + 3] = 0;
-                }
-            }
-        }
-
-        var tex = _textures.CreateTextureFromPixels(pixels, size, size);
-        _createdTextures.Add(tex);
-        return tex;
-    }
-
-    /// <summary>Renders planets with textures, settlement indicators, rings, moon orbits, and moons.</summary>
+    /// <summary>Renders planets with layered circles, settlement indicators, rings, moon orbits, and moons.</summary>
     public void RenderPlanetsAndMoons(SpriteRenderer renderer, Camera camera,
         World ecsWorld, List<PlanetData> planets,
         List<Entity> planetEntities, List<List<Entity>> moonEntities,
-        List<nint> planetTextures, List<List<nint>> moonTextures)
+        float globalTime)
     {
         for (int i = 0; i < planets.Count; i++)
         {
             if (i >= planetEntities.Count) break;
             var pTransform = ecsWorld.Get<Transform>(planetEntities[i]);
             var p = planets[i];
-            int texRenderSize = (int)(p.Radius * 2) + 4;
 
-            // Planet texture
-            if (i < planetTextures.Count)
-            {
-                renderer.DrawTexture(camera, planetTextures[i], pTransform.Position,
-                    texRenderSize, texRenderSize);
-            }
+            // Planet body
+            RenderBody(renderer, camera, pTransform.Position, p.Radius, p.Color, p.Type, false, p.Index, globalTime);
 
             // Settlement indicator (small diamond below planet)
             if (p.HasSettlement)
             {
                 var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
-                renderer.DrawFilledCircle(camera, indicatorPos, 3f, new Color4(255, 210, 200, 220));
+                float pulse = 1f + 0.25f * MathF.Sin(globalTime * 3f + p.Index * 0.7f);
+                renderer.DrawFilledCircle(camera, indicatorPos, 3f * pulse, new Color4(255, 210, 200, 220));
             }
 
             // Rings
             if (p.HasRings)
             {
+                byte ringAlphaA = (byte)Math.Clamp((int)(120 + 20 * MathF.Sin(globalTime * 1.4f + i)), 0, 255);
+                byte ringAlphaB = (byte)Math.Clamp((int)(80 + 18 * MathF.Sin(globalTime * 1.1f + i * 0.8f)), 0, 255);
                 renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.5f,
-                    p.Color.WithAlpha(120), 48);
+                    p.Color.WithAlpha(ringAlphaA), 48);
                 renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.8f,
-                    p.Color.WithAlpha(80), 48);
+                    p.Color.WithAlpha(ringAlphaB), 48);
             }
 
             // Moon orbit lines
             foreach (var moon in p.Moons)
             {
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, new Color3(20, 20, 40), 24);
+                byte orbitA = (byte)Math.Clamp((int)(30 + 12 * MathF.Sin(globalTime * 0.9f + moon.Index)), 0, 255);
+                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, new Color4(20, 20, 40, orbitA), 24);
             }
 
-            // Moon textures
+            // Moons
             if (i < moonEntities.Count)
             {
                 for (int m = 0; m < moonEntities[i].Count; m++)
                 {
+                    if (m >= p.Moons.Count) break;
                     var moonTransform = ecsWorld.Get<Transform>(moonEntities[i][m]);
                     var moon = p.Moons[m];
-                    int moonTexSize = (int)(moon.Radius * 2) + 2;
-                    if (i < moonTextures.Count && m < moonTextures[i].Count)
-                    {
-                        renderer.DrawTexture(camera, moonTextures[i][m], moonTransform.Position,
-                            moonTexSize, moonTexSize);
-                    }
+                    int seed = p.Index * 101 + moon.Index * 17 + 7;
+                    RenderBody(renderer, camera, moonTransform.Position, moon.Radius, moon.Color, moon.Type, true, seed, globalTime);
                 }
             }
         }
     }
 
-    /// <summary>Destroys a specific texture and removes it from tracking.</summary>
-    public void DestroyTexture(nint texture)
+    private static void RenderBody(SpriteRenderer renderer, Camera camera,
+        Vector2 center, float radius, Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
     {
-        if (texture != nint.Zero)
+        var baseColor = isMoon ? Mul(color, 0.82f) : color;
+        var inner = Lerp(baseColor, new Color3(255, 255, 245), isMoon ? 0.08f : 0.20f);
+        var outer = Mul(baseColor, isMoon ? 0.70f : 0.82f);
+        float phase = seed * 0.071f;
+
+        // Main sphere gradient
+        renderer.DrawFilledCircle(camera, center, radius,
+            new Color4(inner.R, inner.G, inner.B, 255),
+            new Color4(outer.R, outer.G, outer.B, 255),
+            radius * 0.18f);
+
+        // Type-specific overlays
+        switch (type)
         {
-            _textures.DestroyTexture(texture);
-            _createdTextures.Remove(texture);
+            case PlanetType.GasGiant:
+                DrawBands(renderer, camera, center, radius, baseColor, seed, 5, 70, globalTime, 0.35f);
+                break;
+            case PlanetType.IceGiant:
+                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(210, 240, 255), 0.35f), seed, 4, 55, globalTime, 0.28f);
+                break;
+            case PlanetType.Terrestrial:
+                DrawPatches(renderer, camera, center, radius, Lerp(baseColor, new Color3(45, 140, 70), 0.35f), seed, 3, 0.32f, 115, globalTime, 0.20f);
+                if (!isMoon)
+                    DrawPatches(renderer, camera, center, radius, new Color3(240, 245, 255), seed + 31, 2, 0.22f, 60, globalTime, 0.12f);
+                break;
+            case PlanetType.Ocean:
+                DrawPatches(renderer, camera, center, radius, new Color3(40, 120, 185), seed, 3, 0.34f, 95, globalTime, 0.18f);
+                if (!isMoon)
+                    DrawPatches(renderer, camera, center, radius, new Color3(230, 245, 255), seed + 19, 2, 0.20f, 70, globalTime, 0.10f);
+                break;
+            case PlanetType.Desert:
+                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(205, 165, 90), 0.40f), seed, 3, 45, globalTime, 0.16f);
+                break;
+            case PlanetType.Volcanic:
+                DrawPatches(renderer, camera, center, radius, new Color3(255, 110, 40), seed, 3, 0.18f, 135, globalTime, 0.32f);
+                DrawPatches(renderer, camera, center, radius, new Color3(30, 20, 20), seed + 9, 2, 0.30f, 80, globalTime, 0.22f);
+                break;
+            case PlanetType.Frozen:
+                DrawCracks(renderer, camera, center, radius, new Color4(220, 245, 255, isMoon ? (byte)110 : (byte)140), seed, 4, globalTime);
+                break;
+            case PlanetType.Rocky:
+            default:
+                break;
+        }
+
+        // Moons and rocky/frozen worlds get craters
+        if (isMoon || type is PlanetType.Rocky or PlanetType.Frozen)
+        {
+            int craterCount = isMoon ? 4 : 3;
+            DrawCraters(renderer, camera, center, radius, seed + 77, craterCount, globalTime);
+        }
+
+        renderer.DrawFilledCircle(camera, center, radius,
+            new Color4(0, 0, 0, isMoon ? (byte)65 : (byte)50),
+            new Color4(0, 0, 0, 0),
+            radius * 0.55f);
+
+        // Specular highlight (top-left)
+        float specX = -radius * 0.22f + radius * 0.03f * MathF.Sin(globalTime * 0.9f + phase);
+        float specY = -radius * 0.22f + radius * 0.02f * MathF.Cos(globalTime * 0.7f + phase * 1.5f);
+        renderer.DrawFilledCircle(camera,
+            center + new Vector2(specX, specY),
+            radius * (isMoon ? 0.28f : 0.36f),
+            new Color4(255, 255, 255, isMoon ? (byte)24 : (byte)36));
+
+        // Subtle rim for moons
+        if (isMoon)
+        {
+            renderer.DrawCircle(camera, center, radius * 0.98f, new Color4(235, 235, 240, 70), 24);
         }
     }
 
-    /// <summary>Destroys all tracked textures. Call when leaving a solar system.</summary>
-    public void DestroyAll()
+    private static void DrawBands(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+        Color3 bandColor, int seed, int count, byte alpha, float globalTime, float speed)
     {
-        foreach (var tex in _createdTextures)
+        for (int i = 0; i < count; i++)
         {
-            _textures.DestroyTexture(tex);
+            float t = (i + 1f) / (count + 1f);
+            float yOff = (t - 0.5f) * radius * 1.4f;
+            float phase = Hash01(seed + 59, i) * MathF.PI * 2f;
+            float wobble = (Hash01(seed, i) - 0.5f) * radius * 0.07f
+                + MathF.Sin(globalTime * speed + phase) * radius * 0.035f;
+            float bandR = radius * (0.92f - 0.08f * i / MathF.Max(1, count - 1));
+            byte a = (byte)Math.Clamp((int)(alpha * (0.85f + 0.15f * (0.5f + 0.5f * MathF.Sin(globalTime * speed * 1.8f + phase)))), 0, 255);
+            renderer.DrawCircle(camera,
+                center + new Vector2(0, yOff + wobble),
+                bandR,
+                new Color4(bandColor.R, bandColor.G, bandColor.B, a),
+                36);
         }
-        _createdTextures.Clear();
+    }
+
+    private static void DrawPatches(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+        Color3 patchColor, int seed, int count, float sizeFactor, byte alpha, float globalTime, float speed)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float angle = Hash01(seed + 11, i) * MathF.PI * 2f + globalTime * speed;
+            float dist = radius * (0.15f + Hash01(seed + 23, i) * 0.45f);
+            float ox = MathF.Cos(angle) * dist;
+            float oy = MathF.Sin(angle) * dist * 0.72f;
+            float pr = radius * (sizeFactor + Hash01(seed + 37, i) * 0.12f);
+            byte a = (byte)Math.Clamp((int)(alpha * (0.9f + 0.1f * MathF.Sin(globalTime * (speed + 0.3f) + i))), 0, 255);
+            renderer.DrawFilledCircle(camera,
+                center + new Vector2(ox, oy),
+                pr,
+                new Color4(patchColor.R, patchColor.G, patchColor.B, a));
+        }
+    }
+
+    private static void DrawCraters(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+        int seed, int count, float globalTime)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float ox = (Hash01(seed + 5, i) - 0.5f) * radius * 1.2f;
+            float oy = (Hash01(seed + 13, i) - 0.5f) * radius * 1.0f;
+            float craterR = radius * (0.10f + Hash01(seed + 29, i) * 0.10f);
+            byte shadowA = (byte)Math.Clamp((int)(50 + 8 * MathF.Sin(globalTime * 0.7f + i * 0.9f)), 0, 255);
+
+            renderer.DrawFilledCircle(camera,
+                center + new Vector2(ox, oy),
+                craterR,
+                new Color4(0, 0, 0, shadowA));
+            renderer.DrawCircle(camera,
+                center + new Vector2(ox - craterR * 0.1f, oy - craterR * 0.1f),
+                craterR * 1.05f,
+                new Color4(230, 230, 235, 45),
+                20);
+        }
+    }
+
+    private static void DrawCracks(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+        Color4 color, int seed, int count, float globalTime)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            float a1 = Hash01(seed + 3, i) * MathF.PI * 2f;
+            float a2 = a1 + (Hash01(seed + 17, i) - 0.5f) * 0.8f;
+            float r1 = radius * (0.2f + Hash01(seed + 31, i) * 0.55f);
+            float r2 = radius * (0.45f + Hash01(seed + 47, i) * 0.45f);
+            var p1 = center + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * r1;
+            var p2 = center + new Vector2(MathF.Cos(a2), MathF.Sin(a2)) * r2;
+            byte a = (byte)Math.Clamp((int)(color.A * (0.85f + 0.15f * (0.5f + 0.5f * MathF.Sin(globalTime * 1.5f + i)))), 0, 255);
+            renderer.DrawLine(camera, p1, p2, new Color4(color.R, color.G, color.B, a));
+        }
+    }
+
+    private static Color3 Lerp(Color3 from, Color3 to, float t)
+    {
+        t = Math.Clamp(t, 0f, 1f);
+        return new Color3(
+            (byte)Math.Clamp((int)(from.R + (to.R - from.R) * t), 0, 255),
+            (byte)Math.Clamp((int)(from.G + (to.G - from.G) * t), 0, 255),
+            (byte)Math.Clamp((int)(from.B + (to.B - from.B) * t), 0, 255));
+    }
+
+    private static Color3 Mul(Color3 c, float factor)
+    {
+        factor = Math.Max(0f, factor);
+        return new Color3(
+            (byte)Math.Clamp((int)(c.R * factor), 0, 255),
+            (byte)Math.Clamp((int)(c.G * factor), 0, 255),
+            (byte)Math.Clamp((int)(c.B * factor), 0, 255));
+    }
+
+    private static float Hash01(int seed, int i)
+    {
+        unchecked
+        {
+            uint x = (uint)(seed * 73856093) ^ (uint)(i * 19349663) ^ 0x9E3779B9u;
+            x ^= x >> 16;
+            x *= 0x85EBCA6Bu;
+            x ^= x >> 13;
+            x *= 0xC2B2AE35u;
+            x ^= x >> 16;
+            return (x & 0x00FFFFFFu) / 16777215f;
+        }
     }
 
     public void Dispose()
     {
-        DestroyAll();
         GC.SuppressFinalize(this);
     }
 }

@@ -19,10 +19,6 @@ public class FTLTransitionState : GameState
     private readonly StarSystemData _sourceSystem;
     private readonly StarSystemData _targetSystem;
 
-    // ── Star textures (created on Enter, destroyed on Exit) ──
-    private nint _sourceStarTexture;
-    private nint _targetStarTexture;
-
     // ── Animation timing ──
     private float _elapsed;
     private const float ChargeDuration = 1.6f;      // Phase 1: charge-up, ship shakes, stars slow
@@ -77,26 +73,10 @@ public class FTLTransitionState : GameState
         for (int i = 0; i < WaveCount; i++)
             _wavePositions.Add(ScreenW + i * (ScreenW / WaveCount));
 
-        // Create star textures for source and target systems
-        int sourceSize = Math.Max((int)(_sourceSystem.StarRadius * 6), 32);
-        _sourceStarTexture = game.StarRenderer.CreateTexture(sourceSize, _sourceSystem.StarColor);
-        int targetSize = Math.Max((int)(_targetSystem.StarRadius * 6), 32);
-        _targetStarTexture = game.StarRenderer.CreateTexture(targetSize, _targetSystem.StarColor);
     }
 
     public override void Exit(Game game)
     {
-        // Clean up star textures
-        if (_sourceStarTexture != nint.Zero)
-        {
-            game.StarRenderer.DestroyTexture(_sourceStarTexture);
-            _sourceStarTexture = nint.Zero;
-        }
-        if (_targetStarTexture != nint.Zero)
-        {
-            game.StarRenderer.DestroyTexture(_targetStarTexture);
-            _targetStarTexture = nint.Zero;
-        }
     }
 
     public override void UpdateInput(Game game)
@@ -261,8 +241,9 @@ public class FTLTransitionState : GameState
 
             if (sourceAlpha > 3 && sourceX > -sourceDisplaySize * 2)
             {
-                renderer.DrawTextureScreen(_sourceStarTexture,
-                    sourceX, CY, sourceDisplaySize, sourceDisplaySize, 0f, sourceAlpha);
+                game.StarRenderer.RenderScreen(renderer,
+                    sourceX, CY, sourceDisplaySize, _sourceSystem.StarColor, sourceAlpha,
+                    (float)game.GlobalTime);
 
                 // Star name label below
                 string srcName = _sourceSystem.Name.ToUpperInvariant();
@@ -297,8 +278,9 @@ public class FTLTransitionState : GameState
 
             if (targetAlpha > 3)
             {
-                renderer.DrawTextureScreen(_targetStarTexture,
-                    targetX, CY, targetDisplaySize, targetDisplaySize, 0f, targetAlpha);
+                game.StarRenderer.RenderScreen(renderer,
+                    targetX, CY, targetDisplaySize, _targetSystem.StarColor, targetAlpha,
+                    (float)game.GlobalTime);
 
                 // Star name label below
                 string tgtName = _targetSystem.Name.ToUpperInvariant();

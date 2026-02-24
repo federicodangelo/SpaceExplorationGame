@@ -94,8 +94,8 @@ public class Game : IDisposable
         SpaceshipRenderer = new SpaceshipRenderer(Textures);
         StationRenderer = new StationRenderer(Textures);
         AsteroidRenderer = new AsteroidRenderer(Textures);
-        PlanetRenderer = new PlanetRenderer(Textures);
-        StarRenderer = new StarRenderer(Textures);
+        PlanetRenderer = new PlanetRenderer();
+        StarRenderer = new StarRenderer();
         EnemyShipRenderer = new EnemyShipRenderer(Textures);
 
         // Audio

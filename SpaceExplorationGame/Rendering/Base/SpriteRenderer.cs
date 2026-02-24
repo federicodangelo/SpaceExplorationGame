@@ -96,6 +96,21 @@ public class SpriteRenderer : IDisposable
         DrawFilledCircleScreen(center.X, center.Y, radius, color);
     }
 
+    /// <summary>
+    /// Draw a filled circle in world space with a radial gradient.
+    /// Color remains <paramref name="innerColor"/> from center to <paramref name="transitionStartRadius"/>,
+    /// then transitions to <paramref name="outerColor"/> at <paramref name="worldRadius"/>.
+    /// </summary>
+    public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius,
+        Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32)
+    {
+        var center = camera.WorldToScreen(worldCenter);
+        var radius = worldRadius * camera.Zoom;
+        var transitionRadius = transitionStartRadius * camera.Zoom;
+
+        DrawFilledCircleScreen(center.X, center.Y, radius, innerColor, outerColor, transitionRadius, segments);
+    }
+
     /// <summary>Draw a line in world space.</summary>
     public void DrawLine(Camera camera, Vector2 worldStart, Vector2 worldEnd, Color4 color)
     {
@@ -355,6 +370,163 @@ public class SpriteRenderer : IDisposable
         }
 
         DrawGeometryScreen(v, requiredVerts, id, requiredIndices);
+    }
+
+    /// <summary>
+    /// Draw a filled circle in screen space with a radial gradient.
+    /// Color remains <paramref name="innerColor"/> from center to <paramref name="transitionStartRadius"/>,
+    /// then transitions to <paramref name="outerColor"/> at <paramref name="radius"/>.
+    /// </summary>
+    public void DrawFilledCircleScreen(float cx, float cy, float radius,
+        Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32)
+    {
+        if (radius <= 0f) return;
+        if (segments < 3) segments = 3;
+
+        float tRadius = Math.Clamp(transitionStartRadius, 0f, radius);
+
+        if (tRadius >= radius ||
+            (innerColor.R == outerColor.R && innerColor.G == outerColor.G &&
+             innerColor.B == outerColor.B && innerColor.A == outerColor.A))
+        {
+            DrawFilledCircleScreen(cx, cy, radius, innerColor, segments);
+            return;
+        }
+
+        // Special case: gradient from center directly to outer edge.
+        if (tRadius <= 0f)
+        {
+            int requiredVerts = segments + 2;
+            int requiredIndices = segments * 3;
+            var vertices = new SDL.Vertex[requiredVerts];
+            var indices = new int[requiredIndices];
+
+            SDL.FColor innerF = new SDL.FColor
+            {
+                R = innerColor.R / 255f,
+                G = innerColor.G / 255f,
+                B = innerColor.B / 255f,
+                A = innerColor.A / 255f
+            };
+            SDL.FColor outerF = new SDL.FColor
+            {
+                R = outerColor.R / 255f,
+                G = outerColor.G / 255f,
+                B = outerColor.B / 255f,
+                A = outerColor.A / 255f
+            };
+
+            vertices[0] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint { X = cx, Y = cy },
+                Color = innerF,
+            };
+
+            float angleStep = MathF.PI * 2f / segments;
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = i * angleStep;
+                float x = cx + MathF.Cos(angle) * radius;
+                float y = cy + MathF.Sin(angle) * radius;
+                vertices[i + 1] = new SDL.Vertex
+                {
+                    Position = new SDL.FPoint { X = x, Y = y },
+                    Color = outerF,
+                };
+            }
+
+            for (int i = 0; i < segments; i++)
+            {
+                indices[i * 3 + 0] = 0;
+                indices[i * 3 + 1] = i + 1;
+                indices[i * 3 + 2] = i + 2;
+            }
+
+            DrawGeometryScreen(vertices, requiredVerts, indices, requiredIndices);
+            return;
+        }
+
+        // General case: inner solid disk + gradient annulus.
+        int ringVerts = segments + 1;
+        int totalVerts = 1 + ringVerts + ringVerts;
+        int innerIndices = segments * 3;
+        int annulusIndices = segments * 6;
+        int totalIndices = innerIndices + annulusIndices;
+
+        var vtx = new SDL.Vertex[totalVerts];
+        var idx = new int[totalIndices];
+
+        SDL.FColor inner = new SDL.FColor
+        {
+            R = innerColor.R / 255f,
+            G = innerColor.G / 255f,
+            B = innerColor.B / 255f,
+            A = innerColor.A / 255f
+        };
+        SDL.FColor outer = new SDL.FColor
+        {
+            R = outerColor.R / 255f,
+            G = outerColor.G / 255f,
+            B = outerColor.B / 255f,
+            A = outerColor.A / 255f
+        };
+
+        vtx[0] = new SDL.Vertex
+        {
+            Position = new SDL.FPoint { X = cx, Y = cy },
+            Color = inner,
+        };
+
+        float step = MathF.PI * 2f / segments;
+        for (int i = 0; i <= segments; i++)
+        {
+            float angle = i * step;
+            float cs = MathF.Cos(angle);
+            float sn = MathF.Sin(angle);
+
+            int innerRingIndex = 1 + i;
+            int outerRingIndex = 1 + ringVerts + i;
+
+            vtx[innerRingIndex] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint { X = cx + cs * tRadius, Y = cy + sn * tRadius },
+                Color = inner,
+            };
+            vtx[outerRingIndex] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint { X = cx + cs * radius, Y = cy + sn * radius },
+                Color = outer,
+            };
+        }
+
+        int w = 0;
+        // Inner fan
+        for (int i = 0; i < segments; i++)
+        {
+            idx[w++] = 0;
+            idx[w++] = 1 + i;
+            idx[w++] = 1 + i + 1;
+        }
+
+        // Gradient annulus (two triangles per segment)
+        int outerBase = 1 + ringVerts;
+        for (int i = 0; i < segments; i++)
+        {
+            int i0 = 1 + i;
+            int i1 = 1 + i + 1;
+            int o0 = outerBase + i;
+            int o1 = outerBase + i + 1;
+
+            idx[w++] = i0;
+            idx[w++] = o0;
+            idx[w++] = i1;
+
+            idx[w++] = i1;
+            idx[w++] = o0;
+            idx[w++] = o1;
+        }
+
+        DrawGeometryScreen(vtx, totalVerts, idx, totalIndices);
     }
 
     public void Dispose()
