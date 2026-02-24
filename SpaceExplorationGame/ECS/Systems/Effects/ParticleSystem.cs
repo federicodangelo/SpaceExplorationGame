@@ -72,37 +72,79 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
                 return;
             }
 
-            if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(transform.Position))
-            {
-                return;
-            }
+            bool hasCarrier = emitter.CarrierEntity != default
+                && World.IsAlive(emitter.CarrierEntity)
+                && World.Has<Transform>(emitter.CarrierEntity);
 
-            Vector2 accelDir = Vector2.Zero;
+            Entity sourceEntity = hasCarrier ? emitter.CarrierEntity : entity;
+            Transform sourceTransform = hasCarrier ? World.Get<Transform>(emitter.CarrierEntity) : transform;
+
             Vector2 carrierVelocity = Vector2.Zero;
-            if (World.Has<Velocity>(entity))
+            Vector2 acceleration = Vector2.Zero;
+            float rotationVelocity = 0f;
+            if (World.Has<Velocity>(sourceEntity))
             {
-                var velocity = World.Get<Velocity>(entity);
-                accelDir = velocity.Acceleration;
+                var velocity = World.Get<Velocity>(sourceEntity);
                 carrierVelocity = velocity.Velocity;
+                acceleration = velocity.Acceleration;
+                rotationVelocity = velocity.RotationVelocity;
             }
 
-            bool accelerating = accelDir.LengthSquared() >= 0.0001f;
+            Vector2 forward = GetForward(sourceTransform.Rotation);
+            Vector2 right = new(-forward.Y, forward.X);
 
-            if (emitter.EmitCondition == EmitCondition.WhenAccelerating && !accelerating)
+            bool useFixedEmitter = hasCarrier && emitter.LocalEjectDirection.LengthSquared() > 0.0001f;
+
+            Vector2 baseSpawnPos = sourceTransform.Position;
+            Vector2 ejectDir;
+
+            if (useFixedEmitter)
             {
-                return;
-            }
+                baseSpawnPos += LocalToWorld(sourceTransform.Rotation, emitter.LocalOffset);
+                transform.Position = baseSpawnPos;
 
-            if (!accelerating)
+                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(baseSpawnPos))
+                {
+                    return;
+                }
+
+                if (emitter.ActivationMask != ThrusterActivation.None)
+                {
+                    var activeMask = BuildActivationMask(acceleration, rotationVelocity, forward, right);
+                    if ((activeMask & emitter.ActivationMask) == 0)
+                    {
+                        return;
+                    }
+                }
+
+                ejectDir = Vector2.Normalize(LocalToWorld(sourceTransform.Rotation, emitter.LocalEjectDirection));
+            }
+            else
             {
-                // Not currently accelerating - default to emitting opposite current facing direction.
-                float rad = transform.Rotation * MathF.PI / 180f;
-                accelDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(transform.Position))
+                {
+                    return;
+                }
+
+                Vector2 accelDir = acceleration;
+                bool accelerating = accelDir.LengthSquared() >= 0.0001f;
+
+                if (emitter.EmitCondition == EmitCondition.WhenAccelerating && !accelerating)
+                {
+                    return;
+                }
+
+                if (!accelerating)
+                {
+                    accelDir = forward;
+                }
+
+                accelDir = Vector2.Normalize(accelDir);
+                ejectDir = -accelDir;
+                baseSpawnPos = transform.Position + ejectDir * emitter.SternOffset;
             }
 
-            accelDir = Vector2.Normalize(accelDir);
-            var ejectDir = -accelDir;
-            var perp = new Vector2(-accelDir.Y, accelDir.X);
+            var perp = new Vector2(-ejectDir.Y, ejectDir.X);
 
             emitter.SpawnAccumulator += deltaTime;
             while (emitter.SpawnAccumulator >= emitter.SpawnInterval && particleCount + _spawnQueue.Count < MaxParticleEntities)
@@ -110,7 +152,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
                 emitter.SpawnAccumulator -= emitter.SpawnInterval;
 
                 float lateral = NextFloat(-4f, 4f);
-                var spawnPos = transform.Position + ejectDir * emitter.SternOffset + perp * lateral;
+                var spawnPos = baseSpawnPos + perp * lateral;
 
                 float ejectSpeed = NextFloat(emitter.EjectSpeedMin, emitter.EjectSpeedMax);
                 float sideDrift = NextFloat(-emitter.LateralDrift, emitter.LateralDrift);
@@ -157,6 +199,40 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
     private float NextFloat(float min, float max)
         => min + _random.NextSingle() * (max - min);
+
+    private static Vector2 GetForward(float rotationDegrees)
+    {
+        float rad = rotationDegrees * MathF.PI / 180f;
+        return new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+    }
+
+    private static Vector2 LocalToWorld(float rotationDegrees, Vector2 localVector)
+    {
+        var forward = GetForward(rotationDegrees);
+        var right = new Vector2(-forward.Y, forward.X);
+        return forward * localVector.X + right * localVector.Y;
+    }
+
+    private static ThrusterActivation BuildActivationMask(Vector2 acceleration, float rotationVelocity,
+        Vector2 forward, Vector2 right)
+    {
+        const float linearThreshold = 0.1f;
+        const float rotationThreshold = 2f;
+
+        var mask = ThrusterActivation.None;
+        float forwardAccel = Vector2.Dot(acceleration, forward);
+        float sideAccel = Vector2.Dot(acceleration, right);
+
+        if (forwardAccel > linearThreshold) mask |= ThrusterActivation.Forward;
+        if (forwardAccel < -linearThreshold) mask |= ThrusterActivation.Backward;
+        if (sideAccel > linearThreshold) mask |= ThrusterActivation.StrafeRight;
+        if (sideAccel < -linearThreshold) mask |= ThrusterActivation.StrafeLeft;
+
+        if (rotationVelocity > rotationThreshold) mask |= ThrusterActivation.RotateRight;
+        if (rotationVelocity < -rotationThreshold) mask |= ThrusterActivation.RotateLeft;
+
+        return mask;
+    }
 
     private bool IsWithinEmitterValidationBounds(Vector2 worldPos)
     {

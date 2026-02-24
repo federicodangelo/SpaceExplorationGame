@@ -316,6 +316,11 @@ public struct ParticleEmitter
     public float SpawnInterval;
     public float SpawnAccumulator;
 
+    public Arch.Core.Entity CarrierEntity;
+    public Vector2 LocalOffset;
+    public Vector2 LocalEjectDirection;
+    public ThrusterActivation ActivationMask;
+
     public float SternOffset;
 
     public float EjectSpeedMin;
@@ -328,6 +333,18 @@ public struct ParticleEmitter
     public float ParticleSizeMax;
     public float ParticleDrag;
     public Color3 ParticleColor;
+}
+
+[Flags]
+public enum ThrusterActivation
+{
+    None = 0,
+    Forward = 1 << 0,
+    Backward = 1 << 1,
+    StrafeLeft = 1 << 2,
+    StrafeRight = 1 << 3,
+    RotateLeft = 1 << 4,
+    RotateRight = 1 << 5
 }
 
 public enum EmitCondition

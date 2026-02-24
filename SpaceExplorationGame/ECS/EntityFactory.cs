@@ -140,11 +140,10 @@ public static class EntityFactory
     public static Entity CreatePlayerShip(World world, Vector2 position, int spriteSize,
         float maxHull, float currentHull, float maxShield, float maxSpeed)
     {
-        return world.Create(
+        var ship = world.Create(
             new Transform(position),
             Sprite.ColoredRect(spriteSize, spriteSize, new Color3(100, 255, 100)),
             new Velocity(maxSpeed),
-            CreateShipThrusterEmitter(spriteSize, new Color3(130, 220, 255)),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
                 GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
@@ -153,6 +152,9 @@ public static class EntityFactory
                 Shield = maxShield // Start with full shields
             }
         );
+
+        CreateShipThrusterEmitters(world, ship, spriteSize, new Color3(130, 220, 255));
+        return ship;
     }
 
     /// <summary>Create the player avatar entity for planet surface or interior walking.</summary>
@@ -227,11 +229,10 @@ public static class EntityFactory
         NpcShipStats stats, int dangerLevel, int lootCredits, float fireCooldown,
         ShipWeaponSpec[] weapons)
     {
-        return world.Create(
+        var ship = world.Create(
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(255, 80, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(255, 130, 110)),
             new Health(stats.MaxHull, stats.MaxShield,
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
@@ -257,17 +258,19 @@ public static class EntityFactory
                 DangerLevel = dangerLevel
             }
         );
+
+        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(255, 130, 110));
+        return ship;
     }
 
     /// <summary>Create a trader NPC ship entity.</summary>
     public static Entity CreateTraderShip(World world, Vector2 position, float rotation, NpcShipStats stats,
         ShipWeaponSpec[] weapons)
     {
-        return world.Create(
+        var ship = world.Create(
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(200, 160, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(255, 210, 120)),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
@@ -284,17 +287,19 @@ public static class EntityFactory
                 WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
             }
         );
+
+        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(255, 210, 120));
+        return ship;
     }
 
     /// <summary>Create a patrol NPC ship entity.</summary>
     public static Entity CreatePatrolShip(World world, Vector2 position, float rotation, NpcShipStats stats,
         ShipWeaponSpec[] weapons)
     {
-        return world.Create(
+        var ship = world.Create(
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(80, 140, 220)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            CreateShipThrusterEmitter(stats.SpriteSize, new Color3(130, 200, 255)),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
@@ -311,6 +316,9 @@ public static class EntityFactory
                 WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
             }
         );
+
+        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(130, 200, 255));
+        return ship;
     }
 
     private static float[] InitializeWeaponCooldowns(int count, float initialCooldown)
@@ -324,22 +332,89 @@ public static class EntityFactory
         return cooldowns;
     }
 
-    private static ParticleEmitter CreateShipThrusterEmitter(int shipSize, Color3 color)
+    private static void CreateShipThrusterEmitters(World world, Entity shipEntity, int shipSize, Color3 color)
+    {
+        Vector2 shipPos = world.Get<Transform>(shipEntity).Position;
+        float half = shipSize * 0.5f;
+        float side = shipSize * 0.42f;
+        float sideFrontX = shipSize * 0.22f;
+        float sideRearX = -shipSize * 0.22f;
+
+        world.Create(new Transform(shipPos), CreateMainThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(-half * 1.1f, 0f),
+            localEjectDirection: new Vector2(-1f, 0f),
+            activation: ThrusterActivation.Forward));
+
+        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(half * 0.95f, 0f),
+            localEjectDirection: new Vector2(1f, 0f),
+            activation: ThrusterActivation.Backward));
+
+        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(sideFrontX, -side),
+            localEjectDirection: new Vector2(0f, -1f),
+            activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateRight));
+
+        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(sideRearX, -side),
+            localEjectDirection: new Vector2(0f, -1f),
+            activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateLeft));
+
+        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(sideFrontX, side),
+            localEjectDirection: new Vector2(0f, 1f),
+            activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateLeft));
+
+        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+            localOffset: new Vector2(sideRearX, side),
+            localEjectDirection: new Vector2(0f, 1f),
+            activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateRight));
+    }
+
+    private static ParticleEmitter CreateMainThrusterEmitter(Entity shipEntity, Color3 color,
+        Vector2 localOffset, Vector2 localEjectDirection, ThrusterActivation activation)
     {
         return new ParticleEmitter
         {
-            EmitCondition = EmitCondition.WhenAccelerating,
-            SpawnInterval = 0.03f,
+            EmitCondition = EmitCondition.Always,
+            SpawnInterval = 0.024f,
             SpawnAccumulator = 0f,
-            SternOffset = shipSize * 0.56f,
-            EjectSpeedMin = 115f,
-            EjectSpeedMax = 185f,
-            LateralDrift = 25f,
-            ParticleLifeMin = 0.65f,
-            ParticleLifeMax = 0.95f,
-            ParticleSizeMin = 1.4f,
-            ParticleSizeMax = 2.8f,
-            ParticleDrag = 1.4f,
+            CarrierEntity = shipEntity,
+            LocalOffset = localOffset,
+            LocalEjectDirection = localEjectDirection,
+            ActivationMask = activation,
+            EjectSpeedMin = 130f,
+            EjectSpeedMax = 220f,
+            LateralDrift = 22f,
+            ParticleLifeMin = 0.72f,
+            ParticleLifeMax = 1.05f,
+            ParticleSizeMin = 1.6f,
+            ParticleSizeMax = 3.1f,
+            ParticleDrag = 1.35f,
+            ParticleColor = color
+        };
+    }
+
+    private static ParticleEmitter CreateRcsThrusterEmitter(Entity shipEntity, Color3 color,
+        Vector2 localOffset, Vector2 localEjectDirection, ThrusterActivation activation)
+    {
+        return new ParticleEmitter
+        {
+            EmitCondition = EmitCondition.Always,
+            SpawnInterval = 0.048f,
+            SpawnAccumulator = 0f,
+            CarrierEntity = shipEntity,
+            LocalOffset = localOffset,
+            LocalEjectDirection = localEjectDirection,
+            ActivationMask = activation,
+            EjectSpeedMin = 88f,
+            EjectSpeedMax = 150f,
+            LateralDrift = 14f,
+            ParticleLifeMin = 0.42f,
+            ParticleLifeMax = 0.70f,
+            ParticleSizeMin = 1.0f,
+            ParticleSizeMax = 2.0f,
+            ParticleDrag = 1.65f,
             ParticleColor = color
         };
     }
