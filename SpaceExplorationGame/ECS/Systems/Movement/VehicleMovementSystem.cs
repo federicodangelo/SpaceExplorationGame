@@ -45,12 +45,21 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
         ref var velocity = ref World.Get<Velocity>(_entity);
         Vector2 movementInput = _input.GetActionAxisDirection(InputActionAxis.Movement);
         Vector2 headingDirection = _input.GetActionAxisDirection(InputActionAxis.Heading);
+        float rotationRadians = transform.Rotation * MathF.PI / 180f;
+        Vector2 forward = new(MathF.Cos(rotationRadians), MathF.Sin(rotationRadians));
 
         if (_input.MovementMode == MovementInputMode.Absolute &&
             headingDirection == Vector2.Zero &&
             movementInput != Vector2.Zero)
         {
             headingDirection = Vector2.Normalize(movementInput);
+        }
+
+        // Keep linear movement fully aligned with facing to avoid floaty lateral drift.
+        if (velocity.Velocity != Vector2.Zero)
+        {
+            float forwardSpeed = Vector2.Dot(velocity.Velocity, forward);
+            velocity.Velocity = forward * forwardSpeed;
         }
 
         velocity.Acceleration = Vector2.Zero;
@@ -69,9 +78,13 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
         switch (_input.MovementMode)
         {
             case MovementInputMode.Absolute:
+            {
                 velocity.Damping = _friction;
-                velocity.Acceleration += movementInput * _acceleration;
+
+                float forwardThrust = Math.Clamp(movementInput.Length(), 0f, 1f);
+                velocity.Acceleration += forward * forwardThrust * _acceleration;
                 break;
+            }
 
             case MovementInputMode.HeadingRelative:
             default:
@@ -79,17 +92,8 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
                 bool isBraking = movementInput.Y > 0f;
                 velocity.Damping = _friction * (isBraking ? _brakeMultiplier : 1f);
 
-                if (headingDirection != Vector2.Zero)
-                {
-                    Vector2 forward = headingDirection;
-                    Vector2 right = new(-forward.Y, forward.X);
-
-                    float forwardThrust = MathF.Max(0f, -movementInput.Y);
-                    float strafeThrust = movementInput.X;
-
-                    Vector2 localAcceleration = (forward * forwardThrust) + (right * strafeThrust);
-                    velocity.Acceleration += localAcceleration * _acceleration;
-                }
+                float forwardThrust = MathF.Max(0f, -movementInput.Y);
+                velocity.Acceleration += forward * forwardThrust * _acceleration;
                 break;
             }
         }
