@@ -13,6 +13,11 @@ namespace SpaceExplorationGame.ECS.Systems.AI;
 /// </summary>
 public partial class ShipEnemyAISystem : BaseSystem<World, float>
 {
+    private const float TargetMemoryDuration = 2.25f;
+    private const float MinFleeStateDuration = 1.25f;
+    private const float AttackEnterRangeFactor = 0.92f;
+    private const float AttackExitRangeFactor = 1.08f;
+
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
     private readonly float _mapWidth;
@@ -20,18 +25,22 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     // Projectiles spawned this frame (to be created after query completes)
     private readonly List<ProjectileSpawn> _pendingProjectiles = [];
-    private readonly Dictionary<Entity, Vector2> _cruiseTargets = [];
 
     /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
 
     // Cached query description for nested target/pirate lookups
-    private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, EnemyAI, Health>();
+    private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
 
     // Per-frame cached state for [Query] method access
     private float _dt;
     private Vector2 _playerPos;
+    private Vector2 _playerPosLastFrame;
+    private Vector2 _playerVelocity;
     private bool _playerAlive;
+    private bool _hasLastPlayerPos;
+
+    private readonly record struct TargetSelection(Vector2 Position, Vector2 Velocity, bool HasTarget);
 
     public ShipEnemyAISystem(World world, Func<Vector2> getPlayerPosition, Func<bool> isPlayerAlive,
         float mapWidth, float mapHeight)
@@ -48,6 +57,12 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         _pendingProjectiles.Clear();
         _dt = dt;
         _playerPos = _getPlayerPosition();
+        if (_hasLastPlayerPos && dt > 0f)
+            _playerVelocity = (_playerPos - _playerPosLastFrame) / dt;
+        else
+            _playerVelocity = Vector2.Zero;
+        _playerPosLastFrame = _playerPos;
+        _hasLastPlayerPos = true;
         _playerAlive = _isPlayerAlive();
 
         ProcessEnemyAIQuery(World);
@@ -67,7 +82,8 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     {
         if (health.IsDead)
         {
-            _cruiseTargets.Remove(entity);
+            ai.HasCruiseTarget = false;
+            ai.LastKnownTargetTimeLeft = 0f;
             return;
         }
 
@@ -78,33 +94,39 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         velocity.Damping = 1f;
 
         // Find the best target based on faction
-        var (targetPos, hasTarget, targetEntity) = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange, _playerPos, _playerAlive);
+        var liveTarget = FindTarget(entity, ai.Config.Faction, transform.Position,
+            ai.Config.DetectRange, _playerPos, _playerVelocity, _playerAlive);
+        var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
-        UpdateShipAIByFaction(entity, ref transform, ref velocity, ref ai, ref health, _dt, targetPos, hasTarget);
+        UpdateShipAIByFaction(entity, ref transform, ref velocity, ref ai, ref health, _dt,
+            target.Position, target.Velocity, target.HasTarget);
     }
 
     private void UpdateShipAIByFaction(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 targetPos, bool hasTarget)
+        ref Health health, float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdatePirate(entity, ref transform, ref velocity, ref ai, ref health, dt, targetPos, hasTarget);
+                UpdatePirate(entity, ref transform, ref velocity, ref ai, ref health, dt,
+                    targetPos, targetVelocity, hasTarget);
                 break;
             case Faction.Trader:
                 UpdateTrader(entity, ref transform, ref velocity, ref ai, dt);
                 break;
             case Faction.Patrol:
-                UpdatePatrol(entity, ref transform, ref velocity, ref ai, dt, targetPos, hasTarget);
+                UpdatePatrol(entity, ref transform, ref velocity, ref ai, dt,
+                    targetPos, targetVelocity, hasTarget);
                 break;
         }
     }
 
     private void UpdatePirate(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 targetPos, bool hasTarget)
+        ref Health health, float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Flee if low health
-        if (health.HullPercent < ai.Config.FleeHealthPercent)
+        bool keepFleeing = ai.State == AIState.Flee && ai.StateTimer < MinFleeStateDuration;
+        if (health.HullPercent < ai.Config.FleeHealthPercent || keepFleeing)
         {
             var fleeFrom = hasTarget ? targetPos : transform.Position - FacingDirection(transform.Rotation);
             ApplyFleeBehavior(ref transform, ref velocity, ref ai, dt, fleeFrom, thrustMultiplier: 0.5f);
@@ -114,13 +136,13 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         if (!hasTarget)
         {
             // Patrol: drift slowly in a pseudo-random direction
-            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.2f,
                 damping: 0.999f);
             return;
         }
 
-        ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos,
+        ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos, targetVelocity,
             chaseThrustMultiplier: 0.6f,
             strafeThrustMultiplier: 0.3f,
             strafeFrequency: 0.8f,
@@ -144,19 +166,19 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         }
         else
         {
-            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.3f,
                 damping: 1f);
         }
     }
 
     private void UpdatePatrol(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        float dt, Vector2 targetPos, bool hasTarget)
+        float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Patrols hunt pirates and defend traders
         if (hasTarget)
         {
-            ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos,
+            ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos, targetVelocity,
                 chaseThrustMultiplier: 0.5f,
                 strafeThrustMultiplier: 0.3f,
                 strafeFrequency: 0.7f,
@@ -169,7 +191,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         }
         else
         {
-            ApplyCruiseBehavior(entity, ref transform, ref velocity, ref ai, dt,
+            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
                 thrustMultiplier: 0.2f,
                 damping: 0.999f);
         }
@@ -178,7 +200,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     private void ApplyFleeBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
         float dt, Vector2 threatPosition, float thrustMultiplier)
     {
-        ai.State = AIState.Flee;
+        SetState(ref ai, AIState.Flee);
         var fleeDir = Vector2.Normalize(transform.Position - threatPosition);
         if (float.IsNaN(fleeDir.X))
             fleeDir = FacingDirection(transform.Rotation);
@@ -187,17 +209,19 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
     }
 
-    private void ApplyCruiseBehavior(Entity entity, ref Transform transform, ref Velocity velocity,
+    private void ApplyCruiseBehavior(ref Transform transform, ref Velocity velocity,
         ref EnemyAI ai, float dt, float thrustMultiplier, float damping)
     {
-        ai.State = AIState.Patrol;
+        SetState(ref ai, AIState.Patrol);
 
-        if (!_cruiseTargets.TryGetValue(entity, out var targetPos) ||
+        var targetPos = ai.CruiseTarget;
+        if (!ai.HasCruiseTarget ||
             !IsInsideCruiseBounds(targetPos) ||
             Vector2.Distance(transform.Position, targetPos) < 180f)
         {
             targetPos = PickRandomCruiseTarget(transform.Position, minDistance: 350f);
-            _cruiseTargets[entity] = targetPos;
+            ai.CruiseTarget = targetPos;
+            ai.HasCruiseTarget = true;
         }
 
         var dirToTarget = Vector2.Normalize(targetPos - transform.Position);
@@ -268,7 +292,8 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     }
 
     private void ApplyCombatBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        float dt, Vector2 targetPos, float chaseThrustMultiplier, float strafeThrustMultiplier,
+        float dt, Vector2 targetPos, Vector2 targetVelocity, float chaseThrustMultiplier,
+        float strafeThrustMultiplier,
         float strafeFrequency, bool maintainEngageBand, float closeThresholdMultiplier,
         float farThresholdMultiplier, float backoffThrustMultiplier,
         float closeInThrustMultiplier, bool closeInWhenOutsideEngageDistance)
@@ -279,10 +304,18 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             dirToTarget = FacingDirection(transform.Rotation);
 
         float weaponRange = GetWeaponRange(ai.Config.Weapons);
-        if (distToTarget <= weaponRange)
+        bool inAttackRange = ai.State switch
         {
-            ai.State = AIState.Attack;
-            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
+            AIState.Attack => distToTarget <= weaponRange * AttackExitRangeFactor,
+            _ => distToTarget <= weaponRange * AttackEnterRangeFactor
+        };
+
+        if (inAttackRange)
+        {
+            SetState(ref ai, AIState.Attack);
+            var aimDir = ComputeAimDirection(transform.Position, targetPos, targetVelocity,
+                GetFastestProjectileSpeed(ai.Config.Weapons), dirToTarget);
+            TurnTowardDirection(ref transform, ref velocity, aimDir, ai.Config.MaxRotationSpeed, dt);
 
             if (maintainEngageBand)
             {
@@ -309,11 +342,11 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             }
 
             velocity.Damping = 0.98f;
-            TryFireProjectiles(ref transform, ref velocity, ref ai, dirToTarget);
+            TryFireProjectiles(ref transform, ref velocity, ref ai, aimDir);
         }
         else
         {
-            ai.State = AIState.Chase;
+            SetState(ref ai, AIState.Chase);
             TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
             velocity.Acceleration += dirToTarget * ai.Config.Acceleration * chaseThrustMultiplier;
         }
@@ -327,27 +360,55 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             MathF.Sign(MathF.Sin(ai.StateTimer * strafeFrequency));
     }
 
-    private TargetInfo FindTarget(Entity self, Faction selfFaction,
-        Vector2 selfPos, float range, Vector2 playerPos, bool playerAlive)
+    private TargetSelection ResolveTargetWithMemory(ref EnemyAI ai, TargetSelection liveTarget)
+    {
+        if (liveTarget.HasTarget)
+        {
+            ai.LastKnownTargetPos = liveTarget.Position;
+            ai.LastKnownTargetVelocity = liveTarget.Velocity;
+            ai.LastKnownTargetTimeLeft = TargetMemoryDuration;
+            return liveTarget;
+        }
+
+        if (ai.LastKnownTargetTimeLeft <= 0f)
+            return default;
+
+        ai.LastKnownTargetTimeLeft -= _dt;
+        ai.LastKnownTargetPos += ai.LastKnownTargetVelocity * _dt;
+
+        if (ai.LastKnownTargetTimeLeft <= 0f)
+        {
+            ai.LastKnownTargetTimeLeft = 0f;
+            return default;
+        }
+
+        return new TargetSelection(ai.LastKnownTargetPos, ai.LastKnownTargetVelocity, true);
+    }
+
+    private TargetSelection FindTarget(Entity self, Faction selfFaction,
+        Vector2 selfPos, float range, Vector2 playerPos, Vector2 playerVelocity, bool playerAlive)
     {
         Entity? bestTarget = null;
         float bestDist = float.MaxValue;
         Vector2 bestPos = Vector2.Zero;
+        Vector2 bestVelocity = Vector2.Zero;
 
         // Optional player target (virtual target; no entity handle)
         if (playerAlive && ShouldTargetPlayer(selfFaction))
-            TrySelectTarget(playerPos, null, selfPos, range, ref bestDist, ref bestPos, ref bestTarget);
+            TrySelectTarget(playerPos, playerVelocity, null, selfPos, range,
+                ref bestDist, ref bestPos, ref bestVelocity, ref bestTarget);
 
         // Ship-vs-ship target selection policy
-        World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
+        World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
         {
             if (entity == self || h.IsDead) return;
             if (!ShouldTargetFaction(selfFaction, ai.Config.Faction)) return;
 
-            TrySelectTarget(t.Position, entity, selfPos, range, ref bestDist, ref bestPos, ref bestTarget);
+            TrySelectTarget(t.Position, v.Velocity, entity, selfPos, range,
+                ref bestDist, ref bestPos, ref bestVelocity, ref bestTarget);
         });
 
-        return new TargetInfo(bestPos, bestDist < float.MaxValue, bestTarget);
+        return new TargetSelection(bestPos, bestVelocity, bestDist < float.MaxValue);
     }
 
     private static bool ShouldTargetPlayer(Faction selfFaction)
@@ -365,8 +426,9 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         };
     }
 
-    private static void TrySelectTarget(Vector2 candidatePos, Entity? candidateEntity,
-        Vector2 selfPos, float range, ref float bestDist, ref Vector2 bestPos, ref Entity? bestTarget)
+    private static void TrySelectTarget(Vector2 candidatePos, Vector2 candidateVelocity,
+        Entity? candidateEntity, Vector2 selfPos, float range, ref float bestDist,
+        ref Vector2 bestPos, ref Vector2 bestVelocity, ref Entity? bestTarget)
     {
         float dist = Vector2.Distance(selfPos, candidatePos);
         if (dist >= range || dist >= bestDist)
@@ -374,6 +436,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
         bestDist = dist;
         bestPos = candidatePos;
+        bestVelocity = candidateVelocity;
         bestTarget = candidateEntity;
     }
 
@@ -383,7 +446,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         Vector2? bestPos = null;
 
         var q = _aiEntityQuery;
-        World.Query(in q, (Entity entity, ref Transform t, ref EnemyAI ai, ref Health h) =>
+        World.Query(in q, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
         {
             if (h.IsDead || ai.Config.Faction != Faction.Pirate) return;
             float dist = Vector2.Distance(pos, t.Position);
@@ -456,6 +519,44 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             maxRange = MathF.Max(maxRange, weapons[i].Range);
 
         return maxRange;
+    }
+
+    private static float GetFastestProjectileSpeed(IReadOnlyList<ShipWeaponSpec> weapons)
+    {
+        float maxSpeed = 0f;
+        for (int i = 0; i < weapons.Count; i++)
+            maxSpeed = MathF.Max(maxSpeed, weapons[i].ProjectileSpeed);
+
+        return maxSpeed;
+    }
+
+    private static Vector2 ComputeAimDirection(Vector2 shooterPos, Vector2 targetPos,
+        Vector2 targetVelocity, float projectileSpeed, Vector2 fallbackDirection)
+    {
+        if (projectileSpeed <= 0f)
+            return fallbackDirection;
+
+        var toTarget = targetPos - shooterPos;
+        float dist = toTarget.Length();
+        if (dist <= 0.001f)
+            return fallbackDirection;
+
+        float leadTime = Math.Clamp(dist / projectileSpeed, 0f, 1.5f);
+        var predictedPos = targetPos + targetVelocity * leadTime;
+        var aimDir = Vector2.Normalize(predictedPos - shooterPos);
+        if (float.IsNaN(aimDir.X))
+            return fallbackDirection;
+
+        return aimDir;
+    }
+
+    private static void SetState(ref EnemyAI ai, AIState newState)
+    {
+        if (ai.State == newState)
+            return;
+
+        ai.State = newState;
+        ai.StateTimer = 0f;
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,

@@ -246,6 +246,11 @@ public struct EnemyAI
     public AIState State;
     public float StateTimer;         // time in current state
     public float[] WeaponCooldowns;  // per-weapon fire cooldowns
+    public Vector2 CruiseTarget;
+    public bool HasCruiseTarget;
+    public Vector2 LastKnownTargetPos;
+    public Vector2 LastKnownTargetVelocity;
+    public float LastKnownTargetTimeLeft;
 }
 
 public enum AIState

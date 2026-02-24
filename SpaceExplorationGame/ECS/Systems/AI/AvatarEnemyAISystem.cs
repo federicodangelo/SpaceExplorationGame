@@ -14,6 +14,9 @@ namespace SpaceExplorationGame.ECS.Systems.AI;
 /// </summary>
 public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 {
+    private const float BanditAttackEnterRangeFactor = 0.92f;
+    private const float BanditAttackExitRangeFactor = 1.08f;
+
     private readonly Func<Vector2> _getPlayerPosition;
     private readonly Func<bool> _isPlayerAlive;
 
@@ -84,7 +87,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         if (_playerAlive && dist < ai.Config.DetectRange)
         {
             // Chase player
-            ai.State = AIState.Chase;
+            SetState(ref ai, AIState.Chase);
             var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
@@ -101,7 +104,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         else
         {
             // Wander randomly
-            ai.State = AIState.Idle;
+            SetState(ref ai, AIState.Idle);
             ai.WanderTimer -= _dt;
             if (ai.WanderTimer <= 0)
             {
@@ -123,7 +126,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         // Flee if very low health
         if (hullPercent < 0.15f && _playerAlive && dist < ai.Config.DetectRange)
         {
-            ai.State = AIState.Flee;
+            SetState(ref ai, AIState.Flee);
             var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
 
@@ -136,16 +139,22 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
-            if (dist > ai.Config.AttackRange * 0.7f)
+            bool inAttackRange = ai.State switch
+            {
+                AIState.Attack => dist <= ai.Config.AttackRange * BanditAttackExitRangeFactor,
+                _ => dist <= ai.Config.AttackRange * BanditAttackEnterRangeFactor
+            };
+
+            if (!inAttackRange)
             {
                 // Close distance
-                ai.State = AIState.Chase;
+                SetState(ref ai, AIState.Chase);
                 SetAccelerationTowardVelocity(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
             }
             else
             {
                 // In range — strafe slightly
-                ai.State = AIState.Attack;
+                SetState(ref ai, AIState.Attack);
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
                 SetAccelerationTowardVelocity(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
             }
@@ -161,7 +170,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         else
         {
             // Patrol / wander
-            ai.State = AIState.Patrol;
+            SetState(ref ai, AIState.Patrol);
             ai.WanderTimer -= _dt;
             if (ai.WanderTimer <= 0)
             {
@@ -183,5 +192,14 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         Vector2 desiredVelocity)
     {
         velocity.Acceleration += (desiredVelocity - velocity.Velocity) * 14f;
+    }
+
+    private static void SetState(ref SurfaceAI ai, AIState newState)
+    {
+        if (ai.State == newState)
+            return;
+
+        ai.State = newState;
+        ai.StateTimer = 0f;
     }
 }
