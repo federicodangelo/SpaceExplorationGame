@@ -388,8 +388,8 @@ public static class EntityFactory
             LateralDrift = 22f,
             ParticleLifeMin = 0.72f,
             ParticleLifeMax = 1.05f,
-            ParticleSizeMin = 1.6f,
-            ParticleSizeMax = 3.1f,
+            ParticleSizeMin = 0.8f,
+            ParticleSizeMax = 1.55f,
             ParticleDrag = 1.35f,
             ParticleColor = color
         };
@@ -412,8 +412,8 @@ public static class EntityFactory
             LateralDrift = 14f,
             ParticleLifeMin = 0.42f,
             ParticleLifeMax = 0.70f,
-            ParticleSizeMin = 1.0f,
-            ParticleSizeMax = 2.0f,
+            ParticleSizeMin = 0.5f,
+            ParticleSizeMax = 1.0f,
             ParticleDrag = 1.65f,
             ParticleColor = color
         };
