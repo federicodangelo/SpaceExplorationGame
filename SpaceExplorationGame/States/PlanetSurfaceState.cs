@@ -621,9 +621,17 @@ public class PlanetSurfaceState : GameState
 
                 _playerFireCooldown = GameConfig.AvatarFireRate;
 
-                // Aim direction: use mouse if mouse button, else last movement direction
+                // Aim direction priority: gamepad heading (right stick), mouse, then last movement direction
                 Vector2 aimDir;
-                if (input.IsMouseDown(1))
+                Vector2 gamepadHeading = input.ActiveInputMethod == InputMethod.Gamepad
+                    ? input.GetActionAxisDirection(InputActionAxis.Heading)
+                    : Vector2.Zero;
+
+                if (gamepadHeading != Vector2.Zero)
+                {
+                    aimDir = gamepadHeading;
+                }
+                else if (input.IsMouseDown(1))
                 {
                     var mouseWorld = _camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
                     aimDir = Vector2.Normalize(mouseWorld - avatarTransform.Position);

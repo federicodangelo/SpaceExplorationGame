@@ -428,10 +428,7 @@ public class InputManager
         if (length < GamepadDeadZone)
             return Vector2.Zero;
 
-        if (length > 1f)
-            return Vector2.Normalize(direction);
-
-        return direction;
+        return Vector2.Normalize(direction);
     }
 
     private static float NormalizeGamepadAxis(short value)
