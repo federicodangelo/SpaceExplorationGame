@@ -80,6 +80,9 @@ public class Game : IDisposable
         Window = window;
         Renderer = renderer;
 
+        // Enable VSync to cap framerate and avoid screen tearing
+        SDL.SetRenderVSync(renderer, 1);
+
         // ECS world
         EcsWorld = World.Create();
 
