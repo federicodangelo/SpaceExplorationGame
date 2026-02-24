@@ -58,6 +58,11 @@ public class Game : IDisposable
 
     public bool IsRunning { get; private set; }
 
+    // Window title FPS tracking
+    private double _fpsTitleAccumTime;
+    private int _fpsTitleFrameCount;
+    private const double FpsTitleUpdateInterval = 1;
+
     public void Initialize(ulong? galaxySeed = null)
     {
         // Init SDL
@@ -172,6 +177,10 @@ public class Game : IDisposable
         var frequency = (double)SDL.GetPerformanceFrequency();
         double accumulator = 0;
 
+        _fpsTitleAccumTime = 0;
+        _fpsTitleFrameCount = 0;
+        SDL.SetWindowTitle(Window, GameConfig.WindowTitle);
+
         while (IsRunning)
         {
             var currentTime = SDL.GetPerformanceCounter();
@@ -228,6 +237,16 @@ public class Game : IDisposable
             _currentState?.Render(this);
 
             SDL.RenderPresent(Renderer);
+
+            _fpsTitleAccumTime += elapsed;
+            _fpsTitleFrameCount++;
+            if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
+            {
+                double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
+                SDL.SetWindowTitle(Window, $"{GameConfig.WindowTitle} - AVG FPS: {avgFps:F1}");
+                _fpsTitleAccumTime = 0;
+                _fpsTitleFrameCount = 0;
+            }
         }
     }
 
