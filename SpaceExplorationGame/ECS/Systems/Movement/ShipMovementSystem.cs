@@ -48,17 +48,14 @@ public partial class ShipMovementSystem : BaseSystem<World, float>
             headingDirection = Vector2.Normalize(movementInput);
         }
 
-        if (headingDirection != Vector2.Zero)
+        if (headingDirection != Vector2.Zero && dt > 0f)
         {
             float targetRotation = MathF.Atan2(headingDirection.Y, headingDirection.X) * 180f / MathF.PI;
             float delta = targetRotation - transform.Rotation;
-            delta = ((delta + 540f) % 360f) - 180f;
-
-            if (dt > 0f)
-            {
-                float requiredRotationSpeed = delta / dt;
-                velocity.RotationVelocity = Math.Clamp(requiredRotationSpeed, -RotationSpeed, RotationSpeed);
-            }
+            delta = ((delta % 360f) + 540f) % 360f - 180f;
+            
+            float requiredRotationSpeed = delta / dt;
+            velocity.RotationVelocity = Math.Clamp(requiredRotationSpeed, -RotationSpeed, RotationSpeed);
         }
         Vector2 desiredMovementDirection = Vector2.Zero;
 

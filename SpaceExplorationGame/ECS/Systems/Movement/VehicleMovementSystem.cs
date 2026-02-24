@@ -60,7 +60,7 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
         {
             float targetRotation = MathF.Atan2(headingDirection.Y, headingDirection.X) * 180f / MathF.PI;
             float delta = targetRotation - transform.Rotation;
-            delta = ((delta + 540f) % 360f) - 180f;
+            delta = ((delta % 360f) + 540f) % 360f - 180f;
 
             float requiredRotationSpeed = delta / dt;
             velocity.RotationVelocity = Math.Clamp(requiredRotationSpeed, -_rotationSpeed, _rotationSpeed);
