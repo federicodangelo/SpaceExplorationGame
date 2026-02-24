@@ -15,6 +15,7 @@ public enum MenuAction
     RandomizeLocation,
     EditSeed,
     RandomSeed,
+    Debug,
     StartGame,
 }
 
@@ -30,7 +31,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private const int RandomizeIdx = 2;
     private const int EditSeedIdx = 3;
     private const int RandomSeedIdx = 4;
-    private const int StartGameIdx = 5;
+    private const int DebugIdx = 5;
+    private const int StartGameIdx = 6;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
     private static readonly string[] LocationLabels = ["STAR SYSTEM", "SPACE STATION", "INSIDE SPACE STATION", "PLANET SURFACE", "SETTLEMENT", "INSIDE SETTLEMENT"];
@@ -43,6 +45,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
         new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
         new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
+        new(MenuAction.Debug, "DEBUG", "Open debug utilities"),
         new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"),
     ];
 
@@ -69,6 +72,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     /// <summary>Fired when the location was randomized (re-roll).</summary>
     public bool RandomizeLocation { get; set; }
+
+    /// <summary>Fired when the debug overlay should be opened.</summary>
+    public bool DebugRequested { get; set; }
 
     /// <summary>Current danger filter: 0=ANY, 1-5=specific level.</summary>
     public int DangerFilter => _dangerIndex;
@@ -139,6 +145,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         NewSeed = null;
         RandomizeSeed = false;
         RandomizeLocation = false;
+        DebugRequested = false;
         FiltersChanged = false;
         LocationPreview = null;
         // Keep _dangerIndex and _locationIndex from previous session
@@ -169,6 +176,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
                 break;
             case MenuAction.RandomSeed:
                 RandomizeSeed = true;
+                break;
+            case MenuAction.Debug:
+                DebugRequested = true;
                 break;
             case MenuAction.StartGame:
                 StartRequested = true;

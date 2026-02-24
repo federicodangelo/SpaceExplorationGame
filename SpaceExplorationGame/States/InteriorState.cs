@@ -79,22 +79,11 @@ public class InteriorState : GameState
 
     public override void Enter(Game game)
     {
-        // Generate interior based on origin
-        var rng = _origin switch
-        {
-            InteriorOrigin.Station => new SeededRandom(
-                game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(2000 + (_station?.Index ?? 0))),
-            InteriorOrigin.Settlement => new SeededRandom(
-                game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet?.Index ?? 0)
-                    .DeriveChildSeed(3000 + (_settlement?.TileRect.X ?? 0) * 100 + (_settlement?.TileRect.Y ?? 0))),
-            _ => new SeededRandom(12345)
-        };
-
         _interior = _origin switch
         {
-            InteriorOrigin.Station => InteriorGenerator.GenerateStation(rng, _station?.Name ?? "STATION"),
-            InteriorOrigin.Settlement => InteriorGenerator.GenerateSettlement(rng, _settlement?.Name ?? "SETTLEMENT"),
-            _ => InteriorGenerator.GenerateStation(rng, "UNKNOWN")
+            InteriorOrigin.Station => game.WorldGenerator.GenerateStationInterior(game.Seeds, _starSystem, _station),
+            InteriorOrigin.Settlement => game.WorldGenerator.GenerateSettlementInterior(game.Seeds, _starSystem, _planet, _settlement),
+            _ => game.WorldGenerator.GenerateStationInterior(game.Seeds, _starSystem, _station)
         };
 
         // Spawn player avatar at spawn point

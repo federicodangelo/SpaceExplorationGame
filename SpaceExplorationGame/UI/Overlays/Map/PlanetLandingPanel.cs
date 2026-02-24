@@ -76,8 +76,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _lastClickTile = new TilePos(-1, -1);
 
         // Generate surface
-        var rng = game.Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index);
-        _surfaceData = PlanetSurfaceGenerator.Generate(rng, planet);
+        _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, starSystem, planet);
 
         // Create terrain overview texture
         CreateTerrainTexture(game);

@@ -42,10 +42,9 @@ public class SolarSystemMapPanel : MapPanelBase
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < starSystems.Count)
         {
             _currentStarSystem = starSystems[game.Player.CurrentStarSystemIndex];
-            var rng = game.Seeds.GetStarSystemRandom(_currentStarSystem.Index);
-            var (planets, _, stations) = SolarSystemGenerator.Generate(rng, _currentStarSystem);
-            _planets = planets;
-            _stations = stations;
+            var content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, _currentStarSystem);
+            _planets = content.Planets;
+            _stations = content.Stations;
         }
 
         _hoveredObject = new(SolarMapObjectType.None);
@@ -54,8 +53,6 @@ public class SolarSystemMapPanel : MapPanelBase
 
     public override void Close(Game game)
     {
-        _planets.Clear();
-        _stations.Clear();
     }
 
     public override void SetupCamera(Game game)

@@ -112,7 +112,8 @@ public class SolarSystemState : GameState
     private float _combatMusicTimer;
     private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
 
-    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null, bool autoOpenGalaxyMap = false, PlanetData? autoOpenPlanet = null)
+    public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null,
+        bool autoOpenGalaxyMap = false, PlanetData? autoOpenPlanet = null)
     {
         _starSystem = starSystem;
         _autoOpenStation = autoOpenStation;
@@ -131,10 +132,10 @@ public class SolarSystemState : GameState
         game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
 
         var rng = game.Seeds.GetStarSystemRandom(_starSystem.Index);
-        var (planets, belts, stations) = SolarSystemGenerator.Generate(rng, _starSystem);
-        _planets = planets;
-        _asteroidBelts = belts;
-        _stations = stations;
+        var content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, _starSystem);
+        _planets = content.Planets;
+        _asteroidBelts = content.AsteroidBelts;
+        _stations = content.Stations;
 
         float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
@@ -392,9 +393,6 @@ public class SolarSystemState : GameState
 
     public override void Exit(Game game)
     {
-        _planets.Clear();
-        _asteroidBelts.Clear();
-        _stations.Clear();
         _planetEntities.Clear();
         _stationEntities.Clear();
         _moonEntities.Clear();

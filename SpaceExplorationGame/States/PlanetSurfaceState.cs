@@ -159,8 +159,7 @@ public class PlanetSurfaceState : GameState
         };
 
         // Generate planet surface
-        var rng = game.Seeds.GetPlanetSurfaceRandom(_starSystem.Index, _planet.Index);
-        _surfaceData = PlanetSurfaceGenerator.Generate(rng, _planet);
+        _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
 
         // Place player avatar at landing zone (use chosen site or default center)
         int lzTileX = _landingTileX >= 0 ? _landingTileX : _surfaceData.LandingZone.X;

@@ -39,6 +39,7 @@ public class Game : IDisposable
 
     // Procedural generation
     public SeedManager Seeds { get; private set; } = null!;
+    public IWorldGenerator WorldGenerator { get; private set; } = null!;
 
     /// <summary>Cached galaxy data — generated once from the galaxy seed, reused everywhere.</summary>
     public List<StarSystemData> GalaxyData { get; private set; } = [];
@@ -108,8 +109,9 @@ public class Game : IDisposable
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
 
-        // Generate and cache galaxy data once
-        GalaxyData = GalaxyGenerator.Generate(Seeds.GetGalaxyRandom());
+        // Generation service + cached galaxy data
+        WorldGenerator = new ProceduralWorldGenerator();
+        GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
 
         IsRunning = true;
     }
@@ -120,8 +122,20 @@ public class Game : IDisposable
     public void RegenerateGalaxy(ulong newSeed)
     {
         Seeds = new SeedManager(newSeed);
-        GalaxyData = GalaxyGenerator.Generate(Seeds.GetGalaxyRandom());
+        GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
         Player.Reset();
+    }
+
+    public void SetWorldGenerator(IWorldGenerator generator, bool regenerateGalaxy = true)
+    {
+        WorldGenerator = generator;
+        if (regenerateGalaxy)
+            GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
+    }
+
+    public void UseProceduralWorldGenerator(bool regenerateGalaxy = true)
+    {
+        SetWorldGenerator(new ProceduralWorldGenerator(), regenerateGalaxy);
     }
 
     public void ChangeState(GameState newState)
