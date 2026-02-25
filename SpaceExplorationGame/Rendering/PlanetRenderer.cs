@@ -45,9 +45,18 @@ public class PlanetRenderer : IDisposable
             {
                 byte ringAlphaA = (byte)Math.Clamp((int)(120 + 20 * MathF.Sin(globalTime * 1.4f + i)), 0, 255);
                 byte ringAlphaB = (byte)Math.Clamp((int)(80 + 18 * MathF.Sin(globalTime * 1.1f + i * 0.8f)), 0, 255);
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.5f,
+
+                float ringAInner = p.Radius * 1.42f;
+                float ringAOuter = p.Radius * 1.58f;
+                float ringBInner = p.Radius * 1.68f;
+                float ringBOuter = p.Radius * 1.92f;
+
+                renderer.DrawSolidRing(camera, pTransform.Position,
+                    ringAInner, ringAOuter,
                     p.Color.WithAlpha(ringAlphaA), 48);
-                renderer.DrawCircle(camera, pTransform.Position, p.Radius * 1.8f,
+
+                renderer.DrawSolidRing(camera, pTransform.Position,
+                    ringBInner, ringBOuter,
                     p.Color.WithAlpha(ringAlphaB), 48);
             }
 
