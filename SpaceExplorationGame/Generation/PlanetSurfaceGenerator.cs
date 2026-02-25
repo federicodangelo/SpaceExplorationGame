@@ -91,6 +91,9 @@ public static class PlanetSurfaceGenerator
             }
         }
 
+        // Carve the surface into a circular planet footprint.
+        ApplyCircularBoundary(tiles, width, height);
+
         var result = new PlanetSurfaceData
         {
             Width = width,
@@ -104,19 +107,23 @@ public static class PlanetSurfaceGenerator
             int settlementCount = rng.NextInt(1, 4);
             for (int i = 0; i < settlementCount; i++)
             {
-                int sx, sy;
+                int sx, sy, sw, sh;
                 int attempts = 0;
                 do
                 {
-                    sx = rng.NextInt(20, width - 20);
-                    sy = rng.NextInt(20, height - 20);
+                    sw = rng.NextInt(6, 12);
+                    sh = rng.NextInt(4, 8);
+                    sx = rng.NextInt(20, Math.Max(21, width - 20 - sw));
+                    sy = rng.NextInt(20, Math.Max(21, height - 20 - sh));
                     attempts++;
-                } while ((tiles[sx, sy] is TerrainType.Water or TerrainType.Lava or TerrainType.Void) && attempts < 50);
+                } while ((SurfaceTerrainRules.IsBlockedForTraversal(tiles[sx, sy])
+                    || !IsRectInsidePlanetBoundary(sx, sy, sw, sh, width, height, margin: 2))
+                    && attempts < 50);
 
                 var settlement = new SettlementData
                 {
                     Name = $"Outpost {(char)('A' + i)}{rng.NextInt(1, 100)}",
-                    TileRect = new TileRect(sx, sy, rng.NextInt(6, 12), rng.NextInt(4, 8))
+                    TileRect = new TileRect(sx, sy, sw, sh)
                 };
                 result.Settlements.Add(settlement);
 
@@ -132,6 +139,9 @@ public static class PlanetSurfaceGenerator
         // Landing zone (flat area near center) — also ensure walkable
         result.LandingZone = new TilePos(width / 2, height / 2);
         EnsureWalkableArea(tiles, width, height, width / 2 - 2, height / 2 - 2, 4, 4, margin: 2, planet.Type);
+
+        // Safety pass in case any operation modified edge tiles.
+        ApplyCircularBoundary(tiles, width, height);
 
         // Generate enemy spawn points on walkable terrain, away from landing zone and settlements
         GenerateEnemySpawns(rng, result, planet);
@@ -367,7 +377,7 @@ public static class PlanetSurfaceGenerator
             int ty = rng.NextInt(5, data.Height - 5);
 
             // Must be walkable
-            if (data.Tiles[tx, ty] is TerrainType.Water or TerrainType.Lava or TerrainType.Void)
+            if (SurfaceTerrainRules.IsBlockedForTraversal(data.Tiles[tx, ty]))
                 continue;
 
             worldX = tx * ts + ts / 2f;
@@ -400,6 +410,52 @@ public static class PlanetSurfaceGenerator
         return false;
     }
 
+    /// <summary>Mark tiles outside the planet disc as <see cref="TerrainType.Void"/>.</summary>
+    private static void ApplyCircularBoundary(TerrainType[,] tiles, int width, int height)
+    {
+        float centerX = (width - 1) * 0.5f;
+        float centerY = (height - 1) * 0.5f;
+        float radius = MathF.Min(width, height) * 0.5f - 2f;
+        float radiusSq = radius * radius;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                float dx = x - centerX;
+                float dy = y - centerY;
+                if (dx * dx + dy * dy > radiusSq)
+                    tiles[x, y] = TerrainType.Void;
+            }
+        }
+    }
+
+    /// <summary>Checks whether a settlement rectangle (plus margin) remains inside the planet disc.</summary>
+    private static bool IsRectInsidePlanetBoundary(int x, int y, int w, int h, int mapW, int mapH, int margin)
+    {
+        float centerX = (mapW - 1) * 0.5f;
+        float centerY = (mapH - 1) * 0.5f;
+        float radius = MathF.Min(mapW, mapH) * 0.5f - 2f;
+        float radiusSq = radius * radius;
+
+        int left = x - margin;
+        int right = x + w - 1 + margin;
+        int top = y - margin;
+        int bottom = y + h - 1 + margin;
+
+        return IsPointInsideCircle(left, top, centerX, centerY, radiusSq)
+            && IsPointInsideCircle(right, top, centerX, centerY, radiusSq)
+            && IsPointInsideCircle(left, bottom, centerX, centerY, radiusSq)
+            && IsPointInsideCircle(right, bottom, centerX, centerY, radiusSq);
+    }
+
+    private static bool IsPointInsideCircle(int px, int py, float centerX, float centerY, float radiusSq)
+    {
+        float dx = px - centerX;
+        float dy = py - centerY;
+        return dx * dx + dy * dy <= radiusSq;
+    }
+
     /// <summary>
     /// Replace any non-walkable tiles (Water, Lava, Void) within the given rectangle
     /// (plus a margin border) with the default walkable terrain for the planet type.
@@ -418,7 +474,7 @@ public static class PlanetSurfaceGenerator
         {
             for (int y = y0; y <= y1; y++)
             {
-                if (tiles[x, y] is TerrainType.Water or TerrainType.Lava or TerrainType.Void)
+                if (SurfaceTerrainRules.IsReplaceableForWalkableArea(tiles[x, y]))
                 {
                     tiles[x, y] = replacement;
                 }

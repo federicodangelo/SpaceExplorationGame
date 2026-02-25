@@ -943,7 +943,7 @@ public class PlanetSurfaceState : GameState
         if (tileX < 0 || tileX >= _surfaceData.Width || tileY < 0 || tileY >= _surfaceData.Height)
             return false;
         var terrain = _surfaceData.Tiles[tileX, tileY];
-        return terrain is not (TerrainType.Water or TerrainType.Lava);
+        return SurfaceTerrainRules.IsTraversable(terrain);
     }
 
     /// <summary>Handle avatar death — show death screen, timer to return to orbit.</summary>

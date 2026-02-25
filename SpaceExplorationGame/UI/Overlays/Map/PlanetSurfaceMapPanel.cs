@@ -21,6 +21,9 @@ public readonly record struct SurfaceMapSelection(
 /// </summary>
 public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 {
+    private const int SelectionBorderMarginTiles = 2;
+    private const float InvalidSelectionHintDuration = 2.2f;
+
     // Ship world position (in tile coordinates for this panel)
     private Vector2 _shipTilePos;
 
@@ -33,6 +36,8 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     // Selection
     private SurfaceMapSelection _hoveredObject = new(SurfaceMapObjectType.None);
     private SurfaceMapSelection _selectedObject = new(SurfaceMapObjectType.None);
+    private string? _invalidSelectionHint;
+    private float _invalidSelectionHintTimer;
 
     public PlanetSurfaceMapPanel(TextureManager textures) : base(textures)
     {
@@ -60,6 +65,8 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
         _hoveredObject = new(SurfaceMapObjectType.None);
         _selectedObject = new(SurfaceMapObjectType.None);
+        _invalidSelectionHint = null;
+        _invalidSelectionHintTimer = 0f;
 
         // Create terrain overview texture
         CreateTerrainTexture(game);
@@ -76,6 +83,15 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        if (_invalidSelectionHintTimer > 0f)
+        {
+            _invalidSelectionHintTimer -= game.DeltaTime;
+            if (_invalidSelectionHintTimer <= 0f)
+            {
+                _invalidSelectionHintTimer = 0f;
+                _invalidSelectionHint = null;
+            }
+        }
 
         HandleZoomAndPan(input, currentMouse);
         ClampCameraPosition();
@@ -128,10 +144,18 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 var worldPos = Camera.ScreenToWorld(currentMouse);
                 int tileX = (int)worldPos.X;
                 int tileY = (int)worldPos.Y;
-                if (tileX >= 0 && tileX < _surfaceData.Width && tileY >= 0 && tileY < _surfaceData.Height)
+                bool insideMap = tileX >= 0 && tileX < _surfaceData.Width && tileY >= 0 && tileY < _surfaceData.Height;
+                string? failureReason = null;
+                bool canSelectLocation = insideMap
+                    && IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out failureReason);
+                if (canSelectLocation)
                     clickTarget = new(SurfaceMapObjectType.Location, TileX: tileX, TileY: tileY);
                 else
+                {
+                    if (insideMap && failureReason != null)
+                        ShowInvalidSelectionHint(failureReason);
                     clickTarget = new(SurfaceMapObjectType.None);
+                }
             }
             else
             {
@@ -156,6 +180,12 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             IsPanning = false;
 
         return true;
+    }
+
+    private void ShowInvalidSelectionHint(string text)
+    {
+        _invalidSelectionHint = text;
+        _invalidSelectionHintTimer = InvalidSelectionHintDuration;
     }
 
     // -----------------------------------------------------------------
@@ -380,6 +410,15 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             renderer.DrawTextScreen(px, py, "CLICK ANYWHERE ON THE", new Color3(140, 140, 160), 1.3f);
             py += 16;
             renderer.DrawTextScreen(px, py, "MAP TO SET A TARGET", new Color3(140, 140, 160), 1.3f);
+        }
+
+        if (_invalidSelectionHintTimer > 0f && !string.IsNullOrWhiteSpace(_invalidSelectionHint))
+        {
+            float hintY = IpY + IpH - 188;
+            renderer.DrawRectScreen(px, hintY, InfoPanelW - 24, 20, new Color4(70, 30, 30, 200));
+            float hintW = renderer.MeasureText(_invalidSelectionHint, 1.3f);
+            renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - hintW / 2f, hintY + 3,
+                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f);
         }
 
         // Nav target display

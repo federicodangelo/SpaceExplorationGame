@@ -31,6 +31,57 @@ public abstract class PlanetMapPanelBase : MapPanelBase
         _textures = textures;
     }
 
+    /// <summary>
+    /// Validates that a tile is selectable: it must be inside the safe inner bounds,
+    /// and there must be no Void tiles in a square neighborhood with the provided radius.
+    /// </summary>
+    protected bool IsTileSelectableWithMargin(int tileX, int tileY, int marginTiles, out string? failureReason)
+    {
+        failureReason = null;
+
+        if (_surfaceData == null)
+        {
+            failureReason = "INVALID TARGET";
+            return false;
+        }
+
+        if (tileX < 0 || tileY < 0
+            || tileX >= _surfaceData.Width
+            || tileY >= _surfaceData.Height)
+        {
+            failureReason = "OUTSIDE WORLD";
+            return false;
+        }
+
+        if (SurfaceTerrainRules.IsVoid(_surfaceData.Tiles[tileX, tileY]))
+        {
+            failureReason = "OUTSIDE WORLD";
+            return false;
+        }
+
+        if (tileX < marginTiles || tileY < marginTiles
+            || tileX >= _surfaceData.Width - marginTiles
+            || tileY >= _surfaceData.Height - marginTiles)
+        {
+            failureReason = "TOO CLOSE TO BORDER";
+            return false;
+        }
+
+        for (int x = tileX - marginTiles; x <= tileX + marginTiles; x++)
+        {
+            for (int y = tileY - marginTiles; y <= tileY + marginTiles; y++)
+            {
+                if (SurfaceTerrainRules.IsVoid(_surfaceData.Tiles[x, y]))
+                {
+                    failureReason = "TOO CLOSE TO BORDER";
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     // ─────────────────────────────────────────────────────────────
     //  LIFECYCLE
     // ─────────────────────────────────────────────────────────────

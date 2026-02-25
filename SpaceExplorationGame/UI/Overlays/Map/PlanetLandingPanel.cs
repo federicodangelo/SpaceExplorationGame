@@ -13,6 +13,9 @@ namespace SpaceExplorationGame.UI.Overlays.Map;
 /// </summary>
 public class PlanetLandingPanel : PlanetMapPanelBase
 {
+    private const int SelectionBorderMarginTiles = 2;
+    private const float InvalidSelectionHintDuration = 2.2f;
+
     // Landing cursor
     private TilePos _cursorTile;
     private bool _hasCursor;
@@ -25,6 +28,9 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     private bool _isMoon;
     private int _moonPlanetIndex;
     private int _moonIndex;
+
+    private string? _invalidSelectionHint;
+    private float _invalidSelectionHintTimer;
 
     public PlanetLandingPanel(TextureManager textures) : base(textures)
     {
@@ -43,7 +49,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         {
             if (!_hasCursor || _surfaceData == null) return false;
             var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
-            return terrain is not (TerrainType.Water or TerrainType.Lava or TerrainType.Void);
+            return SurfaceTerrainRules.IsTraversable(terrain);
         }
     }
 
@@ -74,6 +80,8 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _selectionPulse = 0f;
         _lastClickTime = 0f;
         _lastClickTile = new TilePos(-1, -1);
+        _invalidSelectionHint = null;
+        _invalidSelectionHintTimer = 0f;
 
         // Generate surface
         _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, starSystem, planet);
@@ -94,6 +102,15 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        if (_invalidSelectionHintTimer > 0f)
+        {
+            _invalidSelectionHintTimer -= game.DeltaTime;
+            if (_invalidSelectionHintTimer <= 0f)
+            {
+                _invalidSelectionHintTimer = 0f;
+                _invalidSelectionHint = null;
+            }
+        }
 
         HandleZoomAndPan(input, currentMouse);
         ClampCameraPosition();
@@ -110,6 +127,13 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 if (tileX >= 0 && tileX < _surfaceData.Width &&
                     tileY >= 0 && tileY < _surfaceData.Height)
                 {
+                    if (!IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out var failureReason))
+                    {
+                        ShowInvalidSelectionHint(failureReason ?? "INVALID TARGET");
+                        IsPanning = false;
+                        return true;
+                    }
+
                     var tilePos = new TilePos(tileX, tileY);
                     float now = (float)game.GlobalTime;
 
@@ -140,10 +164,18 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         if (input.IsActionPressed(InputAction.MenuDown)) nudgeY = 5;
         if (nudgeX != 0 || nudgeY != 0)
         {
-            _cursorTile = new TilePos(
+            var candidate = new TilePos(
                 Math.Clamp(_cursorTile.X + nudgeX, 0, _surfaceData.Width - 1),
                 Math.Clamp(_cursorTile.Y + nudgeY, 0, _surfaceData.Height - 1));
-            _hasCursor = true;
+            if (IsTileSelectableWithMargin(candidate.X, candidate.Y, SelectionBorderMarginTiles, out var failureReason))
+            {
+                _cursorTile = candidate;
+                _hasCursor = true;
+            }
+            else if (failureReason != null)
+            {
+                ShowInvalidSelectionHint(failureReason);
+            }
         }
 
         // Confirm landing
@@ -178,7 +210,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     {
         if (!_hasCursor) return;
         var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
-        if (terrain is TerrainType.Water or TerrainType.Lava or TerrainType.Void) return;
+        if (!SurfaceTerrainRules.IsTraversable(terrain)) return;
 
         if (_isMoon)
         {
@@ -195,6 +227,12 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         Cleanup();
         OnRequestClose?.Invoke(game);
         game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.X, _cursorTile.Y));
+    }
+
+    private void ShowInvalidSelectionHint(string text)
+    {
+        _invalidSelectionHint = text;
+        _invalidSelectionHintTimer = InvalidSelectionHintDuration;
     }
 
     // -----------------------------------------------------------------
@@ -250,7 +288,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
             var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
             string terrainName = terrain.ToString().ToUpper();
-            bool canLand = terrain is not (TerrainType.Water or TerrainType.Lava or TerrainType.Void);
+            bool canLand = SurfaceTerrainRules.IsTraversable(terrain);
 
             byte tr = canLand ? (byte)100 : (byte)255;
             byte tg = canLand ? (byte)255 : (byte)80;
@@ -272,6 +310,15 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                     break;
                 }
             }
+        }
+
+        if (_invalidSelectionHintTimer > 0f && !string.IsNullOrWhiteSpace(_invalidSelectionHint))
+        {
+            renderer.DrawRectScreen(px, nextY, InfoPanelW - 24, 20, new Color4(70, 30, 30, 200));
+            float hintW = renderer.MeasureText(_invalidSelectionHint, 1.3f);
+            renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - hintW / 2f, nextY + 3,
+                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f);
+            nextY += 24;
         }
 
         // Controls
