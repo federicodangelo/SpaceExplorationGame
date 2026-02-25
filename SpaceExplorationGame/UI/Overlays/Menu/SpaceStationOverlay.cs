@@ -90,7 +90,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
         new(StationMenuOption.Disembark, "DISEMBARK"),
-        new(StationMenuOption.ExitStation, "EXIT SPACE STATION")
+        new(StationMenuOption.ExitStation, "LAUNCH"),
     ])
     {
         ItemHeight = 50f,
