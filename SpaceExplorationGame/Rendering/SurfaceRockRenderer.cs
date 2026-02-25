@@ -29,12 +29,26 @@ public static class SurfaceRockRenderer
             byte g = (byte)Math.Clamp(resInfo.Color.G * 0.5f + 30, 0, 255);
             byte b = (byte)Math.Clamp(resInfo.Color.B * 0.5f + 20, 0, 255);
 
-            // Shadow beneath rock
-            renderer.DrawRect(camera, pos + new Vector2(1, size * 0.4f), (int)(size + 2), (int)(size * 0.3f), new Color4(0, 0, 0, 60));
-
             // Main rock body (irregular shape using overlapping rects)
             float half = size / 2f;
-            renderer.DrawRect(camera, pos - new Vector2(half, half * 0.8f),
+            var bodyCenter = pos - new Vector2(half, half * 0.8f);
+            float bodyHeight = size * 0.8f;
+
+            // Shadow beneath rock (matching avatar/surface-enemy grounded style)
+            float bodyBottomY = bodyCenter.Y + bodyHeight / 2f;
+            var shadowPos = new Vector2(bodyCenter.X, bodyBottomY + Math.Max(1f, size * 0.14f));
+            renderer.DrawRect(camera, shadowPos, (int)(size * 1.05f), Math.Max(3, (int)(size * 0.22f)), new Color4(0, 0, 0, 70));
+            renderer.DrawRect(camera, shadowPos + new Vector2(0f, 1f), (int)(size * 0.7f), Math.Max(2, (int)(size * 0.12f)), new Color4(0, 0, 0, 45));
+
+            byte or = (byte)Math.Max(r - 55, 0);
+            byte og = (byte)Math.Max(g - 55, 0);
+            byte ob = (byte)Math.Max(b - 55, 0);
+
+            // Outline to improve visibility against terrain
+            renderer.DrawRect(camera, bodyCenter - new Vector2(1f, 1f),
+                (int)size + 2, (int)(size * 0.8f) + 2, new Color3(or, og, ob));
+
+            renderer.DrawRect(camera, bodyCenter,
                 (int)size, (int)(size * 0.8f), new Color3(r, g, b));
 
             // Rock highlight (top-left, lighter)
