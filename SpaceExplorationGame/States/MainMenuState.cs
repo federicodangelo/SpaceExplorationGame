@@ -15,6 +15,7 @@ public enum StartOption
 {
     None = -1,
     StarSystem,
+    Planet,
     PlanetSurface,
     SpaceStation,
     SpaceStationInside,
@@ -226,6 +227,18 @@ public class MainMenuState : GameState
                 break;
             }
 
+            case StartOption.Planet:
+            {
+                var (system, planet) = _previewSystem != null && _previewPlanet != null
+                    ? new SystemPlanet(_previewSystem, _previewPlanet)
+                    : PickRandomPlanet(game, dangerFilter);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = planet.Index;
+                game.ChangeState(new SolarSystemState(system));
+                break;
+            }
+
             case StartOption.PlanetSurface:
             {
                 var (system, planet) = _previewSystem != null && _previewPlanet != null
@@ -363,6 +376,16 @@ public class MainMenuState : GameState
                 _previewPlanet = null;
                 _previewStation = null;
                 _menuOverlay.LocationPreview = $"System: {_previewSystem.Name} (Danger {_previewSystem.DangerLevel})\nCoords: ({_previewSystem.GalaxyPosition.X:F0}, {_previewSystem.GalaxyPosition.Y:F0})";
+                break;
+            }
+
+            case StartOption.Planet:
+            {
+                var (system, planet) = PickRandomPlanet(game, danger);
+                _previewSystem = system;
+                _previewPlanet = planet;
+                _previewStation = null;
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}) [Orbit]";
                 break;
             }
 

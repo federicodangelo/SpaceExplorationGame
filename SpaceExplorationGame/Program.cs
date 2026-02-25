@@ -9,7 +9,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         // Parse optional arguments:
-        //   dotnet run [seed] [--start system|planet|station|settlement]
+        //   dotnet run [seed] [--start system|planet|planet-surface|station|settlement]
         ulong? galaxySeed = null;
         var autoLaunch = StartOption.None;
 
@@ -20,7 +20,8 @@ internal static class Program
                 autoLaunch = args[i + 1].ToLower() switch
                 {
                     "system" => StartOption.StarSystem,
-                    "planet" => StartOption.PlanetSurface,
+                    "planet" => StartOption.Planet,
+                    "planet-surface" => StartOption.PlanetSurface,
                     "station" => StartOption.SpaceStation,
                     "settlement-inside" => StartOption.SettlementInside,
                     "settlement" => StartOption.Settlement,

@@ -35,8 +35,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private const int StartGameIdx = 6;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
-    private static readonly string[] LocationLabels = ["STAR SYSTEM", "SPACE STATION", "INSIDE SPACE STATION", "PLANET SURFACE", "SETTLEMENT", "INSIDE SETTLEMENT"];
-    private static readonly StartOption[] LocationValues = [StartOption.StarSystem, StartOption.SpaceStation, StartOption.SpaceStationInside, StartOption.PlanetSurface, StartOption.Settlement, StartOption.SettlementInside];
+    private static readonly string[] LocationLabels = ["STAR SYSTEM", "SPACE STATION", "INSIDE SPACE STATION", "PLANET", "PLANET SURFACE", "SETTLEMENT", "INSIDE SETTLEMENT"];
+    private static readonly StartOption[] LocationValues = [StartOption.StarSystem, StartOption.SpaceStation, StartOption.SpaceStationInside, StartOption.Planet, StartOption.PlanetSurface, StartOption.Settlement, StartOption.SettlementInside];
 
     private static MenuOption<MenuAction>[] BuildOptions() =>
     [
