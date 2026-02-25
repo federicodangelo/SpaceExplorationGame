@@ -96,6 +96,16 @@ public class SpriteRenderer : IDisposable
         DrawFilledCircleScreen(center.X, center.Y, radius, color);
     }
 
+    /// <summary>Draw a solid ring (annulus) in world space.</summary>
+    public void DrawSolidRing(Camera camera, Vector2 worldCenter, float innerRadius, float outerRadius,
+        Color4 color, int segments = 48)
+    {
+        var center = camera.WorldToScreen(worldCenter);
+        float inner = innerRadius * camera.Zoom;
+        float outer = outerRadius * camera.Zoom;
+        DrawSolidRingScreen(center.X, center.Y, inner, outer, color, segments);
+    }
+
     /// <summary>
     /// Draw a filled circle in world space with a radial gradient.
     /// Color remains <paramref name="innerColor"/> from center to <paramref name="transitionStartRadius"/>,
@@ -370,6 +380,78 @@ public class SpriteRenderer : IDisposable
         }
 
         DrawGeometryScreen(v, requiredVerts, id, requiredIndices);
+    }
+
+    /// <summary>Draw a solid ring (annulus) in screen space.</summary>
+    public void DrawSolidRingScreen(float cx, float cy, float innerRadius, float outerRadius,
+        Color4 color, int segments = 48)
+    {
+        if (segments < 3) segments = 3;
+        if (outerRadius <= 0f) return;
+
+        float inner = MathF.Max(0f, MathF.Min(innerRadius, outerRadius));
+        if (inner <= 0f)
+        {
+            DrawFilledCircleScreen(cx, cy, outerRadius, color, segments);
+            return;
+        }
+
+        int ringVerts = segments + 1;
+        int totalVerts = ringVerts * 2;
+        int totalIndices = segments * 6;
+
+        var vertices = new SDL.Vertex[totalVerts];
+        var indices = new int[totalIndices];
+
+        SDL.FColor fcolor = new SDL.FColor
+        {
+            R = color.R / 255f,
+            G = color.G / 255f,
+            B = color.B / 255f,
+            A = color.A / 255f
+        };
+
+        float step = MathF.PI * 2f / segments;
+        for (int i = 0; i <= segments; i++)
+        {
+            float angle = i * step;
+            float cs = MathF.Cos(angle);
+            float sn = MathF.Sin(angle);
+
+            int innerIdx = i;
+            int outerIdx = ringVerts + i;
+
+            vertices[innerIdx] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint { X = cx + cs * inner, Y = cy + sn * inner },
+                Color = fcolor,
+            };
+
+            vertices[outerIdx] = new SDL.Vertex
+            {
+                Position = new SDL.FPoint { X = cx + cs * outerRadius, Y = cy + sn * outerRadius },
+                Color = fcolor,
+            };
+        }
+
+        int w = 0;
+        for (int i = 0; i < segments; i++)
+        {
+            int i0 = i;
+            int i1 = i + 1;
+            int o0 = ringVerts + i;
+            int o1 = ringVerts + i + 1;
+
+            indices[w++] = i0;
+            indices[w++] = o0;
+            indices[w++] = i1;
+
+            indices[w++] = i1;
+            indices[w++] = o0;
+            indices[w++] = o1;
+        }
+
+        DrawGeometryScreen(vertices, totalVerts, indices, totalIndices);
     }
 
     /// <summary>
