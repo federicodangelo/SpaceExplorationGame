@@ -84,6 +84,15 @@ dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace
 dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace --verify-no-changes
 ```
 
+### Pre-commit hook
+
+```bash
+# Enable repository hooks (one-time per clone)
+git config core.hooksPath .githooks
+```
+
+The `pre-commit` hook validates formatting before each commit using the same whitespace check as CI.
+
 ## Project Structure
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed breakdown of the codebase architecture, ECS components, rendering pipeline, and game state management.
