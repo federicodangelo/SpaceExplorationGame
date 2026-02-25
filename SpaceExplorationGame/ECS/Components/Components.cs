@@ -57,12 +57,8 @@ public struct PlayerControlled;
 [Component]
 public struct Sprite
 {
-    public int TextureId;       // index into SpriteRenderer's texture list
-    public int SrcX, SrcY;     // source rect in spritesheet
-    public int SrcW, SrcH;
     public int Width, Height;  // render size in world pixels
     public Color4 Color;       // color tint (for procedural colored rects)
-    public bool UseColor;      // if true, render as colored rect instead of texture
 
     public static Sprite ColoredRect(int width, int height, Color4 color)
     {
@@ -71,7 +67,6 @@ public struct Sprite
             Width = width,
             Height = height,
             Color = color,
-            UseColor = true
         };
     }
 }
