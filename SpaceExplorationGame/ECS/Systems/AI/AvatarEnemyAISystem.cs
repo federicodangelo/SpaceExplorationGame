@@ -17,8 +17,8 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     private const float BanditAttackEnterRangeFactor = 0.92f;
     private const float BanditAttackExitRangeFactor = 1.08f;
 
-    private readonly Func<Vector2> _getPlayerPosition;
-    private readonly Func<bool> _isPlayerAlive;
+    private static readonly QueryDescription _playerAvatarQuery =
+        new QueryDescription().WithAll<PlayerControlled, Transform, Health>();
 
     // Projectiles spawned this frame (created after query completes to avoid mutation during iteration)
     private readonly List<SurfaceProjectileSpawn> _pendingProjectiles = [];
@@ -31,20 +31,16 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     private Vector2 _playerPos;
     private bool _playerAlive;
 
-    public AvatarEnemyAISystem(World world, Func<Vector2> getPlayerPosition,
-        Func<bool> isPlayerAlive)
+    public AvatarEnemyAISystem(World world)
         : base(world)
     {
-        _getPlayerPosition = getPlayerPosition;
-        _isPlayerAlive = isPlayerAlive;
     }
 
     public override void Update(in float dt)
     {
         _pendingProjectiles.Clear();
         _dt = dt;
-        _playerPos = _getPlayerPosition();
-        _playerAlive = _isPlayerAlive();
+        QueryPlayerState();
 
         ProcessSurfaceAIQuery(World);
 
@@ -53,6 +49,19 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         {
             EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime);
         }
+    }
+
+    private void QueryPlayerState()
+    {
+        _playerAlive = false;
+        _playerPos = Vector2.Zero;
+
+        var q = _playerAvatarQuery;
+        World.Query(in q, (ref Transform transform, ref Health health) =>
+        {
+            _playerPos = transform.Position;
+            _playerAlive = !health.IsDead;
+        });
     }
 
     /// <summary>Source-generated query: iterates all surface AI entities.</summary>

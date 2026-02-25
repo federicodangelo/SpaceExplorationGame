@@ -255,10 +255,7 @@ public class PlanetSurfaceState : GameState
         _velocitySystem.Initialize();
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
         _projectileSystem.Initialize();
-        _enemyAISystem = new AvatarEnemyAISystem(
-            game.EcsWorld,
-            () => game.EcsWorld.IsAlive(_playerAvatar) ? game.EcsWorld.Get<Transform>(_playerAvatar).Position : Vector2.Zero,
-            () => game.EcsWorld.IsAlive(_playerAvatar) && !_playerDead);
+        _enemyAISystem = new AvatarEnemyAISystem(game.EcsWorld);
         _enemyAISystem.Initialize();
 
         // Spawn fauna

@@ -344,10 +344,7 @@ public class SolarSystemState : GameState
 
         float totalMapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float totalMapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-        _enemyAISystem = new ShipEnemyAISystem(game.EcsWorld,
-            () => game.EcsWorld.IsAlive(_playerShip) ? game.EcsWorld.Get<Transform>(_playerShip).Position : center,
-            () => !_playerDead && game.EcsWorld.IsAlive(_playerShip),
-            totalMapW, totalMapH);
+        _enemyAISystem = new ShipEnemyAISystem(game.EcsWorld, totalMapW, totalMapH);
         _enemyAISystem.Initialize();
 
         _particleSystem = new ParticleSystem(game.EcsWorld);

@@ -17,30 +17,24 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     private const float AttackEnterRangeFactor = 0.92f;
     private const float AttackExitRangeFactor = 1.08f;
 
-    private readonly Func<Vector2> _getPlayerPosition;
-    private readonly Func<bool> _isPlayerAlive;
     private readonly float _mapWidth;
     private readonly float _mapHeight;
 
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
+    private static readonly QueryDescription _playerShipQuery = new QueryDescription().WithAll<PlayerControlled, Transform, Velocity, Health, ShipComponent>();
 
     // Per-frame cached state for [Query] method access
     private float _dt;
     private Vector2 _playerPos;
-    private Vector2 _playerPosLastFrame;
     private Vector2 _playerVelocity;
     private bool _playerAlive;
-    private bool _hasLastPlayerPos;
 
     private readonly record struct TargetSelection(Vector2 Position, Vector2 Velocity, bool HasTarget);
 
-    public ShipEnemyAISystem(World world, Func<Vector2> getPlayerPosition, Func<bool> isPlayerAlive,
-        float mapWidth, float mapHeight)
+    public ShipEnemyAISystem(World world, float mapWidth, float mapHeight)
         : base(world)
     {
-        _getPlayerPosition = getPlayerPosition;
-        _isPlayerAlive = isPlayerAlive;
         _mapWidth = mapWidth;
         _mapHeight = mapHeight;
     }
@@ -48,16 +42,24 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     public override void Update(in float dt)
     {
         _dt = dt;
-        _playerPos = _getPlayerPosition();
-        if (_hasLastPlayerPos && dt > 0f)
-            _playerVelocity = (_playerPos - _playerPosLastFrame) / dt;
-        else
-            _playerVelocity = Vector2.Zero;
-        _playerPosLastFrame = _playerPos;
-        _hasLastPlayerPos = true;
-        _playerAlive = _isPlayerAlive();
+        QueryPlayerState();
 
         ProcessEnemyAIQuery(World);
+    }
+
+    private void QueryPlayerState()
+    {
+        _playerAlive = false;
+        _playerPos = Vector2.Zero;
+        _playerVelocity = Vector2.Zero;
+
+        var q = _playerShipQuery;
+        World.Query(in q, (ref Transform transform, ref Velocity velocity, ref Health health) =>
+        {
+            _playerPos = transform.Position;
+            _playerVelocity = velocity.Velocity;
+            _playerAlive = !health.IsDead;
+        });
     }
 
     /// <summary>Source-generated query: iterates all NPC ships with AI.</summary>
@@ -423,8 +425,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         float bestDist = range;
         Vector2? bestPos = null;
 
-        var q = _aiEntityQuery;
-        World.Query(in q, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
+        World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
         {
             if (h.IsDead || ai.Config.Faction != Faction.Pirate) return;
             float dist = Vector2.Distance(pos, t.Position);
