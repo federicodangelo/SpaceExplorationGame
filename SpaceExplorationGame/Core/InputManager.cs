@@ -243,7 +243,7 @@ public class InputManager
                     _rightStickX = 0;
                     _rightStickY = 0;
                 }
-                SDL.CloseGamepad((nint) e.GDevice.Which);
+                SDL.CloseGamepad((nint)e.GDevice.Which);
                 break;
 
             case SDL.EventType.GamepadButtonDown:
@@ -301,7 +301,7 @@ public class InputManager
 
     public void UpdateGamepads()
     {
-        
+
     }
 
     // Key queries

@@ -430,7 +430,7 @@ public static class InteriorGenerator
             Type = InteractableType.HealthStation,
             TilePos = new(cantina.CenterX - 2, cantina.TileRect.Y + 1)
         });
-        data.Tiles[cantina.CenterX- 2, cantina.TileRect.Y + 1] = InteriorTileType.Console;
+        data.Tiles[cantina.CenterX - 2, cantina.TileRect.Y + 1] = InteriorTileType.Console;
 
         // Avatar customization terminal (top of landing pad)
         data.Interactables.Add(new InteriorInteractable

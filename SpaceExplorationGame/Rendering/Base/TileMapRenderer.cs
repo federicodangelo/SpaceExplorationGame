@@ -151,7 +151,7 @@ public static class TileMapRenderer
 
     public static Color3 GetColorVariation(Color3 baseColor, int x, int y, float variationDivisor)
     {
-        int hash = GetTileHash(x,y);
+        int hash = GetTileHash(x, y);
         float variation = ((hash & 0xFF) - 128) / variationDivisor;
         byte vr = (byte)Math.Clamp(baseColor.R + baseColor.R * variation, 0, 255);
         byte vg = (byte)Math.Clamp(baseColor.G + baseColor.G * variation, 0, 255);

@@ -41,7 +41,7 @@ public static class CombatHelper
 
     private static float ComputePopupDuration(float min, float max)
     {
-        return min + (max - min) * NextUnitFloat();;
+        return min + (max - min) * NextUnitFloat(); ;
     }
 
     private static float NextUnitFloat()

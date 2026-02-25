@@ -75,62 +75,63 @@ public class ControlsOverlay : PanelOverlayBase
 
         return state switch
         {
-        GameStateType.SolarSystem =>
-            usingGamepad
-                ?
-                [
-                    "RIGHT STICK ......... HEADING",
-                    "LEFT STICK .......... MOVE",
-                    $"{interactText} .................. INTERACT",
-                    $"{mapText} .................. GALAXY MAP",
-                    $"{fireText} .............. SHOOT",
-                    $"{backText} ................ MENU"
-                ]
-                :
-                [
-                    "MOUSE .............. HEADING",
-                    $"{input.GetActionHelpTextFull(InputAction.MoveUp)} ............. THRUST",
-                    $"{input.GetActionHelpTextFull(InputAction.MoveDown)} ........... BRAKE",
-                    $"{input.GetActionHelpTextFull(InputAction.MoveLeft)}/{input.GetActionHelpTextFull(InputAction.MoveRight)} .............. STRAFE",
-                    "SCROLL ............. ZOOM",
-                    $"{interactText} .................. INTERACT",
-                    $"{mapText} .................. GALAXY MAP",
-                    $"{fireText} .............. SHOOT",
-                    $"{backText} ................ MENU"
-                ],
-        GameStateType.PlanetSurface =>
-            usingGamepad
-                ?
-                [
-                    "LEFT STICK .......... MOVE",
-                    $"{interactText} .................. INTERACT",
-                    $"{fireText} ........ SHOOT",
-                    $"{backText} ................ MENU"
-                ]
-                :
-                [
-                    $"{moveText} ...... MOVE",
-                    "SCROLL ............. ZOOM",
-                    $"{interactText} .................. INTERACT",
-                    $"{fireText} ........ SHOOT",
-                    $"{backText} ................ MENU"
-                ],
-        GameStateType.Interior =>
-            usingGamepad
-                ?
-                [
-                    "LEFT STICK .......... MOVE",
-                    $"{interactText} .................. INTERACT",
-                    $"{backText} ................ MENU"
-                ]
-                :
-                [
-                    $"{moveText} ...... MOVE",
-                    "SCROLL ............. ZOOM",
-                    $"{interactText} .................. INTERACT",
-                    $"{backText} ................ MENU"
-                ],
-        _ => [$"{backText} ................ MENU"]
+            GameStateType.SolarSystem =>
+                usingGamepad
+                    ?
+                    [
+                        "RIGHT STICK ......... HEADING",
+                        "LEFT STICK .......... MOVE",
+                        $"{interactText} .................. INTERACT",
+                        $"{mapText} .................. GALAXY MAP",
+                        $"{fireText} .............. SHOOT",
+                        $"{backText} ................ MENU"
+                    ]
+                    :
+                    [
+                        "MOUSE .............. HEADING",
+                        $"{input.GetActionHelpTextFull(InputAction.MoveUp)} ............. THRUST",
+                        $"{input.GetActionHelpTextFull(InputAction.MoveDown)} ........... BRAKE",
+                        $"{input.GetActionHelpTextFull(InputAction.MoveLeft)}/{input.GetActionHelpTextFull(InputAction.MoveRight)} .............. STRAFE",
+                        "SCROLL ............. ZOOM",
+                        $"{interactText} .................. INTERACT",
+                        $"{mapText} .................. GALAXY MAP",
+                        $"{fireText} .............. SHOOT",
+                        $"{backText} ................ MENU"
+                    ],
+            GameStateType.PlanetSurface =>
+                usingGamepad
+                    ?
+                    [
+                        "LEFT STICK .......... MOVE",
+                        $"{interactText} .................. INTERACT",
+                        $"{fireText} ........ SHOOT",
+                        $"{backText} ................ MENU"
+                    ]
+                    :
+                    [
+                        $"{moveText} ...... MOVE",
+                        "SCROLL ............. ZOOM",
+                        $"{interactText} .................. INTERACT",
+                        $"{fireText} ........ SHOOT",
+                        $"{backText} ................ MENU"
+                    ],
+            GameStateType.Interior =>
+                usingGamepad
+                    ?
+                    [
+                        "LEFT STICK .......... MOVE",
+                        $"{interactText} .................. INTERACT",
+                        $"{backText} ................ MENU"
+                    ]
+                    :
+                    [
+                        $"{moveText} ...... MOVE",
+                        "SCROLL ............. ZOOM",
+                        $"{interactText} .................. INTERACT",
+                        $"{backText} ................ MENU"
+                    ],
+            _ =>
+                [$"{backText} ................ MENU"]
         };
     }
 }

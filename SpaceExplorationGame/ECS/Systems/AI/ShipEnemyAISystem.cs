@@ -85,34 +85,32 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             ai.Config.DetectRange, _playerPos, _playerVelocity, _playerAlive);
         var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
-        UpdateShipAIByFaction(entity, ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,
-            velocity.Velocity,
-            target.Position, target.Velocity, target.HasTarget);
+        UpdateShipAIByFaction(ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,
+            velocity.Velocity, target.Position, target.Velocity, target.HasTarget);
     }
 
-    private void UpdateShipAIByFaction(Entity entity, ref Transform transform, ref EnemyAI ai,
+    private void UpdateShipAIByFaction(ref Transform transform, ref EnemyAI ai,
         ref Health health, ref ShipInputComponent shipInput, ref ShipComponent ship,
         float dt, Vector2 selfVelocity, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdatePirate(entity, ref transform, ref ai, ref health, ref shipInput, ref ship, dt,
-                    selfVelocity, targetPos, targetVelocity, hasTarget);
+                UpdatePirate(ref transform, ref ai, ref health, ref shipInput, ref ship, selfVelocity, targetPos, targetVelocity, hasTarget);
                 break;
             case Faction.Trader:
-                UpdateTrader(entity, ref transform, ref ai, ref shipInput, ref ship, dt);
+                UpdateTrader(ref transform, ref ai, ref shipInput, ref ship, dt);
                 break;
             case Faction.Patrol:
-                UpdatePatrol(entity, ref transform, ref ai, ref shipInput, ref ship, dt,
+                UpdatePatrol(ref transform, ref ai, ref shipInput, ref ship, dt,
                     selfVelocity, targetPos, targetVelocity, hasTarget);
                 break;
         }
     }
 
-    private void UpdatePirate(Entity entity, ref Transform transform, ref EnemyAI ai,
+    private void UpdatePirate(ref Transform transform, ref EnemyAI ai,
         ref Health health, ref ShipInputComponent shipInput, ref ShipComponent ship,
-        float dt, Vector2 selfVelocity, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
+        Vector2 selfVelocity, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Flee if low health
         bool keepFleeing = ai.State == AIState.Flee && ai.StateTimer < MinFleeStateDuration;
@@ -144,8 +142,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             closeInWhenOutsideEngageDistance: false);
     }
 
-    private void UpdateTrader(Entity entity, ref Transform transform, ref EnemyAI ai,
-        ref ShipInputComponent shipInput, ref ShipComponent ship, float dt)
+    private void UpdateTrader(ref Transform transform, ref EnemyAI ai, ref ShipInputComponent shipInput, ref ShipComponent ship, float dt)
     {
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
         var nearestPirate = FindNearestPirate(transform.Position, 400f);
@@ -162,8 +159,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         }
     }
 
-    private void UpdatePatrol(Entity entity, ref Transform transform, ref EnemyAI ai,
-        ref ShipInputComponent shipInput, ref ShipComponent ship,
+    private void UpdatePatrol(ref Transform transform, ref EnemyAI ai, ref ShipInputComponent shipInput, ref ShipComponent ship,
         float dt, Vector2 selfVelocity, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Patrols hunt pirates and defend traders

@@ -95,5 +95,6 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
 
     // ── Custom rendering (for unique layouts) ──
     protected virtual void RenderAdditionalContent(Game game, SpriteRenderer renderer,
-        float panelX, float contentY, float panelW, float contentH) { }
+        float panelX, float contentY, float panelW, float contentH)
+    { }
 }

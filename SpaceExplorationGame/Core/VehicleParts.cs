@@ -94,17 +94,17 @@ public static class VehiclePartCatalog
     /// <summary>Get the default starter loadout.</summary>
     public static Dictionary<VehicleSlotType, VehiclePart> GetStarterLoadout() => new()
     {
-        [VehicleSlotType.Engine]  = GetById("veng_basic")!,
+        [VehicleSlotType.Engine] = GetById("veng_basic")!,
         [VehicleSlotType.Chassis] = GetById("vchas_basic")!,
-        [VehicleSlotType.Lights]  = GetById("vlight_basic")!,
+        [VehicleSlotType.Lights] = GetById("vlight_basic")!,
     };
 
     /// <summary>Slot display names.</summary>
     public static string GetSlotName(VehicleSlotType slot) => slot switch
     {
-        VehicleSlotType.Engine  => "ENGINE",
+        VehicleSlotType.Engine => "ENGINE",
         VehicleSlotType.Chassis => "CHASSIS",
-        VehicleSlotType.Lights  => "LIGHTS",
+        VehicleSlotType.Lights => "LIGHTS",
         _ => slot.ToString().ToUpper()
     };
 }

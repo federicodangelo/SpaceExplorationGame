@@ -40,7 +40,7 @@ public static class MissionGenerator
             var missionType = PickMissionType(rng);
             var mission = missionType switch
             {
-                MissionType.Delivery => GenerateDeliveryMission(rng, seeds, missionId, currentSystem, otherSystems),
+                MissionType.Delivery => GenerateDeliveryMission(rng, missionId, currentSystem, otherSystems),
                 MissionType.Mining => GenerateMiningMission(rng, missionId, currentSystem),
                 MissionType.BountyHunt => GenerateBountyMission(rng, missionId, currentSystem),
                 MissionType.Exploration => GenerateExplorationMission(rng, seeds, missionId, currentSystem, otherSystems),
@@ -83,8 +83,7 @@ public static class MissionGenerator
         };
     }
 
-    private static Mission GenerateDeliveryMission(SeededRandom rng, SeedManager seeds,
-        int id, StarSystemData currentSystem, List<StarSystemData> otherSystems)
+    private static Mission GenerateDeliveryMission(SeededRandom rng, int id, StarSystemData currentSystem, List<StarSystemData> otherSystems)
     {
         var targetSystem = rng.Pick(otherSystems);
         int baseReward = 300 + currentSystem.DangerLevel * 100;
@@ -215,7 +214,7 @@ public static class MissionGenerator
         if (settled.Count == 0)
         {
             // Fallback to delivery mission
-            return GenerateDeliveryMission(rng, seeds, id, currentSystem, otherSystems);
+            return GenerateDeliveryMission(rng, id, currentSystem, otherSystems);
         }
 
         var targetPlanet = rng.Pick(settled);

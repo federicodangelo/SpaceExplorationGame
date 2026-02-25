@@ -27,7 +27,7 @@ public partial class OrbitSystem : BaseSystem<World, float>
 
     [Query]
     [All(typeof(Transform), typeof(Orbit))]
-    public void UpdateOrbit(Entity entity, ref Transform transform, ref Orbit orbit)
+    public void UpdateOrbit(ref Transform transform, ref Orbit orbit)
     {
         float time = _getGlobalTime();
         orbit.CurrentAngle = orbit.BaseAngle + orbit.OrbitSpeed * time;

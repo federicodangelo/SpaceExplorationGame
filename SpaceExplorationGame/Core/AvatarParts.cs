@@ -108,18 +108,18 @@ public static class AvatarPartCatalog
     /// <summary>Get the default starter loadout.</summary>
     public static Dictionary<AvatarSlotType, AvatarPart> GetStarterLoadout() => new()
     {
-        [AvatarSlotType.Suit]   = GetById("suit_basic")!,
+        [AvatarSlotType.Suit] = GetById("suit_basic")!,
         [AvatarSlotType.Helmet] = GetById("helmet_basic")!,
-        [AvatarSlotType.Boots]  = GetById("boots_basic")!,
+        [AvatarSlotType.Boots] = GetById("boots_basic")!,
         [AvatarSlotType.Weapon] = GetById("weapon_basic")!,
     };
 
     /// <summary>Slot display names.</summary>
     public static string GetSlotName(AvatarSlotType slot) => slot switch
     {
-        AvatarSlotType.Suit   => "SUIT",
+        AvatarSlotType.Suit => "SUIT",
         AvatarSlotType.Helmet => "HELMET",
-        AvatarSlotType.Boots  => "BOOTS",
+        AvatarSlotType.Boots => "BOOTS",
         AvatarSlotType.Weapon => "WEAPON",
         _ => slot.ToString().ToUpper()
     };

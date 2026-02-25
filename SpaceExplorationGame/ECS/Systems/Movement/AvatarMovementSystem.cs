@@ -23,7 +23,7 @@ public partial class AvatarMovementSystem : BaseSystem<World, float>
 
     [Query]
     [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity))]
-    public void MovePlayer(ref Transform transform, ref Velocity velocity)
+    public void MovePlayer(ref Velocity velocity)
     {
         Vector2 moveDir = _input.GetActionAxisDirection(InputActionAxis.Movement);
 

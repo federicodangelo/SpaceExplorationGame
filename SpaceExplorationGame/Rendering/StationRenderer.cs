@@ -255,7 +255,7 @@ public class StationRenderer : IDisposable
             renderer.DrawLine(camera, start + off, end + off, color);
         }
     }
-    
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

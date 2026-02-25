@@ -509,7 +509,7 @@ public class PlanetSurfaceState : GameState
         float dt = game.DeltaTime;
 
         _dependentEntityCleanupSystem.Update(in dt);
-        
+
         _inGameMenuOverlay.Update(game);
 
         // Landing animation
@@ -605,8 +605,8 @@ public class PlanetSurfaceState : GameState
             var vehicleTf = game.EcsWorld.Get<Transform>(_vehicleEntity);
             float distToVehicle = Vector2.Distance(avatarTransform.Position, vehicleTf.Position);
             _nearVehicle = distToVehicle < GameConfig.VehicleMountRadius;
-        } 
-        else        
+        }
+        else
         {
             _nearVehicle = false;
         }

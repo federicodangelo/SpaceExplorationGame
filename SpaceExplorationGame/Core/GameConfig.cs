@@ -25,7 +25,7 @@ public static class GameConfig
     public const float SolarSystemZoomMin = 0.5f;
     public const float SolarSystemZoomMax = 1.0f;
     public const float SolarSystemZoomDefault = 1.0f;
-    
+
     public const float InteriorZoomMin = 1.0f;
     public const float InteriorZoomMax = 1.5f;
     public const float InteriorZoomDefault = 1.5f;

@@ -28,21 +28,21 @@ public static class SfxGenerator
 {
     public static Dictionary<SfxType, float[]> GenerateAll(int sr) => new()
     {
-        [SfxType.LaserFire]      = LaserFire(sr),
-        [SfxType.EnemyLaser]     = EnemyLaser(sr),
-        [SfxType.Explosion]      = Explosion(sr),
+        [SfxType.LaserFire] = LaserFire(sr),
+        [SfxType.EnemyLaser] = EnemyLaser(sr),
+        [SfxType.Explosion] = Explosion(sr),
         [SfxType.SmallExplosion] = SmallExplosion(sr),
-        [SfxType.ShieldHit]      = ShieldHit(sr),
-        [SfxType.HullDamage]     = HullDamage(sr),
-        [SfxType.MenuSelect]     = MenuSelect(sr),
-        [SfxType.MenuNavigate]   = MenuNavigate(sr),
-        [SfxType.FtlCharge]      = FtlCharge(sr),
-        [SfxType.FtlJump]        = FtlJump(sr),
-        [SfxType.PickupCredits]  = PickupCredits(sr),
-        [SfxType.PickupItem]     = PickupItem(sr),
-        [SfxType.MiningHit]      = MiningHit(sr),
-        [SfxType.Landing]        = LandingSound(sr),
-        [SfxType.Takeoff]        = TakeoffSound(sr),
+        [SfxType.ShieldHit] = ShieldHit(sr),
+        [SfxType.HullDamage] = HullDamage(sr),
+        [SfxType.MenuSelect] = MenuSelect(sr),
+        [SfxType.MenuNavigate] = MenuNavigate(sr),
+        [SfxType.FtlCharge] = FtlCharge(sr),
+        [SfxType.FtlJump] = FtlJump(sr),
+        [SfxType.PickupCredits] = PickupCredits(sr),
+        [SfxType.PickupItem] = PickupItem(sr),
+        [SfxType.MiningHit] = MiningHit(sr),
+        [SfxType.Landing] = LandingSound(sr),
+        [SfxType.Takeoff] = TakeoffSound(sr),
     };
 
     // ──────────────────────────────────────────────────────────────

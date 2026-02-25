@@ -228,7 +228,7 @@ public class SolarSystemState : GameState
                     < 0.70f => ResourceType.Ice,
                     < 0.85f => ResourceType.Gold,
                     < 0.95f => ResourceType.Platinum,
-                    _       => ResourceType.Crystal
+                    _ => ResourceType.Crystal
                 };
 
                 int resourceAmount = (int)Math.Ceiling(size * asteroidRng.NextFloat(0.1f, 0.3f));
@@ -284,7 +284,7 @@ public class SolarSystemState : GameState
         // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
         var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
-        
+
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
 
@@ -309,7 +309,7 @@ public class SolarSystemState : GameState
         }
 
         // --- Spawn NPC ships (pirates, traders, patrols) based on danger level ---
-        SpawnNPCShips(game, center, mapW, mapH);
+        SpawnNPCShips(game, center);
 
         // Initialize ECS systems
         float sysW = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
@@ -583,7 +583,7 @@ public class SolarSystemState : GameState
     }
 
     /// <summary>Spawn NPC ships based on system danger level.</summary>
-    private void SpawnNPCShips(Game game, Vector2 center, float mapW, float mapH)
+    private void SpawnNPCShips(Game game, Vector2 center)
     {
         _enemyEntities.Clear();
         var enemyRng = new SeededRandom(game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(5000));
@@ -716,7 +716,7 @@ public class SolarSystemState : GameState
         foreach (var spawn in _shipSystem.ProjectilesSpawnedLastUpdate)
         {
             game.Audio.PlaySfxAtDistance(spawn.Faction == Faction.Player ? SfxType.LaserFire : SfxType.EnemyLaser, spawn.Pos, _camera.Position, 0.5f);
-        }            
+        }
 
         // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
 
@@ -1049,7 +1049,7 @@ public class SolarSystemState : GameState
         // Minimap (top-right)
         HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _planets, _planetEntities,
             _moonEntities, _stationEntities, _asteroidEntities, _enemyEntities,
-            _playerShip, _starEntity, game.EcsWorld, _starSystem.StarRadius);
+            _playerShip, _starEntity, game.EcsWorld);
 
         // Off-screen indicators at screen borders
         if (!_playerDead)
@@ -1063,7 +1063,7 @@ public class SolarSystemState : GameState
                 _stationEntities, _stations, 5000f, game.Player);
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _stationEntities, _planetEntities,
-                _planets, game.EcsWorld);
+                game.EcsWorld);
 
             // Navigation target indicator
             if (game.Player.HasNavigationTarget)

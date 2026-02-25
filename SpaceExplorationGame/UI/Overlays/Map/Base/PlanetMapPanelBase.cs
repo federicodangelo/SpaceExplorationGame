@@ -18,7 +18,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     protected StarSystemData _starSystem = null!;
     protected PlanetData _planet = null!;
     protected PlanetSurfaceData _surfaceData = null!;
-    protected nint _terrainTexture { get; private set;}
+    protected nint _terrainTexture { get; private set; }
 
     /// <summary>Shared animation timer for the selection reticle (incremented at 3× dt).</summary>
     protected float _selectionPulse;
@@ -166,8 +166,10 @@ public abstract class PlanetMapPanelBase : MapPanelBase
         var bottomRight = Camera.WorldToScreen(new Vector2(worldW, worldH));
         var dstRect = new SDL.FRect
         {
-            X = topLeft.X, Y = topLeft.Y,
-            W = bottomRight.X - topLeft.X, H = bottomRight.Y - topLeft.Y
+            X = topLeft.X,
+            Y = topLeft.Y,
+            W = bottomRight.X - topLeft.X,
+            H = bottomRight.Y - topLeft.Y
         };
         SDL.RenderTexture(game.Renderer, _terrainTexture, nint.Zero, in dstRect);
 

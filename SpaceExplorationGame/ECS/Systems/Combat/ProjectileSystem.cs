@@ -164,7 +164,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     /// <summary>Source-generated query: collects projectile data and marks expired projectiles.</summary>
     [Query]
     [All(typeof(Transform), typeof(Velocity), typeof(Projectile))]
-    public void CollectProjectiles(Entity entity, ref Transform transform, ref Velocity velocity, ref Projectile proj)
+    public void CollectProjectiles(Entity entity, ref Transform transform, ref Projectile proj)
     {
         proj.Lifetime -= _dt;
         if (proj.Lifetime <= 0)

@@ -100,7 +100,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             var dir = Vector2.Normalize(_playerPos - transform.Position);
             if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
-            SetAccelerationTowardVelocity(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
+            SetAccelerationTowardVelocity(ref velocity, dir * ai.Config.MoveSpeed);
 
             // Melee attack: fast short-range projectile when close
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
@@ -123,7 +123,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.3f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetAccelerationTowardVelocity(ref transform, ref velocity, wanderDir * wanderSpeed);
+            SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
         }
     }
 
@@ -139,7 +139,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
 
-            SetAccelerationTowardVelocity(ref transform, ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
+            SetAccelerationTowardVelocity(ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
             return;
         }
 
@@ -158,14 +158,14 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             {
                 // Close distance
                 SetState(ref ai, AIState.Chase);
-                SetAccelerationTowardVelocity(ref transform, ref velocity, dir * ai.Config.MoveSpeed);
+                SetAccelerationTowardVelocity(ref velocity, dir * ai.Config.MoveSpeed);
             }
             else
             {
                 // In range — strafe slightly
                 SetState(ref ai, AIState.Attack);
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
-                SetAccelerationTowardVelocity(ref transform, ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
+                SetAccelerationTowardVelocity(ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
             }
 
             // Fire ranged weapon
@@ -189,7 +189,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
             float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
             var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetAccelerationTowardVelocity(ref transform, ref velocity, wanderDir * wanderSpeed);
+            SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
         }
     }
 
@@ -197,8 +197,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     /// Sets acceleration intent toward a desired velocity, with a pre-check collision test.
     /// If the predicted next position is blocked, desired velocity is zero.
     /// </summary>
-    private void SetAccelerationTowardVelocity(ref Transform transform, ref Velocity velocity,
-        Vector2 desiredVelocity)
+    private void SetAccelerationTowardVelocity(ref Velocity velocity, Vector2 desiredVelocity)
     {
         velocity.Acceleration += (desiredVelocity - velocity.Velocity) * 14f;
     }

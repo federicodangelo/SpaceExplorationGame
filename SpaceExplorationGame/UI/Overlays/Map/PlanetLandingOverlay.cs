@@ -21,7 +21,7 @@ public class PlanetLandingOverlay : MapOverlayBase
     protected override float InfoPanelWidthValue => 260f;
 
     public PlanetLandingOverlay(TextureManager textures)
-    {        
+    {
         _panel = new PlanetLandingPanel(textures);
         _panel.OnRequestClose = game => Close();
     }

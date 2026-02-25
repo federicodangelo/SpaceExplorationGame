@@ -51,8 +51,8 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
         if (absolute)
         {
             shipInput.AccelerationDirection = movementInput;
-        } 
-        else 
+        }
+        else
         {
             if (headingDirection == Vector2.Zero)
             {

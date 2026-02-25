@@ -42,7 +42,7 @@ public static class HudRenderer
         bool hasShield = stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip);
 
         // Measure panel width
-        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
 
         // Calculate panel height
         float panelH = Padding
@@ -108,7 +108,7 @@ public static class HudRenderer
         if (hasHealth) avatarHealth = ecsWorld.Get<Health>(playerAvatar);
 
         // Measure panel width
-        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
 
         // Calculate panel height
         float panelH = Padding
@@ -165,7 +165,7 @@ public static class HudRenderer
         var tracked = player.GetTrackedMission();
 
         // Measure panel width
-        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine, tracked);
+        float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
 
         // Calculate panel height
         float panelH = Padding
@@ -217,8 +217,7 @@ public static class HudRenderer
         $"CREDITS: {player.Credits}  |  CARGO: {player.CargoUsed}/{player.MaxCargo}  |  FUEL: {player.ShipFuel:F0}/{player.ShipMaxFuel:F0}";
 
     /// <summary>Measure the required panel width for the HUD based on content.</summary>
-    private static float MeasureHudPanelWidth(SpriteRenderer renderer, string locationLine,
-        string infoLine, object? tracked)
+    private static float MeasureHudPanelWidth(SpriteRenderer renderer, string locationLine, string infoLine)
     {
         float maxW = Math.Max(renderer.MeasureText(locationLine, TextScale),
                               renderer.MeasureText(infoLine, TextScale));
@@ -553,7 +552,7 @@ public static class HudRenderer
     /// <summary>Render off-screen indicators pointing to mission target planets/stations in a solar system.</summary>
     public static void RenderSolarSystemMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
         PlayerData player, int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
-        List<PlanetData> planets, World ecsWorld)
+        World ecsWorld)
     {
         var missions = player.ActiveMissions;
         if (missions.Count == 0) return;

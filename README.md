@@ -74,6 +74,16 @@ https://github.com/federicodangelo/SpaceExplorationGame/raw/master/media/Recordi
 dotnet run --project SpaceExplorationGame
 ```
 
+## Code Formatting
+
+```bash
+# Check and apply formatting locally
+dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace
+
+# CI-style check (fails if formatting changes are needed)
+dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace --verify-no-changes
+```
+
 ## Project Structure
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed breakdown of the codebase architecture, ECS components, rendering pipeline, and game state management.

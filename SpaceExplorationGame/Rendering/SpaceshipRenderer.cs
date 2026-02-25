@@ -15,12 +15,6 @@ public class SpaceshipRenderer : IDisposable
     {
     }
 
-    /// <summary>Gets the in-flight texture for a ship type.</summary>
-    public nint GetSolarTexture(string shipTypeId) => nint.Zero;
-
-    /// <summary>Gets the landed texture for a ship type.</summary>
-    public nint GetLandedTexture(string shipTypeId) => nint.Zero;
-
     /// <summary>Renders the ship in flight with optional engine flame effect.</summary>
     public void RenderFlying(SpriteRenderer renderer, Camera camera,
         Vector2 position, float rotation, string shipTypeId, int spriteSize)

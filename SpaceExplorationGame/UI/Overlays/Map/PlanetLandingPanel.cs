@@ -157,7 +157,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     public override void Update(Game game)
     {
         float dt = game.DeltaTime;
-        
+
         _selectionPulse += dt * 3f;
 
         var input = game.Input;

@@ -75,7 +75,7 @@ public class MainMenuState : GameState
         }
 
         _menuOverlay.Open();
-    UpdateStartingShipOverrideLabel();
+        UpdateStartingShipOverrideLabel();
         UpdateLocationPreview(game);
 
         if (s_reopenDebugMenu)

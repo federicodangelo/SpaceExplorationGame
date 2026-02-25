@@ -44,8 +44,7 @@ public static class HudMinimapRenderer
         List<PlanetData> planets, List<Entity> planetEntities,
         List<List<Entity>> moonEntities, List<Entity> stationEntities,
         List<Entity> asteroidEntities, List<Entity> enemyEntities,
-        Entity playerShip, Entity starEntity, World ecsWorld,
-        float starRadius)
+        Entity playerShip, Entity starEntity, World ecsWorld)
     {
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;

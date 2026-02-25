@@ -30,7 +30,7 @@ public class MissionsListOverlay : ListPanelOverlay
             if (input == null) return "";
 
             int count = _game?.Player.ActiveMissions.Count ?? 0;
-            
+
             if (count <= 0)
                 return $"{input.GetActionHelpText(InputAction.MenuBack)}: BACK";
 

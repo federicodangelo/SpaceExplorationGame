@@ -291,17 +291,17 @@ public class InteriorState : GameState
                 _repairOverlay.Open();
                 break;
             case InteractableType.MissionBoard:
-                {
-                    ulong boardSeed;
-                    if (_origin == InteriorOrigin.Station && _station != null)
-                        boardSeed = MissionGenerator.GetStationBoardSeed(game.Seeds, _starSystem.Index, _station.Index);
-                    else if (_planet != null && _settlement != null)
-                        boardSeed = MissionGenerator.GetSettlementBoardSeed(game.Seeds, _starSystem.Index, _planet.Index, _settlement.TileRect.X, _settlement.TileRect.Y);
-                    else
-                        boardSeed = (ulong)_starSystem.Index * 9999;
-                    _missionOverlay.Open(game, _starSystem, boardSeed);
-                }
-                break;
+            {
+                ulong boardSeed;
+                if (_origin == InteriorOrigin.Station && _station != null)
+                    boardSeed = MissionGenerator.GetStationBoardSeed(game.Seeds, _starSystem.Index, _station.Index);
+                else if (_planet != null && _settlement != null)
+                    boardSeed = MissionGenerator.GetSettlementBoardSeed(game.Seeds, _starSystem.Index, _planet.Index, _settlement.TileRect.X, _settlement.TileRect.Y);
+                else
+                    boardSeed = (ulong)_starSystem.Index * 9999;
+                _missionOverlay.Open(game, _starSystem, boardSeed);
+            }
+            break;
             case InteractableType.ShipCustomization:
                 _shipCustomization.Open(game.Player);
                 break;

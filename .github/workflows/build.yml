@@ -13,7 +13,30 @@ env:
   PROJECT_PATH: SpaceExplorationGame/SpaceExplorationGame.csproj
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    name: Code Format
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: preview
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: Verify formatting
+        run: >
+          dotnet format ${{ env.PROJECT_PATH }} whitespace
+          --verify-no-changes
+
   build:
+    needs: format
     strategy:
       matrix:
         include:

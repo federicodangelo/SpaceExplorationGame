@@ -83,22 +83,22 @@ public readonly record struct GalaxyLocation
     /// <summary>Create a target pointing at a planet within a star system.</summary>
     public static GalaxyLocation ForPlanet(int systemIndex, string systemName,
         int planetIndex, string planetName) => new()
-    {
-        Type = GalaxyLocationType.Planet,
-        SystemIndex = systemIndex,
-        SystemName = systemName,
-        PlanetIndex = planetIndex,
-        PlanetName = planetName
-    };
+        {
+            Type = GalaxyLocationType.Planet,
+            SystemIndex = systemIndex,
+            SystemName = systemName,
+            PlanetIndex = planetIndex,
+            PlanetName = planetName
+        };
 
     /// <summary>Create a target pointing at a settlement on a planet.</summary>
     public static GalaxyLocation ForSettlement(int systemIndex, string systemName,
         int planetIndex, string planetName) => new()
-    {
-        Type = GalaxyLocationType.Settlement,
-        SystemIndex = systemIndex,
-        SystemName = systemName,
-        PlanetIndex = planetIndex,
-        PlanetName = planetName
-    };
+        {
+            Type = GalaxyLocationType.Settlement,
+            SystemIndex = systemIndex,
+            SystemName = systemName,
+            PlanetIndex = planetIndex,
+            PlanetName = planetName
+        };
 }

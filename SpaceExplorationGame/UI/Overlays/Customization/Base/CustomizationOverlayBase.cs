@@ -108,12 +108,12 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     protected override void ProcessInput(Game game, InputManager input)
     {
         if (_activeColumn == Column.Slots)
-            ProcessSlotsInput(game, input);
+            ProcessSlotsInput(input);
         else
             ProcessPartsInput(game, input);
     }
 
-    private void ProcessSlotsInput(Game game, InputManager input)
+    private void ProcessSlotsInput(InputManager input)
     {
         // Keyboard navigation
         if (input.IsActionPressed(InputAction.MenuUp))

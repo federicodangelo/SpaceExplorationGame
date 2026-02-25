@@ -74,8 +74,8 @@ public sealed class MusicGenerator
 
     // Arp patterns (scale degrees; offset +5 = one octave above root)
     private static readonly int[] ArpDefault = [5, 6, 7, 8, 9, 8, 7, 6];
-    private static readonly int[] ArpCombat  = [5, 5, 7, 8, 5, 5, 8, 9];
-    private static readonly int[] ArpFtl     = [5, 6, 7, 8, 9, 10, 11, 12];
+    private static readonly int[] ArpCombat = [5, 5, 7, 8, 5, 5, 8, 9];
+    private static readonly int[] ArpFtl = [5, 6, 7, 8, 9, 10, 11, 12];
 
     public MusicGenerator(int sampleRate)
     {
@@ -108,13 +108,13 @@ public sealed class MusicGenerator
 
     private ThemeParams Params => CurrentTheme switch
     {
-        MusicTheme.MainMenu      => new(110.00f,  50, .15f, .12f, .05f, .08f, .04f, .50f, ArpDefault),
-        MusicTheme.SolarSystem   => new(130.81f,  65, .12f, .10f, .08f, .10f, .06f, .40f, ArpDefault),
-        MusicTheme.PlanetSurface => new(164.81f,  72, .08f, .12f, .06f, .12f, .03f, .30f, ArpDefault),
-        MusicTheme.Interior      => new(196.00f,  55, .10f, .08f, .03f, .06f, .05f, .35f, ArpDefault),
-        MusicTheme.FTL           => new(146.83f, 130, .18f, .06f, .15f, .14f, .08f, .50f, ArpFtl),
-        MusicTheme.Combat        => new(110.00f, 110, .14f, .06f, .12f, .16f, .05f, .30f, ArpCombat),
-        _                        => new(130.81f,  60,   0,   0,    0,    0,    0,      0, ArpDefault),
+        MusicTheme.MainMenu => new(110.00f, 50, .15f, .12f, .05f, .08f, .04f, .50f, ArpDefault),
+        MusicTheme.SolarSystem => new(130.81f, 65, .12f, .10f, .08f, .10f, .06f, .40f, ArpDefault),
+        MusicTheme.PlanetSurface => new(164.81f, 72, .08f, .12f, .06f, .12f, .03f, .30f, ArpDefault),
+        MusicTheme.Interior => new(196.00f, 55, .10f, .08f, .03f, .06f, .05f, .35f, ArpDefault),
+        MusicTheme.FTL => new(146.83f, 130, .18f, .06f, .15f, .14f, .08f, .50f, ArpFtl),
+        MusicTheme.Combat => new(110.00f, 110, .14f, .06f, .12f, .16f, .05f, .30f, ArpCombat),
+        _ => new(130.81f, 60, 0, 0, 0, 0, 0, 0, ArpDefault),
     };
 
     // ──────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ public sealed class MusicGenerator
             float pF1 = Lerp(_prevF1, _tgtF1, _chordBlend);
             float pF2 = Lerp(_prevF2, _tgtF2, _chordBlend);
             float pF3 = Lerp(_prevF3, _tgtF3, _chordBlend);
-            float bF  = Lerp(_prevBass, _tgtBass, _chordBlend);
+            float bF = Lerp(_prevBass, _tgtBass, _chordBlend);
 
             float left = 0f, right = 0f;
 
@@ -183,7 +183,7 @@ public sealed class MusicGenerator
                         + Sine(_droneP2) * 0.30f
                         + Sine(_droneSub) * 0.20f;
                 d *= 1f + lfo1 * 0.3f;
-                left  += d * p.Drone;
+                left += d * p.Drone;
                 right += d * p.Drone;
             }
 
@@ -199,7 +199,7 @@ public sealed class MusicGenerator
                 float s2 = Sine(_padP2);
                 float s3 = Sine(_padP3);
                 float amp = 1f + lfo2 * 0.2f;
-                left  += (s1 * 0.40f + s2 * 0.45f + s3 * 0.15f) * amp * p.Pad;
+                left += (s1 * 0.40f + s2 * 0.45f + s3 * 0.15f) * amp * p.Pad;
                 right += (s1 * 0.40f + s2 * 0.15f + s3 * 0.45f) * amp * p.Pad;
             }
 
@@ -214,7 +214,7 @@ public sealed class MusicGenerator
                 env *= env; // quadratic shape
                 float a = Triangle(_arpP) * env;
                 float pan = (_arpIdx % 2 == 0) ? 0.15f : -0.15f;
-                left  += a * p.Arp * (1f - pan);
+                left += a * p.Arp * (1f - pan);
                 right += a * p.Arp * (1f + pan);
             }
 
@@ -225,7 +225,7 @@ public sealed class MusicGenerator
             {
                 _bassP += bF * _dt;
                 float b = Sine(_bassP);
-                left  += b * p.Bass;
+                left += b * p.Bass;
                 right += b * p.Bass;
             }
 
@@ -239,7 +239,7 @@ public sealed class MusicGenerator
                 float alpha = _dt / (rc + _dt);
                 _lpfL += alpha * (Noise() - _lpfL);
                 _lpfR += alpha * (Noise() - _lpfR);
-                left  += _lpfL * p.Atmo;
+                left += _lpfL * p.Atmo;
                 right += _lpfR * p.Atmo;
             }
 
@@ -252,14 +252,14 @@ public sealed class MusicGenerator
                 int rR = (_dlyW - DlyLenR + DlySize) % DlySize;
                 float dL = _dlyL[rL];
                 float dR = _dlyR[rR];
-                left  += dR * p.Reverb;   // cross-feed
+                left += dR * p.Reverb;   // cross-feed
                 right += dL * p.Reverb;
-                _dlyL[_dlyW] = left  * 0.35f;
+                _dlyL[_dlyW] = left * 0.35f;
                 _dlyR[_dlyW] = right * 0.35f;
                 _dlyW = (_dlyW + 1) % DlySize;
             }
 
-            buffer[i * 2]     += left;
+            buffer[i * 2] += left;
             buffer[i * 2 + 1] += right;
         }
     }

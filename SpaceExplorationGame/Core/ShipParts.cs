@@ -232,13 +232,13 @@ public static class ShipPartCatalog
         {
             loadout[slot] = slot switch
             {
-                ShipSlotType.Engine   => GetById("engine_basic")!,
-                ShipSlotType.Armor    => GetById("armor_basic")!,
-                ShipSlotType.Shield   => GetById("shield_basic")!,
+                ShipSlotType.Engine => GetById("engine_basic")!,
+                ShipSlotType.Armor => GetById("armor_basic")!,
+                ShipSlotType.Shield => GetById("shield_basic")!,
                 ShipSlotType.FtlDrive => GetById("ftl_basic")!,
-                ShipSlotType.Weapon1  => GetById("weapon_laser")!,
-                ShipSlotType.Weapon2  => GetById("weapon_none")!,
-                ShipSlotType.Utility or ShipSlotType.Utility2  => GetById("util_none")!,
+                ShipSlotType.Weapon1 => GetById("weapon_laser")!,
+                ShipSlotType.Weapon2 => GetById("weapon_none")!,
+                ShipSlotType.Utility or ShipSlotType.Utility2 => GetById("util_none")!,
                 _ => GetById("util_none")!,
             };
         }
@@ -248,13 +248,13 @@ public static class ShipPartCatalog
     /// <summary>Slot display names.</summary>
     public static string GetSlotName(ShipSlotType slot) => slot switch
     {
-        ShipSlotType.Engine   => "ENGINE",
-        ShipSlotType.Armor    => "ARMOR",
-        ShipSlotType.Shield   => "SHIELD",
+        ShipSlotType.Engine => "ENGINE",
+        ShipSlotType.Armor => "ARMOR",
+        ShipSlotType.Shield => "SHIELD",
         ShipSlotType.FtlDrive => "FTL DRIVE",
-        ShipSlotType.Weapon1  => "WEAPON 1",
-        ShipSlotType.Weapon2  => "WEAPON 2",
-        ShipSlotType.Utility  => "UTILITY",
+        ShipSlotType.Weapon1 => "WEAPON 1",
+        ShipSlotType.Weapon2 => "WEAPON 2",
+        ShipSlotType.Utility => "UTILITY",
         ShipSlotType.Utility2 => "UTILITY 2",
         _ => slot.ToString().ToUpper()
     };
