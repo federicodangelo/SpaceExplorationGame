@@ -51,41 +51,107 @@ public class SpaceshipRenderer : IDisposable
     {
         float scale = (spriteSize / 32f) * zoom;
 
-        (Color4 hull, Color4 accent) = shipTypeId switch
+        switch (shipTypeId)
         {
-            "fighter" => (new Color4(190, 70, 70, 255), new Color4(255, 220, 120, 255)),
-            "freighter" => (new Color4(170, 150, 90, 255), new Color4(130, 120, 80, 255)),
-            "explorer" => (new Color4(90, 150, 220, 255), new Color4(140, 210, 255, 255)),
-            _ => (new Color4(90, 200, 90, 255), new Color4(150, 220, 255, 255))
-        };
+            case "fighter":
+                DrawFighter(renderer, screenX, screenY, rotationDeg, scale);
+                break;
+            case "freighter":
+                DrawFreighter(renderer, screenX, screenY, rotationDeg, scale);
+                break;
+            case "explorer":
+                DrawExplorer(renderer, screenX, screenY, rotationDeg, scale);
+                break;
+            default:
+                DrawScout(renderer, screenX, screenY, rotationDeg, scale);
+                break;
+        }
+    }
 
-        DrawRotatedQuadScreen(renderer, screenX, screenY, rotationDeg,
-            new Vector2(-11f * scale, -4f * scale),
-            new Vector2(10f * scale, -4f * scale),
-            new Vector2(12f * scale, 4f * scale),
-            new Vector2(-11f * scale, 4f * scale),
-            hull);
+    private static void DrawScout(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    {
+        var hull = new Color4(90, 200, 90, 255);
+        var accent = new Color4(150, 220, 255, 255);
+        var wing = new Color4(65, 140, 75, 255);
 
-        DrawRotatedTriangleScreen(renderer, screenX, screenY, rotationDeg,
-            new Vector2(10f * scale, -4f * scale),
-            new Vector2(16f * scale, 0f),
-            new Vector2(10f * scale, 4f * scale),
-            accent);
+        DrawRotatedQuadScreen(renderer, cx, cy, rot,
+            new Vector2(-10f * s, -3.2f * s), new Vector2(9f * s, -3.2f * s),
+            new Vector2(10.5f * s, 3.2f * s), new Vector2(-10f * s, 3.2f * s), hull);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(9f * s, -3.2f * s), new Vector2(15f * s, 0f), new Vector2(9f * s, 3.2f * s), accent);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-6f * s, -3.2f * s), new Vector2(-13f * s, -7f * s), new Vector2(-9f * s, -0.8f * s), wing);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-6f * s, 3.2f * s), new Vector2(-13f * s, 7f * s), new Vector2(-9f * s, 0.8f * s), wing);
 
-        DrawRotatedTriangleScreen(renderer, screenX, screenY, rotationDeg,
-            new Vector2(-6f * scale, -4f * scale),
-            new Vector2(-16f * scale, -9f * scale),
-            new Vector2(-10f * scale, -1f * scale),
-            new Color4((byte)(hull.R * 0.7f), (byte)(hull.G * 0.7f), (byte)(hull.B * 0.7f), 255));
+        Vector2 cockpitOffset = Rotate(new Vector2(5f * s, 0f), rot);
+        renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 1.9f * s, accent.WithAlpha(220));
+    }
 
-        DrawRotatedTriangleScreen(renderer, screenX, screenY, rotationDeg,
-            new Vector2(-6f * scale, 4f * scale),
-            new Vector2(-16f * scale, 9f * scale),
-            new Vector2(-10f * scale, 1f * scale),
-            new Color4((byte)(hull.R * 0.7f), (byte)(hull.G * 0.7f), (byte)(hull.B * 0.7f), 255));
+    private static void DrawFighter(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    {
+        var hull = new Color4(190, 70, 70, 255);
+        var accent = new Color4(255, 220, 120, 255);
+        var wing = new Color4(140, 50, 50, 255);
 
-        Vector2 cockpitOffset = Rotate(new Vector2(6f * scale, 0f), rotationDeg);
-        renderer.DrawFilledCircleScreen(screenX + cockpitOffset.X, screenY + cockpitOffset.Y, 2.2f * scale, accent.WithAlpha(220));
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-9f * s, -3.6f * s), new Vector2(13f * s, 0f), new Vector2(-9f * s, 3.6f * s), hull);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-1f * s, -3.8f * s), new Vector2(-14f * s, -10f * s), new Vector2(-7f * s, -1.2f * s), wing);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-1f * s, 3.8f * s), new Vector2(-14f * s, 10f * s), new Vector2(-7f * s, 1.2f * s), wing);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(5f * s, -2.2f * s), new Vector2(16f * s, 0f), new Vector2(5f * s, 2.2f * s), accent.WithAlpha(210));
+
+        Vector2 cockpitOffset = Rotate(new Vector2(4f * s, 0f), rot);
+        renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 1.7f * s, accent.WithAlpha(220));
+    }
+
+    private static void DrawFreighter(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    {
+        var hull = new Color4(170, 150, 90, 255);
+        var trim = new Color4(130, 120, 80, 255);
+        var accent = new Color4(165, 205, 235, 240);
+
+        DrawRotatedQuadScreen(renderer, cx, cy, rot,
+            new Vector2(-13f * s, -6.2f * s), new Vector2(8f * s, -6.2f * s),
+            new Vector2(8f * s, 6.2f * s), new Vector2(-13f * s, 6.2f * s), hull);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(8f * s, -6.2f * s), new Vector2(15f * s, 0f), new Vector2(8f * s, 6.2f * s), trim);
+
+        DrawRotatedQuadScreen(renderer, cx, cy, rot,
+            new Vector2(-8f * s, -11f * s), new Vector2(3f * s, -11f * s),
+            new Vector2(3f * s, -6.2f * s), new Vector2(-8f * s, -6.2f * s), trim.WithAlpha(230));
+        DrawRotatedQuadScreen(renderer, cx, cy, rot,
+            new Vector2(-8f * s, 6.2f * s), new Vector2(3f * s, 6.2f * s),
+            new Vector2(3f * s, 11f * s), new Vector2(-8f * s, 11f * s), trim.WithAlpha(230));
+
+        Vector2 cockpitOffset = Rotate(new Vector2(5f * s, 0f), rot);
+        renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 2.1f * s, accent);
+    }
+
+    private static void DrawExplorer(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    {
+        var hull = new Color4(90, 150, 220, 255);
+        var wing = new Color4(70, 120, 190, 255);
+        var accent = new Color4(140, 210, 255, 255);
+
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-10f * s, -4f * s), new Vector2(15f * s, 0f), new Vector2(-10f * s, 4f * s), hull);
+
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-2f * s, -4f * s), new Vector2(-14f * s, -11f * s), new Vector2(-6f * s, -1.6f * s), wing);
+        DrawRotatedTriangleScreen(renderer, cx, cy, rot,
+            new Vector2(-2f * s, 4f * s), new Vector2(-14f * s, 11f * s), new Vector2(-6f * s, 1.6f * s), wing);
+
+        DrawRotatedQuadScreen(renderer, cx, cy, rot,
+            new Vector2(-1f * s, -1.6f * s), new Vector2(7f * s, -1.6f * s),
+            new Vector2(7f * s, 1.6f * s), new Vector2(-1f * s, 1.6f * s), accent.WithAlpha(210));
+
+        Vector2 sensorOffset = Rotate(new Vector2(-5f * s, 0f), rot);
+        renderer.DrawFilledCircleScreen(cx + sensorOffset.X, cy + sensorOffset.Y, 1.1f * s, accent.WithAlpha(200));
+        Vector2 cockpitOffset = Rotate(new Vector2(6f * s, 0f), rot);
+        renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 1.9f * s, accent.WithAlpha(225));
     }
 
     private static Vector2 Rotate(Vector2 v, float degrees)

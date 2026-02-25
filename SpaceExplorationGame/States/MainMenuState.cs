@@ -75,6 +75,7 @@ public class MainMenuState : GameState
         }
 
         _menuOverlay.Open();
+    UpdateStartingShipOverrideLabel();
         UpdateLocationPreview(game);
 
         if (s_reopenDebugMenu)
@@ -187,6 +188,7 @@ public class MainMenuState : GameState
         _menuOverlay.Update(game);
         _debugOverlay.Update(game);
         _menuOverlay.CurrentSeed = game.Seeds.GalaxySeed;
+        UpdateStartingShipOverrideLabel();
 
         // Refresh preview when filters or seed change
         var locType = _menuOverlay.LocationType;
@@ -208,6 +210,7 @@ public class MainMenuState : GameState
         // Any non-debug launch returns to normal main-menu behavior.
         s_reopenDebugMenu = false;
         game.UseProceduralWorldGenerator();
+        ApplySelectedStartingShip(game);
 
         // Ensure we have a preview matching the requested type
         if (_previewSystem == null || _lastPreviewedLocationType != locationType)
@@ -299,6 +302,7 @@ public class MainMenuState : GameState
     {
         s_reopenDebugMenu = true;
         game.SetWorldGenerator(new PlanetTypeShowcaseWorldGenerator());
+        ApplySelectedStartingShip(game);
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));
@@ -308,6 +312,7 @@ public class MainMenuState : GameState
     {
         s_reopenDebugMenu = true;
         game.SetWorldGenerator(new StarTypeShowcaseWorldGenerator(starClass));
+        ApplySelectedStartingShip(game);
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));
@@ -317,9 +322,30 @@ public class MainMenuState : GameState
     {
         s_reopenDebugMenu = true;
         game.SetWorldGenerator(new AsteroidMiningShowcaseWorldGenerator());
+        ApplySelectedStartingShip(game);
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));
+    }
+
+    private void ApplySelectedStartingShip(Game game)
+    {
+        var selectedShip = _debugOverlay.SelectedStartingShip;
+        if (game.Player.CurrentShipType.Id != selectedShip.Id)
+        {
+            game.Player.SwitchShipType(selectedShip);
+        }
+
+        game.Player.ShipHealth = game.Player.ShipMaxHealth;
+        game.Player.ShipFuel = game.Player.ShipMaxFuel;
+    }
+
+    private void UpdateStartingShipOverrideLabel()
+    {
+        var selectedShip = _debugOverlay.SelectedStartingShip;
+        _menuOverlay.StartingShipOverrideText = selectedShip.Id == ShipTypeCatalog.StarterShip.Id
+            ? null
+            : $"Starting ship override: {selectedShip.Name}";
     }
 
     // ── Preview ──

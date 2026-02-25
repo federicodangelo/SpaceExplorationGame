@@ -94,6 +94,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     /// <summary>Location preview text (set by MainMenuState).</summary>
     public string? LocationPreview { get; set; }
 
+    /// <summary>Optional starting ship override text (set by MainMenuState).</summary>
+    public string? StartingShipOverrideText { get; set; }
+
     // ── Panel configuration ──
 
     protected override string Title => "CHOOSE YOUR ADVENTURE";
@@ -148,6 +151,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         DebugRequested = false;
         FiltersChanged = false;
         LocationPreview = null;
+        StartingShipOverrideText = null;
         // Keep _dangerIndex and _locationIndex from previous session
         UpdateCyclingLabels();
     }
@@ -278,11 +282,18 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         // Seed line
         renderer.DrawTextScreen(panelX + 15, infoY + 4, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f);
 
+        float previewStartY = infoY + 24;
+        if (!string.IsNullOrWhiteSpace(StartingShipOverrideText))
+        {
+            renderer.DrawTextScreen(panelX + 15, previewStartY, StartingShipOverrideText, new Color3(140, 190, 220), 1.5f);
+            previewStartY += 18;
+        }
+
         // Location preview (two lines)
         if (!string.IsNullOrEmpty(LocationPreview))
         {
             string[] lines = LocationPreview.Split('\n');
-            float lineY = infoY + 24;
+            float lineY = previewStartY;
             foreach (var line in lines)
             {
                 renderer.DrawTextScreen(panelX + 15, lineY, line, new Color3(160, 180, 210), 1.5f);

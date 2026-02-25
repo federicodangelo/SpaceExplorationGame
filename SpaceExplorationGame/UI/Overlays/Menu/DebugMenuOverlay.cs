@@ -10,6 +10,7 @@ public enum DebugMenuAction
 {
     None = -1,
     StarType,
+    StartingShip,
     StarTypeShowcase,
     PlanetTypeShowcase,
     AsteroidShowcase,
@@ -22,14 +23,19 @@ public enum DebugMenuAction
 public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 {
     private const int StarTypeIdx = 0;
+    private const int StartingShipIdx = 1;
 
     private static readonly StarClass[] StarTypes = Enum.GetValues<StarClass>();
+    private static readonly ShipType[] ShipTypes = ShipTypeCatalog.AllTypes;
     private static int s_savedStarTypeIndex;
+    private static int s_savedShipTypeIndex;
     private static int s_savedSelectedIndex;
 
     private int _starTypeIndex = s_savedStarTypeIndex;
+    private int _shipTypeIndex = s_savedShipTypeIndex;
 
     public StarClass SelectedStarType => StarTypes[_starTypeIndex];
+    public ShipType SelectedStartingShip => ShipTypes[_shipTypeIndex];
 
     /// <summary>When set, start a dedicated solar system showcasing the selected star type.</summary>
     public bool StartStarTypeShowcaseRequested { get; set; }
@@ -54,7 +60,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             if (input == null) return "";
 
             return $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}: NAVIGATE  " +
-                   $"{input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT  " +
+                     $"{input.GetActionHelpText(InputAction.MenuConfirm)}/{input.GetActionHelpText(InputAction.MenuLeft)}/{input.GetActionHelpText(InputAction.MenuRight)}: CHANGE  " +
                    $"{input.GetActionHelpText(InputAction.MenuBack)}: BACK";
         }
     }
@@ -64,6 +70,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         Menu = new MenuWidget<DebugMenuAction>(
         [
             new(DebugMenuAction.StarType, "STAR TYPE: < G >", "Select the star type used by debug showcase scenarios"),
+            new(DebugMenuAction.StartingShip, "STARTING SHIP: < SCOUT >", "Choose which ship you start with when launching from the main menu"),
             new(DebugMenuAction.StarTypeShowcase, "STAR TYPE SHOWCASE", "Start a debug system focused on the selected star type"),
             new(DebugMenuAction.PlanetTypeShowcase, "PLANET TYPE SHOWCASE", "Start in a debug solar system containing all planet types"),
             new(DebugMenuAction.AsteroidShowcase, "ASTEROID MINING SHOWCASE", "Start in space with dense asteroid belts for mining tests"),
@@ -88,12 +95,13 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         base.Open();
 
         _starTypeIndex = Math.Clamp(s_savedStarTypeIndex, 0, StarTypes.Length - 1);
+        _shipTypeIndex = Math.Clamp(s_savedShipTypeIndex, 0, ShipTypes.Length - 1);
         Menu.SelectedIndex = Math.Clamp(s_savedSelectedIndex, 0, Menu.ItemCount - 1);
 
         StartStarTypeShowcaseRequested = false;
         StartPlanetTypeShowcaseRequested = false;
         StartAsteroidShowcaseRequested = false;
-        UpdateStarTypeLabel();
+        UpdateCyclingLabels();
     }
 
     public override void Close()
@@ -114,6 +122,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             case DebugMenuAction.StarType:
                 CycleStarType(1);
                 break;
+            case DebugMenuAction.StartingShip:
+                CycleStartingShip(1);
+                break;
             case DebugMenuAction.StarTypeShowcase:
                 StartStarTypeShowcaseRequested = true;
                 break;
@@ -131,7 +142,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     protected override void ProcessInput(Game game, InputManager input)
     {
-        UpdateStarTypeLabel();
+        UpdateCyclingLabels();
 
         if (Menu.SelectedValue == DebugMenuAction.StarType)
         {
@@ -148,6 +159,21 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
                 return;
             }
         }
+        else if (Menu.SelectedValue == DebugMenuAction.StartingShip)
+        {
+            if (input.IsActionPressed(InputAction.MenuLeft))
+            {
+                CycleStartingShip(-1);
+                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                return;
+            }
+            if (input.IsActionPressed(InputAction.MenuRight))
+            {
+                CycleStartingShip(1);
+                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                return;
+            }
+        }
 
         base.ProcessInput(game, input);
         SaveSelectionState();
@@ -157,16 +183,24 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     {
         _starTypeIndex = (_starTypeIndex + direction + StarTypes.Length) % StarTypes.Length;
         s_savedStarTypeIndex = _starTypeIndex;
-        UpdateStarTypeLabel();
+        UpdateCyclingLabels();
+    }
+
+    private void CycleStartingShip(int direction)
+    {
+        _shipTypeIndex = (_shipTypeIndex + direction + ShipTypes.Length) % ShipTypes.Length;
+        s_savedShipTypeIndex = _shipTypeIndex;
+        UpdateCyclingLabels();
     }
 
     private void SaveSelectionState()
     {
         s_savedStarTypeIndex = _starTypeIndex;
+        s_savedShipTypeIndex = _shipTypeIndex;
         s_savedSelectedIndex = Menu.SelectedIndex;
     }
 
-    private void UpdateStarTypeLabel()
+    private void UpdateCyclingLabels()
     {
         string confirm = CurrentInput?.GetActionHelpText(InputAction.MenuConfirm).ToUpper() ?? "CONFIRM";
         string left = CurrentInput?.GetActionHelpText(InputAction.MenuLeft).ToUpper() ?? "LEFT";
@@ -175,6 +209,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         Menu.SetOption(StarTypeIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.StarType,
             $"STAR TYPE: < {SelectedStarType} >",
             $"Press {confirm} or {left}/{right} to change star type"));
+        Menu.SetOption(StartingShipIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.StartingShip,
+            $"STARTING SHIP: < {SelectedStartingShip.Name.ToUpper()} >",
+            $"Press {confirm} or {left}/{right} to change starting ship"));
     }
 
     protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer,

@@ -18,46 +18,94 @@ public class EnemyShipRenderer : IDisposable
     public void Render(SpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
         Faction faction, int size)
     {
-        (Color4 hull, Color4 accent, Color4 wing) = faction switch
-        {
-            Faction.Pirate => (new Color4(170, 55, 55, 255), new Color4(255, 110, 60, 255), new Color4(120, 35, 35, 255)),
-            Faction.Trader => (new Color4(175, 140, 80, 255), new Color4(120, 200, 220, 255), new Color4(145, 115, 65, 255)),
-            Faction.Patrol => (new Color4(80, 140, 220, 255), new Color4(200, 220, 255, 255), new Color4(60, 100, 190, 255)),
-            _ => (new Color4(170, 55, 55, 255), new Color4(255, 110, 60, 255), new Color4(120, 35, 35, 255))
-        };
-
         float scale = size / 30f;
 
-        DrawRotatedQuad(renderer, camera, position, rotation,
-            new Vector2(-10f * scale, -4f * scale),
-            new Vector2(9f * scale, -4f * scale),
-            new Vector2(11f * scale, 4f * scale),
-            new Vector2(-10f * scale, 4f * scale),
-            hull);
+        switch (faction)
+        {
+            case Faction.Trader:
+                DrawTrader(renderer, camera, position, rotation, scale);
+                break;
+            case Faction.Patrol:
+                DrawPatrol(renderer, camera, position, rotation, scale);
+                break;
+            case Faction.Pirate:
+            default:
+                DrawPirate(renderer, camera, position, rotation, scale);
+                break;
+        }
+    }
 
-        DrawRotatedTriangle(renderer, camera, position, rotation,
-            new Vector2(9f * scale, -4f * scale),
-            new Vector2(15f * scale, 0f),
-            new Vector2(9f * scale, 4f * scale),
-            accent);
+    private static void DrawPirate(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    {
+        var hull = new Color4(170, 55, 55, 255);
+        var accent = new Color4(255, 110, 60, 255);
+        var wing = new Color4(120, 35, 35, 255);
 
-        DrawRotatedTriangle(renderer, camera, position, rotation,
-            new Vector2(-4f * scale, -4f * scale),
-            new Vector2(-14f * scale, -9f * scale),
-            new Vector2(-8f * scale, -1f * scale),
-            wing);
+        // Aggressive dagger profile
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-11f * s, -3.8f * s), new Vector2(13f * s, 0f), new Vector2(-11f * s, 3.8f * s), hull);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-1f * s, -3.8f * s), new Vector2(-15f * s, -10f * s), new Vector2(-7f * s, -1.2f * s), wing);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-1f * s, 3.8f * s), new Vector2(-15f * s, 10f * s), new Vector2(-7f * s, 1.2f * s), wing);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(5f * s, -2.3f * s), new Vector2(16f * s, 0f), new Vector2(5f * s, 2.3f * s), accent.WithAlpha(220));
 
-        DrawRotatedTriangle(renderer, camera, position, rotation,
-            new Vector2(-4f * scale, 4f * scale),
-            new Vector2(-14f * scale, 9f * scale),
-            new Vector2(-8f * scale, 1f * scale),
-            wing);
+        Vector2 cockpit = Rotate(new Vector2(4.2f * s, 0f), rot);
+        Vector2 engine = Rotate(new Vector2(-13.2f * s, 0f), rot);
+        renderer.DrawFilledCircle(camera, pos + cockpit, 1.8f * s, accent.WithAlpha(220));
+        renderer.DrawFilledCircle(camera, pos + engine, 1.9f * s, new Color4(255, 150, 60, 180));
+    }
 
-        Vector2 cockpitOffset = Rotate(new Vector2(5f * scale, 0f), rotation);
-        renderer.DrawFilledCircle(camera, position + cockpitOffset, 2f * scale, accent.WithAlpha(220));
+    private static void DrawTrader(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    {
+        var hull = new Color4(175, 140, 80, 255);
+        var trim = new Color4(145, 115, 65, 255);
+        var accent = new Color4(120, 200, 220, 255);
 
-        Vector2 engineOffset = Rotate(new Vector2(-13f * scale, 0f), rotation);
-        renderer.DrawFilledCircle(camera, position + engineOffset, 1.8f * scale, new Color4(255, 170, 70, 170));
+        // Bulky cargo body with side pods
+        DrawRotatedQuad(renderer, camera, pos, rot,
+            new Vector2(-13f * s, -6f * s), new Vector2(7f * s, -6f * s),
+            new Vector2(7f * s, 6f * s), new Vector2(-13f * s, 6f * s), hull);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(7f * s, -6f * s), new Vector2(14f * s, 0f), new Vector2(7f * s, 6f * s), trim);
+
+        DrawRotatedQuad(renderer, camera, pos, rot,
+            new Vector2(-8f * s, -10.5f * s), new Vector2(1f * s, -10.5f * s),
+            new Vector2(1f * s, -6f * s), new Vector2(-8f * s, -6f * s), trim.WithAlpha(235));
+        DrawRotatedQuad(renderer, camera, pos, rot,
+            new Vector2(-8f * s, 6f * s), new Vector2(1f * s, 6f * s),
+            new Vector2(1f * s, 10.5f * s), new Vector2(-8f * s, 10.5f * s), trim.WithAlpha(235));
+
+        Vector2 cockpit = Rotate(new Vector2(4.8f * s, 0f), rot);
+        Vector2 engineL = Rotate(new Vector2(-13.5f * s, -3f * s), rot);
+        Vector2 engineR = Rotate(new Vector2(-13.5f * s, 3f * s), rot);
+        renderer.DrawFilledCircle(camera, pos + cockpit, 2.1f * s, accent.WithAlpha(220));
+        renderer.DrawFilledCircle(camera, pos + engineL, 1.3f * s, new Color4(255, 180, 80, 160));
+        renderer.DrawFilledCircle(camera, pos + engineR, 1.3f * s, new Color4(255, 180, 80, 160));
+    }
+
+    private static void DrawPatrol(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    {
+        var hull = new Color4(80, 140, 220, 255);
+        var wing = new Color4(60, 100, 190, 255);
+        var accent = new Color4(200, 220, 255, 255);
+
+        // Sleek interceptor profile
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-10f * s, -3.6f * s), new Vector2(14f * s, 0f), new Vector2(-10f * s, 3.6f * s), hull);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-3f * s, -3.6f * s), new Vector2(-15f * s, -8.5f * s), new Vector2(-8f * s, -0.7f * s), wing);
+        DrawRotatedTriangle(renderer, camera, pos, rot,
+            new Vector2(-3f * s, 3.6f * s), new Vector2(-15f * s, 8.5f * s), new Vector2(-8f * s, 0.7f * s), wing);
+        DrawRotatedQuad(renderer, camera, pos, rot,
+            new Vector2(-1f * s, -1.5f * s), new Vector2(7f * s, -1.5f * s),
+            new Vector2(7f * s, 1.5f * s), new Vector2(-1f * s, 1.5f * s), accent.WithAlpha(220));
+
+        Vector2 cockpit = Rotate(new Vector2(5.6f * s, 0f), rot);
+        Vector2 engine = Rotate(new Vector2(-13f * s, 0f), rot);
+        renderer.DrawFilledCircle(camera, pos + cockpit, 1.8f * s, accent.WithAlpha(225));
+        renderer.DrawFilledCircle(camera, pos + engine, 1.5f * s, new Color4(100, 180, 255, 170));
     }
 
     /// <summary>Render a health bar above an NPC ship.</summary>
