@@ -116,6 +116,18 @@ public struct Orbit
     }
 }
 
+/// <summary>Marks an entity as owned by another entity for lifetime cleanup.</summary>
+[Component]
+public struct OwnedBy
+{
+    public Arch.Core.Entity Owner;
+
+    public OwnedBy(Arch.Core.Entity owner)
+    {
+        Owner = owner;
+    }
+}
+
 /// <summary>Marks an entity as interactable (e.g., land on planet, dock at station)</summary>
 [Component]
 public struct Interactable
@@ -348,7 +360,8 @@ public struct SurfaceAI
 
 /// <summary>
 /// Configurable particle emitter attached to an entity.
-/// Set <see cref="IsEnabled"/> to toggle emission on/off.
+/// Emission is controlled by <see cref="EmitCondition"/>.
+/// For owner-linked lifetime, pair emitter entities with <see cref="OwnedBy"/>.
 /// </summary>
 [Component]
 public struct ParticleEmitter

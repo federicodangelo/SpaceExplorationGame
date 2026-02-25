@@ -8,7 +8,8 @@ namespace SpaceExplorationGame.ECS.Systems.Effects;
 
 /// <summary>
 /// ECS particle simulation and emission system.
-/// Emitters can be toggled via <see cref="ParticleEmitter.IsEnabled"/>.
+/// Emits particles from <see cref="ParticleEmitter"/> entities according to
+/// their <see cref="EmitCondition"/> and current source motion.
 /// </summary>
 public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 {
@@ -41,151 +42,199 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
     public override void Update(in float dt)
     {
-        float deltaTime = dt;
         _expiredEntities.Clear();
         _spawnQueue.Clear();
 
+        int particleCount = SimulateParticles(dt);
+        EmitParticles(dt, particleCount);
+        DestroyExpiredEntities();
+        SpawnQueuedParticles();
+    }
+
+    private int SimulateParticles(float dt)
+    {
         int particleCount = 0;
 
-        // 1) Simulate particles and mark expired.
         World.Query(in _particleQuery, (Entity entity, ref Transform transform, ref Particle particle) =>
         {
             particleCount++;
 
-            particle.Age += deltaTime;
+            particle.Age += dt;
             if (particle.Age >= particle.Lifetime)
             {
                 _expiredEntities.Add(entity);
                 return;
             }
 
-            float dragFactor = Math.Clamp(1f - particle.Drag * deltaTime, 0f, 1f);
+            float dragFactor = Math.Clamp(1f - particle.Drag * dt, 0f, 1f);
             particle.Velocity *= dragFactor;
-            transform.Position += particle.Velocity * deltaTime;
+            transform.Position += particle.Velocity * dt;
         });
 
-        // 2) Emit new particles from active emitters.
+        return particleCount;
+    }
+
+    private void EmitParticles(float dt, int particleCount)
+    {
         World.Query(in _emitterQuery, (Entity entity, ref Transform transform, ref ParticleEmitter emitter) =>
         {
-            if (emitter.EmitCondition == EmitCondition.Never)
-            {
-                return;
-            }
-
-            bool hasCarrier = emitter.CarrierEntity != default
-                && World.IsAlive(emitter.CarrierEntity)
-                && World.Has<Transform>(emitter.CarrierEntity);
-
-            if (emitter.CarrierEntity != default && !hasCarrier)
-            {
-                _expiredEntities.Add(entity);
-                return;
-            }
-
-            Entity sourceEntity = hasCarrier ? emitter.CarrierEntity : entity;
-            Transform sourceTransform = hasCarrier ? World.Get<Transform>(emitter.CarrierEntity) : transform;
-
-            Vector2 carrierVelocity = Vector2.Zero;
-            Vector2 acceleration = Vector2.Zero;
-            float rotationVelocity = 0f;
-            if (World.Has<Velocity>(sourceEntity))
-            {
-                var velocity = World.Get<Velocity>(sourceEntity);
-                carrierVelocity = velocity.Velocity;
-                acceleration = velocity.Acceleration;
-                rotationVelocity = velocity.RotationVelocity;
-            }
-
-            Vector2 forward = GetForward(sourceTransform.Rotation);
-            Vector2 right = new(-forward.Y, forward.X);
-
-            bool useFixedEmitter = hasCarrier && emitter.LocalEjectDirection.LengthSquared() > 0.0001f;
-
-            Vector2 baseSpawnPos = sourceTransform.Position;
-            Vector2 ejectDir;
-
-            if (useFixedEmitter)
-            {
-                baseSpawnPos += LocalToWorld(sourceTransform.Rotation, emitter.LocalOffset);
-                transform.Position = baseSpawnPos;
-
-                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(baseSpawnPos))
-                {
-                    return;
-                }
-
-                if (emitter.ActivationMask != ThrusterActivation.None)
-                {
-                    var activeMask = BuildActivationMask(acceleration, rotationVelocity, forward, right);
-                    if ((activeMask & emitter.ActivationMask) == 0)
-                    {
-                        return;
-                    }
-                }
-
-                ejectDir = Vector2.Normalize(LocalToWorld(sourceTransform.Rotation, emitter.LocalEjectDirection));
-            }
-            else
-            {
-                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(sourceTransform.Position))
-                {
-                    return;
-                }
-
-                Vector2 accelDir = acceleration;
-                bool accelerating = accelDir.LengthSquared() >= 0.0001f;
-
-                if (emitter.EmitCondition == EmitCondition.WhenAccelerating && !accelerating)
-                {
-                    return;
-                }
-
-                if (!accelerating)
-                {
-                    accelDir = forward;
-                }
-
-                accelDir = Vector2.Normalize(accelDir);
-                ejectDir = -accelDir;
-                baseSpawnPos = sourceTransform.Position + ejectDir * emitter.SternOffset;
-            }
-
-            var perp = new Vector2(-ejectDir.Y, ejectDir.X);
-
-            emitter.SpawnAccumulator += deltaTime;
-            while (emitter.SpawnAccumulator >= emitter.SpawnInterval && particleCount + _spawnQueue.Count < MaxParticleEntities)
-            {
-                emitter.SpawnAccumulator -= emitter.SpawnInterval;
-
-                float lateral = NextFloat(-4f, 4f);
-                var spawnPos = baseSpawnPos + perp * lateral;
-
-                float ejectSpeed = NextFloat(emitter.EjectSpeedMin, emitter.EjectSpeedMax);
-                float sideDrift = NextFloat(-emitter.LateralDrift, emitter.LateralDrift);
-                var velocity = carrierVelocity + ejectDir * ejectSpeed + perp * sideDrift;
-
-                float life = NextFloat(emitter.ParticleLifeMin, emitter.ParticleLifeMax);
-                float size = NextFloat(emitter.ParticleSizeMin, emitter.ParticleSizeMax);
-
-                _spawnQueue.Add(new ParticleSpawn(
-                    spawnPos,
-                    velocity,
-                    life,
-                    size,
-                    size * 0.45f,
-                    emitter.ParticleDrag,
-                    emitter.ParticleColor));
-            }
+            EmitFromEmitter(entity, ref transform, ref emitter, dt, particleCount);
         });
+    }
 
-        // 3) Destroy expired.
+    private void EmitFromEmitter(Entity entity, ref Transform transform, ref ParticleEmitter emitter, float dt, int particleCount)
+    {
+        if (emitter.EmitCondition == EmitCondition.Never)
+        {
+            return;
+        }
+
+        if (!TryResolveSource(entity, ref transform, ref emitter, out var sourceEntity, out var sourceTransform, out bool hasCarrier))
+        {
+            return;
+        }
+
+        Vector2 carrierVelocity = Vector2.Zero;
+        Vector2 acceleration = Vector2.Zero;
+        float rotationVelocity = 0f;
+        if (World.Has<Velocity>(sourceEntity))
+        {
+            var velocity = World.Get<Velocity>(sourceEntity);
+            carrierVelocity = velocity.Velocity;
+            acceleration = velocity.Acceleration;
+            rotationVelocity = velocity.RotationVelocity;
+        }
+
+        if (!TryBuildEmissionData(ref transform, ref emitter, sourceTransform, hasCarrier,
+            acceleration, rotationVelocity, out var baseSpawnPos, out var ejectDir))
+        {
+            return;
+        }
+
+        QueueParticleSpawns(ref emitter, dt, particleCount, baseSpawnPos, ejectDir, carrierVelocity);
+    }
+
+    private bool TryResolveSource(Entity entity, ref Transform transform, ref ParticleEmitter emitter,
+        out Entity sourceEntity, out Transform sourceTransform, out bool hasCarrier)
+    {
+        hasCarrier = emitter.CarrierEntity != default
+            && World.IsAlive(emitter.CarrierEntity)
+            && World.Has<Transform>(emitter.CarrierEntity);
+
+        if (emitter.CarrierEntity != default && !hasCarrier)
+        {
+            sourceEntity = default;
+            sourceTransform = default;
+            return false;
+        }
+
+        sourceEntity = hasCarrier ? emitter.CarrierEntity : entity;
+        sourceTransform = hasCarrier ? World.Get<Transform>(emitter.CarrierEntity) : transform;
+        return true;
+    }
+
+    private bool TryBuildEmissionData(ref Transform emitterTransform, ref ParticleEmitter emitter,
+        Transform sourceTransform, bool hasCarrier, Vector2 acceleration, float rotationVelocity,
+        out Vector2 baseSpawnPos, out Vector2 ejectDir)
+    {
+        Vector2 forward = GetForward(sourceTransform.Rotation);
+        Vector2 right = new(-forward.Y, forward.X);
+
+        bool useFixedEmitter = hasCarrier && emitter.LocalEjectDirection.LengthSquared() > 0.0001f;
+
+        baseSpawnPos = sourceTransform.Position;
+        ejectDir = Vector2.Zero;
+
+        if (useFixedEmitter)
+        {
+            baseSpawnPos += LocalToWorld(sourceTransform.Rotation, emitter.LocalOffset);
+            emitterTransform.Position = baseSpawnPos;
+
+            if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(baseSpawnPos))
+            {
+                return false;
+            }
+
+            if (emitter.ActivationMask != ThrusterActivation.None)
+            {
+                var activeMask = BuildActivationMask(acceleration, rotationVelocity, forward, right);
+                if ((activeMask & emitter.ActivationMask) == 0)
+                {
+                    return false;
+                }
+            }
+
+            ejectDir = Vector2.Normalize(LocalToWorld(sourceTransform.Rotation, emitter.LocalEjectDirection));
+            return true;
+        }
+
+        if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(sourceTransform.Position))
+        {
+            return false;
+        }
+
+        Vector2 accelDir = acceleration;
+        bool accelerating = accelDir.LengthSquared() >= 0.0001f;
+        if (emitter.EmitCondition == EmitCondition.WhenAccelerating && !accelerating)
+        {
+            return false;
+        }
+
+        if (!accelerating)
+        {
+            accelDir = forward;
+        }
+
+        accelDir = Vector2.Normalize(accelDir);
+        ejectDir = -accelDir;
+        baseSpawnPos = sourceTransform.Position + ejectDir * emitter.SternOffset;
+        return true;
+    }
+
+    private void QueueParticleSpawns(ref ParticleEmitter emitter, float dt, int particleCount,
+        Vector2 baseSpawnPos, Vector2 ejectDir, Vector2 carrierVelocity)
+    {
+        var perp = new Vector2(-ejectDir.Y, ejectDir.X);
+
+        emitter.SpawnAccumulator += dt;
+        while (emitter.SpawnAccumulator >= emitter.SpawnInterval && particleCount + _spawnQueue.Count < MaxParticleEntities)
+        {
+            emitter.SpawnAccumulator -= emitter.SpawnInterval;
+
+            float lateral = NextFloat(-4f, 4f);
+            var spawnPos = baseSpawnPos + perp * lateral;
+
+            float ejectSpeed = NextFloat(emitter.EjectSpeedMin, emitter.EjectSpeedMax);
+            float sideDrift = NextFloat(-emitter.LateralDrift, emitter.LateralDrift);
+            var velocity = carrierVelocity + ejectDir * ejectSpeed + perp * sideDrift;
+
+            float life = NextFloat(emitter.ParticleLifeMin, emitter.ParticleLifeMax);
+            float size = NextFloat(emitter.ParticleSizeMin, emitter.ParticleSizeMax);
+
+            _spawnQueue.Add(new ParticleSpawn(
+                spawnPos,
+                velocity,
+                life,
+                size,
+                size * 0.45f,
+                emitter.ParticleDrag,
+                emitter.ParticleColor));
+        }
+    }
+
+    private void DestroyExpiredEntities()
+    {
         foreach (var entity in _expiredEntities)
         {
             if (World.IsAlive(entity))
+            {
                 World.Destroy(entity);
+            }
         }
+    }
 
-        // 4) Spawn queued particles.
+    private void SpawnQueuedParticles()
+    {
         foreach (var spawn in _spawnQueue)
         {
             World.Create(

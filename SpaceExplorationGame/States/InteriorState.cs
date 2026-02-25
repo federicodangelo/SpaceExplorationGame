@@ -39,6 +39,7 @@ public class InteriorState : GameState
     private const float InteractionRadius = 1.5f; // in tiles
 
     // ECS Systems
+    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private AvatarMovementSystem _movementSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
@@ -105,6 +106,9 @@ public class InteriorState : GameState
         };
 
         // Initialize ECS systems
+        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(game.EcsWorld);
+        _dependentEntityCleanupSystem.Initialize();
+
         _movementSystem = new AvatarMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 
@@ -216,6 +220,9 @@ public class InteriorState : GameState
 
     public override void Update(Game game)
     {
+        float dt = game.DeltaTime;
+        _dependentEntityCleanupSystem.Update(in dt);
+
         // Handle customization/dealer overlays that need dt
         _shipCustomization.Update(game);
         _avatarCustomization.Update(game);
@@ -229,8 +236,6 @@ public class InteriorState : GameState
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
             return;
-
-        float dt = game.DeltaTime;
 
         // Player movement (via system with tile collision)
         _movementSystem.Update(in dt);

@@ -49,6 +49,7 @@ public class PlanetSurfaceState : GameState
         GameConfig.PlanetSurfaceZoomMin, GameConfig.PlanetSurfaceZoomMax);
 
     // Combat systems
+    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private ProjectileSystem _projectileSystem = null!;
     private AvatarEnemyAISystem _enemyAISystem = null!;
@@ -251,6 +252,9 @@ public class PlanetSurfaceState : GameState
         game.Player.ClearSavedSurfacePositions();
 
         // Combat systems
+        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(game.EcsWorld);
+        _dependentEntityCleanupSystem.Initialize();
+
         _velocitySystem = new VelocitySystem(game.EcsWorld);
         _velocitySystem.Initialize();
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
@@ -504,6 +508,8 @@ public class PlanetSurfaceState : GameState
     {
         float dt = game.DeltaTime;
 
+        _dependentEntityCleanupSystem.Update(in dt);
+        
         _inGameMenuOverlay.Update(game);
 
         // Landing animation

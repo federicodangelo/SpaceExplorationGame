@@ -94,6 +94,7 @@ public class SolarSystemState : GameState
     private ProjectileSystem _projectileSystem = null!;
     private ShieldRegenSystem _shieldRegenSystem = null!;
     private ShipEnemyAISystem _enemyAISystem = null!;
+    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private ParticleSystem _particleSystem = null!;
 
     // Combat state
@@ -347,6 +348,9 @@ public class SolarSystemState : GameState
         _enemyAISystem = new ShipEnemyAISystem(game.EcsWorld, totalMapW, totalMapH);
         _enemyAISystem.Initialize();
 
+        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(game.EcsWorld);
+        _dependentEntityCleanupSystem.Initialize();
+
         _particleSystem = new ParticleSystem(game.EcsWorld);
         _particleSystem.Initialize();
 
@@ -470,6 +474,7 @@ public class SolarSystemState : GameState
 
         float dt = game.DeltaTime;
 
+        _dependentEntityCleanupSystem.Update(in dt);
         _orbitSystem.Update(in dt);
         ApplyAnchor(game);
         _cameraFollowSystem.Update(in dt);

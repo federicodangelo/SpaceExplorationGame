@@ -334,32 +334,32 @@ public static class EntityFactory
         float sideFrontX = shipSize * 0.22f;
         float sideRearX = -shipSize * 0.22f;
 
-        world.Create(new Transform(shipPos), CreateMainThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateMainThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(-half * 1.1f, 0f),
             localEjectDirection: new Vector2(-1f, 0f),
             activation: ThrusterActivation.Forward));
 
-        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(half * 0.95f, 0f),
             localEjectDirection: new Vector2(1f, 0f),
             activation: ThrusterActivation.Backward));
 
-        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(sideFrontX, -side),
             localEjectDirection: new Vector2(0f, -1f),
             activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateRight));
 
-        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(sideRearX, -side),
             localEjectDirection: new Vector2(0f, -1f),
             activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateLeft));
 
-        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(sideFrontX, side),
             localEjectDirection: new Vector2(0f, 1f),
             activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateLeft));
 
-        world.Create(new Transform(shipPos), CreateRcsThrusterEmitter(shipEntity, color,
+        world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(sideRearX, side),
             localEjectDirection: new Vector2(0f, 1f),
             activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateRight));
