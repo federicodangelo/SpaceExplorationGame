@@ -47,18 +47,39 @@ public class AsteroidRenderer : IDisposable
             // Scale down visual size as HP drops
             float hpRatio = health.HullPercent;
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
+            var resourceColor = ResourceCatalog.Get(asteroid.Resource).Color;
 
-            DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize, hpRatio);
+            DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize, hpRatio, resourceColor);
         }
     }
 
     private static void DrawAsteroidPrimitives(SpriteRenderer renderer, Camera camera,
-        Vector2 position, float rotationDeg, float size, float hpRatio)
+        Vector2 position, float rotationDeg, float size, float hpRatio, Color3 resourceColor)
     {
         float radius = size * 0.5f;
         byte tone = (byte)(110 + 40 * hpRatio);
-        var fill = new Color4((byte)(tone + 18), tone, (byte)(tone - 12), 255);
-        var edge = new Color4((byte)(tone - 22), (byte)(tone - 28), (byte)(tone - 36), 255);
+        var fill = new Color4(
+            BlendToByte((byte)(tone + 18), resourceColor.R, 0.36f),
+            BlendToByte(tone, resourceColor.G, 0.36f),
+            BlendToByte((byte)(tone - 12), resourceColor.B, 0.36f),
+            255);
+        var edge = new Color4(
+            BlendToByte((byte)(tone - 22), resourceColor.R, 0.24f),
+            BlendToByte((byte)(tone - 28), resourceColor.G, 0.24f),
+            BlendToByte((byte)(tone - 36), resourceColor.B, 0.24f),
+            255);
+        var veinColor = new Color4(
+            BlendToByte((byte)(tone - 20), resourceColor.R, 0.82f),
+            BlendToByte((byte)(tone - 20), resourceColor.G, 0.82f),
+            BlendToByte((byte)(tone - 20), resourceColor.B, 0.82f),
+            235);
+        var coreGlow = new Color4(
+            BlendToByte((byte)(tone + 14), resourceColor.R, 0.74f),
+            BlendToByte((byte)(tone + 14), resourceColor.G, 0.74f),
+            BlendToByte((byte)(tone + 14), resourceColor.B, 0.74f),
+            225);
+        var feedbackOutlineOuter = new Color4(12, 12, 16, 220);
+        var feedbackOutlineInner = new Color4(235, 235, 245, 135);
 
         Vector2[] points = new Vector2[BaseShape.Length];
         for (int i = 0; i < BaseShape.Length; i++)
@@ -77,10 +98,28 @@ public class AsteroidRenderer : IDisposable
         }
 
         float craterR = MathF.Max(0.8f, size * 0.11f);
+        float outlinePad = MathF.Max(0.25f, size * 0.014f);
         Vector2 crater1 = position + Rotate(new Vector2(-radius * 0.22f, -radius * 0.08f), rotationDeg);
         Vector2 crater2 = position + Rotate(new Vector2(radius * 0.18f, radius * 0.16f), rotationDeg + 35f);
-        renderer.DrawFilledCircle(camera, crater1, craterR, new Color4((byte)(tone - 35), (byte)(tone - 35), (byte)(tone - 40), 210));
-        renderer.DrawFilledCircle(camera, crater2, craterR * 0.8f, new Color4((byte)(tone - 28), (byte)(tone - 30), (byte)(tone - 35), 190));
+        renderer.DrawFilledCircle(camera, crater1, craterR + outlinePad, feedbackOutlineOuter);
+        renderer.DrawFilledCircle(camera, crater1, craterR + outlinePad * 0.55f, feedbackOutlineInner);
+        renderer.DrawFilledCircle(camera, crater1, craterR, veinColor);
+        float crater2R = craterR * 0.8f;
+        renderer.DrawFilledCircle(camera, crater2, crater2R + outlinePad, feedbackOutlineOuter);
+        renderer.DrawFilledCircle(camera, crater2, crater2R + outlinePad * 0.55f, feedbackOutlineInner);
+        renderer.DrawFilledCircle(camera, crater2, crater2R, veinColor);
+
+        float coreR = MathF.Max(0.6f, size * 0.07f);
+        Vector2 core = position + Rotate(new Vector2(radius * 0.02f, -radius * 0.03f), rotationDeg - 12f);
+        renderer.DrawFilledCircle(camera, core, coreR + outlinePad * 0.9f, feedbackOutlineOuter);
+        renderer.DrawFilledCircle(camera, core, coreR + outlinePad * 0.45f, feedbackOutlineInner);
+        renderer.DrawFilledCircle(camera, core, coreR, coreGlow);
+    }
+
+    private static byte BlendToByte(byte from, byte to, float t)
+    {
+        t = Math.Clamp(t, 0f, 1f);
+        return (byte)Math.Clamp(from + (to - from) * t, 0f, 255f);
     }
 
     private static Vector2 Rotate(Vector2 v, float degrees)
