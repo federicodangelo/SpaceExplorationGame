@@ -14,6 +14,7 @@ public enum DebugMenuAction
     StarTypeShowcase,
     PlanetTypeShowcase,
     AsteroidShowcase,
+    SurfaceMiningShowcase,
     Back,
 }
 
@@ -46,6 +47,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     /// <summary>When set, start a dedicated solar system focused on asteroid mining in space.</summary>
     public bool StartAsteroidShowcaseRequested { get; set; }
 
+    /// <summary>When set, start already landed on a rock-dense planet surface for mining tests.</summary>
+    public bool StartSurfaceMiningShowcaseRequested { get; set; }
+
     protected override string Title => "DEBUG";
     protected override Color3 TitleColor => new(255, 210, 120);
     protected override float PanelWidth => 620;
@@ -74,6 +78,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             new(DebugMenuAction.StarTypeShowcase, "STAR TYPE SHOWCASE", "Start a debug system focused on the selected star type"),
             new(DebugMenuAction.PlanetTypeShowcase, "PLANET TYPE SHOWCASE", "Start in a debug solar system containing all planet types"),
             new(DebugMenuAction.AsteroidShowcase, "ASTEROID MINING SHOWCASE", "Start in space with dense asteroid belts for mining tests"),
+            new(DebugMenuAction.SurfaceMiningShowcase, "SURFACE MINING SHOWCASE", "Start already landed on a planet surface full of rocks"),
             new(DebugMenuAction.Back, "BACK", "Return to main menu"),
         ])
         {
@@ -101,6 +106,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         StartStarTypeShowcaseRequested = false;
         StartPlanetTypeShowcaseRequested = false;
         StartAsteroidShowcaseRequested = false;
+        StartSurfaceMiningShowcaseRequested = false;
         UpdateCyclingLabels();
     }
 
@@ -133,6 +139,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
                 break;
             case DebugMenuAction.AsteroidShowcase:
                 StartAsteroidShowcaseRequested = true;
+                break;
+            case DebugMenuAction.SurfaceMiningShowcase:
+                StartSurfaceMiningShowcaseRequested = true;
                 break;
             case DebugMenuAction.Back:
                 Close();

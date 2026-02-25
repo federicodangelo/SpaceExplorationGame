@@ -124,6 +124,13 @@ public class MainMenuState : GameState
                 game.Audio.PlaySfx(SfxType.MenuSelect);
                 LaunchAsteroidShowcase(game);
             }
+
+            if (_debugOverlay.StartSurfaceMiningShowcaseRequested)
+            {
+                _debugOverlay.StartSurfaceMiningShowcaseRequested = false;
+                game.Audio.PlaySfx(SfxType.MenuSelect);
+                LaunchSurfaceMiningShowcase(game);
+            }
             return;
         }
 
@@ -339,6 +346,22 @@ public class MainMenuState : GameState
         var debugSystem = game.GalaxyData[0];
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.ChangeState(new SolarSystemState(debugSystem));
+    }
+
+    private void LaunchSurfaceMiningShowcase(Game game)
+    {
+        s_reopenDebugMenu = true;
+        game.SetWorldGenerator(new SurfaceMiningShowcaseWorldGenerator());
+        ApplySelectedStartingShip(game);
+
+        var debugSystem = game.GalaxyData[0];
+        var planets = game.WorldGenerator.GenerateSolarSystem(game.Seeds, debugSystem).Planets;
+        var targetPlanet = planets.FirstOrDefault(p => p.HasSolidSurface) ?? planets[0];
+
+        game.Player.CurrentStarSystemIndex = debugSystem.Index;
+        game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
+        game.Player.ReturnPlanetIndex = targetPlanet.Index;
+        game.ChangeState(new PlanetSurfaceState(debugSystem, targetPlanet));
     }
 
     private void ApplySelectedStartingShip(Game game)
