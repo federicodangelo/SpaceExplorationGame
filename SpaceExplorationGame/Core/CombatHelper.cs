@@ -133,4 +133,44 @@ public static class CombatHelper
         return 0.1f;
     }
 
+    public static Color3 ResolveProjectileColor(Faction faction)
+    {
+        return faction switch
+        {
+            Faction.Player => new Color3(100, 255, 100),
+            Faction.Pirate => new Color3(255, 80, 80),
+            Faction.Patrol => new Color3(80, 200, 255),
+            Faction.Trader => new Color3(255, 255, 80),
+            _ => new Color3(255, 255, 255)
+        };
+    }
+
+    public static ShipWeaponSpec[] BuildWeaponSpecs(Dictionary<ShipSlotType, ShipPart> equippedParts)
+    {
+        var weapons = new List<ShipWeaponSpec>(2);
+
+        AddWeaponFromSlot(equippedParts, ShipSlotType.Weapon1, weapons);
+        AddWeaponFromSlot(equippedParts, ShipSlotType.Weapon2, weapons);
+
+        return [.. weapons];
+    }
+
+    private static void AddWeaponFromSlot(Dictionary<ShipSlotType, ShipPart> equippedParts,
+        ShipSlotType slot, List<ShipWeaponSpec> weapons)
+    {
+        if (!equippedParts.TryGetValue(slot, out var part))
+            return;
+
+        var stats = part.Stats;
+        if (stats.WeaponDamage <= 0f || stats.WeaponFireRate <= 0f ||
+            stats.WeaponRange <= 0f || stats.ProjectileSpeed <= 0f)
+            return;
+
+        weapons.Add(new ShipWeaponSpec(
+            stats.WeaponDamage,
+            stats.WeaponFireRate,
+            stats.WeaponRange,
+            stats.ProjectileSpeed));
+    }
+
 }

@@ -76,16 +76,6 @@ public static class NpcShipLoadoutHelper
             weaponDamage, weaponFireRate, weaponRange, projectileSpeed);
     }
 
-    public static ShipWeaponSpec[] BuildWeaponSpecs(Dictionary<ShipSlotType, ShipPart> loadout)
-    {
-        var weapons = new List<ShipWeaponSpec>(2);
-
-        AddWeaponFromSlot(loadout, ShipSlotType.Weapon1, weapons);
-        AddWeaponFromSlot(loadout, ShipSlotType.Weapon2, weapons);
-
-        return weapons.ToArray();
-    }
-
     public static int ComputeNpcLootCredits(ShipType shipType, Dictionary<ShipSlotType, ShipPart> loadout)
     {
         int value = shipType.SellValue;
@@ -152,20 +142,4 @@ public static class NpcShipLoadoutHelper
         return candidates[rng.NextInt(0, count)];
     }
 
-    private static void AddWeaponFromSlot(Dictionary<ShipSlotType, ShipPart> loadout,
-        ShipSlotType slot, List<ShipWeaponSpec> weapons)
-    {
-        if (!loadout.TryGetValue(slot, out var part)) return;
-
-        var stats = part.Stats;
-        if (stats.WeaponDamage <= 0f || stats.WeaponFireRate <= 0f ||
-            stats.WeaponRange <= 0f || stats.ProjectileSpeed <= 0f)
-            return;
-
-        weapons.Add(new ShipWeaponSpec(
-            stats.WeaponDamage,
-            stats.WeaponFireRate,
-            stats.WeaponRange,
-            stats.ProjectileSpeed));
-    }
 }

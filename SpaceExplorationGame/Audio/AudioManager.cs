@@ -120,17 +120,17 @@ public sealed class AudioManager : IDisposable
     // ────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Play a one-shot sound effect with volume attenuated by distance from <paramref name="playerPos"/>.
+    /// Play a one-shot sound effect with volume attenuated by distance from <paramref name="relativeToPos"/>.
     /// <paramref name="maxRange"/>: distance beyond which the sound is inaudible.
     /// </summary>
-    public void PlaySfxAtDistance(SfxType type, Vector2 soundPos, Vector2 playerPos,
+    public void PlaySfxAtDistance(SfxType type, Vector2 soundPos, Vector2 relativeToPos,
         float volume = 1f, float maxRange = 800f)
     {
-        float dist = Vector2.Distance(soundPos, playerPos);
+        float dist = Vector2.Distance(soundPos, relativeToPos);
         if (dist >= maxRange) return;
         float atten = 1f - (dist / maxRange);
         atten *= atten; // quadratic falloff for more natural sound
-        float pan = Math.Clamp((soundPos.X - playerPos.X) / (maxRange * 0.5f), -1f, 1f);
+        float pan = Math.Clamp((soundPos.X - relativeToPos.X) / (maxRange * 0.5f), -1f, 1f);
         PlaySfx(type, volume * atten, pan);
     }
 

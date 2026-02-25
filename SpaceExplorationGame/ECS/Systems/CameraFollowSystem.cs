@@ -15,7 +15,7 @@ public partial class CameraFollowSystem : BaseSystem<World, float>
     private readonly Camera _camera;
     private readonly float _lerpSpeed;
 
-    public CameraFollowSystem(World world, Camera camera, float lerpSpeed = 5f)
+    public CameraFollowSystem(World world, Camera camera, float lerpSpeed = 50f)
         : base(world)
     {
         _camera = camera;

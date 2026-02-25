@@ -138,12 +138,17 @@ public static class EntityFactory
 
     /// <summary>Create the player's ship entity for solar system flight.</summary>
     public static Entity CreatePlayerShip(World world, Vector2 position, int spriteSize,
-        float maxHull, float currentHull, float maxShield, float maxSpeed)
+        float maxHull, float currentHull, float maxShield,
+        float maxSpeed, float rotationSpeed, float acceleration, float brakeMultiplier,
+        ShipWeaponSpec[] weapons)
     {
         var ship = world.Create(
             new Transform(position),
             Sprite.ColoredRect(spriteSize, spriteSize, new Color3(100, 255, 100)),
-            new Velocity(maxSpeed),
+            new Velocity(maxSpeed, rotationSpeed),
+            new ShipComponent(Faction.Player, maxSpeed, rotationSpeed, acceleration, brakeMultiplier,
+                weapons),
+            ShipInputComponent.Default(),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
                 GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
@@ -226,13 +231,17 @@ public static class EntityFactory
 
     /// <summary>Create a pirate NPC ship entity.</summary>
     public static Entity CreatePirateShip(World world, Vector2 position, float rotation,
-        NpcShipStats stats, int dangerLevel, int lootCredits, float fireCooldown,
+        NpcShipStats stats, int dangerLevel, int lootCredits,
         ShipWeaponSpec[] weapons)
     {
         var ship = world.Create(
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(255, 80, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new ShipComponent(Faction.Pirate, stats.MaxSpeed, stats.RotationSpeed,
+                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
+                weapons),
+            ShipInputComponent.Default(),
             new Health(stats.MaxHull, stats.MaxShield,
                 GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
@@ -240,14 +249,10 @@ public static class EntityFactory
                 Config = new EnemyAIConfig(
                     Faction: Faction.Pirate,
                     DetectRange: GameConfig.EnemyDetectRange,
-                    Weapons: weapons,
                     LootCredits: lootCredits,
                     EngageDistance: GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent,
-                    Acceleration: stats.Acceleration,
-                    MaxRotationSpeed: stats.RotationSpeed),
-                State = AIState.Patrol,
-                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, fireCooldown)
+                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent),
+                State = AIState.Patrol
             },
             new LootDrop
             {
@@ -271,20 +276,20 @@ public static class EntityFactory
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(200, 160, 80)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new ShipComponent(Faction.Trader, stats.MaxSpeed, stats.RotationSpeed,
+                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
+                weapons),
+            ShipInputComponent.Default(),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Trader,
                     DetectRange: 300f,
-                    Weapons: weapons,
                     LootCredits: 0,
                     EngageDistance: 0f,
-                    FleeHealthPercent: 0.5f,
-                    Acceleration: stats.Acceleration,
-                    MaxRotationSpeed: stats.RotationSpeed),
-                State = AIState.Patrol,
-                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
+                    FleeHealthPercent: 0.5f),
+                State = AIState.Patrol
             }
         );
 
@@ -300,36 +305,25 @@ public static class EntityFactory
             new Transform(position, rotation),
             Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(80, 140, 220)),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
+            new ShipComponent(Faction.Patrol, stats.MaxSpeed, stats.RotationSpeed,
+                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
+                weapons),
+            ShipInputComponent.Default(),
             new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI
             {
                 Config = new EnemyAIConfig(
                     Faction: Faction.Patrol,
                     DetectRange: GameConfig.EnemyDetectRange * 1.5f,
-                    Weapons: weapons,
                     LootCredits: 0,
                     EngageDistance: GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent: 0f,
-                    Acceleration: stats.Acceleration,
-                    MaxRotationSpeed: stats.RotationSpeed),
-                State = AIState.Patrol,
-                WeaponCooldowns = InitializeWeaponCooldowns(weapons.Length, 0f)
+                    FleeHealthPercent: 0f),
+                State = AIState.Patrol
             }
         );
 
         CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(130, 200, 255));
         return ship;
-    }
-
-    private static float[] InitializeWeaponCooldowns(int count, float initialCooldown)
-    {
-        if (count <= 0) return Array.Empty<float>();
-
-        var cooldowns = new float[count];
-        for (int i = 0; i < count; i++)
-            cooldowns[i] = initialCooldown;
-
-        return cooldowns;
     }
 
     private static void CreateShipThrusterEmitters(World world, Entity shipEntity, int shipSize, Color3 color)

@@ -130,6 +130,51 @@ public enum InteractionType
     DockAtStation
 }
 
+/// <summary>Per-frame ship input intent used by both player and NPC ships.</summary>
+[Component]
+public struct ShipInputComponent
+{
+    public Vector2 AccelerationDirection;
+    public float RotationSpeed;
+    public bool Shoot;
+
+    public static ShipInputComponent Default()
+    {
+        return new ShipInputComponent
+        {
+            AccelerationDirection = Vector2.Zero,
+            RotationSpeed = 0f,
+            Shoot = false
+        };
+    }
+}
+
+/// <summary>Ship combat and movement stats/config shared by all ships.</summary>
+[Component]
+public struct ShipComponent
+{
+    public Faction Faction;
+    public float MaxSpeed;
+    public float MaxRotationSpeed;
+    public float MaxAcceleration;
+    public float BrakeMultiplier;
+    public ShipWeaponSpec[] Weapons;
+    public float[] WeaponCooldowns;
+
+    public ShipComponent(Faction faction, float maxSpeed, float rotationSpeed,
+        float acceleration, float brakeMultiplier,
+        ShipWeaponSpec[]? weapons = null)
+    {
+        Faction = faction;
+        MaxSpeed = maxSpeed;
+        MaxRotationSpeed = rotationSpeed;
+        MaxAcceleration = acceleration;
+        BrakeMultiplier = brakeMultiplier;
+        Weapons = weapons ?? Array.Empty<ShipWeaponSpec>();
+        WeaponCooldowns = new float[Weapons.Length];
+    }
+}
+
 /// <summary>Used for star system markers on the galaxy map.</summary>
 [Component]
 public struct StarSystemMarker
@@ -230,13 +275,10 @@ public struct Projectile
 /// <summary>Immutable configuration shared across enemies of the same type.</summary>
 public sealed record EnemyAIConfig(
     Faction Faction,
-    ShipWeaponSpec[] Weapons,
     float DetectRange,
     int LootCredits,
     float EngageDistance,
-    float FleeHealthPercent,
-    float Acceleration,
-    float MaxRotationSpeed = 180f);
+    float FleeHealthPercent);
 
 /// <summary>AI-controlled ship with combat behavior. Config holds immutable stats; mutable state lives here.</summary>
 [Component]
@@ -245,7 +287,6 @@ public struct EnemyAI
     public EnemyAIConfig Config;
     public AIState State;
     public float StateTimer;         // time in current state
-    public float[] WeaponCooldowns;  // per-weapon fire cooldowns
     public Vector2 CruiseTarget;
     public bool HasCruiseTarget;
     public Vector2 LastKnownTargetPos;

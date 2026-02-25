@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Numerics;
 using Arch.Core;
 using Arch.System;
@@ -22,12 +21,6 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     private readonly Func<bool> _isPlayerAlive;
     private readonly float _mapWidth;
     private readonly float _mapHeight;
-
-    // Projectiles spawned this frame (to be created after query completes)
-    private readonly List<ProjectileSpawn> _pendingProjectiles = [];
-
-    /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
-    public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
 
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
@@ -54,7 +47,6 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        _pendingProjectiles.Clear();
         _dt = dt;
         _playerPos = _getPlayerPosition();
         if (_hasLastPlayerPos && dt > 0f)
@@ -66,19 +58,13 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         _playerAlive = _isPlayerAlive();
 
         ProcessEnemyAIQuery(World);
-
-        // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, lifetime, faction, color, inheritedVelocity) in _pendingProjectiles)
-        {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime, inheritedVelocity);
-        }
     }
 
     /// <summary>Source-generated query: iterates all NPC ships with AI.</summary>
     [Query]
-    [All(typeof(Transform), typeof(Velocity), typeof(EnemyAI), typeof(Health))]
-    public void ProcessEnemyAI(Entity entity, ref Transform transform, ref Velocity velocity,
-        ref EnemyAI ai, ref Health health)
+    [All(typeof(Transform), typeof(EnemyAI), typeof(Health), typeof(ShipInputComponent), typeof(ShipComponent))]
+    public void ProcessEnemyAI(Entity entity, ref Transform transform,
+        ref EnemyAI ai, ref Health health, ref ShipInputComponent shipInput, ref ShipComponent ship)
     {
         if (health.IsDead)
         {
@@ -88,61 +74,62 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         }
 
         ai.StateTimer += _dt;
-        UpdateWeaponCooldowns(ref ai);
-        velocity.RotationVelocity = 0f; // Reset each frame; TurnToward sets it when needed
-        velocity.Acceleration = Vector2.Zero;
-        velocity.Damping = 1f;
+        shipInput.AccelerationDirection = Vector2.Zero;
+        shipInput.RotationSpeed = 0f;
+        shipInput.Shoot = false;
 
         // Find the best target based on faction
         var liveTarget = FindTarget(entity, ai.Config.Faction, transform.Position,
             ai.Config.DetectRange, _playerPos, _playerVelocity, _playerAlive);
         var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
-        UpdateShipAIByFaction(entity, ref transform, ref velocity, ref ai, ref health, _dt,
+        UpdateShipAIByFaction(entity, ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,
             target.Position, target.Velocity, target.HasTarget);
     }
 
-    private void UpdateShipAIByFaction(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
+    private void UpdateShipAIByFaction(Entity entity, ref Transform transform, ref EnemyAI ai,
+        ref Health health, ref ShipInputComponent shipInput, ref ShipComponent ship,
+        float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdatePirate(entity, ref transform, ref velocity, ref ai, ref health, dt,
+                UpdatePirate(entity, ref transform, ref ai, ref health, ref shipInput, ref ship, dt,
                     targetPos, targetVelocity, hasTarget);
                 break;
             case Faction.Trader:
-                UpdateTrader(entity, ref transform, ref velocity, ref ai, dt);
+                UpdateTrader(entity, ref transform, ref ai, ref shipInput, ref ship, dt);
                 break;
             case Faction.Patrol:
-                UpdatePatrol(entity, ref transform, ref velocity, ref ai, dt,
+                UpdatePatrol(entity, ref transform, ref ai, ref shipInput, ref ship, dt,
                     targetPos, targetVelocity, hasTarget);
                 break;
         }
     }
 
-    private void UpdatePirate(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        ref Health health, float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
+    private void UpdatePirate(Entity entity, ref Transform transform, ref EnemyAI ai,
+        ref Health health, ref ShipInputComponent shipInput, ref ShipComponent ship,
+        float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Flee if low health
         bool keepFleeing = ai.State == AIState.Flee && ai.StateTimer < MinFleeStateDuration;
         if (health.HullPercent < ai.Config.FleeHealthPercent || keepFleeing)
         {
             var fleeFrom = hasTarget ? targetPos : transform.Position - FacingDirection(transform.Rotation);
-            ApplyFleeBehavior(ref transform, ref velocity, ref ai, dt, fleeFrom, thrustMultiplier: 0.5f);
+            ApplyFleeBehavior(ref transform, ref ai, ref shipInput, ship.MaxRotationSpeed, _dt,
+                fleeFrom, thrustMultiplier: 0.5f);
             return;
         }
 
         if (!hasTarget)
         {
             // Patrol: drift slowly in a pseudo-random direction
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                thrustMultiplier: 0.2f,
-                damping: 0.999f);
+            ApplyCruiseBehavior(ref transform, ref ai, ref shipInput, ship.MaxRotationSpeed, _dt,
+                thrustMultiplier: 0.2f);
             return;
         }
 
-        ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos, targetVelocity,
+        ApplyCombatBehavior(ref transform, ref ai, ref shipInput, ref ship, _dt, targetPos, targetVelocity,
             chaseThrustMultiplier: 0.6f,
             strafeThrustMultiplier: 0.3f,
             strafeFrequency: 0.8f,
@@ -154,31 +141,32 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             closeInWhenOutsideEngageDistance: false);
     }
 
-    private void UpdateTrader(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        float dt)
+    private void UpdateTrader(Entity entity, ref Transform transform, ref EnemyAI ai,
+        ref ShipInputComponent shipInput, ref ShipComponent ship, float dt)
     {
         // Traders mostly just cruise around. They don't attack but will flee from nearby pirates.
         var nearestPirate = FindNearestPirate(transform.Position, 400f);
 
         if (nearestPirate.HasValue)
         {
-            ApplyFleeBehavior(ref transform, ref velocity, ref ai, dt, nearestPirate.Value, thrustMultiplier: 0.7f);
+            ApplyFleeBehavior(ref transform, ref ai, ref shipInput, ship.MaxRotationSpeed, dt,
+                nearestPirate.Value, thrustMultiplier: 0.7f);
         }
         else
         {
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                thrustMultiplier: 0.3f,
-                damping: 1f);
+            ApplyCruiseBehavior(ref transform, ref ai, ref shipInput, ship.MaxRotationSpeed, dt,
+                thrustMultiplier: 0.3f);
         }
     }
 
-    private void UpdatePatrol(Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private void UpdatePatrol(Entity entity, ref Transform transform, ref EnemyAI ai,
+        ref ShipInputComponent shipInput, ref ShipComponent ship,
         float dt, Vector2 targetPos, Vector2 targetVelocity, bool hasTarget)
     {
         // Patrols hunt pirates and defend traders
         if (hasTarget)
         {
-            ApplyCombatBehavior(ref transform, ref velocity, ref ai, dt, targetPos, targetVelocity,
+            ApplyCombatBehavior(ref transform, ref ai, ref shipInput, ref ship, dt, targetPos, targetVelocity,
                 chaseThrustMultiplier: 0.5f,
                 strafeThrustMultiplier: 0.3f,
                 strafeFrequency: 0.7f,
@@ -191,26 +179,27 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         }
         else
         {
-            ApplyCruiseBehavior(ref transform, ref velocity, ref ai, dt,
-                thrustMultiplier: 0.2f,
-                damping: 0.999f);
+            ApplyCruiseBehavior(ref transform, ref ai, ref shipInput, ship.MaxRotationSpeed, dt,
+                thrustMultiplier: 0.2f);
         }
     }
 
-    private void ApplyFleeBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
-        float dt, Vector2 threatPosition, float thrustMultiplier)
+    private static void ApplyFleeBehavior(ref Transform transform, ref EnemyAI ai,
+        ref ShipInputComponent shipInput, float maxRotationSpeed, float dt,
+        Vector2 threatPosition, float thrustMultiplier)
     {
         SetState(ref ai, AIState.Flee);
         var fleeDir = Vector2.Normalize(transform.Position - threatPosition);
         if (float.IsNaN(fleeDir.X))
             fleeDir = FacingDirection(transform.Rotation);
 
-        velocity.Acceleration += fleeDir * ai.Config.Acceleration * thrustMultiplier;
-        TurnTowardDirection(ref transform, ref velocity, fleeDir, ai.Config.MaxRotationSpeed, dt);
+        shipInput.AccelerationDirection += fleeDir * thrustMultiplier;
+        shipInput.RotationSpeed = ComputeWantedRotationSpeed(transform.Rotation, fleeDir, dt, maxRotationSpeed);
     }
 
-    private void ApplyCruiseBehavior(ref Transform transform, ref Velocity velocity,
-        ref EnemyAI ai, float dt, float thrustMultiplier, float damping)
+    private void ApplyCruiseBehavior(ref Transform transform,
+        ref EnemyAI ai, ref ShipInputComponent shipInput,
+        float maxRotationSpeed, float dt, float thrustMultiplier)
     {
         SetState(ref ai, AIState.Patrol);
 
@@ -228,32 +217,8 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         if (float.IsNaN(dirToTarget.X))
             dirToTarget = FacingDirection(transform.Rotation);
 
-        ApplyDirectionalBrake(ref velocity, dirToTarget, ai.Config.Acceleration,
-            minSpeedForBrake: 50f,
-            misalignmentThreshold: 0.25f,
-            maxBrakeMultiplier: 1.2f);
-
-        TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-        velocity.Acceleration += dirToTarget * ai.Config.Acceleration * thrustMultiplier;
-        velocity.Damping = damping;
-    }
-
-    private static void ApplyDirectionalBrake(ref Velocity velocity, Vector2 desiredDirection,
-        float baseAcceleration, float minSpeedForBrake, float misalignmentThreshold, float maxBrakeMultiplier)
-    {
-        float speed = velocity.Velocity.Length();
-        if (speed < minSpeedForBrake)
-            return;
-
-        var moveDir = velocity.Velocity / speed;
-        float alignment = Vector2.Dot(moveDir, desiredDirection);
-        if (alignment >= misalignmentThreshold)
-            return;
-
-        // Stronger braking the more misaligned we are (alignment in [-1, threshold)).
-        float t = (misalignmentThreshold - alignment) / (misalignmentThreshold + 1f);
-        float brakeMultiplier = 0.5f + t * (maxBrakeMultiplier - 0.5f);
-        velocity.Acceleration -= moveDir * baseAcceleration * brakeMultiplier;
+        shipInput.RotationSpeed = ComputeWantedRotationSpeed(transform.Rotation, dirToTarget, dt, maxRotationSpeed);
+        shipInput.AccelerationDirection += dirToTarget * thrustMultiplier;
     }
 
     private bool IsInsideCruiseBounds(Vector2 pos)
@@ -291,7 +256,8 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         return new Vector2(_mapWidth * 0.5f, _mapHeight * 0.5f);
     }
 
-    private void ApplyCombatBehavior(ref Transform transform, ref Velocity velocity, ref EnemyAI ai,
+    private static void ApplyCombatBehavior(ref Transform transform, ref EnemyAI ai,
+        ref ShipInputComponent shipInput, ref ShipComponent ship,
         float dt, Vector2 targetPos, Vector2 targetVelocity, float chaseThrustMultiplier,
         float strafeThrustMultiplier,
         float strafeFrequency, bool maintainEngageBand, float closeThresholdMultiplier,
@@ -303,7 +269,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         if (float.IsNaN(dirToTarget.X))
             dirToTarget = FacingDirection(transform.Rotation);
 
-        float weaponRange = GetWeaponRange(ai.Config.Weapons);
+        float weaponRange = GetWeaponRange(ship.Weapons);
         bool inAttackRange = ai.State switch
         {
             AIState.Attack => distToTarget <= weaponRange * AttackExitRangeFactor,
@@ -314,50 +280,62 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         {
             SetState(ref ai, AIState.Attack);
             var aimDir = ComputeAimDirection(transform.Position, targetPos, targetVelocity,
-                GetFastestProjectileSpeed(ai.Config.Weapons), dirToTarget);
-            TurnTowardDirection(ref transform, ref velocity, aimDir, ai.Config.MaxRotationSpeed, dt);
+                GetFastestProjectileSpeed(ship.Weapons), dirToTarget);
+            shipInput.RotationSpeed = ComputeWantedRotationSpeed(transform.Rotation, aimDir, dt, ship.MaxRotationSpeed);
 
             if (maintainEngageBand)
             {
                 if (distToTarget < ai.Config.EngageDistance * closeThresholdMultiplier)
                 {
-                    velocity.Acceleration -= dirToTarget * ai.Config.Acceleration * backoffThrustMultiplier;
+                    shipInput.AccelerationDirection -= dirToTarget * backoffThrustMultiplier;
                 }
                 else if (distToTarget > ai.Config.EngageDistance * farThresholdMultiplier)
                 {
-                    velocity.Acceleration += dirToTarget * ai.Config.Acceleration * closeInThrustMultiplier;
+                    shipInput.AccelerationDirection += dirToTarget * closeInThrustMultiplier;
                 }
                 else if (strafeThrustMultiplier > 0f)
                 {
-                    ApplyStrafe(ref velocity, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
+                    ApplyStrafe(ref shipInput, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
                 }
             }
             else
             {
                 if (strafeThrustMultiplier > 0f)
-                    ApplyStrafe(ref velocity, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
+                    ApplyStrafe(ref shipInput, ref ai, dirToTarget, strafeThrustMultiplier, strafeFrequency);
 
                 if (closeInWhenOutsideEngageDistance && distToTarget > ai.Config.EngageDistance)
-                    velocity.Acceleration += dirToTarget * ai.Config.Acceleration * closeInThrustMultiplier;
+                    shipInput.AccelerationDirection += dirToTarget * closeInThrustMultiplier;
             }
 
-            velocity.Damping = 0.98f;
-            TryFireProjectiles(ref transform, ref velocity, ref ai, aimDir);
+            shipInput.Shoot = true;
         }
         else
         {
             SetState(ref ai, AIState.Chase);
-            TurnTowardDirection(ref transform, ref velocity, dirToTarget, ai.Config.MaxRotationSpeed, dt);
-            velocity.Acceleration += dirToTarget * ai.Config.Acceleration * chaseThrustMultiplier;
+            shipInput.RotationSpeed = ComputeWantedRotationSpeed(transform.Rotation, dirToTarget, dt, ship.MaxRotationSpeed);
+            shipInput.AccelerationDirection += dirToTarget * chaseThrustMultiplier;
         }
     }
 
-    private static void ApplyStrafe(ref Velocity velocity, ref EnemyAI ai, Vector2 dirToTarget,
+    private static void ApplyStrafe(ref ShipInputComponent shipInput, ref EnemyAI ai, Vector2 dirToTarget,
         float strafeThrustMultiplier, float strafeFrequency)
     {
         var strafeDir = new Vector2(-dirToTarget.Y, dirToTarget.X);
-        velocity.Acceleration += strafeDir * ai.Config.Acceleration * strafeThrustMultiplier *
+        shipInput.AccelerationDirection += strafeDir * strafeThrustMultiplier *
             MathF.Sign(MathF.Sin(ai.StateTimer * strafeFrequency));
+    }
+
+    private static float ComputeWantedRotationSpeed(float currentRotation, Vector2 targetDirection,
+        float dt, float maxRotationSpeed)
+    {
+        if (targetDirection == Vector2.Zero || dt <= 0f)
+            return 0f;
+
+        float targetRotation = MathF.Atan2(targetDirection.Y, targetDirection.X) * 180f / MathF.PI;
+        float delta = targetRotation - currentRotation;
+        delta = ((delta % 360f) + 540f) % 360f - 180f;
+        float requiredRotationSpeed = delta / dt;
+        return Math.Clamp(requiredRotationSpeed, -maxRotationSpeed, maxRotationSpeed);
     }
 
     private TargetSelection ResolveTargetWithMemory(ref EnemyAI ai, TargetSelection liveTarget)
@@ -460,52 +438,6 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         return bestPos;
     }
 
-    private void UpdateWeaponCooldowns(ref EnemyAI ai)
-    {
-        var weapons = ai.Config.Weapons;
-        if (weapons.Length == 0) return;
-
-        if (ai.WeaponCooldowns == null || ai.WeaponCooldowns.Length != weapons.Length)
-            ai.WeaponCooldowns = new float[weapons.Length];
-
-        for (int i = 0; i < ai.WeaponCooldowns.Length; i++)
-            ai.WeaponCooldowns[i] -= _dt;
-    }
-
-    /// <summary>Whether the ship is facing close enough to the target (~18° cone).</summary>
-    private static bool IsFacingTarget(ref Transform transform, Vector2 dirToTarget)
-    {
-        var facing = FacingDirection(transform.Rotation);
-        return Vector2.Dot(facing, dirToTarget) > 0.95f;
-    }
-
-    /// <summary>Fires any ready weapons when facing the target.</summary>
-    private void TryFireProjectiles(ref Transform transform, ref Velocity velocity, ref EnemyAI ai, Vector2 dirToTarget)
-    {
-        if (ai.Config.Weapons.Length == 0) return;
-        if (!IsFacingTarget(ref transform, dirToTarget)) return;
-
-        var facing = FacingDirection(transform.Rotation);
-        int weaponCount = ai.Config.Weapons.Length;
-        float lateralOffset = weaponCount > 1 ? 6f : 0f;
-
-        for (int i = 0; i < weaponCount; i++)
-        {
-            if (ai.WeaponCooldowns[i] > 0f) continue;
-
-            var weapon = ai.Config.Weapons[i];
-            if (weapon.Damage <= 0f || weapon.FireRate <= 0f ||
-                weapon.Range <= 0f || weapon.ProjectileSpeed <= 0f)
-                continue;
-
-            ai.WeaponCooldowns[i] = weapon.FireRate;
-            float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
-            float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
-            FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                lifetime, ai.Config.Faction, sideOffset, velocity.Velocity);
-        }
-    }
-
     private static Vector2 FacingDirection(float rotationDeg)
     {
         float rad = rotationDeg * (MathF.PI / 180f);
@@ -557,48 +489,5 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
         ai.State = newState;
         ai.StateTimer = 0f;
-    }
-
-    private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
-        float lifetime, Faction faction, float lateralOffset, Vector2 inheritedVelocity)
-    {
-        // Offset spawn position slightly ahead of the ship
-        var lateral = new Vector2(-direction.Y, direction.X);
-        var spawnPos = origin + direction * 20f + lateral * lateralOffset;
-
-        // Color by faction
-        var color = faction switch
-        {
-            Faction.Pirate => new Color3(255, 80, 80),     // Red
-            Faction.Patrol => new Color3(80, 200, 255),    // Blue
-            Faction.Trader => new Color3(255, 255, 80),    // Yellow
-            _ => new Color3(255, 255, 255)
-        };
-
-        _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed, lifetime, faction, color, inheritedVelocity));
-    }
-
-    /// <summary>
-    /// Smoothly turn toward a desired angle using rotation velocity, clamped by maxRotSpeed.
-    /// Sets velocity.RotationVelocity; VelocitySystem applies the actual rotation.
-    /// </summary>
-    private static void TurnToward(ref Transform transform, ref Velocity velocity,
-        float desiredAngleDeg, float maxRotSpeed, float dt)
-    {
-        float diff = desiredAngleDeg - transform.Rotation;
-        // Normalize to [-180, 180]
-        diff = ((diff % 360f) + 540f) % 360f - 180f;
-        // Set rotation velocity, clamped by max rotation speed
-        velocity.RotationVelocity = Math.Clamp(diff / dt, -maxRotSpeed, maxRotSpeed);
-    }
-
-    /// <summary>
-    /// Smoothly turn toward a direction vector using rotation velocity.
-    /// </summary>
-    private static void TurnTowardDirection(ref Transform transform, ref Velocity velocity,
-        Vector2 direction, float maxRotSpeed, float dt)
-    {
-        float desiredAngle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
-        TurnToward(ref transform, ref velocity, desiredAngle, maxRotSpeed, dt);
     }
 }

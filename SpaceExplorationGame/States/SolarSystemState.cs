@@ -87,7 +87,8 @@ public class SolarSystemState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
     private LabelRenderer _labelRenderer = null!;
     private InteractionProximitySystem _proximitySystem = null!;
-    private ShipMovementSystem _shipMovementSystem = null!;
+    private PlayerShipInputSystem _playerShipInputSystem = null!;
+    private ShipSystem _shipSystem = null!;
 
     // Combat systems
     private ProjectileSystem _projectileSystem = null!;
@@ -97,7 +98,6 @@ public class SolarSystemState : GameState
 
     // Combat state
     private List<Entity> _enemyEntities = [];
-    private float[] _playerWeaponCooldowns = new float[2];
     private bool _playerDead;
     private float _respawnTimer;
     private const float RespawnDelay = 3f;
@@ -278,10 +278,7 @@ public class SolarSystemState : GameState
         game.Player.ReturnMoonIndex = -1;
 
         // Create player ship
-        int shipSize = game.Player.CurrentShipType.SpriteSize;
-        var playerStats = game.Player.GetCombinedStats();
-        _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, shipStartPos, shipSize,
-            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
+        _playerShip = CreateOrRespawnPlayerShip(game, shipStartPos);
 
         // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
         var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
@@ -333,9 +330,11 @@ public class SolarSystemState : GameState
         _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
         _proximitySystem.Initialize();
 
-        // Ship movement system
-        _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
-        _shipMovementSystem.Initialize();
+        _playerShipInputSystem = new PlayerShipInputSystem(game.EcsWorld, game.Input);
+        _playerShipInputSystem.Initialize();
+
+        _shipSystem = new ShipSystem(game.EcsWorld);
+        _shipSystem.Initialize();
 
         // Combat systems
         _projectileSystem = new ProjectileSystem(game.EcsWorld);
@@ -474,11 +473,14 @@ public class SolarSystemState : GameState
 
         float dt = game.DeltaTime;
 
+        _orbitSystem.Update(in dt);
+        ApplyAnchor(game);
+        _cameraFollowSystem.Update(in dt);
+
         // In-game menu active — no simulation
         if (_inGameMenuOverlay.IsOpen)
         {
-            _orbitSystem.Update(in dt);
-            ApplyAnchor(game);
+            _inGameMenuOverlay.Update(game);
             return;
         }
 
@@ -486,8 +488,6 @@ public class SolarSystemState : GameState
         if (_planetLandingOverlay.IsOpen)
         {
             _planetLandingOverlay.Update(game);
-            _orbitSystem.Update(in dt);
-            ApplyAnchor(game);
             return;
         }
 
@@ -495,7 +495,6 @@ public class SolarSystemState : GameState
         if (_galaxyMapOverlay.IsOpen)
         {
             _galaxyMapOverlay.Update(game);
-            _orbitSystem.Update(in dt);
             return;
         }
 
@@ -503,11 +502,6 @@ public class SolarSystemState : GameState
         if (_stationOverlay.IsOpen)
         {
             _stationOverlay.Update(game);
-
-            // Still update orbits so the background stays alive
-            _orbitSystem.Update(in dt);
-            ApplyAnchor(game);
-            _cameraFollowSystem.Update(in dt);
             return;
         }
 
@@ -523,8 +517,10 @@ public class SolarSystemState : GameState
         {
             _respawnTimer -= dt;
             _orbitSystem.Update(in dt);
-            // Still run enemy AI and projectiles during death animation
+            // Still run NPC ships and projectiles during death animation
             _enemyAISystem.Update(in dt);
+            _shipSystem.Update(in dt);
+            _velocitySystem.Update(in dt);
             _projectileSystem.Update(in dt);
             _shieldRegenSystem.Update(in dt);
 
@@ -535,18 +531,11 @@ public class SolarSystemState : GameState
             return;
         }
 
-        // --- Player ship controls ---
-        var shipStats = game.Player.GetCombinedStats();
-        _shipMovementSystem.MaxSpeed = shipStats.MaxSpeed;
-        _shipMovementSystem.RotationSpeed = shipStats.RotationSpeed;
-        _shipMovementSystem.Acceleration = shipStats.Acceleration;
-        if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Velocity>(_playerShip))
-        {
-            ref var playerVelocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
-            playerVelocity.MaxSpeed = shipStats.MaxSpeed;
-            playerVelocity.MaxRotationSpeed = shipStats.RotationSpeed;
-        }
-        _shipMovementSystem.Update(in dt);
+        // --- Shared ship pipeline: player input + AI input + ship simulation ---
+        SyncPlayerShipComponent(game);
+        _playerShipInputSystem.Update(in dt);
+        _enemyAISystem.Update(in dt);
+        _shipSystem.Update(in dt);
 
         // Apply velocity (speed clamping + position update via system)
         _velocitySystem.Update(in dt);
@@ -618,11 +607,11 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Pirate, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Pirate, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
+            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
             int lootCredits = NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout);
 
             var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, enemyRng.NextFloat(0, 2f), weapons);
+                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, weapons);
             _enemyEntities.Add(entity);
         }
 
@@ -634,7 +623,7 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Trader, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Trader, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
+            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
 
             var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
                 enemyRng.NextFloat(0, 360), stats, weapons);
@@ -649,7 +638,7 @@ public class SolarSystemState : GameState
             var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Patrol, dangerLevel, enemyRng);
             var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Patrol, qualityTier, enemyRng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = NpcShipLoadoutHelper.BuildWeaponSpecs(loadout);
+            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
 
             var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
                 enemyRng.NextFloat(0, 360), stats, weapons);
@@ -666,30 +655,46 @@ public class SolarSystemState : GameState
         return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
     }
 
-    private static bool TryGetWeaponSpec(Dictionary<ShipSlotType, ShipPart> equipped,
-        ShipSlotType slot, out ShipWeaponSpec weapon)
+    private Entity CreateOrRespawnPlayerShip(Game game, Vector2 spawnPosition)
     {
-        weapon = default;
-        if (!equipped.TryGetValue(slot, out var part)) return false;
+        int shipSize = game.Player.CurrentShipType.SpriteSize;
+        var playerStats = game.Player.GetCombinedStats();
+        var playerWeapons = CombatHelper.BuildWeaponSpecs(game.Player.EquippedParts);
 
-        var stats = part.Stats;
-        if (stats.WeaponDamage <= 0f || stats.WeaponFireRate <= 0f ||
-            stats.WeaponRange <= 0f || stats.ProjectileSpeed <= 0f)
-            return false;
+        return EntityFactory.CreatePlayerShip(game.EcsWorld, spawnPosition, shipSize,
+            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength,
+            playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
+            GameConfig.ShipBrakeMultiplier, playerWeapons);
+    }
 
-        weapon = new ShipWeaponSpec(
-            stats.WeaponDamage,
-            stats.WeaponFireRate,
-            stats.WeaponRange,
-            stats.ProjectileSpeed);
-        return true;
+    private void SyncPlayerShipComponent(Game game)
+    {
+        if (!game.EcsWorld.IsAlive(_playerShip) ||
+            !game.EcsWorld.Has<ShipComponent>(_playerShip) ||
+            !game.EcsWorld.Has<Velocity>(_playerShip))
+            return;
+
+        var playerStats = game.Player.GetCombinedStats();
+        var weapons = CombatHelper.BuildWeaponSpecs(game.Player.EquippedParts);
+
+        ref var ship = ref game.EcsWorld.Get<ShipComponent>(_playerShip);
+        ship.MaxSpeed = playerStats.MaxSpeed;
+        ship.MaxRotationSpeed = playerStats.RotationSpeed;
+        ship.MaxAcceleration = playerStats.Acceleration;
+        ship.BrakeMultiplier = GameConfig.ShipBrakeMultiplier;
+        ship.Weapons = weapons;
+
+        if (ship.WeaponCooldowns == null || ship.WeaponCooldowns.Length != weapons.Length)
+            ship.WeaponCooldowns = new float[weapons.Length];
+
+        ref var velocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
+        velocity.MaxSpeed = playerStats.MaxSpeed;
+        velocity.MaxRotationSpeed = playerStats.RotationSpeed;
     }
 
     /// <summary>Update combat: player shooting, AI, projectiles, asteroid mining, damage, death.</summary>
     private void UpdateCombat(Game game, float dt)
     {
-        var input = game.Input;
-
         // Tick mining timers
         if (_miningHudTimer > 0) _miningHudTimer -= dt;
         if (_miningMessageTimer > 0)
@@ -705,68 +710,11 @@ public class SolarSystemState : GameState
             game.Player.ShipHealth = playerHealth.Hull;
         }
 
-        // Player shooting (Space key)
-        for (int i = 0; i < _playerWeaponCooldowns.Length; i++)
-            _playerWeaponCooldowns[i] -= dt;
-
-        if (input.IsActionDown(InputAction.FireWeapon))
+        // SFX for ship weapon fire (player + NPC)
+        foreach (var spawn in _shipSystem.ProjectilesSpawnedLastUpdate)
         {
-            var equipped = game.Player.EquippedParts;
-            bool hasWeapon1 = TryGetWeaponSpec(equipped, ShipSlotType.Weapon1, out var weapon1);
-            bool hasWeapon2 = TryGetWeaponSpec(equipped, ShipSlotType.Weapon2, out var weapon2);
-            if (!hasWeapon1) _playerWeaponCooldowns[0] = 0f;
-            if (!hasWeapon2) _playerWeaponCooldowns[1] = 0f;
-
-            int activeWeapons = (hasWeapon1 ? 1 : 0) + (hasWeapon2 ? 1 : 0);
-            if (activeWeapons > 0)
-            {
-                ref var shipT = ref game.EcsWorld.Get<Transform>(_playerShip);
-                float rad = shipT.Rotation * MathF.PI / 180f;
-                var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
-                var forwardPos = shipT.Position + dir * 20f;
-                var lateralDir = new Vector2(-dir.Y, dir.X);
-                float lateralOffset = activeWeapons > 1 ? 6f : 0f;
-                bool firedAny = false;
-                var shipVelocity = game.EcsWorld.Has<Velocity>(_playerShip)
-                    ? game.EcsWorld.Get<Velocity>(_playerShip).Velocity
-                    : Vector2.Zero;
-
-                if (hasWeapon1 && _playerWeaponCooldowns[0] <= 0f)
-                {
-                    float lifetime = CombatHelper.ResolveProjectileLifetime(weapon1.Range, weapon1.ProjectileSpeed);
-                    var spawnPos = forwardPos + lateralDir * -lateralOffset;
-                    EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                        weapon1.Damage, weapon1.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime,
-                        shipVelocity);
-                    _playerWeaponCooldowns[0] = weapon1.FireRate;
-                    firedAny = true;
-                }
-
-                if (hasWeapon2 && _playerWeaponCooldowns[1] <= 0f)
-                {
-                    float lifetime = CombatHelper.ResolveProjectileLifetime(weapon2.Range, weapon2.ProjectileSpeed);
-                    var spawnPos = forwardPos + lateralDir * lateralOffset;
-                    EntityFactory.CreateProjectile(game.EcsWorld, spawnPos, dir,
-                        weapon2.Damage, weapon2.ProjectileSpeed, Faction.Player, new Color3(100, 255, 100), lifetime,
-                        shipVelocity);
-                    _playerWeaponCooldowns[1] = weapon2.FireRate;
-                    firedAny = true;
-                }
-
-                if (firedAny)
-                    game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
-            }
-        }
-
-        // Run AI system
-        _enemyAISystem.Update(in dt);
-
-        // SFX for NPC weapon fire (distance-attenuated)
-        var playerPos = game.EcsWorld.IsAlive(_playerShip)
-            ? game.EcsWorld.Get<Transform>(_playerShip).Position
-            : _camera.Position;
-        foreach (var spawn in _enemyAISystem.ProjectilesSpawnedLastUpdate)
-            game.Audio.PlaySfxAtDistance(SfxType.EnemyLaser, spawn.Pos, playerPos, 0.5f);
+            game.Audio.PlaySfxAtDistance(spawn.Faction == Faction.Player ? SfxType.LaserFire : SfxType.EnemyLaser, spawn.Pos, _camera.Position, 0.5f);
+        }            
 
         // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
 
@@ -783,7 +731,7 @@ public class SolarSystemState : GameState
             // SFX for damage hits — volume attenuated by distance to the player
             game.Audio.PlaySfxAtDistance(
                 evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
-                evt.Position, playerPos, 0.6f);
+                evt.Position, _camera.Position, 0.6f);
 
             // Only trigger combat music when the player is directly involved
             bool playerInvolved = evt.OwnerFaction == Faction.Player
@@ -808,7 +756,7 @@ public class SolarSystemState : GameState
                 // Asteroid destroyed — collect resources only if player mined it
                 var asteroid = destroyed.Asteroid.Value;
                 _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
-                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, playerPos, 0.5f);
+                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, _camera.Position, 0.5f);
 
                 if (destroyed.KillerFaction == Faction.Player)
                 {
@@ -850,7 +798,7 @@ public class SolarSystemState : GameState
                 byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
                 byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
                 _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
-                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, playerPos);
+                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, _camera.Position);
 
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
@@ -958,16 +906,10 @@ public class SolarSystemState : GameState
         }
 
         // Restore hull to 50%
-        game.Player.ShipHealth = game.Player.ShipMaxHealth * GameConfig.DeathHullPercent;
+        game.Player.ShipHealth = game.Player.ShipMaxHealth;
 
         // Recreate player ship entity
-        int shipSize = game.Player.CurrentShipType.SpriteSize;
-        var playerStats = game.Player.GetCombinedStats();
-        _playerShip = EntityFactory.CreatePlayerShip(game.EcsWorld, respawnPos, shipSize,
-            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength, playerStats.MaxSpeed);
-
-        // Recreate movement system with new entity
-        _shipMovementSystem = new ShipMovementSystem(game.EcsWorld, game.Input, _playerShip);
+        _playerShip = CreateOrRespawnPlayerShip(game, respawnPos);
 
         _camera.Position = respawnPos;
         _combatMessage = "RESPAWNED";
@@ -994,6 +936,14 @@ public class SolarSystemState : GameState
         vel.Velocity = Vector2.Zero;
         vel.Acceleration = Vector2.Zero;
         vel.RotationVelocity = 0f;
+
+        if (game.EcsWorld.Has<ShipInputComponent>(_playerShip))
+        {
+            ref var shipInput = ref game.EcsWorld.Get<ShipInputComponent>(_playerShip);
+            shipInput.AccelerationDirection = Vector2.Zero;
+            shipInput.RotationSpeed = 0f;
+            shipInput.Shoot = false;
+        }
     }
 
     /// <summary>Move the ship to keep its offset from the anchor entity (call after OrbitSystem).</summary>
