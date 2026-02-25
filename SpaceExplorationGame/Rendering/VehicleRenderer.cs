@@ -6,117 +6,105 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders the player's ground vehicle. Owns the vehicle texture so future
-/// customisation (chassis/lights visuals) can be handled in one place.
+/// Renders the player's ground vehicle using primitive geometry.
 /// </summary>
 public class VehicleRenderer : IDisposable
 {
-    private const int VehicleSize = 40;
-    private readonly TextureManager _textures;
-    private nint _texture;
+    private const float VehicleSize = 40f;
 
-    public VehicleRenderer(TextureManager textures)
+    public VehicleRenderer()
     {
-        _textures = textures;
-        _texture = GenerateVehicleTexture(textures);
     }
 
     /// <summary>Renders the vehicle with texture and optional label when not mounted.</summary>
     public void Render(SpriteRenderer renderer, Camera camera,
         Vector2 position, float rotation, bool isMounted)
     {
-        // Vehicle texture points up (north) so add 90° offset to align with 0°=right convention
-        renderer.DrawTexture(camera, _texture, position, VehicleSize, VehicleSize, rotation + 90f);
+        DrawVehiclePrimitives(renderer, camera, position, rotation + 90f);
         if (!isMounted)
         {
             renderer.DrawText(camera, position + new Vector2(-20, 14), "VEHICLE", new Color3(180, 160, 100));
         }
     }
 
-    private static nint GenerateVehicleTexture(TextureManager textures)
+    private static void DrawVehiclePrimitives(SpriteRenderer renderer, Camera camera, Vector2 position, float rotationDeg)
     {
-        const int size = 20;
-        var pixels = new byte[size * size * 4];
+        float s = VehicleSize / 20f;
 
-        // Top-down 4-wheel rover with roll cage
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                int idx = (y * size + x) * 4;
-                int cx = x - 10;
-                int cy = y - 10;
+        DrawRotatedQuad(renderer, camera, position, rotationDeg,
+            new Vector2(-7f * s, -10f * s),
+            new Vector2(7f * s, -10f * s),
+            new Vector2(7f * s, 10f * s),
+            new Vector2(-7f * s, 10f * s),
+            new Color4(180, 140, 80, 255));
 
-                // Main body (rounded rectangle)
-                if (Math.Abs(cx) <= 5 && Math.Abs(cy) <= 7)
-                {
-                    // Body color: warm gray-orange
-                    float shade = 1f - Math.Abs(cy) / 10f * 0.2f;
-                    pixels[idx + 0] = (byte)(180 * shade);
-                    pixels[idx + 1] = (byte)(140 * shade);
-                    pixels[idx + 2] = (byte)(80 * shade);
-                    pixels[idx + 3] = 255;
+        DrawRotatedQuad(renderer, camera, position, rotationDeg,
+            new Vector2(-5f * s, -7f * s),
+            new Vector2(5f * s, -7f * s),
+            new Vector2(5f * s, -3f * s),
+            new Vector2(-5f * s, -3f * s),
+            new Color4(100, 180, 230, 255));
 
-                    // Cockpit windshield (top)
-                    if (cy <= -3 && Math.Abs(cx) <= 3)
-                    {
-                        pixels[idx + 0] = 100;
-                        pixels[idx + 1] = 180;
-                        pixels[idx + 2] = 230;
-                        pixels[idx + 3] = 255;
-                    }
-                    // Roll cage bars
-                    else if (Math.Abs(cx) == 5 || (cy == 0 && Math.Abs(cx) <= 5))
-                    {
-                        pixels[idx + 0] = 100;
-                        pixels[idx + 1] = 100;
-                        pixels[idx + 2] = 110;
-                        pixels[idx + 3] = 255;
-                    }
-                }
-                // Wheels (4 corners)
-                else if (Math.Abs(cx) >= 5 && Math.Abs(cx) <= 8 &&
-                         (Math.Abs(cy - 5) <= 2 || Math.Abs(cy + 5) <= 2))
-                {
-                    pixels[idx + 0] = 50;
-                    pixels[idx + 1] = 50;
-                    pixels[idx + 2] = 50;
-                    pixels[idx + 3] = 255;
+        DrawRotatedQuad(renderer, camera, position, rotationDeg,
+            new Vector2(-7f * s, -1f * s),
+            new Vector2(7f * s, -1f * s),
+            new Vector2(7f * s, 1f * s),
+            new Vector2(-7f * s, 1f * s),
+            new Color4(100, 100, 110, 255));
 
-                    // Wheel tread highlight
-                    if (Math.Abs(cx) == 6 || Math.Abs(cx) == 7)
-                    {
-                        pixels[idx + 0] = 70;
-                        pixels[idx + 1] = 70;
-                        pixels[idx + 2] = 70;
-                    }
-                }
-                // Headlights (front)
-                else if (cy == -8 && (Math.Abs(cx) == 3 || Math.Abs(cx) == 4))
-                {
-                    pixels[idx + 0] = 255;
-                    pixels[idx + 1] = 255;
-                    pixels[idx + 2] = 200;
-                    pixels[idx + 3] = 255;
-                }
-                // Tail lights (rear)
-                else if (cy == 8 && (Math.Abs(cx) == 3 || Math.Abs(cx) == 4))
-                {
-                    pixels[idx + 0] = 255;
-                    pixels[idx + 1] = 50;
-                    pixels[idx + 2] = 50;
-                    pixels[idx + 3] = 255;
-                }
-            }
-        }
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * s, -7f * s), 2.2f * s);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * s, -7f * s), 2.2f * s);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * s, 7f * s), 2.2f * s);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * s, 7f * s), 2.2f * s);
 
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        Vector2 headL = Rotate(new Vector2(-3f * s, -11f * s), rotationDeg);
+        Vector2 headR = Rotate(new Vector2(3f * s, -11f * s), rotationDeg);
+        renderer.DrawFilledCircle(camera, position + headL, 1f * s, new Color4(255, 255, 200, 255));
+        renderer.DrawFilledCircle(camera, position + headR, 1f * s, new Color4(255, 255, 200, 255));
+
+        Vector2 tailL = Rotate(new Vector2(-3f * s, 11f * s), rotationDeg);
+        Vector2 tailR = Rotate(new Vector2(3f * s, 11f * s), rotationDeg);
+        renderer.DrawFilledCircle(camera, position + tailL, 1f * s, new Color4(255, 80, 80, 255));
+        renderer.DrawFilledCircle(camera, position + tailR, 1f * s, new Color4(255, 80, 80, 255));
+    }
+
+    private static void DrawWheel(SpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, Vector2 offset, float radius)
+    {
+        Vector2 w = center + Rotate(offset, rotationDeg);
+        renderer.DrawFilledCircle(camera, w, radius, new Color4(50, 50, 50, 255));
+        renderer.DrawCircle(camera, w, radius, new Color4(80, 80, 80, 255), 12);
+    }
+
+    private static Vector2 Rotate(Vector2 v, float degrees)
+    {
+        float r = degrees * (MathF.PI / 180f);
+        float c = MathF.Cos(r);
+        float s = MathF.Sin(r);
+        return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
+    }
+
+    private static void DrawRotatedTriangle(SpriteRenderer renderer, Camera camera, Vector2 center,
+        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
+    {
+        var w1 = center + Rotate(p1, rotationDeg);
+        var w2 = center + Rotate(p2, rotationDeg);
+        var w3 = center + Rotate(p3, rotationDeg);
+
+        var s1 = camera.WorldToScreen(w1);
+        var s2 = camera.WorldToScreen(w2);
+        var s3 = camera.WorldToScreen(w3);
+        renderer.DrawFilledTriangleScreen(s1.X, s1.Y, s2.X, s2.Y, s3.X, s3.Y, color);
+    }
+
+    private static void DrawRotatedQuad(SpriteRenderer renderer, Camera camera, Vector2 center,
+        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
+    {
+        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
+        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
     }
 
     public void Dispose()
     {
-        _textures.DestroyTexture(_texture);
-        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

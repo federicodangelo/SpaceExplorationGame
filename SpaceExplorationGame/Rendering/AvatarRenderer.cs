@@ -6,56 +6,43 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders the player avatar sprite. Owns the avatar texture so future
-/// customisation (equipped suit/helmet/boots visuals) can be handled in one place.
+/// Renders the player avatar using primitive shapes for a retro look.
 /// </summary>
 public class AvatarRenderer : IDisposable
 {
-    private const int AvatarSize = 28;
-    private readonly TextureManager _textures;
-    private nint _texture;
+    private const float AvatarSize = 28f;
 
-    public AvatarRenderer(TextureManager textures)
+    public AvatarRenderer()
     {
-        _textures = textures;
-        _texture = GenerateAvatarTexture(textures);
     }
 
     /// <summary>Renders the avatar at its world position (planet surface or interior).</summary>
     public void Render(SpriteRenderer renderer, Camera camera, Vector2 position)
     {
         // Shadow beneath feet
-        var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1);
+        var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1f);
         renderer.DrawRect(camera, shadowPos, 16, 4, new Color4(0, 0, 0, 60));
 
-        renderer.DrawTexture(camera, _texture, position, AvatarSize, AvatarSize);
-    }
+        float s = AvatarSize / 28f;
 
-    private static nint GenerateAvatarTexture(TextureManager textures)
-    {
-        const int size = 16;
-        var pixels = new byte[size * size * 4];
+        renderer.DrawRect(camera, position + new Vector2(0f, -10f * s), (int)(6f * s), (int)(6f * s), new Color4(200, 180, 150, 255));
+        renderer.DrawRect(camera, position + new Vector2(0f, -6f * s), (int)(6f * s), (int)(2f * s), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(0f, -1f * s), (int)(8f * s), (int)(8f * s), new Color4(60, 180, 100, 255));
 
-        // Tiny humanoid sprite
-        TextureManager.SetPixelBlock(pixels, size, 6, 1, 4, 3, new Color4(200, 180, 150, 255));   // Head
-        TextureManager.SetPixelBlock(pixels, size, 6, 4, 4, 1, new Color4(60, 180, 100, 255));    // Neck
-        TextureManager.SetPixelBlock(pixels, size, 5, 5, 6, 4, new Color4(60, 180, 100, 255));    // Torso (green suit)
-        TextureManager.SetPixelBlock(pixels, size, 3, 6, 2, 3, new Color4(60, 180, 100, 255));    // Left arm
-        TextureManager.SetPixelBlock(pixels, size, 11, 6, 2, 3, new Color4(60, 180, 100, 255));   // Right arm
-        TextureManager.SetPixelBlock(pixels, size, 6, 9, 2, 4, new Color4(50, 50, 140, 255));     // Left leg
-        TextureManager.SetPixelBlock(pixels, size, 8, 9, 2, 4, new Color4(50, 50, 140, 255));     // Right leg
-        TextureManager.SetPixelBlock(pixels, size, 5, 13, 3, 1, new Color4(80, 60, 40, 255));     // Left boot
-        TextureManager.SetPixelBlock(pixels, size, 8, 13, 3, 1, new Color4(80, 60, 40, 255));     // Right boot
-        // Visor
-        TextureManager.SetPixelBlock(pixels, size, 7, 2, 2, 1, new Color4(100, 180, 255, 255));
+        renderer.DrawRect(camera, position + new Vector2(-5f * s, -1f * s), (int)(3f * s), (int)(6f * s), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(5f * s, -1f * s), (int)(3f * s), (int)(6f * s), new Color4(60, 180, 100, 255));
 
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        renderer.DrawRect(camera, position + new Vector2(-2f * s, 7f * s), (int)(3f * s), (int)(8f * s), new Color4(50, 50, 140, 255));
+        renderer.DrawRect(camera, position + new Vector2(2f * s, 7f * s), (int)(3f * s), (int)(8f * s), new Color4(50, 50, 140, 255));
+
+        renderer.DrawRect(camera, position + new Vector2(-2.5f * s, 12f * s), (int)(4f * s), (int)(2f * s), new Color4(80, 60, 40, 255));
+        renderer.DrawRect(camera, position + new Vector2(2.5f * s, 12f * s), (int)(4f * s), (int)(2f * s), new Color4(80, 60, 40, 255));
+
+        renderer.DrawFilledCircle(camera, position + new Vector2(0f, -10f * s), 1.3f * s, new Color4(100, 180, 255, 240));
     }
 
     public void Dispose()
     {
-        _textures.DestroyTexture(_texture);
-        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }

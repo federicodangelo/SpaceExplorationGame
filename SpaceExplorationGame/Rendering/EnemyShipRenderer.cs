@@ -6,39 +6,58 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders NPC ships (pirates, traders, patrols) with faction-colored procedural textures.
-/// Owns textures per faction. IDisposable.
+/// Renders NPC ships (pirates, traders, patrols) using primitive geometry.
 /// </summary>
 public class EnemyShipRenderer : IDisposable
 {
-    private readonly nint _pirateTexture;
-    private readonly nint _traderTexture;
-    private readonly nint _patrolTexture;
-    private readonly nint _flameTexture;
-    private readonly TextureManager _textures;
-
-    public EnemyShipRenderer(TextureManager textures)
+    public EnemyShipRenderer()
     {
-        _textures = textures;
-        _pirateTexture = GeneratePirateTexture(textures);
-        _traderTexture = GenerateTraderTexture(textures);
-        _patrolTexture = GeneratePatrolTexture(textures);
-        _flameTexture = GenerateFlameTexture(textures);
     }
 
     /// <summary>Render an NPC ship at a world position with rotation.</summary>
     public void Render(SpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
         Faction faction, int size)
     {
-        var texture = faction switch
+        (Color4 hull, Color4 accent, Color4 wing) = faction switch
         {
-            Faction.Pirate => _pirateTexture,
-            Faction.Trader => _traderTexture,
-            Faction.Patrol => _patrolTexture,
-            _ => _pirateTexture
+            Faction.Pirate => (new Color4(170, 55, 55, 255), new Color4(255, 110, 60, 255), new Color4(120, 35, 35, 255)),
+            Faction.Trader => (new Color4(175, 140, 80, 255), new Color4(120, 200, 220, 255), new Color4(145, 115, 65, 255)),
+            Faction.Patrol => (new Color4(80, 140, 220, 255), new Color4(200, 220, 255, 255), new Color4(60, 100, 190, 255)),
+            _ => (new Color4(170, 55, 55, 255), new Color4(255, 110, 60, 255), new Color4(120, 35, 35, 255))
         };
 
-        renderer.DrawTexture(camera, texture, position, size, size, rotation);
+        float scale = size / 30f;
+
+        DrawRotatedQuad(renderer, camera, position, rotation,
+            new Vector2(-10f * scale, -4f * scale),
+            new Vector2(9f * scale, -4f * scale),
+            new Vector2(11f * scale, 4f * scale),
+            new Vector2(-10f * scale, 4f * scale),
+            hull);
+
+        DrawRotatedTriangle(renderer, camera, position, rotation,
+            new Vector2(9f * scale, -4f * scale),
+            new Vector2(15f * scale, 0f),
+            new Vector2(9f * scale, 4f * scale),
+            accent);
+
+        DrawRotatedTriangle(renderer, camera, position, rotation,
+            new Vector2(-4f * scale, -4f * scale),
+            new Vector2(-14f * scale, -9f * scale),
+            new Vector2(-8f * scale, -1f * scale),
+            wing);
+
+        DrawRotatedTriangle(renderer, camera, position, rotation,
+            new Vector2(-4f * scale, 4f * scale),
+            new Vector2(-14f * scale, 9f * scale),
+            new Vector2(-8f * scale, 1f * scale),
+            wing);
+
+        Vector2 cockpitOffset = Rotate(new Vector2(5f * scale, 0f), rotation);
+        renderer.DrawFilledCircle(camera, position + cockpitOffset, 2f * scale, accent.WithAlpha(220));
+
+        Vector2 engineOffset = Rotate(new Vector2(-13f * scale, 0f), rotation);
+        renderer.DrawFilledCircle(camera, position + engineOffset, 1.8f * scale, new Color4(255, 170, 70, 170));
     }
 
     /// <summary>Render a health bar above an NPC ship.</summary>
@@ -71,191 +90,36 @@ public class EnemyShipRenderer : IDisposable
         }
     }
 
-    // ── Texture Generation ──────────────────────────────────────
-
-    /// <summary>Pirate ship: aggressive angular shape, red/dark colors.</summary>
-    private static nint GeneratePirateTexture(TextureManager textures)
+    private static Vector2 Rotate(Vector2 v, float degrees)
     {
-        int size = 28;
-        var pixels = new byte[size * size * 4];
-
-        // Dark angular hull
-        int cx = size / 2, cy = size / 2;
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - cx;
-                float dy = y - cy;
-
-                // Arrow/wedge shape pointing right
-                float nx = dx / (size * 0.45f);
-                float ny = dy / (size * 0.35f);
-
-                // Tapered hull: wider at back, narrow at front
-                float widthAtX = 1.0f - nx * 0.6f;
-                if (nx < -0.8f) widthAtX *= 0.6f; // engine section narrows
-
-                if (MathF.Abs(ny) < widthAtX && nx > -0.9f && nx < 0.95f)
-                {
-                    float shade = 0.6f + 0.4f * (1f - MathF.Abs(ny) / widthAtX);
-
-                    // Wings — darker
-                    if (MathF.Abs(ny) > widthAtX * 0.6f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(120 * shade), (byte)(30 * shade), (byte)(30 * shade), 255));
-                    }
-                    // Cockpit
-                    else if (nx > 0.5f && MathF.Abs(ny) < 0.2f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4(255, (byte)(80 * shade), (byte)(40 * shade), 255));
-                    }
-                    // Hull
-                    else
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(160 * shade), (byte)(50 * shade), (byte)(50 * shade), 255));
-                    }
-                }
-            }
-        }
-
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        float r = degrees * (MathF.PI / 180f);
+        float c = MathF.Cos(r);
+        float s = MathF.Sin(r);
+        return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
-    /// <summary>Trader ship: bulky rounded shape, gold/brown colors.</summary>
-    private static nint GenerateTraderTexture(TextureManager textures)
+    private static void DrawRotatedTriangle(SpriteRenderer renderer, Camera camera, Vector2 center,
+        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
     {
-        int size = 32;
-        var pixels = new byte[size * size * 4];
+        var w1 = center + Rotate(p1, rotationDeg);
+        var w2 = center + Rotate(p2, rotationDeg);
+        var w3 = center + Rotate(p3, rotationDeg);
 
-        int cx = size / 2, cy = size / 2;
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - cx;
-                float dy = y - cy;
-                float nx = dx / (size * 0.4f);
-                float ny = dy / (size * 0.35f);
-
-                // Rounded rectangular hull
-                float shape = MathF.Abs(nx) * 0.7f + MathF.Abs(ny);
-                if (shape < 1.0f && nx > -0.9f && nx < 0.7f)
-                {
-                    float shade = 0.6f + 0.4f * (1f - shape);
-
-                    // Cargo section (wide middle)
-                    if (nx > -0.5f && nx < 0.3f && MathF.Abs(ny) < 0.7f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(200 * shade), (byte)(160 * shade), (byte)(80 * shade), 255));
-                    }
-                    // Cockpit
-                    else if (nx > 0.4f && MathF.Abs(ny) < 0.3f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(100 * shade), (byte)(200 * shade), (byte)(220 * shade), 255));
-                    }
-                    // Hull frame
-                    else
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(160 * shade), (byte)(130 * shade), (byte)(70 * shade), 255));
-                    }
-                }
-            }
-        }
-
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        var s1 = camera.WorldToScreen(w1);
+        var s2 = camera.WorldToScreen(w2);
+        var s3 = camera.WorldToScreen(w3);
+        renderer.DrawFilledTriangleScreen(s1.X, s1.Y, s2.X, s2.Y, s3.X, s3.Y, color);
     }
 
-    /// <summary>Patrol ship: sleek military shape, blue/white colors.</summary>
-    private static nint GeneratePatrolTexture(TextureManager textures)
+    private static void DrawRotatedQuad(SpriteRenderer renderer, Camera camera, Vector2 center,
+        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
     {
-        int size = 30;
-        var pixels = new byte[size * size * 4];
-
-        int cx = size / 2, cy = size / 2;
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - cx;
-                float dy = y - cy;
-                float nx = dx / (size * 0.45f);
-                float ny = dy / (size * 0.4f);
-
-                // Sleek pointed shape
-                float widthAtX = 1.0f - MathF.Max(0, nx) * 0.8f;
-                if (nx < -0.6f) widthAtX *= 0.8f;
-
-                if (MathF.Abs(ny) < widthAtX && nx > -0.85f && nx < 0.95f)
-                {
-                    float shade = 0.6f + 0.4f * (1f - MathF.Abs(ny) / widthAtX);
-
-                    // Wings
-                    if (MathF.Abs(ny) > widthAtX * 0.5f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(60 * shade), (byte)(100 * shade), (byte)(200 * shade), 255));
-                    }
-                    // Cockpit
-                    else if (nx > 0.5f && MathF.Abs(ny) < 0.2f)
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(200 * shade), (byte)(220 * shade), (byte)(255 * shade), 255));
-                    }
-                    // Hull
-                    else
-                    {
-                        TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1,
-                            new Color4((byte)(80 * shade), (byte)(140 * shade), (byte)(220 * shade), 255));
-                    }
-                }
-            }
-        }
-
-        return textures.CreateTextureFromPixels(pixels, size, size);
-    }
-
-    /// <summary>Small engine flame for NPC ships.</summary>
-    private static nint GenerateFlameTexture(TextureManager textures)
-    {
-        int size = 16;
-        var pixels = new byte[size * size * 4];
-
-        int cx = size / 2, cy = size / 2;
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = x - cx;
-                float dy = y - cy;
-                float dist = MathF.Sqrt(dx * dx + dy * dy) / (size * 0.4f);
-                if (dist < 1f)
-                {
-                    float intensity = 1f - dist;
-                    byte r = (byte)(255 * intensity);
-                    byte g = (byte)(180 * intensity);
-                    byte b = (byte)(40 * intensity * intensity);
-                    byte a = (byte)(200 * intensity);
-                    TextureManager.SetPixelBlock(pixels, size, x, y, 1, 1, new Color4(r, g, b, a));
-                }
-            }
-        }
-
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
+        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
     }
 
     public void Dispose()
     {
-        _textures.DestroyTexture(_pirateTexture);
-        _textures.DestroyTexture(_traderTexture);
-        _textures.DestroyTexture(_patrolTexture);
-        _textures.DestroyTexture(_flameTexture);
         GC.SuppressFinalize(this);
     }
 }

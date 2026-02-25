@@ -98,14 +98,14 @@ public class Game : IDisposable
         SpriteRenderer = new SpriteRenderer(Renderer, Textures);
 
         // Entity renderers
-        AvatarRenderer = new AvatarRenderer(Textures);
-        VehicleRenderer = new VehicleRenderer(Textures);
-        SpaceshipRenderer = new SpaceshipRenderer(Textures);
+        AvatarRenderer = new AvatarRenderer();
+        VehicleRenderer = new VehicleRenderer();
+        SpaceshipRenderer = new SpaceshipRenderer();
         StationRenderer = new StationRenderer(Textures);
-        AsteroidRenderer = new AsteroidRenderer(Textures);
+        AsteroidRenderer = new AsteroidRenderer();
         PlanetRenderer = new PlanetRenderer();
         StarRenderer = new StarRenderer();
-        EnemyShipRenderer = new EnemyShipRenderer(Textures);
+        EnemyShipRenderer = new EnemyShipRenderer();
 
         // Audio
         Audio = new AudioManager(

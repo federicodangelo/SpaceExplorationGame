@@ -398,15 +398,11 @@ public class FTLTransitionState : GameState
     private void RenderShip(Game game, SpriteRenderer renderer)
     {
         var shipType = game.Player.CurrentShipType;
-        var shipTexture = game.SpaceshipRenderer.GetSolarTexture(shipType.Id);
-        if (shipTexture == nint.Zero) return;
-
         float size = shipType.SpriteSize * 2f; // render larger for the cutscene
         float sx = CX + _shipShakeX;
         float sy = CY + _shipShakeY;
 
-        // Ship faces right (rotation = 0°)
-        renderer.DrawTextureScreen(shipTexture, sx, sy, size, size, 0f);
+        game.SpaceshipRenderer.RenderFlyingScreen(renderer, sx, sy, 0f, shipType.Id, (int)size);
     }
 
     private void RenderEngineGlow(Game game, SpriteRenderer renderer)

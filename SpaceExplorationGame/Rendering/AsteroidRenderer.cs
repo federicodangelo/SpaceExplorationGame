@@ -1,7 +1,6 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.Core.Extensions;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Rendering.Base;
@@ -9,17 +8,24 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders asteroids. Owns the singleton asteroid texture.
+/// Renders asteroids using primitive geometry.
 /// </summary>
 public class AsteroidRenderer : IDisposable
 {
-    private readonly TextureManager _textures;
-    private nint _texture;
+    private static readonly Vector2[] BaseShape =
+    [
+        new Vector2(1.00f, 0.00f),
+        new Vector2(0.62f, 0.52f),
+        new Vector2(0.12f, 0.92f),
+        new Vector2(-0.55f, 0.72f),
+        new Vector2(-0.96f, 0.12f),
+        new Vector2(-0.72f, -0.56f),
+        new Vector2(-0.18f, -0.92f),
+        new Vector2(0.68f, -0.62f)
+    ];
 
-    public AsteroidRenderer(TextureManager textures)
+    public AsteroidRenderer()
     {
-        _textures = textures;
-        _texture = GenerateAsteroidTexture(textures);
     }
 
     /// <summary>Renders asteroids from ECS entities (with Transform, Health, AsteroidField).</summary>
@@ -42,49 +48,51 @@ public class AsteroidRenderer : IDisposable
             float hpRatio = health.HullPercent;
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
 
-            renderer.DrawTexture(camera, _texture, transform.Position, (int)visualSize, (int)visualSize, rot);
+            DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize, hpRatio);
         }
     }
 
-    private static nint GenerateAsteroidTexture(TextureManager textures)
+    private static void DrawAsteroidPrimitives(SpriteRenderer renderer, Camera camera,
+        Vector2 position, float rotationDeg, float size, float hpRatio)
     {
-        const int size = 12;
-        var pixels = new byte[size * size * 4];
+        float radius = size * 0.5f;
+        byte tone = (byte)(110 + 40 * hpRatio);
+        var fill = new Color4((byte)(tone + 18), tone, (byte)(tone - 12), 255);
+        var edge = new Color4((byte)(tone - 22), (byte)(tone - 28), (byte)(tone - 36), 255);
 
-        // Irregular rocky blob
-        for (int y = 0; y < size; y++)
+        Vector2[] points = new Vector2[BaseShape.Length];
+        for (int i = 0; i < BaseShape.Length; i++)
         {
-            for (int x = 0; x < size; x++)
-            {
-                int idx = (y * size + x) * 4;
-                int cx = x - 6;
-                int cy = y - 6;
-                float dist = MathF.Sqrt(cx * cx + cy * cy);
-
-                // Irregular radius
-                float angle = MathF.Atan2(cy, cx);
-                float r = 4f + MathF.Sin(angle * 3) * 1f + MathF.Cos(angle * 5) * 0.5f;
-
-                if (dist <= r)
-                {
-                    float shade = 0.5f + 0.5f * (1f - dist / r);
-                    // Gray-brown rock with variation
-                    float vary = MathF.Sin(x * 2.5f + y * 1.7f) * 0.15f;
-                    pixels[idx + 0] = (byte)(140 * (shade + vary));
-                    pixels[idx + 1] = (byte)(120 * (shade + vary));
-                    pixels[idx + 2] = (byte)(100 * (shade + vary));
-                    pixels[idx + 3] = 255;
-                }
-            }
+            float localRot = rotationDeg + i * 6f;
+            points[i] = position + Rotate(BaseShape[i] * radius, localRot);
         }
 
-        return textures.CreateTextureFromPixels(pixels, size, size);
+        var centerScreen = camera.WorldToScreen(position);
+        for (int i = 0; i < points.Length; i++)
+        {
+            var p1 = camera.WorldToScreen(points[i]);
+            var p2 = camera.WorldToScreen(points[(i + 1) % points.Length]);
+            renderer.DrawFilledTriangleScreen(centerScreen.X, centerScreen.Y, p1.X, p1.Y, p2.X, p2.Y, fill);
+            renderer.DrawLineScreen(p1.X, p1.Y, p2.X, p2.Y, edge);
+        }
+
+        float craterR = MathF.Max(0.8f, size * 0.11f);
+        Vector2 crater1 = position + Rotate(new Vector2(-radius * 0.22f, -radius * 0.08f), rotationDeg);
+        Vector2 crater2 = position + Rotate(new Vector2(radius * 0.18f, radius * 0.16f), rotationDeg + 35f);
+        renderer.DrawFilledCircle(camera, crater1, craterR, new Color4((byte)(tone - 35), (byte)(tone - 35), (byte)(tone - 40), 210));
+        renderer.DrawFilledCircle(camera, crater2, craterR * 0.8f, new Color4((byte)(tone - 28), (byte)(tone - 30), (byte)(tone - 35), 190));
+    }
+
+    private static Vector2 Rotate(Vector2 v, float degrees)
+    {
+        float r = degrees * (MathF.PI / 180f);
+        float c = MathF.Cos(r);
+        float s = MathF.Sin(r);
+        return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
     public void Dispose()
     {
-        _textures.DestroyTexture(_texture);
-        _texture = nint.Zero;
         GC.SuppressFinalize(this);
     }
 }
