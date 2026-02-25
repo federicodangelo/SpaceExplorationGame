@@ -12,7 +12,7 @@ namespace SpaceExplorationGame.ECS.Systems.Effects;
 /// </summary>
 public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 {
-    private readonly List<Entity> _expiredParticles = [];
+    private readonly List<Entity> _expiredEntities = [];
     private readonly List<ParticleSpawn> _spawnQueue = [];
     private readonly Random _random = new();
 
@@ -42,7 +42,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
     public override void Update(in float dt)
     {
         float deltaTime = dt;
-        _expiredParticles.Clear();
+        _expiredEntities.Clear();
         _spawnQueue.Clear();
 
         int particleCount = 0;
@@ -55,7 +55,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
             particle.Age += deltaTime;
             if (particle.Age >= particle.Lifetime)
             {
-                _expiredParticles.Add(entity);
+                _expiredEntities.Add(entity);
                 return;
             }
 
@@ -75,6 +75,12 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
             bool hasCarrier = emitter.CarrierEntity != default
                 && World.IsAlive(emitter.CarrierEntity)
                 && World.Has<Transform>(emitter.CarrierEntity);
+
+            if (emitter.CarrierEntity != default && !hasCarrier)
+            {
+                _expiredEntities.Add(entity);
+                return;
+            }
 
             Entity sourceEntity = hasCarrier ? emitter.CarrierEntity : entity;
             Transform sourceTransform = hasCarrier ? World.Get<Transform>(emitter.CarrierEntity) : transform;
@@ -121,7 +127,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
             }
             else
             {
-                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(transform.Position))
+                if (_validateEmitterBounds && !IsWithinEmitterValidationBounds(sourceTransform.Position))
                 {
                     return;
                 }
@@ -141,7 +147,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
 
                 accelDir = Vector2.Normalize(accelDir);
                 ejectDir = -accelDir;
-                baseSpawnPos = transform.Position + ejectDir * emitter.SternOffset;
+                baseSpawnPos = sourceTransform.Position + ejectDir * emitter.SternOffset;
             }
 
             var perp = new Vector2(-ejectDir.Y, ejectDir.X);
@@ -173,7 +179,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
         });
 
         // 3) Destroy expired.
-        foreach (var entity in _expiredParticles)
+        foreach (var entity in _expiredEntities)
         {
             if (World.IsAlive(entity))
                 World.Destroy(entity);
