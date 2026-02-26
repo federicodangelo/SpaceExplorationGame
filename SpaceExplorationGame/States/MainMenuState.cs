@@ -4,7 +4,6 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.UI;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Generation.Showcase;
 

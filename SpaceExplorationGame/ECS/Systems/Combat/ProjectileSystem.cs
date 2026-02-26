@@ -1,8 +1,6 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Arch.System;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.Combat;

@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
 

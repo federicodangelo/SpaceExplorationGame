@@ -1,6 +1,4 @@
-using System.Numerics;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation;
 

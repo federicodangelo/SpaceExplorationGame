@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 

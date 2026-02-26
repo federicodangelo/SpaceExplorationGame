@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;

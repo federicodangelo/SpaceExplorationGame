@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Rendering.Base;

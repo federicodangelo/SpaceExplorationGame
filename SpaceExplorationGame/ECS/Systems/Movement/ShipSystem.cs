@@ -33,7 +33,7 @@ public partial class ShipSystem : BaseSystem<World, float>
 
     [Query]
     [All(typeof(Transform), typeof(Velocity), typeof(ShipInputComponent), typeof(ShipComponent))]
-    private void ProcessShip(ref Transform transform, ref Velocity velocity, ref ShipInputComponent input, ref ShipComponent ship, [Data] in float dt)
+    public void ProcessShip(ref Transform transform, ref Velocity velocity, ref ShipInputComponent input, ref ShipComponent ship, [Data] in float dt)
     {
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = Math.Clamp(input.RotationSpeed,

@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Collections.Generic;
 using Arch.AOT.SourceGenerator;
 using SpaceExplorationGame.Core;
 

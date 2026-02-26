@@ -1,5 +1,4 @@
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;

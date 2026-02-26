@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using Arch.Core.Extensions;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
@@ -9,7 +8,6 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.ECS.Systems.Movement;
 using SpaceExplorationGame.ECS.Systems.AI;

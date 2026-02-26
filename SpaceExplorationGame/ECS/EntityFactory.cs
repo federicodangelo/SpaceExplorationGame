@@ -1,4 +1,3 @@
-using System;
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;

@@ -25,7 +25,7 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
 
     [Query]
     [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity), typeof(ShipInputComponent), typeof(ShipComponent))]
-    private void UpdatePlayerShipInput(ref Transform transform, ref Velocity velocity,
+    public void UpdatePlayerShipInput(ref Transform transform, ref Velocity velocity,
         ref ShipInputComponent shipInput, ref ShipComponent ship, [Data] in float dt)
     {
         shipInput.AccelerationDirection = Vector2.Zero;
