@@ -13,8 +13,34 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class PlanetRenderer : IDisposable
 {
+    private readonly Camera _screenSpaceCamera;
+
     public PlanetRenderer()
     {
+        _screenSpaceCamera = new Camera((int)GameConfig.WindowWidth, (int)GameConfig.WindowHeight, 1f, 1f)
+        {
+            Position = Vector2.Zero,
+            Zoom = 1f
+        };
+    }
+
+    /// <summary>
+    /// Renders a single planet/moon body directly in screen space, reusing the same procedural visuals
+    /// used in solar-system rendering.
+    /// </summary>
+    public void RenderBodyScreen(SpriteRenderer renderer,
+        float screenX, float screenY, float radius,
+        Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
+    {
+        _screenSpaceCamera.Position = Vector2.Zero;
+        _screenSpaceCamera.Zoom = 1f;
+        _screenSpaceCamera.ViewportOffsetX = screenX - _screenSpaceCamera.ViewportWidth / 2f;
+        _screenSpaceCamera.ViewportOffsetY = screenY - _screenSpaceCamera.ViewportHeight / 2f;
+
+        RenderBody(renderer, _screenSpaceCamera, Vector2.Zero, radius, color, type, isMoon, seed, globalTime);
+
+        _screenSpaceCamera.ViewportOffsetX = 0f;
+        _screenSpaceCamera.ViewportOffsetY = 0f;
     }
 
     /// <summary>Renders planets with layered circles, settlement indicators, rings, moon orbits, and moons.</summary>

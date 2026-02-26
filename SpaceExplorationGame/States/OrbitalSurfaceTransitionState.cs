@@ -9,18 +9,28 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.States;
 
 /// <summary>
-/// Deluxe orbital-to-surface landing transition.
-/// Blends from the current solar-system view into the generated terrain around the selected landing tile,
-/// then hands off directly to <see cref="PlanetSurfaceState"/> with matching landing coordinates.
+/// Bidirectional orbital/surface transition.
+/// Handles both landing (solar-system to surface) and takeoff (surface to solar-system)
+/// using the same animation timeline in forward/reverse.
 /// </summary>
-public class LandingTransitionState : GameState
+public class OrbitalSurfaceTransitionState : GameState
 {
-    public override GameStateType Type => GameStateType.PlanetSurface;
+    private enum TransitionMode
+    {
+        Landing,
+        Takeoff
+    }
+
+    private readonly TransitionMode _mode;
+
+    public override GameStateType Type => _mode == TransitionMode.Landing
+        ? GameStateType.PlanetSurface
+        : GameStateType.SolarSystem;
 
     private readonly StarSystemData _starSystem;
     private readonly PlanetData _planet;
-    private readonly int _landingTileX;
-    private readonly int _landingTileY;
+    private readonly int _tileX;
+    private readonly int _tileY;
     private readonly Vector2 _shipWorldStart;
     private readonly Vector2 _targetBodyWorldStart;
     private readonly Vector2 _solarCameraStart;
@@ -53,7 +63,7 @@ public class LandingTransitionState : GameState
 
     private readonly record struct StarParticle(float X, float Y, float Speed, byte Brightness);
 
-    public LandingTransitionState(
+    public OrbitalSurfaceTransitionState(
         StarSystemData starSystem,
         PlanetData planet,
         int landingTileX,
@@ -66,10 +76,11 @@ public class LandingTransitionState : GameState
         int moonPlanetIndex,
         int moonIndex)
     {
+        _mode = TransitionMode.Landing;
         _starSystem = starSystem;
         _planet = planet;
-        _landingTileX = landingTileX;
-        _landingTileY = landingTileY;
+        _tileX = landingTileX;
+        _tileY = landingTileY;
         _shipWorldStart = shipWorldStart;
         _targetBodyWorldStart = targetBodyWorldStart;
         _solarCameraStart = solarCameraStart;
@@ -79,17 +90,52 @@ public class LandingTransitionState : GameState
         _moonIndex = moonIndex;
     }
 
+    public OrbitalSurfaceTransitionState(
+        StarSystemData starSystem,
+        PlanetData planet,
+        PlanetSurfaceData surfaceData,
+        int launchTileX,
+        int launchTileY,
+        bool isMoon,
+        int moonPlanetIndex,
+        int moonIndex)
+    {
+        _mode = TransitionMode.Takeoff;
+        _starSystem = starSystem;
+        _planet = planet;
+        _surfaceData = surfaceData;
+        _tileX = Math.Clamp(launchTileX, 0, Math.Max(0, surfaceData.Width - 1));
+        _tileY = Math.Clamp(launchTileY, 0, Math.Max(0, surfaceData.Height - 1));
+
+        _shipWorldStart = Vector2.Zero;
+        _targetBodyWorldStart = Vector2.Zero;
+        _solarCameraStart = Vector2.Zero;
+        _solarZoomStart = GameConfig.SolarSystemZoomDefault;
+
+        _isMoon = isMoon;
+        _moonPlanetIndex = moonPlanetIndex;
+        _moonIndex = moonIndex;
+
+        _shipScreenStart = new Vector2(CX, CY);
+        _planetScreenStart = new Vector2(CX, CY);
+        _planetRadiusStartPx = MathF.Max(_planet.Radius * GameConfig.SolarSystemZoomDefault, 8f);
+    }
+
     public override void Enter(Game game)
     {
         _elapsed = 0f;
         _landingSfxPlayed = false;
 
-        _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
-        _terrainTexture = CreateTerrainTexture(game, _surfaceData);
+        if (_mode == TransitionMode.Landing)
+        {
+            _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
 
-        _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
-        _planetScreenStart = WorldToScreenFromSolarSnapshot(_targetBodyWorldStart);
-        _planetRadiusStartPx = MathF.Max(_planet.Radius * _solarZoomStart, 8f);
+            _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
+            _planetScreenStart = WorldToScreenFromSolarSnapshot(_targetBodyWorldStart);
+            _planetRadiusStartPx = MathF.Max(_planet.Radius * _solarZoomStart, 8f);
+        }
+
+        _terrainTexture = CreateTerrainTexture(game, _surfaceData);
 
         _stars.Clear();
         for (int i = 0; i < 300; i++)
@@ -101,7 +147,15 @@ public class LandingTransitionState : GameState
                 Brightness: (byte)_rng.Next(40, 145)));
         }
 
-        game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
+        if (_mode == TransitionMode.Landing)
+        {
+            game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
+        }
+        else
+        {
+            game.Audio.PlaySfx(SfxType.Takeoff);
+            game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+        }
     }
 
     public override void Exit(Game game)
@@ -123,7 +177,7 @@ public class LandingTransitionState : GameState
         float dt = game.DeltaTime;
         _elapsed += dt;
 
-        if (!_landingSfxPlayed && _elapsed >= AlignDuration * 0.65f)
+        if (_mode == TransitionMode.Landing && !_landingSfxPlayed && _elapsed >= AlignDuration * 0.65f)
         {
             game.Audio.PlaySfx(SfxType.Landing);
             _landingSfxPlayed = true;
@@ -131,24 +185,41 @@ public class LandingTransitionState : GameState
 
         if (_elapsed >= TotalDuration)
         {
-            game.Player.SolarSystemReturnContext = _isMoon
-                ? PlayerData.ReturnContext.FromMoon
-                : PlayerData.ReturnContext.FromPlanet;
-            game.Player.ReturnPlanetIndex = _isMoon ? -1 : _planet.Index;
-            game.Player.ReturnMoonPlanetIndex = _isMoon ? _moonPlanetIndex : -1;
-            game.Player.ReturnMoonIndex = _isMoon ? _moonIndex : -1;
+            if (_mode == TransitionMode.Landing)
+            {
+                game.Player.SolarSystemReturnContext = _isMoon
+                    ? PlayerData.ReturnContext.FromMoon
+                    : PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = _isMoon ? -1 : _planet.Index;
+                game.Player.ReturnMoonPlanetIndex = _isMoon ? _moonPlanetIndex : -1;
+                game.Player.ReturnMoonIndex = _isMoon ? _moonIndex : -1;
 
-            game.ChangeState(new PlanetSurfaceState(
-                _starSystem,
-                _planet,
-                _landingTileX,
-                _landingTileY,
-                preGeneratedSurfaceData: _surfaceData,
-                skipIntroLandingAnimation: true));
+                game.ChangeState(new PlanetSurfaceState(
+                    _starSystem,
+                    _planet,
+                    _tileX,
+                    _tileY,
+                    preGeneratedSurfaceData: _surfaceData,
+                    skipIntroLandingAnimation: true));
+            }
+            else
+            {
+                game.Player.SolarSystemReturnContext = _isMoon
+                    ? PlayerData.ReturnContext.FromMoon
+                    : PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = _isMoon ? -1 : _planet.Index;
+                game.Player.ReturnMoonPlanetIndex = _isMoon ? _moonPlanetIndex : -1;
+                game.Player.ReturnMoonIndex = _isMoon ? _moonIndex : -1;
+
+                game.Player.InVehicle = false;
+                game.Player.ClearSavedSurfacePositions();
+                game.ChangeState(new SolarSystemState(_starSystem));
+            }
             return;
         }
 
-        float starBoost = 1f + 2.2f * EaseInOut01(MathF.Min(1f, _elapsed / (AlignDuration + DescentDuration)));
+        float animElapsed = _mode == TransitionMode.Landing ? _elapsed : (TotalDuration - _elapsed);
+        float starBoost = 1f + 2.2f * EaseInOut01(MathF.Min(1f, animElapsed / (AlignDuration + DescentDuration)));
         for (int i = 0; i < _stars.Count; i++)
         {
             var s = _stars[i];
@@ -167,9 +238,11 @@ public class LandingTransitionState : GameState
         foreach (var s in _stars)
             renderer.DrawRectScreen(s.X, s.Y, 1.4f, 1.4f, new Color3(s.Brightness, s.Brightness, s.Brightness));
 
-        float p = Math.Clamp(_elapsed / TotalDuration, 0f, 1f);
-        float descentP = Math.Clamp((_elapsed - AlignDuration) / DescentDuration, 0f, 1f);
-        float touchdownP = Math.Clamp((_elapsed - AlignDuration - DescentDuration) / TouchdownDuration, 0f, 1f);
+        float animElapsed = _mode == TransitionMode.Landing ? _elapsed : (TotalDuration - _elapsed);
+        float modeP = Math.Clamp(_elapsed / TotalDuration, 0f, 1f);
+        float p = Math.Clamp(animElapsed / TotalDuration, 0f, 1f);
+        float descentP = Math.Clamp((animElapsed - AlignDuration) / DescentDuration, 0f, 1f);
+        float touchdownP = Math.Clamp((animElapsed - AlignDuration - DescentDuration) / TouchdownDuration, 0f, 1f);
 
         float travelP = EaseInOut01(MathF.Max(0f, (p - 0.08f) / 0.86f));
 
@@ -177,21 +250,11 @@ public class LandingTransitionState : GameState
         float planetY = Lerp(_planetScreenStart.Y, CY, travelP);
         float planetRadius = Lerp(_planetRadiusStartPx, MathF.Max(ScreenW, ScreenH) * 1.08f, EaseInOut01(descentP));
 
-        var inner = new Color4(
-            (byte)Math.Clamp(_planet.Color.R + 35, 0, 255),
-            (byte)Math.Clamp(_planet.Color.G + 35, 0, 255),
-            (byte)Math.Clamp(_planet.Color.B + 35, 0, 255),
-            255);
-        var outer = new Color4(
-            (byte)Math.Clamp((int)(_planet.Color.R * 0.68f), 0, 255),
-            (byte)Math.Clamp((int)(_planet.Color.G * 0.68f), 0, 255),
-            (byte)Math.Clamp((int)(_planet.Color.B * 0.68f), 0, 255),
-            255);
-
-        renderer.DrawFilledCircleScreen(planetX, planetY, planetRadius, inner, outer, planetRadius * 0.2f, 64);
-
-        float cloudAlpha = 0.45f * (1f - touchdownP);
-        DrawAtmosphere(renderer, planetX, planetY, planetRadius, cloudAlpha);
+        int planetSeed = _isMoon ? (_moonPlanetIndex * 101 + _moonIndex * 17 + 7) : _planet.Index;
+        game.PlanetRenderer.RenderBodyScreen(renderer,
+            planetX, planetY, planetRadius,
+            _planet.Color, _planet.Type, _isMoon, planetSeed,
+            (float)game.GlobalTime);
 
         float terrainBlend = EaseInOut01(Math.Clamp((descentP - 0.24f) / 0.76f, 0f, 1f));
         Vector2 landingScreenTarget = new(CX, CY + 4f);
@@ -200,7 +263,7 @@ public class LandingTransitionState : GameState
             landingScreenTarget = DrawTerrainLandingBlend(game, planetX, planetY, planetRadius, terrainBlend, descentP);
         }
 
-        float shipApproachP = EaseInOut01(Math.Clamp((_elapsed - 0.15f) / (AlignDuration + DescentDuration * 0.9f), 0f, 1f));
+        float shipApproachP = EaseInOut01(Math.Clamp((animElapsed - 0.15f) / (AlignDuration + DescentDuration * 0.9f), 0f, 1f));
         Vector2 shipCruiseTarget = new(CX, CY - 36f);
         Vector2 shipFinalTarget = landingScreenTarget + new Vector2(0f, -18f);
         float lockToTileP = EaseInOut01(Math.Clamp((descentP - 0.62f) / 0.38f, 0f, 1f));
@@ -210,8 +273,12 @@ public class LandingTransitionState : GameState
         float descendOffset = EaseInOut01(touchdownP) * 18f;
         float shipY = shipBaseY + descendOffset;
 
+        float shipRotation = 90f;
+        if (_mode == TransitionMode.Takeoff)
+            shipRotation = Lerp(90f, 0f, EaseInOut01(Math.Clamp((modeP - 0.82f) / 0.18f, 0f, 1f)));
+
         game.SpaceshipRenderer.RenderFlyingScreen(renderer,
-            shipX, shipY, 90f, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+            shipX, shipY, shipRotation, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 
         if (touchdownP > 0f)
         {
@@ -226,7 +293,9 @@ public class LandingTransitionState : GameState
         renderer.DrawRectScreen(0, 0, ScreenW, 18, new Color4(0, 0, 0, vignetteByte));
         renderer.DrawRectScreen(0, ScreenH - 18, ScreenW, 18, new Color4(0, 0, 0, vignetteByte));
 
-        string status = touchdownP > 0.01f ? "TOUCHDOWN" : descentP > 0f ? "DESCENT" : "APPROACH";
+        string status = _mode == TransitionMode.Landing
+            ? touchdownP > 0.01f ? "TOUCHDOWN" : descentP > 0f ? "DESCENT" : "APPROACH"
+            : modeP > 0.96f ? "ORBIT" : "ASCENT";
         float labelW = renderer.MeasureText(status, 1.8f);
         renderer.DrawTextScreen(CX - labelW / 2f, 20f, status, new Color3(180, 205, 255), 1.8f);
     }
@@ -289,8 +358,8 @@ public class LandingTransitionState : GameState
 
         // Camera pan in texture-space: world center -> selected landing tile.
         float panP = EaseInOut01(Math.Clamp((descentP - 0.08f) / 0.92f, 0f, 1f));
-        float centerX = Lerp(mapW * 0.5f, _landingTileX, panP);
-        float centerY = Lerp(mapH * 0.5f, _landingTileY, panP);
+        float centerX = Lerp(mapW * 0.5f, _tileX, panP);
+        float centerY = Lerp(mapH * 0.5f, _tileY, panP);
 
         // Camera zoom in texture-space: whole planet map -> approx surface gameplay view at default zoom.
         float endViewTilesW = GameConfig.WindowWidth / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
@@ -361,24 +430,11 @@ public class LandingTransitionState : GameState
                 markerAlpha);
         }
 
-        float targetU = (_landingTileX - srcX) / srcW;
-        float targetV = (_landingTileY - srcY) / srcH;
+        float targetU = (_tileX - srcX) / srcW;
+        float targetV = (_tileY - srcY) / srcH;
         targetU = Math.Clamp(targetU, 0f, 1f);
         targetV = Math.Clamp(targetV, 0f, 1f);
         return new Vector2(dstRect.X + targetU * dstRect.W, dstRect.Y + targetV * dstRect.H);
-    }
-
-    private static void DrawAtmosphere(SpriteRenderer renderer, float cx, float cy, float radius, float alpha)
-    {
-        if (alpha <= 0f) return;
-
-        byte a1 = (byte)(120f * alpha);
-        byte a2 = (byte)(70f * alpha);
-        byte a3 = (byte)(40f * alpha);
-
-        renderer.DrawSolidRingScreen(cx, cy, radius * 0.98f, radius * 1.05f, new Color4(180, 220, 255, a1), 56);
-        renderer.DrawSolidRingScreen(cx, cy, radius * 1.05f, radius * 1.11f, new Color4(140, 190, 255, a2), 56);
-        renderer.DrawSolidRingScreen(cx, cy, radius * 1.11f, radius * 1.17f, new Color4(110, 150, 230, a3), 56);
     }
 
     private static float Lerp(float a, float b, float t) => a + (b - a) * Math.Clamp(t, 0f, 1f);

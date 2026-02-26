@@ -90,11 +90,6 @@ public class PlanetSurfaceState : GameState
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
     private bool _playerInsideShip = true; // player starts inside the ship
 
-    // Takeoff animation
-    private bool _isTakingOff;
-    private float _takeoffTimer;
-    private const float TakeoffDuration = 2f;
-
     // Landing animation
     private bool _isLanding;
     private float _landingTimer;
@@ -339,7 +334,7 @@ public class PlanetSurfaceState : GameState
     public override void UpdateInput(Game game)
     {
         // Block all input during animations
-        if (_isTakingOff || _isLanding || _waitingToOpenStarshipMenuAfterLanding) return;
+        if (_isLanding || _waitingToOpenStarshipMenuAfterLanding) return;
 
         // Starship menu overlay (highest priority)
         if (_starshipMenuOverlay.UpdateInput(game))
@@ -483,11 +478,27 @@ public class PlanetSurfaceState : GameState
         switch (choice)
         {
             case StarshipMenuOption.TakeOff:
-                // Start takeoff animation instead of immediately changing state
-                _isTakingOff = true;
-                _takeoffTimer = 0f;
                 _playerInsideShip = true;
-                game.Audio.PlaySfx(SfxType.Takeoff);
+                game.Player.InVehicle = false;
+                game.Player.ClearSavedSurfacePositions();
+
+                var launchShipTf = game.EcsWorld.Get<Transform>(_shipEntity);
+                int launchTileX = Math.Clamp((int)MathF.Round(launchShipTf.Position.X / GameConfig.TileSize), 0, Math.Max(0, _surfaceData.Width - 1));
+                int launchTileY = Math.Clamp((int)MathF.Round(launchShipTf.Position.Y / GameConfig.TileSize), 0, Math.Max(0, _surfaceData.Height - 1));
+
+                bool isMoon = game.Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon;
+                int moonPlanetIndex = isMoon ? game.Player.ReturnMoonPlanetIndex : -1;
+                int moonIndex = isMoon ? game.Player.ReturnMoonIndex : -1;
+
+                game.ChangeState(new OrbitalSurfaceTransitionState(
+                    _starSystem,
+                    _planet,
+                    _surfaceData,
+                    launchTileX,
+                    launchTileY,
+                    isMoon,
+                    moonPlanetIndex,
+                    moonIndex));
                 break;
 
             case StarshipMenuOption.DisembarkOnFoot:
@@ -558,22 +569,6 @@ public class PlanetSurfaceState : GameState
                 _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
                 _starshipMenuOverlay.Open();
             }
-            _cameraFollowSystem.Update(in dt);
-            return;
-        }
-
-        // Takeoff animation
-        if (_isTakingOff)
-        {
-            _takeoffTimer += dt;
-            if (_takeoffTimer >= TakeoffDuration)
-            {
-                game.Player.InVehicle = false;
-                game.Player.ClearSavedSurfacePositions();
-                game.ChangeState(new SolarSystemState(_starSystem));
-                return;
-            }
-            // Camera follows ship during takeoff, zoom out gradually
             _cameraFollowSystem.Update(in dt);
             return;
         }
@@ -848,12 +843,7 @@ public class PlanetSurfaceState : GameState
         // Draw ship
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
         float shipScale = 1f;
-        if (_isTakingOff)
-        {
-            float progress = Math.Clamp(_takeoffTimer / TakeoffDuration, 0f, 1f);
-            shipScale = 1f + progress * 2f; // scale from 1.0 up to 3.0
-        }
-        else if (_isLanding)
+        if (_isLanding)
         {
             float progress = Math.Clamp(_landingTimer / LandingDuration, 0f, 1f);
             shipScale = 3f - progress * 2f; // scale from 3.0 down to 1.0
@@ -957,12 +947,12 @@ public class PlanetSurfaceState : GameState
         // Starship menu overlay drawn on top of everything
         _starshipMenuOverlay.Render(game);
 
-        // Landing / takeoff animation overlay
-        if (_isLanding || _isTakingOff)
+        // Landing animation overlay
+        if (_isLanding)
         {
-            bool landing = _isLanding;
-            float duration = landing ? LandingDuration : TakeoffDuration;
-            float timer = landing ? _landingTimer : _takeoffTimer;
+            bool landing = true;
+            float duration = LandingDuration;
+            float timer = _landingTimer;
             float progress = Math.Clamp(timer / duration, 0f, 1f);
             float remaining = duration - timer;
 

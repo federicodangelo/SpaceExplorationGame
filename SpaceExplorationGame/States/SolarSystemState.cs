@@ -437,7 +437,7 @@ public class SolarSystemState : GameState
             }
         }
 
-        game.ChangeState(new LandingTransitionState(
+        game.ChangeState(new OrbitalSurfaceTransitionState(
             landing.StarSystem,
             landing.Planet,
             landing.TileX,
