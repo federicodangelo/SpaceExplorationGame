@@ -290,7 +290,7 @@ public class MainMenuState : GameState
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = planet.Index;
-                game.ChangeState(new PlanetSurfaceState(system, planet, lx, ly));
+                game.ChangeState(new PlanetSurfaceState(system, planet, lx, ly, landingDelay: 0));
                 break;
             }
 
@@ -360,7 +360,7 @@ public class MainMenuState : GameState
         game.Player.CurrentStarSystemIndex = debugSystem.Index;
         game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
         game.Player.ReturnPlanetIndex = targetPlanet.Index;
-        game.ChangeState(new PlanetSurfaceState(debugSystem, targetPlanet));
+        game.ChangeState(new PlanetSurfaceState(debugSystem, targetPlanet, landingDelay: 0));
     }
 
     private void ApplySelectedStartingShip(Game game)

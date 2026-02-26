@@ -36,10 +36,10 @@ public class StarshipMenuOverlay : MenuPanelOverlayBase<StarshipMenuOption>
         string? vehicleHint = !HasVehicle ? "(NO VEHICLE)" : VehicleDeployed ? "(ALREADY DEPLOYED)" : null;
 
         Menu = new MenuWidget<StarshipMenuOption>([
-            new(StarshipMenuOption.TakeOff, "TAKE OFF"),
             new(StarshipMenuOption.DisembarkOnFoot, "DISEMBARK (ON FOOT)"),
             new(StarshipMenuOption.DisembarkOnVehicle, "DISEMBARK (ON VEHICLE)",
-                Enabled: vehicleEnabled, DisabledHint: vehicleHint)
+                Enabled: vehicleEnabled, DisabledHint: vehicleHint),
+            new(StarshipMenuOption.TakeOff, "TAKE OFF"),
         ])
         {
             CenterAlign = true,

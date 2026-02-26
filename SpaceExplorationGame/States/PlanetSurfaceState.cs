@@ -91,7 +91,6 @@ public class PlanetSurfaceState : GameState
 
     private bool _waitingToOpenStarshipMenuAfterLanding;
     private float _starshipMenuOpenDelayTimer;
-    private const float StarshipMenuOpenDelayAfterLanding = 1.2f;
 
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
@@ -99,13 +98,14 @@ public class PlanetSurfaceState : GameState
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
 
     public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
-        PlanetSurfaceData? preGeneratedSurfaceData = null)
+        PlanetSurfaceData? preGeneratedSurfaceData = null, float landingDelay = 1.2f)
     {
         _starSystem = starSystem;
         _planet = planet;
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
+        _starshipMenuOpenDelayTimer = landingDelay;
     }
 
     /// <summary>Helper: mount the player into their vehicle, creating movement system.</summary>
@@ -235,7 +235,6 @@ public class PlanetSurfaceState : GameState
         if (_playerInsideShip)
         {
             _waitingToOpenStarshipMenuAfterLanding = true;
-            _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
         }
         else if (_inVehicle && _vehicleDeployed)
         {

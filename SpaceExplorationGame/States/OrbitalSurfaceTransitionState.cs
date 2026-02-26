@@ -61,7 +61,7 @@ public class OrbitalSurfaceTransitionState : GameState
     private static readonly float CX = ScreenW * 0.5f;
     private static readonly float CY = ScreenH * 0.5f;
 
-    private readonly record struct StarParticle(float X, float Y, float Speed, byte Brightness);
+    private readonly record struct StarParticle(float X, float Y, byte Brightness);
 
     public OrbitalSurfaceTransitionState(
         StarSystemData starSystem,
@@ -138,12 +138,11 @@ public class OrbitalSurfaceTransitionState : GameState
         _terrainTexture = CreateTerrainTexture(game, _surfaceData);
 
         _stars.Clear();
-        for (int i = 0; i < 300; i++)
+        for (int i = 0; i < 50; i++)
         {
             _stars.Add(new StarParticle(
                 X: (float)_rng.NextDouble() * ScreenW,
                 Y: (float)_rng.NextDouble() * ScreenH,
-                Speed: 12f + (float)_rng.NextDouble() * 45f,
                 Brightness: (byte)_rng.Next(40, 145)));
         }
 
@@ -216,16 +215,6 @@ public class OrbitalSurfaceTransitionState : GameState
             }
             return;
         }
-
-        float animElapsed = _mode == TransitionMode.Landing ? _elapsed : (TotalDuration - _elapsed);
-        float starBoost = 1f + 2.2f * EaseInOut01(MathF.Min(1f, animElapsed / (AlignDuration + DescentDuration)));
-        for (int i = 0; i < _stars.Count; i++)
-        {
-            var s = _stars[i];
-            float nx = s.X - s.Speed * starBoost * dt;
-            if (nx < -2f) nx = ScreenW + 2f;
-            _stars[i] = s with { X = nx };
-        }
     }
 
     public override void Render(Game game)
@@ -286,17 +275,6 @@ public class OrbitalSurfaceTransitionState : GameState
             renderer.DrawSolidRingScreen(landingScreenTarget.X, landingScreenTarget.Y, ringR * 0.6f, ringR,
                 new Color4(200, 170, 120, a), 40);
         }
-
-        float vignetteA = Math.Clamp(0.35f + terrainBlend * 0.3f, 0f, 0.65f);
-        byte vignetteByte = (byte)(vignetteA * 255f);
-        renderer.DrawRectScreen(0, 0, ScreenW, 18, new Color4(0, 0, 0, vignetteByte));
-        renderer.DrawRectScreen(0, ScreenH - 18, ScreenW, 18, new Color4(0, 0, 0, vignetteByte));
-
-        string status = _mode == TransitionMode.Landing
-            ? touchdownP > 0.01f ? "TOUCHDOWN" : descentP > 0f ? "DESCENT" : "APPROACH"
-            : modeP > 0.96f ? "ORBIT" : "ASCENT";
-        float labelW = renderer.MeasureText(status, 1.8f);
-        renderer.DrawTextScreen(CX - labelW / 2f, 20f, status, new Color3(180, 205, 255), 1.8f);
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
