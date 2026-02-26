@@ -482,7 +482,7 @@ public class PlanetSurfaceState : GameState
     {
         switch (choice)
         {
-            case StarshipMenuOption.FlyToSpace:
+            case StarshipMenuOption.TakeOff:
                 // Start takeoff animation instead of immediately changing state
                 _isTakingOff = true;
                 _takeoffTimer = 0f;

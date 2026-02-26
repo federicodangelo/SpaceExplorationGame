@@ -5,7 +5,7 @@ namespace SpaceExplorationGame.UI.Overlays.Menu;
 
 public enum StarshipMenuOption
 {
-    FlyToSpace,
+    TakeOff,
     DisembarkOnFoot,
     DisembarkOnVehicle
 }
@@ -36,7 +36,7 @@ public class StarshipMenuOverlay : MenuPanelOverlayBase<StarshipMenuOption>
         string? vehicleHint = !HasVehicle ? "(NO VEHICLE)" : VehicleDeployed ? "(ALREADY DEPLOYED)" : null;
 
         Menu = new MenuWidget<StarshipMenuOption>([
-            new(StarshipMenuOption.FlyToSpace, "FLY TO SPACE"),
+            new(StarshipMenuOption.TakeOff, "TAKE OFF"),
             new(StarshipMenuOption.DisembarkOnFoot, "DISEMBARK (ON FOOT)"),
             new(StarshipMenuOption.DisembarkOnVehicle, "DISEMBARK (ON VEHICLE)",
                 Enabled: vehicleEnabled, DisabledHint: vehicleHint)
