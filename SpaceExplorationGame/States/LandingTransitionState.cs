@@ -325,6 +325,42 @@ public class LandingTransitionState : GameState
         SDL.RenderTexture(game.Renderer, _terrainTexture, in srcRect, in dstRect);
         SDL.SetTextureAlphaMod(_terrainTexture, 255);
 
+        float markerP = EaseInOut01(Math.Clamp((descentP - 0.22f) / 0.78f, 0f, 1f)) * terrainBlend;
+        byte markerAlpha = (byte)Math.Clamp((int)(markerP * 255f), 0, 255);
+        if (markerAlpha > 0)
+        {
+            SettlementRenderer.RenderProjected(game.SpriteRenderer, _surfaceData,
+                (float worldCenterX, float worldCenterY, float worldW, float worldH) =>
+                {
+                    float tileSize = GameConfig.TileSize;
+                    float leftTile = (worldCenterX - worldW * 0.5f) / tileSize;
+                    float topTile = (worldCenterY - worldH * 0.5f) / tileSize;
+                    float rightTile = (worldCenterX + worldW * 0.5f) / tileSize;
+                    float bottomTile = (worldCenterY + worldH * 0.5f) / tileSize;
+
+                    float u0 = Math.Clamp((leftTile - srcX) / srcW, 0f, 1f);
+                    float v0 = Math.Clamp((topTile - srcY) / srcH, 0f, 1f);
+                    float u1 = Math.Clamp((rightTile - srcX) / srcW, 0f, 1f);
+                    float v1 = Math.Clamp((bottomTile - srcY) / srcH, 0f, 1f);
+
+                    float screenX = dstRect.X + u0 * dstRect.W;
+                    float screenY = dstRect.Y + v0 * dstRect.H;
+                    float screenW = MathF.Max(1f, (u1 - u0) * dstRect.W);
+                    float screenH = MathF.Max(1f, (v1 - v0) * dstRect.H);
+                    return new Rect(screenX, screenY, screenW, screenH);
+                },
+                (Vector2 worldPos) =>
+                {
+                    float tileX = worldPos.X / GameConfig.TileSize;
+                    float tileY = worldPos.Y / GameConfig.TileSize;
+
+                    float u = Math.Clamp((tileX - srcX) / srcW, 0f, 1f);
+                    float v = Math.Clamp((tileY - srcY) / srcH, 0f, 1f);
+                    return new Vector2(dstRect.X + u * dstRect.W, dstRect.Y + v * dstRect.H);
+                },
+                markerAlpha);
+        }
+
         float targetU = (_landingTileX - srcX) / srcW;
         float targetV = (_landingTileY - srcY) / srcH;
         targetU = Math.Clamp(targetU, 0f, 1f);
