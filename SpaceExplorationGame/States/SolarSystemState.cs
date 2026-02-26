@@ -267,8 +267,8 @@ public class SolarSystemState : GameState
         }
         else
         {
-            // Default: start near the star (close enough to see it on arrival)
-            shipStartPos = center + new Vector2(-400, 0);
+            // Default: use generator-provided starting position
+            shipStartPos = content.StartingPosition;
         }
 
         // Clear return context

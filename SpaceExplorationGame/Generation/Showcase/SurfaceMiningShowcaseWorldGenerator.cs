@@ -1,3 +1,4 @@
+using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
@@ -41,8 +42,11 @@ public class SurfaceMiningShowcaseWorldGenerator : ProceduralWorldGenerator
                 }
             ],
             AsteroidBelts: [],
-                Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
-                NpcShipSpawns: []);
+            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            NpcShipSpawns: [],
+            StartingPosition: new Vector2(
+                GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
+                GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
     }
 
     public override PlanetSurfaceData GeneratePlanetSurface(SeedManager seeds, StarSystemData starSystem, PlanetData planet)

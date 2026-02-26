@@ -1,3 +1,4 @@
+using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
@@ -29,6 +30,9 @@ public class StarTypeShowcaseWorldGenerator : ProceduralWorldGenerator
             Planets: ShowcaseWorldGeneratorHelpers.BuildPlanetTypeShowcasePlanets(),
             AsteroidBelts: [],
             Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
-            NpcShipSpawns: []);
+            NpcShipSpawns: [],
+            StartingPosition: new Vector2(
+                GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
+                GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
     }
 }

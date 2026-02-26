@@ -78,7 +78,8 @@ public readonly record struct SolarSystemContent(
     List<PlanetData> Planets,
     List<AsteroidBeltData> AsteroidBelts,
     List<SpaceStationData> Stations,
-    List<NpcShipSpawnData> NpcShipSpawns);
+    List<NpcShipSpawnData> NpcShipSpawns,
+    Vector2 StartingPosition);
 
 // ── Menu start helpers ───────────────────────────────────────────
 

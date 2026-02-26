@@ -208,7 +208,12 @@ public static class SolarSystemGenerator
 
         GenerateNpcShipSpawns(rng, starSystem, planets, npcShipSpawns);
 
-        return new SolarSystemContent(planets, asteroidBelts, stations, npcShipSpawns);
+        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
+        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float starDisplayRadius = starSystem.StarRadius * 2f;
+        Vector2 startingPosition = new(centerX - (starDisplayRadius + 100f), centerY);
+
+        return new SolarSystemContent(planets, asteroidBelts, stations, npcShipSpawns, startingPosition);
     }
 
     private static void GenerateNpcShipSpawns(

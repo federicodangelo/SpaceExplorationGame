@@ -1,3 +1,4 @@
+using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
@@ -22,7 +23,10 @@ public class AsteroidMiningShowcaseWorldGenerator : ProceduralWorldGenerator
             Planets: BuildPlanets(),
             AsteroidBelts: BuildBelts(),
             Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
-            NpcShipSpawns: []);
+            NpcShipSpawns: [],
+            StartingPosition: new Vector2(
+                GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
+                GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
     }
 
     private static List<AsteroidBeltData> BuildBelts()
