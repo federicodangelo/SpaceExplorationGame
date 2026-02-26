@@ -163,7 +163,8 @@ dotnet run -- [seed] [--start <location>]
 | `system`            | Star System — ship flight in a random solar system                                        |
 | `planet`            | Planet (orbit) — starts in a random solar system with a random planet preselected         |
 | `planet-surface`    | Planet Surface (direct) — jumps straight into the surface state for a random solid planet |
-| `station`           | Space Station — menu interaction at a random station                                      |
+| `station`           | Space Station (orbit) — starts flying over a random station                               |
+| `station-docked`    | Docked at Space Station — opens station menu interaction at a random station              |
 | `station-inside`    | Inside Space Station — walk around inside a random station                                |
 | `settlement`        | Settlement — planet surface spawned at a settlement                                       |
 | `settlement-inside` | Inside Settlement — walk around inside a random settlement                                |
@@ -176,6 +177,7 @@ dotnet run                              # Random seed, main menu
 dotnet run -- 12345                     # Seed 12345, main menu
 dotnet run -- --start system            # Random seed, jump to star system
 dotnet run -- --start planet-surface    # Random seed, jump to planet surface
+dotnet run -- --start station-docked    # Random seed, start docked at a station
 dotnet run -- 42 --start settlement     # Seed 42, jump to settlement
 dotnet run -- --start station-inside    # Random seed, walk inside a station
 ```

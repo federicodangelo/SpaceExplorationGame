@@ -92,7 +92,8 @@ dotnet run --project SpaceExplorationGame -- [seed] [--start <location>]
 | `system`            | Star System — ship flight in a random solar system                                        |
 | `planet`            | Planet (orbit) — starts in a random solar system with a random planet preselected         |
 | `planet-surface`    | Planet Surface (direct) — jumps straight into the surface state for a random solid planet |
-| `station`           | Space Station — menu interaction at a random station                                      |
+| `station`           | Space Station (orbit) — starts flying over a random station                               |
+| `station-docked`    | Docked at Space Station — opens station menu interaction at a random station              |
 | `station-inside`    | Inside Space Station — walk around inside a random station                                |
 | `settlement`        | Settlement — planet surface spawned at a settlement                                       |
 | `settlement-inside` | Inside Settlement — walk around inside a random settlement                                |
@@ -104,6 +105,7 @@ dotnet run --project SpaceExplorationGame
 dotnet run --project SpaceExplorationGame -- 12345
 dotnet run --project SpaceExplorationGame -- --start system
 dotnet run --project SpaceExplorationGame -- --start planet-surface
+dotnet run --project SpaceExplorationGame -- --start station-docked
 dotnet run --project SpaceExplorationGame -- 42 --start settlement
 dotnet run --project SpaceExplorationGame -- --start station-inside
 ```

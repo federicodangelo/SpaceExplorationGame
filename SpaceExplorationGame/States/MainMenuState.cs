@@ -17,6 +17,7 @@ public enum StartOption
     Planet,
     PlanetSurface,
     SpaceStation,
+    SpaceStationDocked,
     SpaceStationInside,
     Settlement,
     SettlementInside,
@@ -263,6 +264,18 @@ public class MainMenuState : GameState
                 game.Player.CurrentStarSystemIndex = system.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
                 game.Player.ReturnStationIndex = station.Index;
+                game.ChangeState(new SolarSystemState(system));
+                break;
+            }
+
+            case StartOption.SpaceStationDocked:
+            {
+                var (system, station) = _previewSystem != null && _previewStation != null
+                    ? new SystemStation(_previewSystem, _previewStation)
+                    : PickRandomStation(game, dangerFilter);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
+                game.Player.ReturnStationIndex = station.Index;
                 game.ChangeState(new SolarSystemState(system, station));
                 break;
             }
@@ -422,13 +435,20 @@ public class MainMenuState : GameState
             }
 
             case StartOption.SpaceStation:
+            case StartOption.SpaceStationDocked:
             case StartOption.SpaceStationInside:
             {
                 var (system, station) = PickRandomStation(game, danger);
                 _previewSystem = system;
                 _previewPlanet = null;
                 _previewStation = station;
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nStation: {station.Name}";
+                string stationMode = locationType switch
+                {
+                    StartOption.SpaceStation => " [Orbit]",
+                    StartOption.SpaceStationDocked => " [Docked]",
+                    _ => " [Interior]"
+                };
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nStation: {station.Name}{stationMode}";
                 break;
             }
 
