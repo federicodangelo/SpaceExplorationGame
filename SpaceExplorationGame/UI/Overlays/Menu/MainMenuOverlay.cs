@@ -11,6 +11,7 @@ public enum MenuAction
     None = -1,
     DangerLevel,
     LocationType,
+    SubLocationType,
     RandomizeLocation,
     EditSeed,
     RandomSeed,
@@ -27,20 +28,28 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     // Indices into the Options array for dynamic label updates
     private const int DangerIdx = 0;
     private const int LocationIdx = 1;
-    private const int RandomizeIdx = 2;
-    private const int EditSeedIdx = 3;
-    private const int RandomSeedIdx = 4;
-    private const int DebugIdx = 5;
-    private const int StartGameIdx = 6;
+    private const int SubLocationIdx = 2;
+    private const int RandomizeIdx = 3;
+    private const int EditSeedIdx = 4;
+    private const int RandomSeedIdx = 5;
+    private const int DebugIdx = 6;
+    private const int StartGameIdx = 7;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
-    private static readonly string[] LocationLabels = ["STAR SYSTEM", "SPACE STATION", "DOCKED AT SPACE STATION", "INSIDE SPACE STATION", "PLANET", "PLANET SURFACE", "SETTLEMENT", "INSIDE SETTLEMENT"];
-    private static readonly StartOption[] LocationValues = [StartOption.StarSystem, StartOption.SpaceStation, StartOption.SpaceStationDocked, StartOption.SpaceStationInside, StartOption.Planet, StartOption.PlanetSurface, StartOption.Settlement, StartOption.SettlementInside];
+    private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
+    private static readonly (string Label, StartOption Value)[][] SubLocationOptions =
+    [
+        [("-", StartOption.StarSystem)],
+        [("ORBIT", StartOption.SpaceStation), ("DOCKED", StartOption.SpaceStationDocked), ("INSIDE", StartOption.SpaceStationInside)],
+        [("ORBIT", StartOption.Planet), ("LANDED", StartOption.PlanetSurface), ("ON FOOT", StartOption.PlanetSurfaceOnFoot), ("ON VEHICLE", StartOption.PlanetSurfaceOnVehicle)],
+        [("ABOVE", StartOption.Settlement), ("INSIDE", StartOption.SettlementInside), ("ON FOOT", StartOption.SettlementOnFoot), ("ON VEHICLE", StartOption.SettlementOnVehicle)],
+    ];
 
     private static MenuOption<MenuAction>[] BuildOptions() =>
     [
         new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Adjust danger level filter"),
-        new(MenuAction.LocationType, $"START AT: {LocationLabels[0]}", "Adjust starting location type"),
+        new(MenuAction.LocationType, $"LOCATION: {LocationLabels[0]}", "Adjust starting location"),
+        new(MenuAction.SubLocationType, $"SUB-LOCATION: {SubLocationOptions[0][0].Label}", "Adjust starting sub-location"),
         new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
         new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
         new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
@@ -53,6 +62,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     // Current cycling state
     private int _dangerIndex;
     private int _locationIndex;
+    private int _subLocationIndex;
 
     // ── Public state for MainMenuState ──
 
@@ -75,7 +85,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     public int DangerFilter => _dangerIndex;
 
     /// <summary>Selected starting location type.</summary>
-    public StartOption LocationType => LocationValues[_locationIndex];
+    public StartOption LocationType => CurrentSubLocations[_subLocationIndex].Value;
 
     /// <summary>True when danger or location cycling changed (consumed by MainMenuState).</summary>
     public bool FiltersChanged { get; set; }
@@ -139,9 +149,10 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     public override void Open()
     {
         base.Open();
-        var (savedDangerIndex, savedLocationIndex) = MenuOptionsPersistence.GetMainMenuSelections();
+        var (savedDangerIndex, savedLocationIndex, savedSubLocationIndex) = MenuOptionsPersistence.GetMainMenuSelections();
         _dangerIndex = Math.Clamp(savedDangerIndex, 0, DangerLabels.Length - 1);
         _locationIndex = Math.Clamp(savedLocationIndex, 0, LocationLabels.Length - 1);
+        _subLocationIndex = Math.Clamp(savedSubLocationIndex, 0, CurrentSubLocations.Length - 1);
         StartRequested = false;
         NewSeed = null;
         RandomizeSeed = false;
@@ -170,6 +181,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             case MenuAction.LocationType:
                 CycleLocation(1);
                 break;
+            case MenuAction.SubLocationType:
+                CycleSubLocation(1);
+                break;
             case MenuAction.RandomizeLocation:
                 RandomizeLocation = true;
                 break;
@@ -193,7 +207,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private void CycleDanger(int direction)
     {
         _dangerIndex = (_dangerIndex + direction + DangerLabels.Length) % DangerLabels.Length;
-        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex);
+        SaveSelections();
         UpdateCyclingLabels();
         FiltersChanged = true;
     }
@@ -201,9 +215,26 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private void CycleLocation(int direction)
     {
         _locationIndex = (_locationIndex + direction + LocationLabels.Length) % LocationLabels.Length;
-        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex);
+        _subLocationIndex = 0;
+        SaveSelections();
         UpdateCyclingLabels();
         FiltersChanged = true;
+    }
+
+    private void CycleSubLocation(int direction)
+    {
+        var subLocations = CurrentSubLocations;
+        _subLocationIndex = (_subLocationIndex + direction + subLocations.Length) % subLocations.Length;
+        SaveSelections();
+        UpdateCyclingLabels();
+        FiltersChanged = true;
+    }
+
+    private (string Label, StartOption Value)[] CurrentSubLocations => SubLocationOptions[_locationIndex];
+
+    private void SaveSelections()
+    {
+        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex, _subLocationIndex);
     }
 
     private void UpdateCyclingLabels()
@@ -216,8 +247,11 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             $"DANGER: < {DangerLabels[_dangerIndex]} >",
             $"Press {confirm} or {left}/{right} to change danger level filter"));
         Menu.SetOption(LocationIdx, new MenuOption<MenuAction>(MenuAction.LocationType,
-            $"START AT: < {LocationLabels[_locationIndex]} >",
-            $"Press {confirm} or {left}/{right} to change starting location type"));
+            $"LOCATION: < {LocationLabels[_locationIndex]} >",
+            $"Press {confirm} or {left}/{right} to change starting location"));
+        Menu.SetOption(SubLocationIdx, new MenuOption<MenuAction>(MenuAction.SubLocationType,
+            $"SUB-LOCATION: < {CurrentSubLocations[_subLocationIndex].Label} >",
+            $"Press {confirm} or {left}/{right} to change starting sub-location"));
     }
 
     // ── Custom input processing ──
@@ -256,6 +290,13 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             if (input.IsActionPressed(InputAction.MenuRight))
             { CycleLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
         }
+        else if (selected == MenuAction.SubLocationType)
+        {
+            if (input.IsActionPressed(InputAction.MenuLeft))
+            { CycleSubLocation(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            if (input.IsActionPressed(InputAction.MenuRight))
+            { CycleSubLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+        }
 
         // Default menu input processing
         base.ProcessInput(game, input);
@@ -266,7 +307,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
         // Separator between config and actions
-        float sep1Y = MenuY + 2 * Menu.ItemHeight;
+        float sep1Y = MenuY + 3 * Menu.ItemHeight;
         renderer.DrawLineScreen(panelX + 15, sep1Y, panelX + panelW - 15, sep1Y, new Color3(60, 80, 140));
 
         // Separator before START GAME

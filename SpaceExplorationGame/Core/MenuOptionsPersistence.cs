@@ -7,6 +7,7 @@ public sealed class PersistedMenuOptions
 {
     public int DangerIndex { get; set; }
     public int LocationIndex { get; set; }
+    public int SubLocationIndex { get; set; }
     public int DebugStarTypeIndex { get; set; }
     public int DebugShipTypeIndex { get; set; }
     public int DebugSelectedIndex { get; set; }
@@ -18,19 +19,20 @@ public static class MenuOptionsPersistence
     private static readonly string FilePath = Path.Combine(AppContext.BaseDirectory, "menu-options.json");
     private static PersistedMenuOptions? _cached;
 
-    public static (int dangerIndex, int locationIndex) GetMainMenuSelections()
+    public static (int dangerIndex, int locationIndex, int subLocationIndex) GetMainMenuSelections()
     {
         var settings = EnsureLoaded();
-        return (settings.DangerIndex, settings.LocationIndex);
+        return (settings.DangerIndex, settings.LocationIndex, settings.SubLocationIndex);
     }
 
-    public static void SetMainMenuSelections(int dangerIndex, int locationIndex)
+    public static void SetMainMenuSelections(int dangerIndex, int locationIndex, int subLocationIndex)
     {
         lock (Sync)
         {
             var settings = EnsureLoaded();
             settings.DangerIndex = dangerIndex;
             settings.LocationIndex = locationIndex;
+            settings.SubLocationIndex = subLocationIndex;
             SaveInternal(settings);
         }
     }

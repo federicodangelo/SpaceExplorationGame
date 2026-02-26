@@ -148,38 +148,38 @@ SpaceExplorationGame/
 ## Command Line Options
 
 ```
-dotnet run -- [seed] [--start <location>]
+dotnet run -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
 ```
 
-| Argument             | Description                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| `seed`               | Optional integer seed for deterministic world generation. If omitted, a random seed is used. |
-| `--start <location>` | Skip the main menu and jump directly to a game state. Useful for testing.                    |
+| Argument                                           | Description                                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `--help`, `-h`, `/?`                               | Show CLI usage help and exit.                                                                 |
+| `--seed <seed>`, `-s <seed>`                       | Optional explicit seed for deterministic world generation. If omitted, a random seed is used. |
+| `--location <location>`, `-l <location>`           | Target top-level start location (`system`, `station`, `planet`, `settlement`).                |
+| `--sublocation <sublocation>`, `-sl <sublocation>` | Target sub-location for the selected location.                                                |
 
-**Start locations** (name):
+**Location / sub-location matrix:**
 
-| Name                | Description                                                                               |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `system`            | Star System — ship flight in a random solar system                                        |
-| `planet`            | Planet (orbit) — starts in a random solar system with a random planet preselected         |
-| `planet-surface`    | Planet Surface (direct) — jumps straight into the surface state for a random solid planet |
-| `station`           | Space Station (orbit) — starts flying over a random station                               |
-| `station-docked`    | Docked at Space Station — opens station menu interaction at a random station              |
-| `station-inside`    | Inside Space Station — walk around inside a random station                                |
-| `settlement`        | Settlement — planet surface spawned at a settlement                                       |
-| `settlement-inside` | Inside Settlement — walk around inside a random settlement                                |
+| `--location` | `--sublocation` values                     |
+| ------------ | ------------------------------------------ |
+| `system`     | *(omit or use `none`)*                     |
+| `station`    | `orbit`, `docked`, `inside`                |
+| `planet`     | `orbit`, `landed`, `on-foot`, `on-vehicle` |
+| `settlement` | `above`, `inside`, `on-foot`, `on-vehicle` |
 
 > Note: Galaxy Map is opened from `SolarSystemState` with `M`.
 
 **Examples:**
 ```
 dotnet run                              # Random seed, main menu
-dotnet run -- 12345                     # Seed 12345, main menu
-dotnet run -- --start system            # Random seed, jump to star system
-dotnet run -- --start planet-surface    # Random seed, jump to planet surface
-dotnet run -- --start station-docked    # Random seed, start docked at a station
-dotnet run -- 42 --start settlement     # Seed 42, jump to settlement
-dotnet run -- --start station-inside    # Random seed, walk inside a station
+dotnet run -- --help                    # Show CLI help
+dotnet run -- --seed 12345              # Seed 12345, main menu
+dotnet run -- -s 12345                  # Same as --seed
+dotnet run -- --location system         # Random seed, jump to star system
+dotnet run -- -l station -sl docked     # Alias form
+dotnet run -- --location station --sublocation docked
+dotnet run -- --seed 42 --location planet --sublocation on-foot
+dotnet run -- --location settlement --sublocation on-vehicle
 ```
 
 ## Architecture Decisions
@@ -190,7 +190,7 @@ The game uses a state machine pattern. Each state (`GameState` subclass) owns it
 `GameStateType` enum: `MainMenu`, `SolarSystem`, `PlanetSurface`, `Interior` (`FTLTransitionState` reports `SolarSystem` while playing the transition animation)
 
 States:
-- **MainMenuState**: Starting point selection with live preview. Animated starfield background with pulsing title glow. Uses **MainMenuOverlay** (extends `MenuPanelOverlayBase<MenuAction>`) to configure danger filter, location type, reroll location, edit seed, randomize seed, open debug tools, and start. Regenerates the entire galaxy via `Game.RegenerateGalaxy()` when seed changes, and updates preview text for the currently selected start context. Supports auto-launch via constructor parameter (for CLI `--start` flag). Displays the active galaxy seed and preview details.
+- **MainMenuState**: Starting point selection with live preview. Animated starfield background with pulsing title glow. Uses **MainMenuOverlay** (extends `MenuPanelOverlayBase<MenuAction>`) to configure danger filter, location type, reroll location, edit seed, randomize seed, open debug tools, and start. Regenerates the entire galaxy via `Game.RegenerateGalaxy()` when seed changes, and updates preview text for the currently selected start context. Supports auto-launch via constructor parameter (for CLI location/sublocation flags). Displays the active galaxy seed and preview details.
 - **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay** (dual-tab map with Solar System and Galaxy views). Press Space to fire ship weapons (one or two equipped weapon slots with independent cooldowns and inherited ship velocity). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn by danger level using `NpcShipLoadoutHelper` (ship type, parts, weapon specs, and loot scaling). Enemy AI now uses cruise targets, directional braking, and faction-specific combat behaviors. Thruster particles are simulated via ECS (`ParticleEmitter` + `ParticleSystem`) and rendered with `ParticleRenderer`. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with cargo/credit penalties (`DeathHullPercent` is currently 100%, so no hull loss). When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderer, InteractionProximitySystem, ShipMovementSystem, ProjectileSystem, ShieldRegenSystem, ShipEnemyAISystem, and ParticleSystem. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
 - **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default), currently through `OrbitalSurfaceTransitionState` cinematic descent. On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, return to orbit uses `OrbitalSurfaceTransitionState` takeoff animation and the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. Uses AvatarMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, AvatarEnemyAISystem, and TileMapRenderer.
 - **FTLTransitionState**: Intermediate animation state played during FTL jumps between star systems. 2D side-view style: the player's ship is rendered center-screen facing right with engine exhaust and FTL trail effects. Four phases: charge-up (1.6s — ship shakes, stars begin moving, engine glow builds), jump flash (0.15s — bright white-blue flash), hyperspace travel (2.5s — fast horizontal star streaks scrolling left, vertical energy waves sweeping across, long blue FTL trail behind ship), and exit flash (1.6s — arrival flash fades to reveal the new system). No player input is accepted. Automatically transitions to the target `SolarSystemState` when the animation completes. Triggered from `GalaxyMapPanel.TravelToSelected()` instead of a direct state change.

@@ -17,6 +17,13 @@ using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 
+public enum PlanetSurfaceStartMode
+{
+    InShip,
+    OnFoot,
+    OnVehicle,
+}
+
 /// <summary>
 /// Planet surface state: Top-down tilemap view where the player can walk/drive on a planet's surface.
 /// </summary>
@@ -96,9 +103,11 @@ public class PlanetSurfaceState : GameState
     private readonly int _landingTileX;
     private readonly int _landingTileY;
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
+    private readonly PlanetSurfaceStartMode _startMode;
 
     public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
-        PlanetSurfaceData? preGeneratedSurfaceData = null, float landingDelay = 1.2f)
+        PlanetSurfaceData? preGeneratedSurfaceData = null, float landingDelay = 1.2f,
+        PlanetSurfaceStartMode startMode = PlanetSurfaceStartMode.InShip)
     {
         _starSystem = starSystem;
         _planet = planet;
@@ -106,6 +115,7 @@ public class PlanetSurfaceState : GameState
         _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
         _starshipMenuOpenDelayTimer = landingDelay;
+        _startMode = startMode;
     }
 
     /// <summary>Helper: mount the player into their vehicle, creating movement system.</summary>
@@ -197,7 +207,8 @@ public class PlanetSurfaceState : GameState
             playerStartY = lzY;
             _vehicleDeployed = false;
             _inVehicle = false;
-            _playerInsideShip = true; // player starts inside the ship
+            _playerInsideShip = _startMode == PlanetSurfaceStartMode.InShip;
+            game.Player.InVehicle = false;
         }
 
         _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, playerStartX, playerStartY, avatarSpeed,
@@ -236,9 +247,16 @@ public class PlanetSurfaceState : GameState
         {
             _waitingToOpenStarshipMenuAfterLanding = true;
         }
-        else if (_inVehicle && _vehicleDeployed)
+        else if (game.Player.HasSavedSurfacePositions)
         {
-            // Returning from settlement while in vehicle — mount vehicle
+            if (_inVehicle && _vehicleDeployed)
+            {
+                // Returning from settlement while in vehicle — mount vehicle
+                MountVehicle(game);
+            }
+        }
+        else if (_startMode == PlanetSurfaceStartMode.OnVehicle)
+        {
             MountVehicle(game);
         }
 

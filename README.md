@@ -77,37 +77,37 @@ dotnet run --project SpaceExplorationGame
 ### Command line options
 
 ```bash
-dotnet run --project SpaceExplorationGame -- [seed] [--start <location>]
+dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
 ```
 
-| Argument             | Description                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| `seed`               | Optional integer seed for deterministic world generation. If omitted, a random seed is used. |
-| `--start <location>` | Skip the main menu and jump directly to a game start context. Useful for testing.            |
+| Argument                                           | Description                                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `--help`, `-h`, `/?`                               | Show CLI usage help and exit.                                                                 |
+| `--seed <seed>`, `-s <seed>`                       | Optional explicit seed for deterministic world generation. If omitted, a random seed is used. |
+| `--location <location>`, `-l <location>`           | Target top-level start location (`system`, `station`, `planet`, `settlement`).                |
+| `--sublocation <sublocation>`, `-sl <sublocation>` | Target sub-location for the selected location (see matrix below).                             |
 
-**Start locations**
+**Location / sub-location matrix**
 
-| Name                | Description                                                                               |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `system`            | Star System — ship flight in a random solar system                                        |
-| `planet`            | Planet (orbit) — starts in a random solar system with a random planet preselected         |
-| `planet-surface`    | Planet Surface (direct) — jumps straight into the surface state for a random solid planet |
-| `station`           | Space Station (orbit) — starts flying over a random station                               |
-| `station-docked`    | Docked at Space Station — opens station menu interaction at a random station              |
-| `station-inside`    | Inside Space Station — walk around inside a random station                                |
-| `settlement`        | Settlement — planet surface spawned at a settlement                                       |
-| `settlement-inside` | Inside Settlement — walk around inside a random settlement                                |
+| `--location` | `--sublocation` values                     |
+| ------------ | ------------------------------------------ |
+| `system`     | *(omit or use `none`)*                     |
+| `station`    | `orbit`, `docked`, `inside`                |
+| `planet`     | `orbit`, `landed`, `on-foot`, `on-vehicle` |
+| `settlement` | `above`, `inside`, `on-foot`, `on-vehicle` |
 
 **Examples**
 
 ```bash
 dotnet run --project SpaceExplorationGame
-dotnet run --project SpaceExplorationGame -- 12345
-dotnet run --project SpaceExplorationGame -- --start system
-dotnet run --project SpaceExplorationGame -- --start planet-surface
-dotnet run --project SpaceExplorationGame -- --start station-docked
-dotnet run --project SpaceExplorationGame -- 42 --start settlement
-dotnet run --project SpaceExplorationGame -- --start station-inside
+dotnet run --project SpaceExplorationGame -- --help
+dotnet run --project SpaceExplorationGame -- --seed 12345
+dotnet run --project SpaceExplorationGame -- -s 12345
+dotnet run --project SpaceExplorationGame -- --location system
+dotnet run --project SpaceExplorationGame -- -l station -sl docked
+dotnet run --project SpaceExplorationGame -- --location station --sublocation docked
+dotnet run --project SpaceExplorationGame -- --seed 42 --location planet --sublocation on-foot
+dotnet run --project SpaceExplorationGame -- --location settlement --sublocation on-vehicle
 ```
 
 ## Code Formatting
