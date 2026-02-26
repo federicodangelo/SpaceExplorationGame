@@ -148,7 +148,7 @@ SpaceExplorationGame/
 ## Command Line Options
 
 ```
-dotnet run -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
+dotnet run -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <showcase> [--star-type <type>]]
 ```
 
 | Argument                                           | Description                                                                                   |
@@ -157,6 +157,8 @@ dotnet run -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <s
 | `--seed <seed>`, `-s <seed>`                       | Optional explicit seed for deterministic world generation. If omitted, a random seed is used. |
 | `--location <location>`, `-l <location>`           | Target top-level start location (`system`, `station`, `planet`, `settlement`).                |
 | `--sublocation <sublocation>`, `-sl <sublocation>` | Target sub-location for the selected location.                                                |
+| `--showcase <showcase>`, `-sc <showcase>`          | Launch a debug showcase directly (`star-type`, `planet-type`, `asteroid`, `surface-mining`).  |
+| `--star-type <type>`                               | Optional star class override for `--showcase star-type` (default: `G`).                       |
 
 **Location / sub-location matrix:**
 
@@ -180,6 +182,8 @@ dotnet run -- -l station -sl docked     # Alias form
 dotnet run -- --location station --sublocation docked
 dotnet run -- --seed 42 --location planet --sublocation on-foot
 dotnet run -- --location settlement --sublocation on-vehicle
+dotnet run -- --showcase planet-type
+dotnet run -- --showcase star-type --star-type K
 ```
 
 ## Architecture Decisions

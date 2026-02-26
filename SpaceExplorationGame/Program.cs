@@ -1,5 +1,7 @@
 ﻿using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.States;
+using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame;
 
@@ -9,7 +11,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         // Parse optional arguments:
-        //   dotnet run -- [--seed|-s <number>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
+        //   dotnet run -- [--seed|-s <number>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <name> [--star-type <type>]]
         if (args.Any(arg => arg is "--help" or "-h"))
         {
             PrintHelp();
@@ -18,8 +20,12 @@ internal static class Program
 
         ulong? galaxySeed = null;
         var autoLaunch = StartOption.None;
+        var autoDebugLaunch = DebugLaunchRequest.None;
+        var autoDebugStarType = StarClass.G;
         string? location = null;
         string? subLocation = null;
+        string? showcase = null;
+        string? starTypeArg = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -45,10 +51,44 @@ internal static class Program
                 subLocation = args[i + 1];
                 i++;
             }
+            else if (arg is "--showcase" or "-sc")
+            {
+                if (i + 1 >= args.Length)
+                    throw new ArgumentException("Missing value for --showcase. Example: --showcase star-type");
+                showcase = args[i + 1];
+                i++;
+            }
+            else if (arg == "--star-type")
+            {
+                if (i + 1 >= args.Length)
+                    throw new ArgumentException("Missing value for --star-type. Example: --star-type g");
+                starTypeArg = args[i + 1];
+                i++;
+            }
             else
             {
                 throw new ArgumentException($"Unknown argument: {arg}");
             }
+        }
+
+        if (showcase != null && (location != null || subLocation != null))
+            throw new ArgumentException("--showcase cannot be combined with --location/--sublocation.");
+
+        if (showcase != null)
+        {
+            autoDebugLaunch = ResolveDebugShowcase(showcase);
+            if (autoDebugLaunch == DebugLaunchRequest.StarTypeShowcase)
+            {
+                autoDebugStarType = ParseStarType(starTypeArg);
+            }
+            else if (starTypeArg != null)
+            {
+                throw new ArgumentException("--star-type can only be used with --showcase star-type.");
+            }
+        }
+        else if (starTypeArg != null)
+        {
+            throw new ArgumentException("--star-type requires --showcase star-type.");
         }
 
         if (location != null || subLocation != null)
@@ -64,8 +104,31 @@ internal static class Program
         if (autoLaunch != StartOption.None)
             Console.WriteLine($"Auto-start: {autoLaunch}");
 
-        game.ChangeState(new MainMenuState(autoLaunch));
+        game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
         game.Run();
+    }
+
+    private static DebugLaunchRequest ResolveDebugShowcase(string showcase)
+    {
+        return Normalize(showcase) switch
+        {
+            "star-type" or "star" => DebugLaunchRequest.StarTypeShowcase,
+            "planet-type" or "planet" => DebugLaunchRequest.PlanetTypeShowcase,
+            "asteroid" or "asteroid-mining" => DebugLaunchRequest.AsteroidShowcase,
+            "surface-mining" or "surface" => DebugLaunchRequest.SurfaceMiningShowcase,
+            _ => throw new ArgumentException("Invalid --showcase. Valid values: star-type, planet-type, asteroid, surface-mining")
+        };
+    }
+
+    private static StarClass ParseStarType(string? starTypeArg)
+    {
+        if (string.IsNullOrWhiteSpace(starTypeArg))
+            return StarClass.G;
+
+        if (Enum.TryParse<StarClass>(starTypeArg.Trim(), ignoreCase: true, out var starType))
+            return starType;
+
+        throw new ArgumentException("Invalid --star-type. Valid values: O, B, A, F, G, K, M, WhiteDwarf, Neutron, RedGiant");
     }
 
     private static StartOption ResolveStartFromLocation(string? location, string? subLocation)
@@ -138,6 +201,7 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  SpaceExplorationGame [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]");
+        Console.WriteLine("  SpaceExplorationGame [--seed|-s <seed>] --showcase|-sc <showcase> [--star-type <type>]");
         Console.WriteLine("  SpaceExplorationGame --help");
         Console.WriteLine();
         Console.WriteLine("Dev (run from source):");
@@ -152,11 +216,15 @@ internal static class Program
         Console.WriteLine("                              station: orbit | docked | inside");
         Console.WriteLine("                              planet: orbit | landed | on-foot | on-vehicle");
         Console.WriteLine("                              settlement: above | inside | on-foot | on-vehicle");
+        Console.WriteLine("  --showcase, -sc <showcase>     debug showcase: star-type | planet-type | asteroid | surface-mining");
+        Console.WriteLine("  --star-type <type>             optional for star-type showcase (default: G)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  SpaceExplorationGame --seed 12345");
         Console.WriteLine("  SpaceExplorationGame --location system");
         Console.WriteLine("  SpaceExplorationGame --location station --sublocation docked");
         Console.WriteLine("  SpaceExplorationGame --seed 42 --location planet --sublocation on-foot");
+        Console.WriteLine("  SpaceExplorationGame --showcase planet-type");
+        Console.WriteLine("  SpaceExplorationGame --showcase star-type --star-type K");
     }
 }

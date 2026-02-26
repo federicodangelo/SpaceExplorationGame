@@ -47,6 +47,8 @@ public class MainMenuState : GameState
 
     // Auto-launch: if not None, skip menu and launch this option immediately
     private readonly StartOption _autoLaunchOption;
+    private readonly DebugLaunchRequest _autoDebugLaunchRequest;
+    private readonly StarClass _autoDebugStarType;
 
     private Camera _fakeCamera = new(GameConfig.WindowWidth, GameConfig.WindowHeight)
     {
@@ -63,15 +65,40 @@ public class MainMenuState : GameState
     private StartOption _lastPreviewedLocationType = StartOption.None;
     private int _lastPreviewedDanger = -1;
 
-    public MainMenuState(StartOption autoLaunchOption = StartOption.None)
+    public MainMenuState(
+        StartOption autoLaunchOption = StartOption.None,
+        DebugLaunchRequest autoDebugLaunchRequest = DebugLaunchRequest.None,
+        StarClass autoDebugStarType = StarClass.G)
     {
         _autoLaunchOption = autoLaunchOption;
+        _autoDebugLaunchRequest = autoDebugLaunchRequest;
+        _autoDebugStarType = autoDebugStarType;
     }
 
     public override void Enter(Game game)
     {
         game.Player.Reset();
         game.Audio.SetMusicTheme(MusicTheme.MainMenu);
+
+        if (_autoDebugLaunchRequest != DebugLaunchRequest.None)
+        {
+            switch (_autoDebugLaunchRequest)
+            {
+                case DebugLaunchRequest.StarTypeShowcase:
+                    LaunchStarTypeShowcase(game, _autoDebugStarType);
+                    break;
+                case DebugLaunchRequest.PlanetTypeShowcase:
+                    LaunchPlanetTypeShowcase(game);
+                    break;
+                case DebugLaunchRequest.AsteroidShowcase:
+                    LaunchAsteroidShowcase(game);
+                    break;
+                case DebugLaunchRequest.SurfaceMiningShowcase:
+                    LaunchSurfaceMiningShowcase(game);
+                    break;
+            }
+            return;
+        }
 
         if (_autoLaunchOption != StartOption.None)
         {

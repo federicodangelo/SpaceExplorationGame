@@ -78,6 +78,7 @@ dotnet run --project SpaceExplorationGame
 
 ```bash
 dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
+dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <showcase> [--star-type <type>]]
 ```
 
 | Argument                                           | Description                                                                                   |
@@ -86,6 +87,8 @@ dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <
 | `--seed <seed>`, `-s <seed>`                       | Optional explicit seed for deterministic world generation. If omitted, a random seed is used. |
 | `--location <location>`, `-l <location>`           | Target top-level start location (`system`, `station`, `planet`, `settlement`).                |
 | `--sublocation <sublocation>`, `-sl <sublocation>` | Target sub-location for the selected location (see matrix below).                             |
+| `--showcase <showcase>`, `-sc <showcase>`          | Launch a debug showcase directly (`star-type`, `planet-type`, `asteroid`, `surface-mining`).  |
+| `--star-type <type>`                               | Optional star class override for `--showcase star-type` (default: `G`).                       |
 
 **Location / sub-location matrix**
 
@@ -108,6 +111,8 @@ dotnet run --project SpaceExplorationGame -- -l station -sl docked
 dotnet run --project SpaceExplorationGame -- --location station --sublocation docked
 dotnet run --project SpaceExplorationGame -- --seed 42 --location planet --sublocation on-foot
 dotnet run --project SpaceExplorationGame -- --location settlement --sublocation on-vehicle
+dotnet run --project SpaceExplorationGame -- --showcase planet-type
+dotnet run --project SpaceExplorationGame -- --showcase star-type --star-type K
 ```
 
 ## Code Formatting
