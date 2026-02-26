@@ -108,32 +108,24 @@ public class MainMenuState : GameState
         // Debug overlay takes priority over main menu input
         if (_debugOverlay.UpdateInput(game))
         {
-            if (_debugOverlay.StartStarTypeShowcaseRequested)
+            switch (_debugOverlay.TakePendingLaunchRequest())
             {
-                _debugOverlay.StartStarTypeShowcaseRequested = false;
-                game.Audio.PlaySfx(SfxType.MenuSelect);
-                LaunchStarTypeShowcase(game, _debugOverlay.SelectedStarType);
-            }
-
-            if (_debugOverlay.StartPlanetTypeShowcaseRequested)
-            {
-                _debugOverlay.StartPlanetTypeShowcaseRequested = false;
-                game.Audio.PlaySfx(SfxType.MenuSelect);
-                LaunchPlanetTypeShowcase(game);
-            }
-
-            if (_debugOverlay.StartAsteroidShowcaseRequested)
-            {
-                _debugOverlay.StartAsteroidShowcaseRequested = false;
-                game.Audio.PlaySfx(SfxType.MenuSelect);
-                LaunchAsteroidShowcase(game);
-            }
-
-            if (_debugOverlay.StartSurfaceMiningShowcaseRequested)
-            {
-                _debugOverlay.StartSurfaceMiningShowcaseRequested = false;
-                game.Audio.PlaySfx(SfxType.MenuSelect);
-                LaunchSurfaceMiningShowcase(game);
+                case DebugLaunchRequest.StarTypeShowcase:
+                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    LaunchStarTypeShowcase(game, _debugOverlay.SelectedStarType);
+                    break;
+                case DebugLaunchRequest.PlanetTypeShowcase:
+                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    LaunchPlanetTypeShowcase(game);
+                    break;
+                case DebugLaunchRequest.AsteroidShowcase:
+                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    LaunchAsteroidShowcase(game);
+                    break;
+                case DebugLaunchRequest.SurfaceMiningShowcase:
+                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    LaunchSurfaceMiningShowcase(game);
+                    break;
             }
             return;
         }

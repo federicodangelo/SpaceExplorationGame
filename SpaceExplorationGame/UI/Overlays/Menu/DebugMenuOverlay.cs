@@ -17,6 +17,15 @@ public enum DebugMenuAction
     Back,
 }
 
+public enum DebugLaunchRequest
+{
+    None = -1,
+    StarTypeShowcase,
+    PlanetTypeShowcase,
+    AsteroidShowcase,
+    SurfaceMiningShowcase,
+}
+
 /// <summary>
 /// Debug overlay accessible from the main menu.
 /// </summary>
@@ -34,17 +43,8 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     public StarClass SelectedStarType => StarTypes[_starTypeIndex];
     public ShipType SelectedStartingShip => ShipTypes[_shipTypeIndex];
 
-    /// <summary>When set, start a dedicated solar system showcasing the selected star type.</summary>
-    public bool StartStarTypeShowcaseRequested { get; set; }
-
-    /// <summary>When set, start a dedicated solar system showcasing all planet types.</summary>
-    public bool StartPlanetTypeShowcaseRequested { get; set; }
-
-    /// <summary>When set, start a dedicated solar system focused on asteroid mining in space.</summary>
-    public bool StartAsteroidShowcaseRequested { get; set; }
-
-    /// <summary>When set, start already landed on a rock-dense planet surface for mining tests.</summary>
-    public bool StartSurfaceMiningShowcaseRequested { get; set; }
+    /// <summary>Pending launch request, consumed by MainMenuState.</summary>
+    public DebugLaunchRequest PendingLaunchRequest { get; private set; } = DebugLaunchRequest.None;
 
     protected override string Title => "DEBUG";
     protected override Color3 TitleColor => new(255, 210, 120);
@@ -100,11 +100,15 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         _shipTypeIndex = Math.Clamp(savedShipTypeIndex, 0, ShipTypes.Length - 1);
         Menu.SelectedIndex = Math.Clamp(savedSelectedIndex, 0, Menu.ItemCount - 1);
 
-        StartStarTypeShowcaseRequested = false;
-        StartPlanetTypeShowcaseRequested = false;
-        StartAsteroidShowcaseRequested = false;
-        StartSurfaceMiningShowcaseRequested = false;
+        PendingLaunchRequest = DebugLaunchRequest.None;
         UpdateCyclingLabels();
+    }
+
+    public DebugLaunchRequest TakePendingLaunchRequest()
+    {
+        var request = PendingLaunchRequest;
+        PendingLaunchRequest = DebugLaunchRequest.None;
+        return request;
     }
 
     public override void Close()
@@ -129,16 +133,16 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
                 CycleStartingShip(1);
                 break;
             case DebugMenuAction.StarTypeShowcase:
-                StartStarTypeShowcaseRequested = true;
+                PendingLaunchRequest = DebugLaunchRequest.StarTypeShowcase;
                 break;
             case DebugMenuAction.PlanetTypeShowcase:
-                StartPlanetTypeShowcaseRequested = true;
+                PendingLaunchRequest = DebugLaunchRequest.PlanetTypeShowcase;
                 break;
             case DebugMenuAction.AsteroidShowcase:
-                StartAsteroidShowcaseRequested = true;
+                PendingLaunchRequest = DebugLaunchRequest.AsteroidShowcase;
                 break;
             case DebugMenuAction.SurfaceMiningShowcase:
-                StartSurfaceMiningShowcaseRequested = true;
+                PendingLaunchRequest = DebugLaunchRequest.SurfaceMiningShowcase;
                 break;
             case DebugMenuAction.Back:
                 Close();
