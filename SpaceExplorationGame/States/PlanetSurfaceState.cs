@@ -99,6 +99,9 @@ public class PlanetSurfaceState : GameState
     private bool _isLanding;
     private float _landingTimer;
     private const float LandingDuration = 2f;
+    private bool _waitingToOpenStarshipMenuAfterLanding;
+    private float _starshipMenuOpenDelayTimer;
+    private const float StarshipMenuOpenDelayAfterLanding = 1.2f;
 
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
@@ -247,14 +250,16 @@ public class PlanetSurfaceState : GameState
             {
                 _isLanding = false;
                 _landingTimer = LandingDuration;
-                _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
-                _starshipMenuOverlay.Open();
+                _waitingToOpenStarshipMenuAfterLanding = true;
+                _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
             }
             else
             {
                 // Start landing animation for fresh landings
                 _isLanding = true;
                 _landingTimer = 0f;
+                _waitingToOpenStarshipMenuAfterLanding = false;
+                _starshipMenuOpenDelayTimer = 0f;
                 game.Audio.PlaySfx(SfxType.Landing);
             }
         }
@@ -334,7 +339,7 @@ public class PlanetSurfaceState : GameState
     public override void UpdateInput(Game game)
     {
         // Block all input during animations
-        if (_isTakingOff || _isLanding) return;
+        if (_isTakingOff || _isLanding || _waitingToOpenStarshipMenuAfterLanding) return;
 
         // Starship menu overlay (highest priority)
         if (_starshipMenuOverlay.UpdateInput(game))
@@ -535,7 +540,21 @@ public class PlanetSurfaceState : GameState
             if (_landingTimer >= LandingDuration)
             {
                 _isLanding = false;
-                // Now open the starship menu
+                _waitingToOpenStarshipMenuAfterLanding = true;
+                _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
+            }
+            _cameraFollowSystem.Update(in dt);
+            return;
+        }
+
+        // Delay before opening the starship menu after landing.
+        if (_waitingToOpenStarshipMenuAfterLanding)
+        {
+            _starshipMenuOpenDelayTimer -= dt;
+            if (_starshipMenuOpenDelayTimer <= 0f)
+            {
+                _waitingToOpenStarshipMenuAfterLanding = false;
+                _starshipMenuOpenDelayTimer = 0f;
                 _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
                 _starshipMenuOverlay.Open();
             }
