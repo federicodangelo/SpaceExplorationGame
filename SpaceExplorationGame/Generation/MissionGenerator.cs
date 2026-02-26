@@ -152,7 +152,7 @@ public static class MissionGenerator
 
         // Generate that system's planets to find a valid target
         var sysRng = seeds.GetStarSystemRandom(targetSystem.Index);
-        var (planets, _, _) = SolarSystemGenerator.Generate(sysRng, targetSystem);
+        var (planets, _, _, _) = SolarSystemGenerator.Generate(sysRng, targetSystem);
 
         // Look for solid-surface planets
         var landable = planets.Where(p => p.HasSolidSurface).ToList();
@@ -207,7 +207,7 @@ public static class MissionGenerator
         var targetSystem = rng.Pick(otherSystems);
 
         var sysRng = seeds.GetStarSystemRandom(targetSystem.Index);
-        var (planets, _, _) = SolarSystemGenerator.Generate(sysRng, targetSystem);
+        var (planets, _, _, _) = SolarSystemGenerator.Generate(sysRng, targetSystem);
 
         // Look for planets with settlements
         var settled = planets.Where(p => p.HasSettlement).ToList();

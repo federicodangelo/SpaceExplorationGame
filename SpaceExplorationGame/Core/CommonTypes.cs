@@ -77,7 +77,8 @@ public readonly record struct StatDiff(string Label, float Diff);
 public readonly record struct SolarSystemContent(
     List<PlanetData> Planets,
     List<AsteroidBeltData> AsteroidBelts,
-    List<SpaceStationData> Stations);
+    List<SpaceStationData> Stations,
+    List<NpcShipSpawnData> NpcShipSpawns);
 
 // ── Menu start helpers ───────────────────────────────────────────
 

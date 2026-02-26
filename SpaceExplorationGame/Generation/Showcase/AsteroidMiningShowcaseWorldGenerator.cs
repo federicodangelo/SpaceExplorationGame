@@ -21,7 +21,8 @@ public class AsteroidMiningShowcaseWorldGenerator : ProceduralWorldGenerator
         return new SolarSystemContent(
             Planets: BuildPlanets(),
             AsteroidBelts: BuildBelts(),
-            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations());
+            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            NpcShipSpawns: []);
     }
 
     private static List<AsteroidBeltData> BuildBelts()

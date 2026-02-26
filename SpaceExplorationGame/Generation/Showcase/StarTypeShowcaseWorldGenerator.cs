@@ -28,6 +28,7 @@ public class StarTypeShowcaseWorldGenerator : ProceduralWorldGenerator
         return new SolarSystemContent(
             Planets: ShowcaseWorldGeneratorHelpers.BuildPlanetTypeShowcasePlanets(),
             AsteroidBelts: [],
-            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations());
+            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            NpcShipSpawns: []);
     }
 }

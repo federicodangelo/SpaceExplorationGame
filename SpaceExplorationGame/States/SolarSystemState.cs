@@ -308,8 +308,8 @@ public class SolarSystemState : GameState
                 new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
         }
 
-        // --- Spawn NPC ships (pirates, traders, patrols) based on danger level ---
-        SpawnNPCShips(game, center);
+        // --- Spawn NPC ships from generated solar system content ---
+        SpawnNPCShips(game, content.NpcShipSpawns);
 
         // Initialize ECS systems
         float sysW = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
@@ -624,79 +624,33 @@ public class SolarSystemState : GameState
         UpdateCombat(game, dt);
     }
 
-    /// <summary>Spawn NPC ships based on system danger level.</summary>
-    private void SpawnNPCShips(Game game, Vector2 center)
+    /// <summary>Spawn NPC ships from pre-generated spawn payloads.</summary>
+    private void SpawnNPCShips(Game game, List<NpcShipSpawnData> npcShipSpawns)
     {
         _enemyEntities.Clear();
-        var enemyRng = new SeededRandom(game.Seeds.GetStarSystemRandom(_starSystem.Index).DeriveChildSeed(5000));
-        int dangerLevel = _starSystem.DangerLevel;
-
-        // Determine spawn radius based on outermost planet orbit (+ margin)
-        float maxOrbit = 0f;
-        foreach (var planet in _planets)
-            maxOrbit = MathF.Max(maxOrbit, planet.OrbitRadius);
-        float spawnRadius = MathF.Max(maxOrbit + 4000f, 8000f); // at least 8000px, or outermost orbit + 4000
-
-        // Scale enemy count and stats by danger level
-        int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
-        int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
-        int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
-        int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
-
-        // Spawn pirates
-        for (int i = 0; i < pirateCount; i++)
+        foreach (var spawn in npcShipSpawns)
         {
-            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 250f);
+            Entity entity;
+            switch (spawn.Faction)
+            {
+                case Faction.Pirate:
+                    entity = EntityFactory.CreatePirateShip(game.EcsWorld, spawn.Position,
+                        spawn.Rotation, spawn.Stats, spawn.DangerLevel, spawn.LootCredits, spawn.Weapons);
+                    break;
+                case Faction.Trader:
+                    entity = EntityFactory.CreateTraderShip(game.EcsWorld, spawn.Position,
+                        spawn.Rotation, spawn.Stats, spawn.Weapons);
+                    break;
+                case Faction.Patrol:
+                    entity = EntityFactory.CreatePatrolShip(game.EcsWorld, spawn.Position,
+                        spawn.Rotation, spawn.Stats, spawn.Weapons);
+                    break;
+                default:
+                    continue;
+            }
 
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Pirate, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Pirate, qualityTier, enemyRng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-            int lootCredits = NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout);
-
-            var entity = EntityFactory.CreatePirateShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats, dangerLevel, lootCredits, weapons);
             _enemyEntities.Add(entity);
         }
-
-        // Spawn traders
-        for (int i = 0; i < traderCount; i++)
-        {
-            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
-
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Trader, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Trader, qualityTier, enemyRng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-
-            var entity = EntityFactory.CreateTraderShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats, weapons);
-            _enemyEntities.Add(entity);
-        }
-
-        // Spawn patrols
-        for (int i = 0; i < patrolCount; i++)
-        {
-            var pos = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f);
-
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Patrol, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Patrol, qualityTier, enemyRng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-
-            var entity = EntityFactory.CreatePatrolShip(game.EcsWorld, pos,
-                enemyRng.NextFloat(0, 360), stats, weapons);
-            _enemyEntities.Add(entity);
-        }
-    }
-
-    /// <summary>Pick a random position within the orbit zone, avoiding the star.</summary>
-    private static Vector2 SpawnPositionInOrbitZone(SeededRandom rng, Vector2 center, float maxRadius, float minRadius)
-    {
-        // Random angle + distance between minRadius and maxRadius from center
-        float angle = rng.NextFloat(0, MathF.PI * 2f);
-        float dist = rng.NextFloat(minRadius, maxRadius);
-        return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
     }
 
     private Entity CreateOrRespawnPlayerShip(Game game, Vector2 spawnPosition)

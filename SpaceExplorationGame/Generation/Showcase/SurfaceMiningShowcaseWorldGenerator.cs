@@ -41,7 +41,8 @@ public class SurfaceMiningShowcaseWorldGenerator : ProceduralWorldGenerator
                 }
             ],
             AsteroidBelts: [],
-            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations());
+                Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+                NpcShipSpawns: []);
     }
 
     public override PlanetSurfaceData GeneratePlanetSurface(SeedManager seeds, StarSystemData starSystem, PlanetData planet)
