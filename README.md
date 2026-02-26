@@ -9,7 +9,7 @@ A 2D procedural space exploration game built entirely using AI coding agents —
 
 This project was created as an experiment to push the boundaries of what's possible when using **AI coding agents** for game development. The entire codebase — rendering, procedural generation, ECS architecture, audio synthesis, UI, and gameplay — was written by [Claude Opus 4.6](https://www.anthropic.com/claude) through iterative prompting.
 
-Initial version (v1.0.0 — information below doest not include post-v1.0.0 changes):
+Initial version (v1.0.0 — information below does not include post-v1.0.0 changes):
 - **AI Model:** Claude Opus 4.6
 - **Total Cost:** ~$50 USD in API/token usage
 - **Development Time:** ~4 days of on-and-off work
@@ -72,6 +72,40 @@ https://github.com/federicodangelo/SpaceExplorationGame/raw/master/media/Recordi
 ```bash
 # Requires .NET 10 SDK
 dotnet run --project SpaceExplorationGame
+```
+
+### Command line options
+
+```bash
+dotnet run --project SpaceExplorationGame -- [seed] [--start <location>]
+```
+
+| Argument             | Description                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `seed`               | Optional integer seed for deterministic world generation. If omitted, a random seed is used. |
+| `--start <location>` | Skip the main menu and jump directly to a game start context. Useful for testing.            |
+
+**Start locations**
+
+| Name                | Description                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `system`            | Star System — ship flight in a random solar system                                        |
+| `planet`            | Planet (orbit) — starts in a random solar system with a random planet preselected         |
+| `planet-surface`    | Planet Surface (direct) — jumps straight into the surface state for a random solid planet |
+| `station`           | Space Station — menu interaction at a random station                                      |
+| `station-inside`    | Inside Space Station — walk around inside a random station                                |
+| `settlement`        | Settlement — planet surface spawned at a settlement                                       |
+| `settlement-inside` | Inside Settlement — walk around inside a random settlement                                |
+
+**Examples**
+
+```bash
+dotnet run --project SpaceExplorationGame
+dotnet run --project SpaceExplorationGame -- 12345
+dotnet run --project SpaceExplorationGame -- --start system
+dotnet run --project SpaceExplorationGame -- --start planet-surface
+dotnet run --project SpaceExplorationGame -- 42 --start settlement
+dotnet run --project SpaceExplorationGame -- --start station-inside
 ```
 
 ## Code Formatting
