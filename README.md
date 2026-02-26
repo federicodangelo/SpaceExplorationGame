@@ -34,7 +34,7 @@ Initial version (v1.0.0 — information below does not include post-v1.0.0 chang
 - **ECS:** [Arch ECS](https://github.com/genaray/Arch) with Arch.System extensions
 - **Audio:** SDL3 built-in audio API with fully procedural synthesis (no external audio files or SDL_mixer)
 
-## Screenshots
+## Screenshots (v1.0.0 - game might look different now)
 
 <p align="center">
   <img src="media/Screenshot%202026-02-17%20215012.png" width="400" alt="Screenshot 1" />
