@@ -199,8 +199,7 @@ public class OrbitalSurfaceTransitionState : GameState
                     _planet,
                     _tileX,
                     _tileY,
-                    preGeneratedSurfaceData: _surfaceData,
-                    skipIntroLandingAnimation: true));
+                    preGeneratedSurfaceData: _surfaceData));
             }
             else
             {

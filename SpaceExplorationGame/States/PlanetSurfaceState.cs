@@ -90,10 +90,6 @@ public class PlanetSurfaceState : GameState
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
     private bool _playerInsideShip = true; // player starts inside the ship
 
-    // Landing animation
-    private bool _isLanding;
-    private float _landingTimer;
-    private const float LandingDuration = 2f;
     private bool _waitingToOpenStarshipMenuAfterLanding;
     private float _starshipMenuOpenDelayTimer;
     private const float StarshipMenuOpenDelayAfterLanding = 1.2f;
@@ -102,17 +98,15 @@ public class PlanetSurfaceState : GameState
     private readonly int _landingTileX;
     private readonly int _landingTileY;
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
-    private readonly bool _skipIntroLandingAnimation;
 
     public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
-        PlanetSurfaceData? preGeneratedSurfaceData = null, bool skipIntroLandingAnimation = false)
+        PlanetSurfaceData? preGeneratedSurfaceData = null)
     {
         _starSystem = starSystem;
         _planet = planet;
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
-        _skipIntroLandingAnimation = skipIntroLandingAnimation;
     }
 
     /// <summary>Helper: mount the player into their vehicle, creating movement system.</summary>
@@ -241,22 +235,8 @@ public class PlanetSurfaceState : GameState
         // Open starship menu if this is a fresh landing (not returning from settlement)
         if (_playerInsideShip)
         {
-            if (_skipIntroLandingAnimation)
-            {
-                _isLanding = false;
-                _landingTimer = LandingDuration;
-                _waitingToOpenStarshipMenuAfterLanding = true;
-                _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
-            }
-            else
-            {
-                // Start landing animation for fresh landings
-                _isLanding = true;
-                _landingTimer = 0f;
-                _waitingToOpenStarshipMenuAfterLanding = false;
-                _starshipMenuOpenDelayTimer = 0f;
-                game.Audio.PlaySfx(SfxType.Landing);
-            }
+            _waitingToOpenStarshipMenuAfterLanding = true;
+            _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
         }
         else if (_inVehicle && _vehicleDeployed)
         {
@@ -333,8 +313,7 @@ public class PlanetSurfaceState : GameState
 
     public override void UpdateInput(Game game)
     {
-        // Block all input during animations
-        if (_isLanding || _waitingToOpenStarshipMenuAfterLanding) return;
+        if (_waitingToOpenStarshipMenuAfterLanding) return;
 
         // Starship menu overlay (highest priority)
         if (_starshipMenuOverlay.UpdateInput(game))
@@ -543,20 +522,6 @@ public class PlanetSurfaceState : GameState
         _dependentEntityCleanupSystem.Update(in dt);
 
         _inGameMenuOverlay.Update(game);
-
-        // Landing animation
-        if (_isLanding)
-        {
-            _landingTimer += dt;
-            if (_landingTimer >= LandingDuration)
-            {
-                _isLanding = false;
-                _waitingToOpenStarshipMenuAfterLanding = true;
-                _starshipMenuOpenDelayTimer = StarshipMenuOpenDelayAfterLanding;
-            }
-            _cameraFollowSystem.Update(in dt);
-            return;
-        }
 
         // Delay before opening the starship menu after landing.
         if (_waitingToOpenStarshipMenuAfterLanding)
@@ -842,16 +807,8 @@ public class PlanetSurfaceState : GameState
 
         // Draw ship
         var shipTf = game.EcsWorld.Get<Transform>(_shipEntity);
-        float shipScale = 1f;
-        if (_isLanding)
-        {
-            float progress = Math.Clamp(_landingTimer / LandingDuration, 0f, 1f);
-            shipScale = 3f - progress * 2f; // scale from 3.0 down to 1.0
-        }
-        int baseSpriteSize = game.Player.CurrentShipType.SpriteSize;
-        int scaledSpriteSize = (int)(baseSpriteSize * shipScale);
         game.SpaceshipRenderer.RenderLanded(renderer, camera, shipTf.Position,
-            game.Player.CurrentShipType.Id, scaledSpriteSize);
+            game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 
         // Draw vehicle
         if (_vehicleDeployed)
@@ -946,18 +903,6 @@ public class PlanetSurfaceState : GameState
 
         // Starship menu overlay drawn on top of everything
         _starshipMenuOverlay.Render(game);
-
-        // Landing animation overlay
-        if (_isLanding)
-        {
-            bool landing = true;
-            float duration = LandingDuration;
-            float timer = _landingTimer;
-            float progress = Math.Clamp(timer / duration, 0f, 1f);
-            float remaining = duration - timer;
-
-            HudRenderer.RenderLandingTakeoffOverlay(renderer, landing, progress, remaining);
-        }
     }
 
     /// <summary>Checks whether a position is on walkable/drivable terrain.</summary>

@@ -823,43 +823,6 @@ public static class HudRenderer
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  LANDING / TAKEOFF ANIMATION HUD
-    // ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Renders the centered landing or takeoff animation overlay
-    /// (dim, timer text, progress bar).
-    /// </summary>
-    public static void RenderLandingTakeoffOverlay(SpriteRenderer renderer,
-        bool isLanding, float progress, float remainingSeconds)
-    {
-        // Darken screen — fade in for takeoff, fade out for landing
-        float dimProgress = isLanding ? (1f - progress) : progress;
-        byte dimAlpha = (byte)(dimProgress * 120);
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, dimAlpha));
-
-        // Timer display
-        string label = isLanding ? "LANDING..." : "TAKING OFF...";
-        string timerText = $"{label} {remainingSeconds:F1}s";
-        float timerScale = 2.5f;
-        float timerW = renderer.MeasureText(timerText, timerScale);
-        float timerX = GameConfig.WindowWidth / 2f - timerW / 2f;
-        float timerY = GameConfig.WindowHeight / 2f - 40;
-        var timerColor = isLanding ? new Color3(100, 255, 200) : new Color3(100, 200, 255);
-        OverlayBase.DrawFrame(renderer, timerX - 10, timerY - 6, timerW + 20, 34);
-        renderer.DrawTextScreen(timerX, timerY, timerText, timerColor, timerScale);
-
-        // Progress bar
-        float barW = 200f;
-        float barH = 6f;
-        float barX = GameConfig.WindowWidth / 2f - barW / 2f;
-        float barY = timerY + 36;
-        var barColor = isLanding ? new Color4(100, 255, 200, 220) : new Color4(100, 200, 255, 220);
-        renderer.DrawRectScreen(barX, barY, barW, barH, new Color4(40, 40, 60, 200));
-        renderer.DrawRectScreen(barX, barY, barW * progress, barH, barColor);
-    }
-
-    // ─────────────────────────────────────────────────────────────
     //  MINING / DEATH / CENTERED MESSAGE
     // ─────────────────────────────────────────────────────────────
 
