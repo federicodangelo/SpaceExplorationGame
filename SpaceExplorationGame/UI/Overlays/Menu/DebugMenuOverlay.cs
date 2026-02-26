@@ -28,12 +28,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     private static readonly StarClass[] StarTypes = Enum.GetValues<StarClass>();
     private static readonly ShipType[] ShipTypes = ShipTypeCatalog.AllTypes;
-    private static int s_savedStarTypeIndex;
-    private static int s_savedShipTypeIndex;
-    private static int s_savedSelectedIndex;
 
-    private int _starTypeIndex = s_savedStarTypeIndex;
-    private int _shipTypeIndex = s_savedShipTypeIndex;
+    private int _starTypeIndex;
+    private int _shipTypeIndex;
 
     public StarClass SelectedStarType => StarTypes[_starTypeIndex];
     public ShipType SelectedStartingShip => ShipTypes[_shipTypeIndex];
@@ -99,9 +96,10 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     {
         base.Open();
 
-        _starTypeIndex = Math.Clamp(s_savedStarTypeIndex, 0, StarTypes.Length - 1);
-        _shipTypeIndex = Math.Clamp(s_savedShipTypeIndex, 0, ShipTypes.Length - 1);
-        Menu.SelectedIndex = Math.Clamp(s_savedSelectedIndex, 0, Menu.ItemCount - 1);
+        var (savedStarTypeIndex, savedShipTypeIndex, savedSelectedIndex) = MenuOptionsPersistence.GetDebugSelections();
+        _starTypeIndex = Math.Clamp(savedStarTypeIndex, 0, StarTypes.Length - 1);
+        _shipTypeIndex = Math.Clamp(savedShipTypeIndex, 0, ShipTypes.Length - 1);
+        Menu.SelectedIndex = Math.Clamp(savedSelectedIndex, 0, Menu.ItemCount - 1);
 
         StartStarTypeShowcaseRequested = false;
         StartPlanetTypeShowcaseRequested = false;
@@ -191,22 +189,20 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     private void CycleStarType(int direction)
     {
         _starTypeIndex = (_starTypeIndex + direction + StarTypes.Length) % StarTypes.Length;
-        s_savedStarTypeIndex = _starTypeIndex;
+        SaveSelectionState();
         UpdateCyclingLabels();
     }
 
     private void CycleStartingShip(int direction)
     {
         _shipTypeIndex = (_shipTypeIndex + direction + ShipTypes.Length) % ShipTypes.Length;
-        s_savedShipTypeIndex = _shipTypeIndex;
+        SaveSelectionState();
         UpdateCyclingLabels();
     }
 
     private void SaveSelectionState()
     {
-        s_savedStarTypeIndex = _starTypeIndex;
-        s_savedShipTypeIndex = _shipTypeIndex;
-        s_savedSelectedIndex = Menu.SelectedIndex;
+        MenuOptionsPersistence.SetDebugSelections(_starTypeIndex, _shipTypeIndex, Menu.SelectedIndex);
     }
 
     private void UpdateCyclingLabels()

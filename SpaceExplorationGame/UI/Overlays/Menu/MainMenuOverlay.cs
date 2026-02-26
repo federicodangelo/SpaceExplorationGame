@@ -51,13 +51,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     private readonly TextInputOverlay _seedInputOverlay = new();
 
-    // Persist filter selections across menu recreations
-    private static int s_savedDangerIndex;
-    private static int s_savedLocationIndex;
-
     // Current cycling state
-    private int _dangerIndex = s_savedDangerIndex;
-    private int _locationIndex = s_savedLocationIndex;
+    private int _dangerIndex;
+    private int _locationIndex;
 
     // ── Public state for MainMenuState ──
 
@@ -144,6 +140,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     public override void Open()
     {
         base.Open();
+        var (savedDangerIndex, savedLocationIndex) = MenuOptionsPersistence.GetMainMenuSelections();
+        _dangerIndex = Math.Clamp(savedDangerIndex, 0, DangerLabels.Length - 1);
+        _locationIndex = Math.Clamp(savedLocationIndex, 0, LocationLabels.Length - 1);
         StartRequested = false;
         NewSeed = null;
         RandomizeSeed = false;
@@ -195,7 +194,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private void CycleDanger(int direction)
     {
         _dangerIndex = (_dangerIndex + direction + DangerLabels.Length) % DangerLabels.Length;
-        s_savedDangerIndex = _dangerIndex;
+        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex);
         UpdateCyclingLabels();
         FiltersChanged = true;
     }
@@ -203,7 +202,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private void CycleLocation(int direction)
     {
         _locationIndex = (_locationIndex + direction + LocationLabels.Length) % LocationLabels.Length;
-        s_savedLocationIndex = _locationIndex;
+        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex);
         UpdateCyclingLabels();
         FiltersChanged = true;
     }
