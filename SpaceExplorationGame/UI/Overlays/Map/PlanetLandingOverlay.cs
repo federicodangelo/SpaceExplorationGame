@@ -15,6 +15,12 @@ public class PlanetLandingOverlay : MapOverlayBase
 {
     private readonly PlanetLandingPanel _panel;
 
+    public Action<Game, LandingSelectionRequest>? OnLandingConfirmed
+    {
+        get => _panel.OnLandingConfirmed;
+        set => _panel.OnLandingConfirmed = value;
+    }
+
     // ── Layout overrides (700×700 map, 260px info panel) ──
     protected override float MapContentWidth => 700f;
     protected override float MapContentHeight => 700f;

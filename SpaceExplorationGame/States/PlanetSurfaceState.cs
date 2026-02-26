@@ -103,13 +103,18 @@ public class PlanetSurfaceState : GameState
     // Landing site (tile coordinates, -1 = default center)
     private readonly int _landingTileX;
     private readonly int _landingTileY;
+    private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
+    private readonly bool _skipIntroLandingAnimation;
 
-    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1)
+    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
+        PlanetSurfaceData? preGeneratedSurfaceData = null, bool skipIntroLandingAnimation = false)
     {
         _starSystem = starSystem;
         _planet = planet;
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
+        _preGeneratedSurfaceData = preGeneratedSurfaceData;
+        _skipIntroLandingAnimation = skipIntroLandingAnimation;
     }
 
     /// <summary>Helper: mount the player into their vehicle, creating movement system.</summary>
@@ -160,7 +165,8 @@ public class PlanetSurfaceState : GameState
         };
 
         // Generate planet surface
-        _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
+        _surfaceData = _preGeneratedSurfaceData
+            ?? game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
 
         // Place player avatar at landing zone (use chosen site or default center)
         int lzTileX = _landingTileX >= 0 ? _landingTileX : _surfaceData.LandingZone.X;
@@ -237,10 +243,20 @@ public class PlanetSurfaceState : GameState
         // Open starship menu if this is a fresh landing (not returning from settlement)
         if (_playerInsideShip)
         {
-            // Start landing animation for fresh landings
-            _isLanding = true;
-            _landingTimer = 0f;
-            game.Audio.PlaySfx(SfxType.Landing);
+            if (_skipIntroLandingAnimation)
+            {
+                _isLanding = false;
+                _landingTimer = LandingDuration;
+                _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
+                _starshipMenuOverlay.Open();
+            }
+            else
+            {
+                // Start landing animation for fresh landings
+                _isLanding = true;
+                _landingTimer = 0f;
+                game.Audio.PlaySfx(SfxType.Landing);
+            }
         }
         else if (_inVehicle && _vehicleDeployed)
         {

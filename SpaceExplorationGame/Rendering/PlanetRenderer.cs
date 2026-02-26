@@ -96,11 +96,19 @@ public class PlanetRenderer : IDisposable
             new Color4(outer.R, outer.G, outer.B, 255),
             radius * 0.18f);
 
+        // Atmospheric shell for larger planets (helps match transition visuals).
+        if (!isMoon && type is PlanetType.Terrestrial or PlanetType.Ocean or PlanetType.GasGiant or PlanetType.IceGiant or PlanetType.Frozen)
+        {
+            DrawAtmosphereShell(renderer, camera, center, radius, type, globalTime, seed);
+        }
+
         // Type-specific overlays
         switch (type)
         {
             case PlanetType.GasGiant:
-                DrawBands(renderer, camera, center, radius, baseColor, seed, 5, 70, globalTime, 0.35f);
+                DrawBands(renderer, camera, center, radius, baseColor, seed, 6, 80, globalTime, 0.35f);
+                DrawBands(renderer, camera, center, radius,
+                    Lerp(baseColor, new Color3(250, 230, 180), 0.22f), seed + 81, 3, 55, globalTime, 0.22f);
                 break;
             case PlanetType.IceGiant:
                 DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(210, 240, 255), 0.35f), seed, 4, 55, globalTime, 0.28f);
@@ -108,24 +116,34 @@ public class PlanetRenderer : IDisposable
             case PlanetType.Terrestrial:
                 DrawPatches(renderer, camera, center, radius, Lerp(baseColor, new Color3(45, 140, 70), 0.35f), seed, 3, 0.32f, 115, globalTime, 0.20f);
                 if (!isMoon)
+                {
                     DrawPatches(renderer, camera, center, radius, new Color3(240, 245, 255), seed + 31, 2, 0.22f, 60, globalTime, 0.12f);
+                    DrawCloudLayer(renderer, camera, center, radius, seed + 211, globalTime, 0.11f, 38);
+                }
                 break;
             case PlanetType.Ocean:
                 DrawPatches(renderer, camera, center, radius, new Color3(40, 120, 185), seed, 3, 0.34f, 95, globalTime, 0.18f);
                 if (!isMoon)
+                {
                     DrawPatches(renderer, camera, center, radius, new Color3(230, 245, 255), seed + 19, 2, 0.20f, 70, globalTime, 0.10f);
+                    DrawCloudLayer(renderer, camera, center, radius, seed + 173, globalTime, 0.14f, 44);
+                }
                 break;
             case PlanetType.Desert:
                 DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(205, 165, 90), 0.40f), seed, 3, 45, globalTime, 0.16f);
+                DrawPatches(renderer, camera, center, radius, new Color3(180, 145, 85), seed + 44, 2, 0.24f, 42, globalTime, 0.09f);
                 break;
             case PlanetType.Volcanic:
                 DrawPatches(renderer, camera, center, radius, new Color3(255, 110, 40), seed, 3, 0.18f, 135, globalTime, 0.32f);
                 DrawPatches(renderer, camera, center, radius, new Color3(30, 20, 20), seed + 9, 2, 0.30f, 80, globalTime, 0.22f);
+                DrawPatches(renderer, camera, center, radius, new Color3(255, 155, 80), seed + 121, 2, 0.14f, 120, globalTime, 0.45f);
                 break;
             case PlanetType.Frozen:
                 DrawCracks(renderer, camera, center, radius, new Color4(220, 245, 255, isMoon ? (byte)110 : (byte)140), seed, 4, globalTime);
                 break;
             case PlanetType.Rocky:
+                DrawPatches(renderer, camera, center, radius, new Color3(155, 140, 120), seed + 66, 2, 0.18f, 36, globalTime, 0.06f);
+                break;
             default:
                 break;
         }
@@ -154,6 +172,74 @@ public class PlanetRenderer : IDisposable
         if (isMoon)
         {
             renderer.DrawCircle(camera, center, radius * 0.98f, new Color4(235, 235, 240, 70), 24);
+        }
+        else
+        {
+            renderer.DrawCircle(camera, center, radius * 0.992f, new Color4(245, 248, 255, 45), 36);
+        }
+    }
+
+    private static void DrawAtmosphereShell(SpriteRenderer renderer, Camera camera,
+        Vector2 center, float radius, PlanetType type, float globalTime, int seed)
+    {
+        Color4 inner;
+        Color4 mid;
+        Color4 outer;
+
+        switch (type)
+        {
+            case PlanetType.Terrestrial:
+                inner = new Color4(170, 215, 255, 80);
+                mid = new Color4(120, 180, 245, 48);
+                outer = new Color4(90, 145, 220, 24);
+                break;
+            case PlanetType.Ocean:
+                inner = new Color4(150, 210, 255, 86);
+                mid = new Color4(110, 175, 245, 54);
+                outer = new Color4(85, 140, 220, 28);
+                break;
+            case PlanetType.Frozen:
+                inner = new Color4(200, 235, 255, 70);
+                mid = new Color4(160, 210, 245, 45);
+                outer = new Color4(120, 180, 225, 24);
+                break;
+            case PlanetType.GasGiant:
+                inner = new Color4(235, 215, 170, 48);
+                mid = new Color4(220, 190, 135, 34);
+                outer = new Color4(190, 150, 95, 22);
+                break;
+            case PlanetType.IceGiant:
+                inner = new Color4(170, 220, 255, 52);
+                mid = new Color4(130, 185, 245, 36);
+                outer = new Color4(95, 150, 220, 22);
+                break;
+            default:
+                return;
+        }
+
+        float pulse = 0.92f + 0.08f * MathF.Sin(globalTime * 0.9f + seed * 0.21f);
+        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.05f, inner.WithAlpha((byte)(inner.A * pulse)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.05f, radius * 1.11f, mid.WithAlpha((byte)(mid.A * pulse)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, outer.WithAlpha((byte)(outer.A * pulse)), 40);
+    }
+
+    private static void DrawCloudLayer(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+        int seed, float globalTime, float speed, byte alpha)
+    {
+        int cloudCount = 4;
+        for (int i = 0; i < cloudCount; i++)
+        {
+            float angle = Hash01(seed + 19, i) * MathF.PI * 2f + globalTime * speed;
+            float drift = (Hash01(seed + 41, i) - 0.5f) * radius * 0.18f;
+            float dist = radius * (0.12f + Hash01(seed + 57, i) * 0.42f);
+            float ox = MathF.Cos(angle) * dist;
+            float oy = MathF.Sin(angle) * dist * 0.72f + drift * 0.12f;
+            float cr = radius * (0.20f + Hash01(seed + 73, i) * 0.10f);
+            byte a = (byte)Math.Clamp((int)(alpha * (0.85f + 0.15f * MathF.Sin(globalTime * 1.4f + i))), 0, 255);
+            renderer.DrawFilledCircle(camera,
+                center + new Vector2(ox, oy),
+                cr,
+                new Color4(240, 248, 255, a));
         }
     }
 

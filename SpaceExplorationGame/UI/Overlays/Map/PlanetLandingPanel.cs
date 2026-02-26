@@ -7,6 +7,16 @@ using SpaceExplorationGame.UI.Overlays.Map.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
+public readonly record struct LandingSelectionRequest(
+    StarSystemData StarSystem,
+    PlanetData Planet,
+    int TileX,
+    int TileY,
+    bool IsMoon,
+    int MoonPlanetIndex,
+    int MoonIndex
+);
+
 /// <summary>
 /// Map panel showing a planet/moon terrain overview with Camera-based zoom and pan.
 /// The player clicks to choose a landing site, double-clicks or presses Enter/E to confirm landing.
@@ -31,6 +41,12 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
     private string? _invalidSelectionHint;
     private float _invalidSelectionHintTimer;
+
+    /// <summary>
+    /// Called when landing is confirmed. Allows parent state to run a custom transition.
+    /// Parameters: game, landing selection payload.
+    /// </summary>
+    public Action<Game, LandingSelectionRequest>? OnLandingConfirmed { get; set; }
 
     public PlanetLandingPanel(TextureManager textures) : base(textures)
     {
@@ -226,7 +242,23 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         Cleanup();
         OnRequestClose?.Invoke(game);
-        game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.X, _cursorTile.Y));
+
+        if (OnLandingConfirmed != null)
+        {
+            var landing = new LandingSelectionRequest(
+                StarSystem: _starSystem,
+                Planet: _planet,
+                TileX: _cursorTile.X,
+                TileY: _cursorTile.Y,
+                IsMoon: _isMoon,
+                MoonPlanetIndex: _moonPlanetIndex,
+                MoonIndex: _moonIndex);
+            OnLandingConfirmed(game, landing);
+        }
+        else
+        {
+            game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.X, _cursorTile.Y));
+        }
     }
 
     private void ShowInvalidSelectionHint(string text)

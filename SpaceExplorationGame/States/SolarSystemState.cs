@@ -125,6 +125,8 @@ public class SolarSystemState : GameState
     public override void Enter(Game game)
     {
         _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
+        _planetLandingOverlay.OnLandingConfirmed = (g, landing) =>
+            BeginSeamlessLanding(g, landing);
 
         // Wire up map option in the in-game menu
         _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
@@ -405,6 +407,48 @@ public class SolarSystemState : GameState
         _playerDead = false;
 
         _planetLandingOverlay.Cleanup();
+    }
+
+    private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)
+    {
+        Vector2 shipWorldPos = game.EcsWorld.IsAlive(_playerShip)
+            ? game.EcsWorld.Get<Transform>(_playerShip).Position
+            : game.Player.ShipWorldPosition;
+
+        Vector2 targetBodyPos = shipWorldPos;
+        if (landing.IsMoon)
+        {
+            if (landing.MoonPlanetIndex >= 0 && landing.MoonPlanetIndex < _moonEntities.Count
+                && landing.MoonIndex >= 0 && landing.MoonIndex < _moonEntities[landing.MoonPlanetIndex].Count)
+            {
+                var moonEntity = _moonEntities[landing.MoonPlanetIndex][landing.MoonIndex];
+                if (game.EcsWorld.IsAlive(moonEntity))
+                    targetBodyPos = game.EcsWorld.Get<Transform>(moonEntity).Position;
+            }
+        }
+        else
+        {
+            int pIdx = _planets.FindIndex(p => p.Index == landing.Planet.Index);
+            if (pIdx >= 0 && pIdx < _planetEntities.Count)
+            {
+                var planetEntity = _planetEntities[pIdx];
+                if (game.EcsWorld.IsAlive(planetEntity))
+                    targetBodyPos = game.EcsWorld.Get<Transform>(planetEntity).Position;
+            }
+        }
+
+        game.ChangeState(new LandingTransitionState(
+            landing.StarSystem,
+            landing.Planet,
+            landing.TileX,
+            landing.TileY,
+            shipWorldPos,
+            targetBodyPos,
+            _camera.Position,
+            _camera.Zoom,
+            landing.IsMoon,
+            landing.MoonPlanetIndex,
+            landing.MoonIndex));
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
