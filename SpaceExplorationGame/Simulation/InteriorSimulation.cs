@@ -17,7 +17,7 @@ namespace SpaceExplorationGame.Simulation;
 public class InteriorSimulation : ISimulation
 {
     // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; private set; } = null!;
+    public World EcsWorld { get; }
 
     // ── Data ────────────────────────────────────────────────────────
     public InteriorOrigin Origin { get; }
@@ -48,6 +48,7 @@ public class InteriorSimulation : ISimulation
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
     {
+        EcsWorld = World.Create();
         _game = game;
         Origin = origin;
         StarSystem = starSystem;
@@ -58,8 +59,6 @@ public class InteriorSimulation : ISimulation
 
     public void Create()
     {
-        EcsWorld = World.Create();
-
         Interior = Origin switch
         {
             InteriorOrigin.Station => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, Station),
@@ -78,13 +77,11 @@ public class InteriorSimulation : ISimulation
     public void Destroy()
     {
         _players.Clear();
-        EcsWorld?.Dispose();
-        EcsWorld = null!;
+        EcsWorld.Dispose();
     }
 
     public void Update(UpdateContext ctx)
     {
-        if (EcsWorld == null) return;
         float dt = ctx.Dt;
 
         _dependentEntityCleanupSystem.Update(in dt);
@@ -123,7 +120,7 @@ public class InteriorSimulation : ISimulation
 
     public void RemovePlayer(SimulationPlayer player)
     {
-        if (EcsWorld != null && EcsWorld.IsAlive(player.Entity))
+        if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
     }
@@ -137,7 +134,7 @@ public class InteriorSimulation : ISimulation
 
         if (_players.Count == 0) return;
         var player = _players[0];
-        if (EcsWorld == null || !EcsWorld.IsAlive(player.Entity)) return;
+        if (!EcsWorld.IsAlive(player.Entity)) return;
 
         ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
         float playerTileX = avatarTf.Position.X / GameConfig.TileSize;

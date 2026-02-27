@@ -18,7 +18,7 @@ namespace SpaceExplorationGame.Simulation;
 public class PlanetSurfaceSimulation : ISimulation
 {
     // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; private set; } = null!;
+    public World EcsWorld { get; }
 
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
@@ -80,6 +80,7 @@ public class PlanetSurfaceSimulation : ISimulation
         int landingTileX = -1, int landingTileY = -1,
         PlanetSurfaceData? preGeneratedSurfaceData = null)
     {
+        EcsWorld = World.Create();
         _game = game;
         StarSystem = starSystem;
         Planet = planet;
@@ -90,8 +91,6 @@ public class PlanetSurfaceSimulation : ISimulation
 
     public void Create()
     {
-        EcsWorld = World.Create();
-
         // Generate surface
         SurfaceData = _preGeneratedSurfaceData
             ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
@@ -142,13 +141,11 @@ public class PlanetSurfaceSimulation : ISimulation
     {
         _players.Clear();
         PlayerDead = false;
-        EcsWorld?.Dispose();
-        EcsWorld = null!;
+        EcsWorld.Dispose();
     }
 
     public void Update(UpdateContext ctx)
     {
-        if (EcsWorld == null) return;
         float dt = ctx.Dt;
         _globalTime = ctx.GlobalTime;
 
@@ -265,13 +262,13 @@ public class PlanetSurfaceSimulation : ISimulation
     public void RemovePlayer(SimulationPlayer player)
     {
         // Persist avatar health
-        if (!PlayerDead && EcsWorld != null && EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
+        if (!PlayerDead && EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
         {
             var health = EcsWorld.Get<Health>(player.Entity);
             player.Data.AvatarHealth = health.Hull;
         }
 
-        if (EcsWorld != null && EcsWorld.IsAlive(player.Entity))
+        if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
     }
@@ -287,7 +284,7 @@ public class PlanetSurfaceSimulation : ISimulation
     /// <summary>Remove the vehicle entity from the simulation.</summary>
     public void StowVehicle()
     {
-        if (VehicleDeployed && EcsWorld != null && EcsWorld.IsAlive(VehicleEntity))
+        if (VehicleDeployed && EcsWorld.IsAlive(VehicleEntity))
             EcsWorld.Destroy(VehicleEntity);
         VehicleDeployed = false;
     }

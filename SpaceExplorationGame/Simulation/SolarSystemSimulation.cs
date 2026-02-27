@@ -20,7 +20,7 @@ namespace SpaceExplorationGame.Simulation;
 public class SolarSystemSimulation : ISimulation
 {
     // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; private set; } = null!;
+    public World EcsWorld { get; }
 
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
@@ -101,12 +101,11 @@ public class SolarSystemSimulation : ISimulation
     {
         _game = game;
         StarSystem = starSystem;
+        EcsWorld = World.Create();
     }
 
     public void Create()
     {
-        EcsWorld = World.Create();
-
         var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
         Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
         Planets = Content.Planets;
@@ -276,13 +275,11 @@ public class SolarSystemSimulation : ISimulation
         _players.Clear();
         PlayerDead = false;
 
-        EcsWorld?.Dispose();
-        EcsWorld = null!;
+        EcsWorld.Dispose();
     }
 
     public void Update(UpdateContext ctx)
     {
-        if (EcsWorld == null) return;
         float dt = ctx.Dt;
         _globalTime = ctx.GlobalTime;
 
@@ -370,7 +367,7 @@ public class SolarSystemSimulation : ISimulation
 
     public void RemovePlayer(SimulationPlayer player)
     {
-        if (EcsWorld != null && EcsWorld.IsAlive(player.Entity))
+        if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
     }
@@ -378,7 +375,7 @@ public class SolarSystemSimulation : ISimulation
     /// <summary>Sync the player ship's ShipComponent with current equipment stats.</summary>
     public void SyncPlayerShipComponent(SimulationPlayer player)
     {
-        if (EcsWorld == null || !EcsWorld.IsAlive(player.Entity)) return;
+        if (!EcsWorld.IsAlive(player.Entity)) return;
         if (!EcsWorld.Has<ShipComponent>(player.Entity) || !EcsWorld.Has<Velocity>(player.Entity)) return;
 
         var playerStats = player.Data.GetCombinedStats();
