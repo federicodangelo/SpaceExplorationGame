@@ -290,6 +290,10 @@ public class SpriteRenderer : IDisposable
         SDL.RenderLine(_renderer, x3, y3, x1, y1);
     }
 
+    // Reusable buffers for triangle rendering (avoids per-call allocs).
+    private static SDL.Vertex[] _triBuf = new SDL.Vertex[3];
+    private static readonly int[] TriIndices = [0, 1, 2];
+
     public void DrawFilledTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
     {
         var fcolor = new SDL.FColor
@@ -300,16 +304,11 @@ public class SpriteRenderer : IDisposable
             A = color.A / 255f
         };
 
-        SDL.Vertex[] vertices = new SDL.Vertex[3]
-        {
-            new SDL.Vertex { Position = new SDL.FPoint { X = x1, Y = y1 }, Color = fcolor },
-            new SDL.Vertex { Position = new SDL.FPoint { X = x2, Y = y2 }, Color = fcolor },
-            new SDL.Vertex { Position = new SDL.FPoint { X = x3, Y = y3 }, Color = fcolor }
-        };
+        _triBuf[0] = new SDL.Vertex { Position = new SDL.FPoint { X = x1, Y = y1 }, Color = fcolor };
+        _triBuf[1] = new SDL.Vertex { Position = new SDL.FPoint { X = x2, Y = y2 }, Color = fcolor };
+        _triBuf[2] = new SDL.Vertex { Position = new SDL.FPoint { X = x3, Y = y3 }, Color = fcolor };
 
-        int[] indices = new int[3] { 0, 1, 2 };
-
-        DrawGeometryScreen(vertices, vertices.Length, indices, indices.Length);
+        DrawGeometryScreen(_triBuf, 3, TriIndices, 3);
     }
 
     /// <summary>Draw a filled circle in screen space.</summary>
@@ -322,6 +321,16 @@ public class SpriteRenderer : IDisposable
     // Reusable buffers for batched tile rendering (avoids per-frame allocs).
     private static SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
     private static int[] _indexBuf = new int[1536];
+
+    /// <summary>Ensure shared buffers are large enough for the given vertex/index counts.</summary>
+    private static void EnsureBuffers(int requiredVerts, int requiredIndices)
+    {
+        if (_vertexBuf.Length < requiredVerts)
+            _vertexBuf = new SDL.Vertex[requiredVerts];
+        if (_indexBuf.Length < requiredIndices)
+            _indexBuf = new int[requiredIndices];
+    }
+
     public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
     {
         if (segments < 3) segments = 3;
@@ -346,10 +355,7 @@ public class SpriteRenderer : IDisposable
 
         int requiredVerts = segments + 2;
         int requiredIndices = (segments + 1) * 3;
-        if (_vertexBuf.Length < requiredVerts)
-            _vertexBuf = new SDL.Vertex[requiredVerts];
-        if (_indexBuf.Length < requiredIndices)
-            _indexBuf = new int[requiredIndices];
+        EnsureBuffers(requiredVerts, requiredIndices);
         var v = _vertexBuf;
         var id = _indexBuf;
 
@@ -400,8 +406,7 @@ public class SpriteRenderer : IDisposable
         int totalVerts = ringVerts * 2;
         int totalIndices = segments * 6;
 
-        var vertices = new SDL.Vertex[totalVerts];
-        var indices = new int[totalIndices];
+        EnsureBuffers(totalVerts, totalIndices);
 
         SDL.FColor fcolor = new SDL.FColor
         {
@@ -421,13 +426,13 @@ public class SpriteRenderer : IDisposable
             int innerIdx = i;
             int outerIdx = ringVerts + i;
 
-            vertices[innerIdx] = new SDL.Vertex
+            _vertexBuf[innerIdx] = new SDL.Vertex
             {
                 Position = new SDL.FPoint { X = cx + cs * inner, Y = cy + sn * inner },
                 Color = fcolor,
             };
 
-            vertices[outerIdx] = new SDL.Vertex
+            _vertexBuf[outerIdx] = new SDL.Vertex
             {
                 Position = new SDL.FPoint { X = cx + cs * outerRadius, Y = cy + sn * outerRadius },
                 Color = fcolor,
@@ -442,16 +447,16 @@ public class SpriteRenderer : IDisposable
             int o0 = ringVerts + i;
             int o1 = ringVerts + i + 1;
 
-            indices[w++] = i0;
-            indices[w++] = o0;
-            indices[w++] = i1;
+            _indexBuf[w++] = i0;
+            _indexBuf[w++] = o0;
+            _indexBuf[w++] = i1;
 
-            indices[w++] = i1;
-            indices[w++] = o0;
-            indices[w++] = o1;
+            _indexBuf[w++] = i1;
+            _indexBuf[w++] = o0;
+            _indexBuf[w++] = o1;
         }
 
-        DrawGeometryScreen(vertices, totalVerts, indices, totalIndices);
+        DrawGeometryScreen(_vertexBuf, totalVerts, _indexBuf, totalIndices);
     }
 
     /// <summary>
@@ -480,8 +485,7 @@ public class SpriteRenderer : IDisposable
         {
             int requiredVerts = segments + 2;
             int requiredIndices = segments * 3;
-            var vertices = new SDL.Vertex[requiredVerts];
-            var indices = new int[requiredIndices];
+            EnsureBuffers(requiredVerts, requiredIndices);
 
             SDL.FColor innerF = new SDL.FColor
             {
@@ -498,7 +502,7 @@ public class SpriteRenderer : IDisposable
                 A = outerColor.A / 255f
             };
 
-            vertices[0] = new SDL.Vertex
+            _vertexBuf[0] = new SDL.Vertex
             {
                 Position = new SDL.FPoint { X = cx, Y = cy },
                 Color = innerF,
@@ -510,7 +514,7 @@ public class SpriteRenderer : IDisposable
                 float angle = i * angleStep;
                 float x = cx + MathF.Cos(angle) * radius;
                 float y = cy + MathF.Sin(angle) * radius;
-                vertices[i + 1] = new SDL.Vertex
+                _vertexBuf[i + 1] = new SDL.Vertex
                 {
                     Position = new SDL.FPoint { X = x, Y = y },
                     Color = outerF,
@@ -519,12 +523,12 @@ public class SpriteRenderer : IDisposable
 
             for (int i = 0; i < segments; i++)
             {
-                indices[i * 3 + 0] = 0;
-                indices[i * 3 + 1] = i + 1;
-                indices[i * 3 + 2] = i + 2;
+                _indexBuf[i * 3 + 0] = 0;
+                _indexBuf[i * 3 + 1] = i + 1;
+                _indexBuf[i * 3 + 2] = i + 2;
             }
 
-            DrawGeometryScreen(vertices, requiredVerts, indices, requiredIndices);
+            DrawGeometryScreen(_vertexBuf, requiredVerts, _indexBuf, requiredIndices);
             return;
         }
 
@@ -535,8 +539,7 @@ public class SpriteRenderer : IDisposable
         int annulusIndices = segments * 6;
         int totalIndices = innerIndices + annulusIndices;
 
-        var vtx = new SDL.Vertex[totalVerts];
-        var idx = new int[totalIndices];
+        EnsureBuffers(totalVerts, totalIndices);
 
         SDL.FColor inner = new SDL.FColor
         {
@@ -553,7 +556,7 @@ public class SpriteRenderer : IDisposable
             A = outerColor.A / 255f
         };
 
-        vtx[0] = new SDL.Vertex
+        _vertexBuf[0] = new SDL.Vertex
         {
             Position = new SDL.FPoint { X = cx, Y = cy },
             Color = inner,
@@ -569,12 +572,12 @@ public class SpriteRenderer : IDisposable
             int innerRingIndex = 1 + i;
             int outerRingIndex = 1 + ringVerts + i;
 
-            vtx[innerRingIndex] = new SDL.Vertex
+            _vertexBuf[innerRingIndex] = new SDL.Vertex
             {
                 Position = new SDL.FPoint { X = cx + cs * tRadius, Y = cy + sn * tRadius },
                 Color = inner,
             };
-            vtx[outerRingIndex] = new SDL.Vertex
+            _vertexBuf[outerRingIndex] = new SDL.Vertex
             {
                 Position = new SDL.FPoint { X = cx + cs * radius, Y = cy + sn * radius },
                 Color = outer,
@@ -585,9 +588,9 @@ public class SpriteRenderer : IDisposable
         // Inner fan
         for (int i = 0; i < segments; i++)
         {
-            idx[w++] = 0;
-            idx[w++] = 1 + i;
-            idx[w++] = 1 + i + 1;
+            _indexBuf[w++] = 0;
+            _indexBuf[w++] = 1 + i;
+            _indexBuf[w++] = 1 + i + 1;
         }
 
         // Gradient annulus (two triangles per segment)
@@ -599,16 +602,16 @@ public class SpriteRenderer : IDisposable
             int o0 = outerBase + i;
             int o1 = outerBase + i + 1;
 
-            idx[w++] = i0;
-            idx[w++] = o0;
-            idx[w++] = i1;
+            _indexBuf[w++] = i0;
+            _indexBuf[w++] = o0;
+            _indexBuf[w++] = i1;
 
-            idx[w++] = i1;
-            idx[w++] = o0;
-            idx[w++] = o1;
+            _indexBuf[w++] = i1;
+            _indexBuf[w++] = o0;
+            _indexBuf[w++] = o1;
         }
 
-        DrawGeometryScreen(vtx, totalVerts, idx, totalIndices);
+        DrawGeometryScreen(_vertexBuf, totalVerts, _indexBuf, totalIndices);
     }
 
     public void Dispose()
