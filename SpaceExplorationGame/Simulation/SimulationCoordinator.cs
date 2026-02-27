@@ -21,14 +21,18 @@ public class SimulationCoordinator
     }
 
     private readonly List<ActiveSimulation> _simulations = [];
+    private List<ISimulation>? _cachedSimulations;
 
     /// <summary>All currently active simulations (read-only view).</summary>
-    public IReadOnlyList<ISimulation> Simulations => _simulations.ConvertAll(s => s.Simulation);
+    public IReadOnlyList<ISimulation> Simulations => _cachedSimulations ??= _simulations.ConvertAll(s => s.Simulation);
+
+    private void InvalidateCache() => _cachedSimulations = null;
 
     /// <summary>Register a simulation that has already been created.</summary>
     public void Register(ISimulation simulation)
     {
         _simulations.Add(new ActiveSimulation(simulation));
+        InvalidateCache();
     }
 
     /// <summary>Unregister and destroy a specific simulation immediately.</summary>
@@ -40,6 +44,7 @@ public class SimulationCoordinator
             {
                 _simulations[i].Simulation.Destroy();
                 _simulations.RemoveAt(i);
+                InvalidateCache();
                 return;
             }
         }
@@ -75,6 +80,7 @@ public class SimulationCoordinator
                 {
                     entry.Simulation.Destroy();
                     _simulations.RemoveAt(i);
+                    InvalidateCache();
                 }
             }
         }
@@ -125,5 +131,6 @@ public class SimulationCoordinator
         foreach (var entry in _simulations)
             entry.Simulation.Destroy();
         _simulations.Clear();
+        InvalidateCache();
     }
 }
