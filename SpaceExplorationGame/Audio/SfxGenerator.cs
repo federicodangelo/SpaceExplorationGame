@@ -60,10 +60,9 @@ public static class SfxGenerator
             float t = (float)i / sr;
             float p = (float)i / len;
             float freq = 800f - 600f * p;
-            phase += freq / sr;
             float env = MathF.Exp(-t * 20f);
-            buf[i] = (MathF.Sin((float)(phase * MathF.Tau)) * 0.7f
-                     + Square(phase) * 0.15f) * env;
+            float sine = OscSin(ref phase, freq, sr);
+            buf[i] = (sine * 0.7f + Square(phase) * 0.15f) * env;
         }
         return buf;
     }
@@ -79,10 +78,9 @@ public static class SfxGenerator
             float t = (float)i / sr;
             float p = (float)i / len;
             float freq = 400f + 300f * p;
-            phase += freq / sr;
             float env = MathF.Exp(-t * 22f);
-            buf[i] = (MathF.Sin((float)(phase * MathF.Tau)) * 0.5f
-                     + Square(phase) * 0.25f) * env;
+            float sine = OscSin(ref phase, freq, sr);
+            buf[i] = (sine * 0.5f + Square(phase) * 0.25f) * env;
         }
         return buf;
     }
@@ -105,13 +103,10 @@ public static class SfxGenerator
             float t = (float)i / sr;
             float env = MathF.Exp(-t * 4f);
 
-            float noise = (float)(rng.NextDouble() * 2 - 1);
-            float cutoff = 2000f * MathF.Exp(-t * 3f);
-            float alpha = LpfAlpha(sr, cutoff);
-            lpf += alpha * (noise - lpf);
+            float noise = Noise(rng);
+            Lpf(ref lpf, noise, sr, 2000f * MathF.Exp(-t * 3f));
 
-            phase += 60.0 / sr;
-            float thump = MathF.Sin((float)(phase * MathF.Tau)) * MathF.Exp(-t * 8f);
+            float thump = OscSin(ref phase, 60.0, sr) * MathF.Exp(-t * 8f);
 
             buf[i] = (lpf * 0.6f + thump * 0.4f) * env;
         }
@@ -130,9 +125,8 @@ public static class SfxGenerator
         {
             float t = (float)i / sr;
             float env = MathF.Exp(-t * 8f);
-            float noise = (float)(rng.NextDouble() * 2 - 1);
-            float alpha = LpfAlpha(sr, 3000f * MathF.Exp(-t * 5f));
-            lpf += alpha * (noise - lpf);
+            float noise = Noise(rng);
+            Lpf(ref lpf, noise, sr, 3000f * MathF.Exp(-t * 5f));
             buf[i] = lpf * env * 0.7f;
         }
         return buf;
@@ -154,9 +148,8 @@ public static class SfxGenerator
         {
             float t = (float)i / sr;
             float env = MathF.Exp(-t * 12f);
-            phase += 1500.0 / sr;
-            float ring = MathF.Sin((float)(phase * MathF.Tau));
-            float noise = (float)(rng.NextDouble() * 2 - 1) * 0.15f;
+            float ring = OscSin(ref phase, 1500.0, sr);
+            float noise = Noise(rng) * 0.15f;
             buf[i] = (ring * 0.7f + noise) * env * 0.6f;
         }
         return buf;
@@ -174,9 +167,8 @@ public static class SfxGenerator
         {
             float t = (float)i / sr;
             float env = MathF.Exp(-t * 18f);
-            phase += 100.0 / sr;
-            float thump = MathF.Sin((float)(phase * MathF.Tau));
-            float noise = (float)(rng.NextDouble() * 2 - 1) * 0.3f;
+            float thump = OscSin(ref phase, 100.0, sr);
+            float noise = Noise(rng) * 0.3f;
             buf[i] = (thump * 0.6f + noise) * env * 0.8f;
         }
         return buf;
@@ -197,10 +189,9 @@ public static class SfxGenerator
         {
             float p = (float)i / len;
             float freq = p < 0.5f ? 660f : 880f;
-            phase += freq / sr;
             float env = 1f - p;
             env *= env;
-            buf[i] = MathF.Sin((float)(phase * MathF.Tau)) * env * 0.4f;
+            buf[i] = OscSin(ref phase, freq, sr) * env * 0.4f;
         }
         return buf;
     }
@@ -215,9 +206,8 @@ public static class SfxGenerator
         for (int i = 0; i < len; i++)
         {
             float p = (float)i / len;
-            phase += 440.0 / sr;
             float env = 1f - p;
-            buf[i] = MathF.Sin((float)(phase * MathF.Tau)) * env * 0.25f;
+            buf[i] = OscSin(ref phase, 440.0, sr) * env * 0.25f;
         }
         return buf;
     }
@@ -241,12 +231,10 @@ public static class SfxGenerator
             float p = (float)i / len;
 
             float freq = 60f + 1500f * p * p;
-            phase += freq / sr;
-            float sine = MathF.Sin((float)(phase * MathF.Tau));
+            float sine = OscSin(ref phase, freq, sr);
 
-            float noise = (float)(rng.NextDouble() * 2 - 1) * p;
-            float alpha = LpfAlpha(sr, 200f + 2000f * p);
-            lpf += alpha * (noise - lpf);
+            float noise = Noise(rng) * p;
+            Lpf(ref lpf, noise, sr, 200f + 2000f * p);
 
             float env = p * p;
             buf[i] = (sine * 0.5f + lpf * 0.3f) * env * 0.6f;
@@ -269,9 +257,8 @@ public static class SfxGenerator
             float env = MathF.Exp(-t * 4f);
 
             float freq = 2000f - 1800f * p;
-            phase += freq / sr;
-            float sine = MathF.Sin((float)(phase * MathF.Tau));
-            float noise = (float)(rng.NextDouble() * 2 - 1);
+            float sine = OscSin(ref phase, freq, sr);
+            float noise = Noise(rng);
 
             buf[i] = (sine * 0.3f + noise * 0.5f) * env * 0.8f;
         }
@@ -293,9 +280,8 @@ public static class SfxGenerator
         {
             float p = (float)i / len;
             float freq = p < 0.4f ? 880f : 1320f;
-            phase += freq / sr;
             float env = (1f - p) * MathF.Sin(p * MathF.PI);
-            buf[i] = MathF.Sin((float)(phase * MathF.Tau)) * env * 0.35f;
+            buf[i] = OscSin(ref phase, freq, sr) * env * 0.35f;
         }
         return buf;
     }
@@ -310,10 +296,9 @@ public static class SfxGenerator
         for (int i = 0; i < len; i++)
         {
             float p = (float)i / len;
-            phase += 1047.0 / sr;
             float env = 1f - p;
             env *= env;
-            buf[i] = MathF.Sin((float)(phase * MathF.Tau)) * env * 0.35f;
+            buf[i] = OscSin(ref phase, 1047.0, sr) * env * 0.35f;
         }
         return buf;
     }
@@ -334,9 +319,8 @@ public static class SfxGenerator
         {
             float t = (float)i / sr;
             float env = MathF.Exp(-t * 25f);
-            phase += 150.0 / sr;
-            float thump = MathF.Sin((float)(phase * MathF.Tau));
-            float noise = (float)(rng.NextDouble() * 2 - 1);
+            float thump = OscSin(ref phase, 150.0, sr);
+            float noise = Noise(rng);
             buf[i] = (thump * 0.4f + noise * 0.4f) * env * 0.6f;
         }
         return buf;
@@ -360,12 +344,10 @@ public static class SfxGenerator
             float t = (float)i / sr;
             float p = (float)i / len;
 
-            float noise = (float)(rng.NextDouble() * 2 - 1);
-            float alpha = LpfAlpha(sr, 800f * (1f - p * 0.7f));
-            lpf += alpha * (noise - lpf);
+            float noise = Noise(rng);
+            Lpf(ref lpf, noise, sr, 800f * (1f - p * 0.7f));
 
-            phase += (80.0 - 30.0 * p) / sr;
-            float engine = MathF.Sin((float)(phase * MathF.Tau));
+            float engine = OscSin(ref phase, 80.0 - 30.0 * p, sr);
 
             float env = 1f - p * 0.6f;
             buf[i] = (lpf * 0.4f + engine * 0.3f) * env * 0.5f;
@@ -387,12 +369,10 @@ public static class SfxGenerator
             float t = (float)i / sr;
             float p = (float)i / len;
 
-            float noise = (float)(rng.NextDouble() * 2 - 1);
-            float alpha = LpfAlpha(sr, 400f + 800f * p);
-            lpf += alpha * (noise - lpf);
+            float noise = Noise(rng);
+            Lpf(ref lpf, noise, sr, 400f + 800f * p);
 
-            phase += (50.0 + 80.0 * p) / sr;
-            float engine = MathF.Sin((float)(phase * MathF.Tau));
+            float engine = OscSin(ref phase, 50.0 + 80.0 * p, sr);
 
             // Fade in, quick fade out at the end
             float env = p < 0.8f ? p / 0.8f : (1f - p) / 0.2f;
@@ -412,10 +392,22 @@ public static class SfxGenerator
         return p < 0.5 ? 0.5f : -0.5f;
     }
 
-    /// <summary>Single-pole low-pass filter coefficient.</summary>
-    private static float LpfAlpha(int sr, float cutoffHz)
+    /// <summary>Advance a phase accumulator and return sin(2π·phase).</summary>
+    private static float OscSin(ref double phase, double freq, int sr)
+    {
+        phase += freq / sr;
+        return MathF.Sin((float)(phase * MathF.Tau));
+    }
+
+    /// <summary>Return a white-noise sample in [-1, 1].</summary>
+    private static float Noise(Random rng) => (float)(rng.NextDouble() * 2 - 1);
+
+    /// <summary>Apply a single-pole low-pass filter, returning the new state.</summary>
+    private static float Lpf(ref float state, float input, int sr, float cutoffHz)
     {
         float rc = 1f / (MathF.Tau * cutoffHz);
-        return (1f / sr) / (rc + 1f / sr);
+        float alpha = (1f / sr) / (rc + 1f / sr);
+        state += alpha * (input - state);
+        return state;
     }
 }
