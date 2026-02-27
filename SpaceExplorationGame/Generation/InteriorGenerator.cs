@@ -237,81 +237,38 @@ public static class InteriorGenerator
         data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
 
         // Cargo terminal (sell mined resources)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "CARGO TERMINAL",
-            Type = InteractableType.CargoTerminal,
-            TilePos = new(trading.CenterX, trading.TileRect.Y + 1)
-        });
-        data.Tiles[trading.CenterX, trading.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "CARGO TERMINAL", InteractableType.CargoTerminal,
+            trading.CenterX, trading.TileRect.Y + 1);
 
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "HEALTH STATION",
-            Type = InteractableType.HealthStation,
-            TilePos = new(medbay.CenterX - 2, medbay.TileRect.Y + 1)
-        });
-        data.Tiles[medbay.CenterX - 2, medbay.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "HEALTH STATION", InteractableType.HealthStation,
+            medbay.CenterX - 2, medbay.TileRect.Y + 1);
 
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "MISSION BOARD",
-            Type = InteractableType.MissionBoard,
-            TilePos = new(command.CenterX, command.TileRect.Y + 1)
-        });
-        data.Tiles[command.CenterX, command.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "MISSION BOARD", InteractableType.MissionBoard,
+            command.CenterX, command.TileRect.Y + 1);
 
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "EXIT",
-            Type = InteractableType.ExitDoor,
-            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2, docking.TileRect.Y + docking.TileRect.Height - 1)
-        });
+        PlaceInteractable(data, "EXIT", InteractableType.ExitDoor,
+            docking.TileRect.X + docking.TileRect.Width / 2, docking.TileRect.Y + docking.TileRect.Height - 1,
+            markConsole: false);
 
         // Repair station in docking bay (next to landing pad)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "REPAIR STATION",
-            Type = InteractableType.RepairStation,
-            TilePos = new(docking.TileRect.X + 1, docking.CenterY)
-        });
-        data.Tiles[docking.TileRect.X + 1, docking.CenterY] = InteriorTileType.Console;
+        PlaceInteractable(data, "REPAIR STATION", InteractableType.RepairStation,
+            docking.TileRect.X + 1, docking.CenterY);
 
         // Ship customization terminal next to landing pad
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "SHIP CUSTOMIZATION",
-            Type = InteractableType.ShipCustomization,
-            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + docking.TileRect.Height - 2)
-        });
-        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + docking.TileRect.Height - 2] = InteriorTileType.Console;
+        PlaceInteractable(data, "SHIP CUSTOMIZATION", InteractableType.ShipCustomization,
+            docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + docking.TileRect.Height - 2);
 
         // Avatar customization terminal (top of docking room)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "AVATAR CUSTOMIZATION",
-            Type = InteractableType.AvatarCustomization,
-            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + 1)
-        });
-        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "AVATAR CUSTOMIZATION", InteractableType.AvatarCustomization,
+            docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + 1);
 
         // Vehicle customization terminal (top of docking room)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "VEHICLE CUSTOMIZATION",
-            Type = InteractableType.VehicleCustomization,
-            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + 1)
-        });
-        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "VEHICLE CUSTOMIZATION", InteractableType.VehicleCustomization,
+            docking.TileRect.X + docking.TileRect.Width / 2 + 2, docking.TileRect.Y + 1);
 
         // Ship dealer terminal (left side of docking room)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "SHIP DEALER",
-            Type = InteractableType.ShipDealer,
-            TilePos = new(docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2)
-        });
-        data.Tiles[docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2] = InteriorTileType.Console;
+        PlaceInteractable(data, "SHIP DEALER", InteractableType.ShipDealer,
+            docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2);
 
         // Place NPCs
         PlaceStationNpcs(data, rng);
@@ -381,83 +338,39 @@ public static class InteriorGenerator
         data.SpawnPoint = new TilePos(landing.CenterX, landing.CenterY);
 
         // Place interactables
-        // Cargo terminal (sell mining resources)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "CARGO TERMINAL",
-            Type = InteractableType.CargoTerminal,
-            TilePos = new(market.CenterX, market.TileRect.Y + 1)
-        });
-        data.Tiles[market.CenterX, market.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "CARGO TERMINAL", InteractableType.CargoTerminal,
+            market.CenterX, market.TileRect.Y + 1);
 
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "MISSION BOARD",
-            Type = InteractableType.MissionBoard,
-            TilePos = new(comms.CenterX, comms.TileRect.Y + 1)
-        });
-        data.Tiles[comms.CenterX, comms.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "MISSION BOARD", InteractableType.MissionBoard,
+            comms.CenterX, comms.TileRect.Y + 1);
 
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "EXIT",
-            Type = InteractableType.ExitDoor,
-            TilePos = new(landing.CenterX, landing.TileRect.Y + landing.TileRect.Height - 1)
-        });
+        PlaceInteractable(data, "EXIT", InteractableType.ExitDoor,
+            landing.CenterX, landing.TileRect.Y + landing.TileRect.Height - 1,
+            markConsole: false);
 
         // Ship customization terminal next to landing pad
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "SHIP CUSTOMIZATION",
-            Type = InteractableType.ShipCustomization,
-            TilePos = new(landing.CenterX + 2, landing.TileRect.Y + landing.TileRect.Height - 2)
-        });
-        data.Tiles[landing.CenterX + 2, landing.TileRect.Y + landing.TileRect.Height - 2] = InteriorTileType.Console;
+        PlaceInteractable(data, "SHIP CUSTOMIZATION", InteractableType.ShipCustomization,
+            landing.CenterX + 2, landing.TileRect.Y + landing.TileRect.Height - 2);
 
         // Repair station at the landing pad
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "REPAIR STATION",
-            Type = InteractableType.RepairStation,
-            TilePos = new(landing.TileRect.X + 1, landing.CenterY)
-        });
-        data.Tiles[landing.TileRect.X + 1, landing.CenterY] = InteriorTileType.Console;
+        PlaceInteractable(data, "REPAIR STATION", InteractableType.RepairStation,
+            landing.TileRect.X + 1, landing.CenterY);
 
         // Health station in the cantina (serves as settlement medbay)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "HEALTH STATION",
-            Type = InteractableType.HealthStation,
-            TilePos = new(cantina.CenterX - 2, cantina.TileRect.Y + 1)
-        });
-        data.Tiles[cantina.CenterX - 2, cantina.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "HEALTH STATION", InteractableType.HealthStation,
+            cantina.CenterX - 2, cantina.TileRect.Y + 1);
 
         // Avatar customization terminal (top of landing pad)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "AVATAR CUSTOMIZATION",
-            Type = InteractableType.AvatarCustomization,
-            TilePos = new(landing.CenterX - 2, landing.TileRect.Y + 1)
-        });
-        data.Tiles[landing.CenterX - 2, landing.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "AVATAR CUSTOMIZATION", InteractableType.AvatarCustomization,
+            landing.CenterX - 2, landing.TileRect.Y + 1);
 
         // Vehicle customization terminal (top of landing pad)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "VEHICLE CUSTOMIZATION",
-            Type = InteractableType.VehicleCustomization,
-            TilePos = new(landing.CenterX + 2, landing.TileRect.Y + 1)
-        });
-        data.Tiles[landing.CenterX + 2, landing.TileRect.Y + 1] = InteriorTileType.Console;
+        PlaceInteractable(data, "VEHICLE CUSTOMIZATION", InteractableType.VehicleCustomization,
+            landing.CenterX + 2, landing.TileRect.Y + 1);
 
         // Ship dealer terminal (left side of landing pad)
-        data.Interactables.Add(new InteriorInteractable
-        {
-            Name = "SHIP DEALER",
-            Type = InteractableType.ShipDealer,
-            TilePos = new(landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2)
-        });
-        data.Tiles[landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2] = InteriorTileType.Console;
+        PlaceInteractable(data, "SHIP DEALER", InteractableType.ShipDealer,
+            landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2);
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);
@@ -659,6 +572,14 @@ public static class InteriorGenerator
         }
     }
 
+    /// <summary>Add an interactable at the given tile and optionally mark the tile as a console.</summary>
+    private static void PlaceInteractable(InteriorData data, string name, InteractableType type, int x, int y, bool markConsole = true)
+    {
+        data.Interactables.Add(new InteriorInteractable { Name = name, Type = type, TilePos = new(x, y) });
+        if (markConsole)
+            data.Tiles[x, y] = InteriorTileType.Console;
+    }
+
     #endregion
 
     #region NPC Placement
@@ -698,19 +619,7 @@ public static class InteriorGenerator
         }
 
         // 2-4 random civilians in various rooms
-        int civilianCount = rng.NextInt(2, 5);
-        for (int i = 0; i < civilianCount; i++)
-        {
-            var room = rng.Pick(data.Rooms);
-            int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
-            int ny = rng.NextInt(room.TileRect.Y + 2, room.TileRect.Y + room.TileRect.Height - 2);
-
-            if (TileInBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
-            {
-                data.Npcs.Add(CreateNpc(rng, "CIVILIAN", nx, ny,
-                    CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));
-            }
-        }
+        PlaceRandomCivilians(data, rng, 2, 5, "CIVILIAN");
     }
 
     private static void PlaceSettlementNpcs(InteriorData data, SeededRandom rng)
@@ -749,8 +658,13 @@ public static class InteriorGenerator
         }
 
         // Random civilians
-        int civilianCount = rng.NextInt(2, 4);
-        for (int i = 0; i < civilianCount; i++)
+        PlaceRandomCivilians(data, rng, 2, 4, "SETTLER");
+    }
+
+    private static void PlaceRandomCivilians(InteriorData data, SeededRandom rng, int min, int max, string role)
+    {
+        int count = rng.NextInt(min, max);
+        for (int i = 0; i < count; i++)
         {
             var room = rng.Pick(data.Rooms);
             int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
@@ -758,7 +672,7 @@ public static class InteriorGenerator
 
             if (TileInBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
-                data.Npcs.Add(CreateNpc(rng, "SETTLER", nx, ny,
+                data.Npcs.Add(CreateNpc(rng, role, nx, ny,
                     CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));
             }
         }
