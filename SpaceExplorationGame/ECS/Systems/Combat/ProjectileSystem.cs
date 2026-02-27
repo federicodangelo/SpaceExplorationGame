@@ -33,6 +33,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     private readonly List<ProjectileSnapshot> _projectileData = [];
     private readonly List<TargetSnapshot> _targetData = [];
     private readonly HashSet<Entity> _processedProjectiles = [];
+    private readonly SpatialHash _spatialHash = new();
     private float _dt;
 
     /// <summary>Entities destroyed by projectile hits last update.</summary>
@@ -63,15 +64,22 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         if (_projectileData.Count > 0)
             CollectTargetsQuery(World);
 
-        // 3. Check collisions
+        // 2b. Build spatial hash from targets for fast neighbour lookup
+        _spatialHash.Clear();
+        for (int i = 0; i < _targetData.Count; i++)
+            _spatialHash.Insert(_targetData[i].Position, i);
+
+        // 3. Check collisions via spatial hash
         foreach (var snapshot in _projectileData)
         {
             var projEntity = snapshot.Entity;
             var projPos = snapshot.Position;
             var proj = snapshot.Proj;
 
-            foreach (var target in _targetData)
+            float queryRadius = proj.CollisionRadius + SpatialHash.CellSize; // generous query range
+            foreach (int targetIdx in _spatialHash.Query(projPos, queryRadius))
             {
+                var target = _targetData[targetIdx];
                 if (target.Entity == projEntity) continue;
 
                 // Faction-based hit filtering
