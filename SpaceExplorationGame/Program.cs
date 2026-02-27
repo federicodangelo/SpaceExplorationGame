@@ -10,6 +10,20 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        try
+        {
+            Run(args);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            Console.Error.WriteLine("Use --help for usage information.");
+            Environment.ExitCode = 1;
+        }
+    }
+
+    private static void Run(string[] args)
+    {
         // Parse optional arguments:
         //   dotnet run -- [--seed|-s <number>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <name> [--star-type <type>]]
         if (args.Any(arg => arg is "--help" or "-h"))
