@@ -3,16 +3,13 @@ using Arch.Core;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
-using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
+using SpaceExplorationGame.ECS.Systems.Movement;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
-using SpaceExplorationGame.ECS.Systems.Movement;
-using SpaceExplorationGame.ECS.Systems.AI;
-using SpaceExplorationGame.ECS.Systems.Combat;
-using SpaceExplorationGame.ECS.Systems.Effects;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.UI.Overlays.Map;
 
@@ -20,96 +17,46 @@ namespace SpaceExplorationGame.States;
 
 /// <summary>
 /// Solar system state: Player flies their ship around a solar system with orbiting bodies.
+/// Rendering-only — all simulation logic lives in <see cref="SolarSystemSimulation"/>.
 /// </summary>
 public class SolarSystemState : GameState
 {
     public override GameStateType Type => GameStateType.SolarSystem;
 
+    // ── Simulation ──────────────────────────────────────────────────
+    private SolarSystemSimulation _sim = null!;
+    private SimulationPlayer _simPlayer = null!;
+
     private readonly StarSystemData _starSystem;
-    private List<PlanetData> _planets = [];
-    private List<AsteroidBeltData> _asteroidBelts = [];
-    private List<SpaceStationData> _stations = [];
 
-    private Entity _playerShip;
-    private Entity _starEntity;
-    private List<Entity> _planetEntities = [];
-    private List<Entity> _stationEntities = [];
-    private List<List<Entity>> _moonEntities = [];
-
-    // Mineable asteroids (ECS entities)
-    private List<Entity> _asteroidEntities = [];
-
-    // Mining state (projectile-based)
-    private Entity _lastHitAsteroid;      // last asteroid hit by projectile (for HUD)
-    private float _miningHudTimer;        // how long to show the mining panel
-    private string? _miningMessage;       // feedback message
-    private float _miningMessageTimer;    // how long to show the message
-
-    // Interaction
-    private int _nearbyPlanetIndex = -1;
-    private int _nearbyStationIndex = -1;
-    private int _nearbyMoonPlanetIndex = -1;  // planet index of nearby moon
-    private int _nearbyMoonIndex = -1;        // moon index within that planet
-    private const float InteractionRadius = 20f;
-
-    // Background stars
-    private List<BackgroundStar> _bgStars = [];
-    private List<NebulaCloud> _bgNebulae = [];
-
-    // Camera
+    // ── Camera ──────────────────────────────────────────────────────
     private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
         GameConfig.SolarSystemZoomMin, GameConfig.SolarSystemZoomMax);
 
-    // Station overlay (docked at station)
-    private readonly SpaceStationOverlay _stationOverlay = new();
-    private readonly SpaceStationData? _autoOpenStation;
-
-    // Galaxy map overlay
-    private readonly GalaxyMapOverlay _galaxyMapOverlay = new();
-    private readonly bool _autoOpenGalaxyMap;
-
-    // Planet landing overlay
-    private PlanetLandingOverlay _planetLandingOverlay = null!;
-    private readonly PlanetData? _autoOpenPlanet;
-
-    // In-game menu overlay
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.SolarSystem };
-
-    // Anchor: keeps the ship at a fixed offset from a target while overlays are open
-    private Entity _anchorEntity;
-    private Vector2 _anchorOffset;
-
-    // ECS Systems
-    private OrbitSystem _orbitSystem = null!;
-    private VelocitySystem _velocitySystem = null!;
+    // ── Input system (runs on simulation ECS world) ─────────────────
+    private PlayerShipInputSystem _playerShipInputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
     private LabelRenderer _labelRenderer = null!;
-    private InteractionProximitySystem _proximitySystem = null!;
-    private PlayerShipInputSystem _playerShipInputSystem = null!;
-    private ShipSystem _shipSystem = null!;
 
-    // Combat systems
-    private ProjectileSystem _projectileSystem = null!;
-    private ShieldRegenSystem _shieldRegenSystem = null!;
-    private ShipEnemyAISystem _enemyAISystem = null!;
-    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
-    private ParticleSystem _particleSystem = null!;
-
-    // Combat state
-    private List<Entity> _enemyEntities = [];
-    private bool _playerDead;
-    private float _respawnTimer;
-    private const float RespawnDelay = 3f;
-    private string? _combatMessage;
-    private float _combatMessageTimer;
-
-    // Visual effects
+    // ── Visual effects (rendering-only) ─────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
 
-    // Combat music tracking
-    private float _combatMusicTimer;
+    // ── Combat music ────────────────────────────────────────────────
     private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
+
+    // ── Overlays ────────────────────────────────────────────────────
+    private readonly SpaceStationOverlay _stationOverlay = new();
+    private readonly SpaceStationData? _autoOpenStation;
+    private readonly GalaxyMapOverlay _galaxyMapOverlay = new();
+    private readonly bool _autoOpenGalaxyMap;
+    private PlanetLandingOverlay _planetLandingOverlay = null!;
+    private readonly PlanetData? _autoOpenPlanet;
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.SolarSystem };
+
+    // ── Anchor (keeps ship at fixed offset from target while overlays open) ──
+    private Entity _anchorEntity;
+    private Vector2 _anchorOffset;
 
     public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null,
         bool autoOpenGalaxyMap = false, PlanetData? autoOpenPlanet = null)
@@ -123,330 +70,65 @@ public class SolarSystemState : GameState
     public override void Enter(Game game)
     {
         _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
-        _planetLandingOverlay.OnLandingConfirmed = (g, landing) =>
-            BeginSeamlessLanding(g, landing);
-
-        // Wire up map option in the in-game menu
+        _planetLandingOverlay.OnLandingConfirmed = (g, landing) => BeginSeamlessLanding(g, landing);
         _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
 
         // Music
         game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
 
-        var rng = game.Seeds.GetStarSystemRandom(_starSystem.Index);
-        var content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, _starSystem);
-        _planets = content.Planets;
-        _asteroidBelts = content.AsteroidBelts;
-        _stations = content.Stations;
+        // Get or create the simulation
+        _sim = game.Coordinator.FindOrCreate<SolarSystemSimulation>(
+            s => s.StarSystem.Index == _starSystem.Index,
+            () => { var sim = new SolarSystemSimulation(_starSystem); sim.Create(game); return sim; });
 
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        Vector2 center = new(centerX, centerY);
-        float time = (float)game.GlobalTime;
+        // Add player to simulation
+        _simPlayer = _sim.AddPlayer(game.Player);
 
-        // Create star entity (doubled for solar system view)
-        float starDisplayRadius = _starSystem.StarRadius * 2f;
-        _starEntity = EntityFactory.CreateStar(game.EcsWorld, center, starDisplayRadius,
-            _starSystem.Name, _starSystem.StarColor, _starSystem.Index);
-
-        // Create planet entities — compute positions from global time
-        _planetEntities.Clear();
-        _moonEntities.Clear();
-        for (int i = 0; i < _planets.Count; i++)
-        {
-            var planet = _planets[i];
-            float angle = planet.StartAngle + planet.OrbitSpeed * time;
-            var pos = center + new Vector2(
-                MathF.Cos(angle) * planet.OrbitRadius,
-                MathF.Sin(angle) * planet.OrbitRadius
-            );
-
-            var planetEntity = EntityFactory.CreatePlanet(game.EcsWorld, pos, _starEntity,
-                planet.Name, planet.Radius, planet.Color,
-                planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle,
-                i, planet.HasSolidSurface);
-
-            _planetEntities.Add(planetEntity);
-
-            // Moons — also computed from global time
-            var moons = new List<Entity>();
-            foreach (var moon in planet.Moons)
-            {
-                float moonAngle = moon.StartAngle + moon.OrbitSpeed * time;
-                var moonPos = pos + new Vector2(
-                    MathF.Cos(moonAngle) * moon.OrbitRadius,
-                    MathF.Sin(moonAngle) * moon.OrbitRadius
-                );
-
-                var moonEntity = EntityFactory.CreateMoon(game.EcsWorld, moonPos, planetEntity,
-                    moon.Name, moon.Radius, moon.Color,
-                    moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
-                moons.Add(moonEntity);
-            }
-            _moonEntities.Add(moons);
-        }
-
-        // Create space station entities — positions from global time
-        _stationEntities.Clear();
-        foreach (var station in _stations)
-        {
-            Entity parent;
-            if (station.OrbitParentPlanetIndex >= 0 && station.OrbitParentPlanetIndex < _planetEntities.Count)
-            {
-                parent = _planetEntities[station.OrbitParentPlanetIndex];
-            }
-            else
-            {
-                parent = _starEntity;
-            }
-
-            var parentTransform = game.EcsWorld.Get<Transform>(parent);
-            float stAngle = station.StartAngle + station.OrbitSpeed * time;
-            var stPos = parentTransform.Position + new Vector2(
-                MathF.Cos(stAngle) * station.OrbitRadius,
-                MathF.Sin(stAngle) * station.OrbitRadius
-            );
-
-            var stEntity = EntityFactory.CreateStation(game.EcsWorld, stPos, parent,
-                station.Name, station.OrbitRadius, station.OrbitSpeed, station.StartAngle, station.Index);
-            _stationEntities.Add(stEntity);
-        }
-
-        // Generate mineable asteroids as ECS entities
-        var asteroidRng = new SeededRandom(rng.DeriveChildSeed(999));
-        foreach (var belt in _asteroidBelts)
-        {
-            for (int i = 0; i < belt.AsteroidCount; i++)
-            {
-                float size = asteroidRng.NextFloat(40, 100);
-                float hp = size * 0.5f; // bigger asteroids have more HP
-
-                // Pick resource type based on weighted probabilities
-                var resource = asteroidRng.NextFloat() switch
-                {
-                    < 0.30f => ResourceType.Iron,
-                    < 0.55f => ResourceType.Nickel,
-                    < 0.70f => ResourceType.Ice,
-                    < 0.85f => ResourceType.Gold,
-                    < 0.95f => ResourceType.Platinum,
-                    _ => ResourceType.Crystal
-                };
-
-                int resourceAmount = (int)Math.Ceiling(size * asteroidRng.NextFloat(0.1f, 0.3f));
-
-                var entity = EntityFactory.CreateAsteroid(game.EcsWorld, _starEntity, size, hp,
-                    resource, resourceAmount,
-                    asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
-                    asteroidRng.NextFloat(0.002f, 0.008f),
-                    asteroidRng.NextFloat(0, MathF.PI * 2));
-                _asteroidEntities.Add(entity);
-            }
-        }
-
-        // --- Determine player ship starting position ---
-        Vector2 shipStartPos;
-        var returnCtx = game.Player.SolarSystemReturnContext;
-
-        if (returnCtx == PlayerData.ReturnContext.FromStation && game.Player.ReturnStationIndex >= 0
-            && game.Player.ReturnStationIndex < _stationEntities.Count)
-        {
-            // Place ship exactly on the station the player just exited
-            shipStartPos = game.EcsWorld.Get<Transform>(_stationEntities[game.Player.ReturnStationIndex]).Position;
-        }
-        else if (returnCtx == PlayerData.ReturnContext.FromPlanet && game.Player.ReturnPlanetIndex >= 0
-            && game.Player.ReturnPlanetIndex < _planetEntities.Count)
-        {
-            // Place ship exactly on the planet the player just launched from
-            shipStartPos = game.EcsWorld.Get<Transform>(_planetEntities[game.Player.ReturnPlanetIndex]).Position;
-        }
-        else if (returnCtx == PlayerData.ReturnContext.FromMoon
-            && game.Player.ReturnMoonPlanetIndex >= 0 && game.Player.ReturnMoonPlanetIndex < _moonEntities.Count
-            && game.Player.ReturnMoonIndex >= 0 && game.Player.ReturnMoonIndex < _moonEntities[game.Player.ReturnMoonPlanetIndex].Count)
-        {
-            // Place ship exactly on the moon the player just launched from
-            shipStartPos = game.EcsWorld.Get<Transform>(_moonEntities[game.Player.ReturnMoonPlanetIndex][game.Player.ReturnMoonIndex]).Position;
-        }
-        else
-        {
-            // Default: use generator-provided starting position
-            shipStartPos = content.StartingPosition;
-        }
-
-        // Clear return context
-        game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.Default;
-        game.Player.ReturnStationIndex = -1;
-        game.Player.ReturnPlanetIndex = -1;
-        game.Player.ReturnMoonPlanetIndex = -1;
-        game.Player.ReturnMoonIndex = -1;
-
-        // Create player ship
-        _playerShip = CreateOrRespawnPlayerShip(game, shipStartPos);
-
-        // Background stars and nebulae — seeded by galaxy seed for consistency across visits to this system
-        var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
-        var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
-
-        float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-
-        for (int i = 0; i < 4000; i++)
-        {
-            _bgStars.Add(new BackgroundStar(
-                bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
-                bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
-                (byte)bgRng.NextInt(50, 150)
-            ));
-        }
-
-        for (int i = 0; i < 32; i++)
-        {
-            byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
-            int ci = nebRng.NextInt(0, 3);
-            _bgNebulae.Add(new NebulaCloud(
-                bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
-                bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
-                nebRng.NextFloat(1200, 5000),
-                new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
-        }
-
-        // --- Spawn NPC ships from generated solar system content ---
-        SpawnNPCShips(game, content.NpcShipSpawns);
-
-        // Initialize ECS systems
-        float sysW = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float sysH = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        _orbitSystem = new OrbitSystem(
-            game.EcsWorld,
-            () => (float)game.GlobalTime,
-            () => new Vector2(sysW, sysH));
-        _orbitSystem.Initialize();
-
-        _velocitySystem = new VelocitySystem(game.EcsWorld);
-        _velocitySystem.Initialize();
-
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
-        _cameraFollowSystem.Initialize();
-
-        _labelRenderer = new LabelRenderer(game.EcsWorld, game.SpriteRenderer, _camera);
-
-        _proximitySystem = new InteractionProximitySystem(game.EcsWorld, InteractionRadius);
-        _proximitySystem.Initialize();
-
-        _playerShipInputSystem = new PlayerShipInputSystem(game.EcsWorld, game.Input);
+        // Create input/camera systems that operate on the simulation's ECS world
+        _playerShipInputSystem = new PlayerShipInputSystem(_sim.EcsWorld, game.Input);
         _playerShipInputSystem.Initialize();
 
-        _shipSystem = new ShipSystem(game.EcsWorld);
-        _shipSystem.Initialize();
+        _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
+        _cameraFollowSystem.Initialize();
 
-        // Combat systems
-        _projectileSystem = new ProjectileSystem(game.EcsWorld);
-        _projectileSystem.Initialize();
-        _shieldRegenSystem = new ShieldRegenSystem(game.EcsWorld);
-        _shieldRegenSystem.Initialize();
+        _labelRenderer = new LabelRenderer(_sim.EcsWorld, game.SpriteRenderer, _camera);
 
-        float totalMapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float totalMapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-        _enemyAISystem = new ShipEnemyAISystem(game.EcsWorld, totalMapW, totalMapH);
-        _enemyAISystem.Initialize();
-
-        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(game.EcsWorld);
-        _dependentEntityCleanupSystem.Initialize();
-
-        _particleSystem = new ParticleSystem(game.EcsWorld);
-        _particleSystem.Initialize();
-
-        // Camera follows player
-        _camera.Position = shipStartPos;
+        // Camera initial position
+        var shipPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
+        _camera.Position = shipPos;
         _camera.Zoom = GameConfig.SolarSystemZoomDefault;
         _camera.ClampZoom();
 
-        // Notify mission system that we entered this star system
-        game.Player.NotifySystemEntered(_starSystem.Index);
-
-        // Auto-open station overlay if we were asked to (e.g. returning from interior)
+        // Auto-open overlays
         if (_autoOpenStation != null)
         {
-            // Anchor ship to the matching station entity
-            int stIdx = _stations.FindIndex(s => s.Index == _autoOpenStation.Index);
-            if (stIdx >= 0 && stIdx < _stationEntities.Count)
-                SetAnchor(game, _stationEntities[stIdx]);
-
+            int stIdx = _sim.Stations.FindIndex(s => s.Index == _autoOpenStation.Index);
+            if (stIdx >= 0 && stIdx < _sim.StationEntities.Count)
+                SetAnchor(_sim.StationEntities[stIdx]);
             _stationOverlay.Open(_starSystem, _autoOpenStation, game);
         }
 
-        // Auto-open galaxy map overlay if requested (e.g. from main menu 'Galaxy Map')
         if (_autoOpenGalaxyMap)
-        {
             _galaxyMapOverlay.Open(game);
-        }
 
-        // Auto-open planet landing overlay if requested (e.g. from main menu 'Planet Surface')
         if (_autoOpenPlanet != null)
         {
-            // Anchor ship to the matching planet entity
-            int pIdx = _planets.FindIndex(p => p.Name == _autoOpenPlanet.Name);
-            if (pIdx >= 0 && pIdx < _planetEntities.Count)
-                SetAnchor(game, _planetEntities[pIdx]);
-
+            int pIdx = _sim.Planets.FindIndex(p => p.Name == _autoOpenPlanet.Name);
+            if (pIdx >= 0 && pIdx < _sim.PlanetEntities.Count)
+                SetAnchor(_sim.PlanetEntities[pIdx]);
             _planetLandingOverlay.Open(_starSystem, _autoOpenPlanet, game);
         }
     }
 
     public override void Exit(Game game)
     {
-        _planetEntities.Clear();
-        _stationEntities.Clear();
-        _moonEntities.Clear();
-        _asteroidEntities.Clear();
-        _bgStars.Clear();
-        _bgNebulae.Clear();
-        _enemyEntities.Clear();
         _damagePopups.Clear();
         _explosions.Clear();
-        _playerDead = false;
-
         _planetLandingOverlay.Cleanup();
-    }
 
-    private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)
-    {
-        Vector2 shipWorldPos = game.EcsWorld.IsAlive(_playerShip)
-            ? game.EcsWorld.Get<Transform>(_playerShip).Position
-            : game.Player.ShipWorldPosition;
-
-        Vector2 targetBodyPos = shipWorldPos;
-        if (landing.IsMoon)
-        {
-            if (landing.MoonPlanetIndex >= 0 && landing.MoonPlanetIndex < _moonEntities.Count
-                && landing.MoonIndex >= 0 && landing.MoonIndex < _moonEntities[landing.MoonPlanetIndex].Count)
-            {
-                var moonEntity = _moonEntities[landing.MoonPlanetIndex][landing.MoonIndex];
-                if (game.EcsWorld.IsAlive(moonEntity))
-                    targetBodyPos = game.EcsWorld.Get<Transform>(moonEntity).Position;
-            }
-        }
-        else
-        {
-            int pIdx = _planets.FindIndex(p => p.Index == landing.Planet.Index);
-            if (pIdx >= 0 && pIdx < _planetEntities.Count)
-            {
-                var planetEntity = _planetEntities[pIdx];
-                if (game.EcsWorld.IsAlive(planetEntity))
-                    targetBodyPos = game.EcsWorld.Get<Transform>(planetEntity).Position;
-            }
-        }
-
-        game.ChangeState(new OrbitalSurfaceTransitionState(
-            landing.StarSystem,
-            landing.Planet,
-            landing.TileX,
-            landing.TileY,
-            shipWorldPos,
-            targetBodyPos,
-            _camera.Position,
-            _camera.Zoom,
-            landing.IsMoon,
-            landing.MoonPlanetIndex,
-            landing.MoonIndex));
+        // Remove player from simulation (simulation stays alive in coordinator)
+        if (_sim != null && _simPlayer != null)
+            _sim.RemovePlayer(_simPlayer);
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
@@ -457,17 +139,12 @@ public class SolarSystemState : GameState
     {
         var input = game.Input;
 
-        // Overlays take priority over game input
-        if (_planetLandingOverlay.UpdateInput(game))
-            return;
-        if (_galaxyMapOverlay.UpdateInput(game))
-            return;
-        if (_stationOverlay.UpdateInput(game))
-            return;
+        // Overlays take priority
+        if (_planetLandingOverlay.UpdateInput(game)) return;
+        if (_galaxyMapOverlay.UpdateInput(game)) return;
+        if (_stationOverlay.UpdateInput(game)) return;
 
-        // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game))
-            return;
+        if (_inGameMenuOverlay.UpdateInput(game)) return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
@@ -477,359 +154,94 @@ public class SolarSystemState : GameState
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {
-            if (_nearbyStationIndex >= 0)
+            if (_sim.NearbyStationIndex >= 0)
             {
-                SetAnchor(game, _stationEntities[_nearbyStationIndex]);
-                _stationOverlay.Open(_starSystem, _stations[_nearbyStationIndex], game);
+                SetAnchor(_sim.StationEntities[_sim.NearbyStationIndex]);
+                _stationOverlay.Open(_starSystem, _sim.Stations[_sim.NearbyStationIndex], game);
             }
-            else if (_nearbyPlanetIndex >= 0)
+            else if (_sim.NearbyPlanetIndex >= 0)
             {
-                SetAnchor(game, _planetEntities[_nearbyPlanetIndex]);
-                _planetLandingOverlay.Open(_starSystem, _planets[_nearbyPlanetIndex], game);
+                SetAnchor(_sim.PlanetEntities[_sim.NearbyPlanetIndex]);
+                _planetLandingOverlay.Open(_starSystem, _sim.Planets[_sim.NearbyPlanetIndex], game);
             }
-            else if (_nearbyMoonIndex >= 0)
+            else if (_sim.NearbyMoonIndex >= 0)
             {
-                SetAnchor(game, _moonEntities[_nearbyMoonPlanetIndex][_nearbyMoonIndex]);
-                var moonData = _planets[_nearbyMoonPlanetIndex].Moons[_nearbyMoonIndex];
-                _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_nearbyMoonPlanetIndex), game,
-                    isMoon: true, moonPlanetIndex: _nearbyMoonPlanetIndex, moonIndex: _nearbyMoonIndex);
+                SetAnchor(_sim.MoonEntities[_sim.NearbyMoonPlanetIndex][_sim.NearbyMoonIndex]);
+                var moonData = _sim.Planets[_sim.NearbyMoonPlanetIndex].Moons[_sim.NearbyMoonIndex];
+                _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_sim.NearbyMoonPlanetIndex), game,
+                    isMoon: true, moonPlanetIndex: _sim.NearbyMoonPlanetIndex, moonIndex: _sim.NearbyMoonIndex);
             }
         }
 
-        // Open galaxy map overlay
+        // Open galaxy map
         if (input.IsActionPressed(InputAction.ToggleMap))
-        {
             _galaxyMapOverlay.Open(game);
-        }
 
-        // Camera zoom (handled per-frame so scroll events aren't missed)
+        // Camera zoom
         if (input.MouseWheelY != 0)
         {
             _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
             _camera.ClampZoom();
         }
+
+        // Write player ship input (only when no overlay is blocking)
+        if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        {
+            _sim.SyncPlayerShipComponent(_simPlayer);
+            float dt = game.DeltaTime;
+            _playerShipInputSystem.Update(in dt);
+        }
     }
 
     public override void Update(Game game)
     {
-        _inGameMenuOverlay.Update(game);
-
         float dt = game.DeltaTime;
 
-        _dependentEntityCleanupSystem.Update(in dt);
-        _orbitSystem.Update(in dt);
-        ApplyAnchor(game);
+        _inGameMenuOverlay.Update(game);
+
+        // Apply anchor (keep ship at station/planet while overlay open)
+        ApplyAnchor();
+
+        // Camera follows player
         _cameraFollowSystem.Update(in dt);
 
-        // In-game menu active — no simulation
+        // Handle respawn station auto-dock
+        if (_sim.RespawnStationIndex >= 0)
+        {
+            int idx = _sim.RespawnStationIndex;
+            _sim.RespawnStationIndex = -1;
+            _simPlayer.Entity = _sim.Players.Count > 0 ? _sim.Players[0].Entity : default;
+            _camera.Position = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
+
+            if (idx < _sim.Stations.Count)
+            {
+                SetAnchor(_sim.StationEntities[idx]);
+                _stationOverlay.Open(_starSystem, _sim.Stations[idx], game);
+            }
+        }
+
+        // Overlays active — still process but don't do gameplay interaction
         if (_inGameMenuOverlay.IsOpen)
         {
             _inGameMenuOverlay.Update(game);
             return;
         }
-
-        // Planet landing overlay takes priority
-        if (_planetLandingOverlay.IsOpen)
-        {
-            _planetLandingOverlay.Update(game);
-            return;
-        }
-
-        // Galaxy map overlay takes priority
-        if (_galaxyMapOverlay.IsOpen)
-        {
-            _galaxyMapOverlay.Update(game);
-            return;
-        }
-
-        // Station overlay takes priority over all solar system input
-        if (_stationOverlay.IsOpen)
-        {
-            _stationOverlay.Update(game);
-            return;
-        }
-
-        // --- Thrust particles ---
-        _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds(), 0.2f);
-        _particleSystem.Update(in dt);
+        if (_planetLandingOverlay.IsOpen) { _planetLandingOverlay.Update(game); return; }
+        if (_galaxyMapOverlay.IsOpen) { _galaxyMapOverlay.Update(game); return; }
+        if (_stationOverlay.IsOpen) { _stationOverlay.Update(game); return; }
 
         // Clear anchor when returning to normal gameplay
-        ClearAnchor(game);
+        ClearAnchor();
 
-        // --- Handle player death / respawn ---
-        if (_playerDead)
-        {
-            _respawnTimer -= dt;
-            _orbitSystem.Update(in dt);
-            // Still run NPC ships and projectiles during death animation
-            _enemyAISystem.Update(in dt);
-            _shipSystem.Update(in dt);
-            _velocitySystem.Update(in dt);
-            _projectileSystem.Update(in dt);
-            _shieldRegenSystem.Update(in dt);
+        // Process simulation events for audio/visual effects
+        ProcessSimulationEvents(game);
 
-            if (_respawnTimer <= 0)
-            {
-                HandlePlayerRespawn(game);
-            }
-            return;
-        }
-
-        // --- Shared ship pipeline: player input + AI input + ship simulation ---
-        SyncPlayerShipComponent(game);
-        _playerShipInputSystem.Update(in dt);
-        _enemyAISystem.Update(in dt);
-        _shipSystem.Update(in dt);
-
-        // Apply velocity (speed clamping + position update via system)
-        _velocitySystem.Update(in dt);
-
-        // --- Update orbits using global time (deterministic) ---
-        _orbitSystem.Update(in dt);
-
-        // --- Camera follows player + handles zoom ---
-        _cameraFollowSystem.Update(in dt);
-
-        // --- Check proximity for interactions ---
-        ref var shipTransformForProximity = ref game.EcsWorld.Get<Transform>(_playerShip);
-        game.Player.ShipWorldPosition = shipTransformForProximity.Position;
-        _proximitySystem.FindNearest(shipTransformForProximity.Position);
-        _nearbyPlanetIndex = -1;
-        _nearbyStationIndex = -1;
-        _nearbyMoonPlanetIndex = -1;
-        _nearbyMoonIndex = -1;
-
-        if (_proximitySystem.HasNearest)
-        {
-            var nearBody = game.EcsWorld.Get<CelestialBody>(_proximitySystem.NearestEntity);
-            switch (nearBody.Type)
-            {
-                case CelestialType.Planet:
-                    _nearbyPlanetIndex = nearBody.DataIndex;
-                    break;
-                case CelestialType.Moon:
-                    for (int pi = 0; pi < _moonEntities.Count; pi++)
-                    {
-                        int mi = _moonEntities[pi].IndexOf(_proximitySystem.NearestEntity);
-                        if (mi >= 0) { _nearbyMoonPlanetIndex = pi; _nearbyMoonIndex = mi; break; }
-                    }
-                    break;
-                case CelestialType.SpaceStation:
-                    _nearbyStationIndex = _stationEntities.IndexOf(_proximitySystem.NearestEntity);
-                    break;
-            }
-        }
-
-        // --- Combat systems (includes asteroid mining via projectiles) ---
-        UpdateCombat(game, dt);
-    }
-
-    /// <summary>Spawn NPC ships from pre-generated spawn payloads.</summary>
-    private void SpawnNPCShips(Game game, List<NpcShipSpawnData> npcShipSpawns)
-    {
-        _enemyEntities.Clear();
-        foreach (var spawn in npcShipSpawns)
-        {
-            Entity entity;
-            switch (spawn.Faction)
-            {
-                case Faction.Pirate:
-                    entity = EntityFactory.CreatePirateShip(game.EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.DangerLevel, spawn.LootCredits, spawn.Weapons);
-                    break;
-                case Faction.Trader:
-                    entity = EntityFactory.CreateTraderShip(game.EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.Weapons);
-                    break;
-                case Faction.Patrol:
-                    entity = EntityFactory.CreatePatrolShip(game.EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.Weapons);
-                    break;
-                default:
-                    continue;
-            }
-
-            _enemyEntities.Add(entity);
-        }
-    }
-
-    private Entity CreateOrRespawnPlayerShip(Game game, Vector2 spawnPosition)
-    {
-        int shipSize = game.Player.CurrentShipType.SpriteSize;
-        var playerStats = game.Player.GetCombinedStats();
-        var playerWeapons = CombatHelper.BuildWeaponSpecs(game.Player.EquippedParts);
-
-        return EntityFactory.CreatePlayerShip(game.EcsWorld, spawnPosition, shipSize,
-            game.Player.ShipMaxHealth, game.Player.ShipHealth, playerStats.ShieldStrength,
-            playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
-            GameConfig.ShipBrakeMultiplier, playerWeapons);
-    }
-
-    private void SyncPlayerShipComponent(Game game)
-    {
-        if (!game.EcsWorld.IsAlive(_playerShip) ||
-            !game.EcsWorld.Has<ShipComponent>(_playerShip) ||
-            !game.EcsWorld.Has<Velocity>(_playerShip))
-            return;
-
-        var playerStats = game.Player.GetCombinedStats();
-        var weapons = CombatHelper.BuildWeaponSpecs(game.Player.EquippedParts);
-
-        ref var ship = ref game.EcsWorld.Get<ShipComponent>(_playerShip);
-        ship.MaxSpeed = playerStats.MaxSpeed;
-        ship.MaxRotationSpeed = playerStats.RotationSpeed;
-        ship.MaxAcceleration = playerStats.Acceleration;
-        ship.BrakeMultiplier = GameConfig.ShipBrakeMultiplier;
-        ship.Weapons = weapons;
-
-        if (ship.WeaponCooldowns == null || ship.WeaponCooldowns.Length != weapons.Length)
-            ship.WeaponCooldowns = new float[weapons.Length];
-
-        ref var velocity = ref game.EcsWorld.Get<Velocity>(_playerShip);
-        velocity.MaxSpeed = playerStats.MaxSpeed;
-        velocity.MaxRotationSpeed = playerStats.RotationSpeed;
-    }
-
-    /// <summary>Update combat: player shooting, AI, projectiles, asteroid mining, damage, death.</summary>
-    private void UpdateCombat(Game game, float dt)
-    {
-        // Tick mining timers
-        if (_miningHudTimer > 0) _miningHudTimer -= dt;
-        if (_miningMessageTimer > 0)
-        {
-            _miningMessageTimer -= dt;
-            if (_miningMessageTimer <= 0) _miningMessage = null;
-        }
-
-        // Sync player health from Health component → PlayerData
-        if (game.EcsWorld.IsAlive(_playerShip) && game.EcsWorld.Has<Health>(_playerShip))
-        {
-            ref var playerHealth = ref game.EcsWorld.Get<Health>(_playerShip);
-            game.Player.ShipHealth = playerHealth.Hull;
-        }
-
-        // SFX for ship weapon fire (player + NPC)
-        foreach (var spawn in _shipSystem.ProjectilesSpawnedLastUpdate)
-        {
-            game.Audio.PlaySfxAtDistance(spawn.Faction == Faction.Player ? SfxType.LaserFire : SfxType.EnemyLaser, spawn.Pos, _camera.Position, 0.5f);
-        }
-
-        // --- Asteroid-projectile collision is now handled by ProjectileSystem (asteroids have Health) ---
-
-        // Run projectile system (collision detection with ships + asteroids)
-        _projectileSystem.Update(in dt);
-
-        // Run shield regen
-        _shieldRegenSystem.Update(in dt);
-
-        // Process damage events (visual effects + mining HUD tracking)
-        CombatHelper.CreateDamagePopups(_damagePopups, _projectileSystem.DamageEventsLastUpdate);
-        foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
-        {
-            // SFX for damage hits — volume attenuated by distance to the player
-            game.Audio.PlaySfxAtDistance(
-                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
-                evt.Position, _camera.Position, 0.6f);
-
-            // Only trigger combat music when the player is directly involved
-            bool playerInvolved = evt.OwnerFaction == Faction.Player
-                || (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<PlayerControlled>(evt.Target));
-            if (playerInvolved)
-                _combatMusicTimer = GameConfig.CombatMusicDelay;
-
-            // Track last asteroid hit for mining HUD
-            if (game.EcsWorld.IsAlive(evt.Target) && game.EcsWorld.Has<AsteroidField>(evt.Target))
-            {
-                _lastHitAsteroid = evt.Target;
-                _miningHudTimer = 2f;
-            }
-        }
-
-        // Process destroyed entities
-        var combatRng = new SeededRandom((ulong)(game.GlobalTime * 1000) ^ 0xDEADBEEF);
-        foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
-        {
-            if (destroyed.Asteroid.HasValue)
-            {
-                // Asteroid destroyed — collect resources only if player mined it
-                var asteroid = destroyed.Asteroid.Value;
-                _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
-                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, _camera.Position, 0.5f);
-
-                if (destroyed.KillerFaction == Faction.Player)
-                {
-                    int added = game.Player.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
-                    var resInfo = ResourceCatalog.Get(asteroid.Resource);
-                    if (added > 0)
-                    {
-                        _miningMessage = $"+{added} {resInfo.Name.ToUpper()}";
-                        _miningMessageTimer = 2.5f;
-
-                        // Track resource mining for missions
-                        game.Player.NotifyResourceMined(asteroid.Resource, added);
-                    }
-                    else
-                    {
-                        _miningMessage = "CARGO FULL!";
-                        _miningMessageTimer = 2.5f;
-                    }
-                }
-
-                // Clear mining HUD since asteroid is gone
-                if (_lastHitAsteroid == destroyed.Entity) _miningHudTimer = 0;
-
-                if (game.EcsWorld.IsAlive(destroyed.Entity))
-                {
-                    _asteroidEntities.Remove(destroyed.Entity);
-                    game.EcsWorld.Destroy(destroyed.Entity);
-                }
-            }
-            else if (destroyed.Faction == Faction.Player)
-            {
-                // Player died
-                HandlePlayerDeath(game, destroyed.Position);
-            }
-            else
-            {
-                // Enemy died — create explosion and drop loot only if player killed it
-                byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
-                byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
-                byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
-                _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
-                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, _camera.Position);
-
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
-                {
-                    _combatMessage = CombatHelper.ProcessLootDrop(game, destroyed.Loot.Value, combatRng,
-                        resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);
-                    _combatMessageTimer = 3f;
-                }
-
-                // Track pirate kills for bounty missions
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate)
-                {
-                    game.Player.NotifyPirateKilled();
-                }
-
-                // Destroy the entity
-                if (game.EcsWorld.IsAlive(destroyed.Entity))
-                {
-                    _enemyEntities.Remove(destroyed.Entity);
-                    game.EcsWorld.Destroy(destroyed.Entity);
-                }
-            }
-        }
-
-        // Combat message timer
-        CombatHelper.UpdateCombatMessageTimer(ref _combatMessage, ref _combatMessageTimer, dt);
-
-        // Update visual effects (timers, positions, removal)
+        // Update visual effects
         CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
 
         // Combat music tracking
-        if (_combatMusicTimer > 0)
+        if (_sim.CombatMusicTimer > 0)
         {
-            _combatMusicTimer -= dt;
             if (_activeMusicTheme != MusicTheme.Combat)
             {
                 game.Audio.SetMusicTheme(MusicTheme.Combat);
@@ -843,148 +255,144 @@ public class SolarSystemState : GameState
         }
     }
 
-    /// <summary>Handle player death — apply penalties and start respawn timer.</summary>
-    private void HandlePlayerDeath(Game game, Vector2 deathPos)
+    private void ProcessSimulationEvents(Game game)
     {
-        _playerDead = true;
-        _respawnTimer = RespawnDelay;
-        _explosions.Add(new Explosion(deathPos, 50f, new Color3(255, 200, 80), 1.5f));
-        game.Audio.PlaySfx(SfxType.Explosion, 1.2f);
-
-        // Destroy the old player ship entity so CameraFollowSystem doesn't track it
-        if (game.EcsWorld.IsAlive(_playerShip))
-            game.EcsWorld.Destroy(_playerShip);
-
-        // Apply death penalties
-        int creditsLost = (int)(game.Player.Credits * GameConfig.DeathCreditsLossPercent);
-        game.Player.Credits -= creditsLost;
-
-        // Lose some cargo
-        var cargoKeys = game.Player.Cargo.Keys.ToList();
-        foreach (var key in cargoKeys)
+        // SFX for weapon fire
+        foreach (var spawn in _sim.ProjectilesSpawnedLastUpdate)
         {
-            int loss = (int)(game.Player.Cargo[key] * GameConfig.DeathCargoLossPercent);
-            game.Player.Cargo[key] -= loss;
-            if (game.Player.Cargo[key] <= 0) game.Player.Cargo.Remove(key);
+            game.Audio.PlaySfxAtDistance(
+                spawn.Faction == Faction.Player ? SfxType.LaserFire : SfxType.EnemyLaser,
+                spawn.Pos, _camera.Position, 0.5f);
         }
 
-        _combatMessage = $"DESTROYED! -{creditsLost} CREDITS";
-        _combatMessageTimer = RespawnDelay;
+        // Damage events → visual popups + SFX
+        CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
+        foreach (var evt in _sim.DamageEventsLastUpdate)
+        {
+            game.Audio.PlaySfxAtDistance(
+                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
+                evt.Position, _camera.Position, 0.6f);
+        }
+
+        // Destroyed entities → explosions + SFX
+        foreach (var destroyed in _sim.DestroyedEntitiesLastUpdate)
+        {
+            if (destroyed.Asteroid.HasValue)
+            {
+                _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
+                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, _camera.Position, 0.5f);
+            }
+            else if (destroyed.Faction == Faction.Player)
+            {
+                _explosions.Add(new Explosion(destroyed.Position, 50f, new Color3(255, 200, 80), 1.5f));
+                game.Audio.PlaySfx(SfxType.Explosion, 1.2f);
+            }
+            else
+            {
+                byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
+                byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
+                byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
+                _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
+                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, _camera.Position);
+            }
+        }
     }
 
-    /// <summary>Respawn the player at the nearest station with the station menu open.</summary>
-    private void HandlePlayerRespawn(Game game)
+    private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)
     {
-        _playerDead = false;
+        Vector2 shipWorldPos = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
+            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position
+            : game.Player.ShipWorldPosition;
 
-        // Determine respawn position (nearest station, or system center)
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        Vector2 respawnPos = new(centerX + 400, centerY);
-
-        int nearestStationIdx = -1;
-
-        if (_stationEntities.Count > 0)
+        Vector2 targetBodyPos = shipWorldPos;
+        if (landing.IsMoon)
         {
-            // Find nearest station from last known player position
-            float bestDist = float.MaxValue;
-            for (int i = 0; i < _stationEntities.Count; i++)
+            if (landing.MoonPlanetIndex >= 0 && landing.MoonPlanetIndex < _sim.MoonEntities.Count
+                && landing.MoonIndex >= 0 && landing.MoonIndex < _sim.MoonEntities[landing.MoonPlanetIndex].Count)
             {
-                var stEntity = _stationEntities[i];
-                if (!game.EcsWorld.IsAlive(stEntity)) continue;
-                var stPos = game.EcsWorld.Get<Transform>(stEntity).Position;
-                float dist = Vector2.Distance(stPos, respawnPos);
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    respawnPos = stPos + new Vector2(50, 0);
-                    nearestStationIdx = i;
-                }
+                var moonEntity = _sim.MoonEntities[landing.MoonPlanetIndex][landing.MoonIndex];
+                if (_sim.EcsWorld.IsAlive(moonEntity))
+                    targetBodyPos = _sim.EcsWorld.Get<Transform>(moonEntity).Position;
+            }
+        }
+        else
+        {
+            int pIdx = _sim.Planets.FindIndex(p => p.Index == landing.Planet.Index);
+            if (pIdx >= 0 && pIdx < _sim.PlanetEntities.Count)
+            {
+                var planetEntity = _sim.PlanetEntities[pIdx];
+                if (_sim.EcsWorld.IsAlive(planetEntity))
+                    targetBodyPos = _sim.EcsWorld.Get<Transform>(planetEntity).Position;
             }
         }
 
-        // Restore hull to 50%
-        game.Player.ShipHealth = game.Player.ShipMaxHealth;
-
-        // Recreate player ship entity
-        _playerShip = CreateOrRespawnPlayerShip(game, respawnPos);
-
-        _camera.Position = respawnPos;
-        _combatMessage = "RESPAWNED";
-        _combatMessageTimer = 3f;
-
-        // Dock at the nearest station and open the station menu
-        if (nearestStationIdx >= 0 && nearestStationIdx < _stations.Count)
-        {
-            SetAnchor(game, _stationEntities[nearestStationIdx]);
-            _stationOverlay.Open(_starSystem, _stations[nearestStationIdx], game);
-        }
+        game.ChangeState(new OrbitalSurfaceTransitionState(
+            landing.StarSystem, landing.Planet,
+            landing.TileX, landing.TileY,
+            shipWorldPos, targetBodyPos,
+            _camera.Position, _camera.Zoom,
+            landing.IsMoon, landing.MoonPlanetIndex, landing.MoonIndex));
     }
 
-    /// <summary>Record the entity the ship should follow and the offset from it.</summary>
-    private void SetAnchor(Game game, Entity target)
+    // ── Anchor ──────────────────────────────────────────────────────
+
+    private void SetAnchor(Entity target)
     {
         _anchorEntity = target;
-        var targetPos = game.EcsWorld.Get<Transform>(target).Position;
-        var shipPos = game.EcsWorld.Get<Transform>(_playerShip).Position;
+        var targetPos = _sim.EcsWorld.Get<Transform>(target).Position;
+        var shipPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
         _anchorOffset = shipPos - targetPos;
 
-        // Zero the ship velocity so it doesn't drift when the overlay closes
-        ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
+        ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
         vel.Velocity = Vector2.Zero;
         vel.Acceleration = Vector2.Zero;
         vel.RotationVelocity = 0f;
 
-        if (game.EcsWorld.Has<ShipInputComponent>(_playerShip))
+        if (_sim.EcsWorld.Has<ShipInputComponent>(_simPlayer.Entity))
         {
-            ref var shipInput = ref game.EcsWorld.Get<ShipInputComponent>(_playerShip);
+            ref var shipInput = ref _sim.EcsWorld.Get<ShipInputComponent>(_simPlayer.Entity);
             shipInput.AccelerationDirection = Vector2.Zero;
             shipInput.RotationSpeed = 0f;
             shipInput.Shoot = false;
         }
     }
 
-    /// <summary>Move the ship to keep its offset from the anchor entity (call after OrbitSystem).</summary>
-    private void ApplyAnchor(Game game)
+    private void ApplyAnchor()
     {
-        if (_anchorEntity == default || !game.EcsWorld.IsAlive(_anchorEntity))
+        if (_anchorEntity == default || !_sim.EcsWorld.IsAlive(_anchorEntity))
             return;
-
-        var targetPos = game.EcsWorld.Get<Transform>(_anchorEntity).Position;
-        ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
+        var targetPos = _sim.EcsWorld.Get<Transform>(_anchorEntity).Position;
+        ref var shipTransform = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
         shipTransform.Position = targetPos + _anchorOffset;
     }
 
-    /// <summary>Clear the anchor so the ship returns to normal movement.</summary>
-    private void ClearAnchor(Game game)
+    private void ClearAnchor()
     {
-        if (_anchorEntity != default && game.EcsWorld.IsAlive(_anchorEntity))
-        {
-            // Snap one last time before releasing
-            ApplyAnchor(game);
-        }
+        if (_anchorEntity != default && _sim.EcsWorld.IsAlive(_anchorEntity))
+            ApplyAnchor();
         _anchorEntity = default;
         _anchorOffset = Vector2.Zero;
     }
+
+    // ── Render ──────────────────────────────────────────────────────
 
     public override void Render(Game game)
     {
         var renderer = game.SpriteRenderer;
         var camera = _camera;
+        var world = _sim.EcsWorld;
 
         float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
-        // Background stars and nebulae
-        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _bgStars);
-        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _bgNebulae);
-
-        // Orbit lines
-        SolarSystemRenderer.RenderOrbitLines(renderer, camera, _planets, starCenter);
+        // Background
+        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _sim.BackgroundStars);
+        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _sim.BackgroundNebulae);
+        SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter);
 
         // Asteroids
-        game.AsteroidRenderer.RenderAsteroids(renderer, camera, game.EcsWorld, _asteroidEntities);
+        game.AsteroidRenderer.RenderAsteroids(renderer, camera, world, _sim.AsteroidEntities);
 
         // Star
         float starDisplayRadius = _starSystem.StarRadius * 2f;
@@ -992,76 +400,74 @@ public class SolarSystemState : GameState
             (float)game.GlobalTime);
 
         // Planets and moons
-        game.PlanetRenderer.RenderPlanetsAndMoons(renderer, camera, game.EcsWorld,
-            _planets, _planetEntities, _moonEntities, (float)game.GlobalTime);
+        game.PlanetRenderer.RenderPlanetsAndMoons(renderer, camera, world,
+            _sim.Planets, _sim.PlanetEntities, _sim.MoonEntities, (float)game.GlobalTime);
 
         // Stations
-        game.StationRenderer.RenderStations(renderer, camera, game.EcsWorld,
-            _stationEntities, game.GlobalTime);
+        game.StationRenderer.RenderStations(renderer, camera, world,
+            _sim.StationEntities, game.GlobalTime);
 
         // Labels
         _labelRenderer.Render();
 
-        // Mission target markers (pulsing indicators on target planets/stations)
+        // Mission markers
         HudRenderer.RenderSolarSystemMissionMarkers(renderer, camera,
             game.Player, (float)game.GlobalTime, _starSystem.Index,
-            _stationEntities, _planetEntities, _planets, game.EcsWorld);
+            _sim.StationEntities, _sim.PlanetEntities, _sim.Planets, world);
 
-        // Thruster particles (draw before ships so ships appear on top)
-        ParticleRenderer.RenderParticles(renderer, camera, game.EcsWorld);
+        // Thruster particles
+        ParticleRenderer.RenderParticles(renderer, camera, world);
 
-        // NPC ships (enemies, traders, patrols)
-        SolarSystemRenderer.RenderNPCShips(renderer, camera, game.EcsWorld,
-            _enemyEntities, game.EnemyShipRenderer);
+        // NPC ships
+        SolarSystemRenderer.RenderNPCShips(renderer, camera, world,
+            _sim.EnemyEntities, game.EnemyShipRenderer);
 
         // Projectiles
-        ProjectileRenderer.RenderProjectiles(renderer, camera, game.EcsWorld);
+        ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
-        // Player ship (only when alive)
-        if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+        // Player ship
+        if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
         {
-            ref var shipTransform = ref game.EcsWorld.Get<Transform>(_playerShip);
+            ref var shipTransform = ref world.Get<Transform>(_simPlayer.Entity);
             int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
             game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize);
         }
 
-        // Visual effects (damage popups, explosions)
+        // Visual effects
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
 
-        // Unified HUD (top-left: location, player info, hull/shields)
+        // HUD
         {
             float speed = 0f;
-            if (!_playerDead && game.EcsWorld.IsAlive(_playerShip))
+            if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
             {
-                ref var vel = ref game.EcsWorld.Get<Velocity>(_playerShip);
+                ref var vel = ref world.Get<Velocity>(_simPlayer.Entity);
                 speed = vel.Velocity.Length();
             }
             HudRenderer.RenderSolarSystemHud(renderer, game.Player, _starSystem,
-                game.EcsWorld, _playerShip, speed);
+                world, _simPlayer.Entity, speed);
         }
 
-        // Minimap (top-right)
-        HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _planets, _planetEntities,
-            _moonEntities, _stationEntities, _asteroidEntities, _enemyEntities,
-            _playerShip, _starEntity, game.EcsWorld);
+        // Minimap
+        HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _sim.Planets, _sim.PlanetEntities,
+            _sim.MoonEntities, _sim.StationEntities, _sim.AsteroidEntities, _sim.EnemyEntities,
+            _simPlayer.Entity, _sim.StarEntity, world);
 
-        // Off-screen indicators at screen borders
-        if (!_playerDead)
+        // Off-screen indicators
+        if (!_sim.PlayerDead)
         {
-            HudRenderer.RenderOffscreenIndicators(renderer, camera, game.EcsWorld,
-                _enemyEntities, _playerShip, 2500f);
+            HudRenderer.RenderOffscreenIndicators(renderer, camera, world,
+                _sim.EnemyEntities, _simPlayer.Entity, 2500f);
             if (!(game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.Star))
                 HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
             HudRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
-                _playerShip, game.EcsWorld, _planetEntities, _planets,
-                _stationEntities, _stations, 5000f, game.Player);
+                _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
+                _sim.StationEntities, _sim.Stations, 5000f, game.Player);
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
-                game.Player, _starSystem.Index, _stationEntities, _planetEntities,
-                game.EcsWorld);
+                game.Player, _starSystem.Index, _sim.StationEntities, _sim.PlanetEntities, world);
 
-            // Navigation target indicator
             if (game.Player.HasNavigationTarget)
             {
                 Vector2? targetPos = ResolveNavTargetPosition(game);
@@ -1072,75 +478,66 @@ public class SolarSystemState : GameState
         }
 
         // Death screen
-        if (_playerDead)
+        if (_sim.PlayerDead)
+            HudRenderer.RenderDeathScreen(renderer, _sim.RespawnTimer);
+
+        // Mining panel
+        if (_sim.MiningHudTimer > 0 && world.IsAlive(_sim.LastHitAsteroid)
+            && world.Has<AsteroidField>(_sim.LastHitAsteroid))
         {
-            HudRenderer.RenderDeathScreen(renderer, _respawnTimer);
+            ref var af = ref world.Get<AsteroidField>(_sim.LastHitAsteroid);
+            ref var ah = ref world.Get<Health>(_sim.LastHitAsteroid);
+            HudRenderer.RenderMiningPanel(renderer, af.Resource, ah.Hull, ah.MaxHull, af.ResourceAmount);
         }
 
-        // Mining target info panel (shown for 2s after a projectile hit)
-        if (_miningHudTimer > 0 && game.EcsWorld.IsAlive(_lastHitAsteroid)
-            && game.EcsWorld.Has<AsteroidField>(_lastHitAsteroid))
-        {
-            ref var asteroidField = ref game.EcsWorld.Get<AsteroidField>(_lastHitAsteroid);
-            ref var asteroidHealth = ref game.EcsWorld.Get<Health>(_lastHitAsteroid);
-            HudRenderer.RenderMiningPanel(renderer, asteroidField.Resource,
-                asteroidHealth.Hull, asteroidHealth.MaxHull, asteroidField.ResourceAmount);
-        }
+        // Mining message
+        if (_sim.MiningMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, _sim.MiningMessage, -40, new Color3(255, 220, 80), 2.5f);
 
-        // Mining feedback message
-        if (_miningMessage != null)
-            HudRenderer.RenderCenteredMessage(renderer, _miningMessage, -40, new Color3(255, 220, 80), 2.5f);
-
-        // Combat feedback message
-        if (_combatMessage != null)
-            HudRenderer.RenderCenteredMessage(renderer, _combatMessage, 30, new Color3(255, 200, 80), 2f);
+        // Combat message
+        if (_sim.CombatMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, _sim.CombatMessage, 30, new Color3(255, 200, 80), 2f);
 
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,
-            _nearbyPlanetIndex, _nearbyMoonIndex, _nearbyMoonPlanetIndex,
-            _nearbyStationIndex, _planets, _stations,
+            _sim.NearbyPlanetIndex, _sim.NearbyMoonIndex, _sim.NearbyMoonPlanetIndex,
+            _sim.NearbyStationIndex, _sim.Planets, _sim.Stations,
             game.Input.GetActionHelpText(InputAction.Interact));
 
-
-
-        // Overlays drawn on top of everything
+        // Overlays
         _stationOverlay.Render(game);
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
     }
 
-    /// <summary>Resolve the world position of the current navigation target.</summary>
     private Vector2? ResolveNavTargetPosition(Game game)
     {
         var player = game.Player;
+        var world = _sim.EcsWorld;
         switch (player.NavTargetType)
         {
             case NavigationTargetType.Star:
-                if (game.EcsWorld.IsAlive(_starEntity))
-                    return game.EcsWorld.Get<Transform>(_starEntity).Position;
+                if (world.IsAlive(_sim.StarEntity))
+                    return world.Get<Transform>(_sim.StarEntity).Position;
                 break;
-
             case NavigationTargetType.Planet:
-                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _planetEntities.Count
-                    && game.EcsWorld.IsAlive(_planetEntities[player.NavTargetPlanetIndex]))
-                    return game.EcsWorld.Get<Transform>(_planetEntities[player.NavTargetPlanetIndex]).Position;
+                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _sim.PlanetEntities.Count
+                    && world.IsAlive(_sim.PlanetEntities[player.NavTargetPlanetIndex]))
+                    return world.Get<Transform>(_sim.PlanetEntities[player.NavTargetPlanetIndex]).Position;
                 break;
-
             case NavigationTargetType.Moon:
-                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _moonEntities.Count
-                    && player.NavTargetMoonIndex >= 0 && player.NavTargetMoonIndex < _moonEntities[player.NavTargetPlanetIndex].Count
-                    && game.EcsWorld.IsAlive(_moonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]))
-                    return game.EcsWorld.Get<Transform>(_moonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]).Position;
+                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _sim.MoonEntities.Count
+                    && player.NavTargetMoonIndex >= 0 && player.NavTargetMoonIndex < _sim.MoonEntities[player.NavTargetPlanetIndex].Count
+                    && world.IsAlive(_sim.MoonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]))
+                    return world.Get<Transform>(_sim.MoonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]).Position;
                 break;
-
             case NavigationTargetType.Station:
-                if (player.NavTargetStationIndex >= 0 && player.NavTargetStationIndex < _stationEntities.Count
-                    && game.EcsWorld.IsAlive(_stationEntities[player.NavTargetStationIndex]))
-                    return game.EcsWorld.Get<Transform>(_stationEntities[player.NavTargetStationIndex]).Position;
+                if (player.NavTargetStationIndex >= 0 && player.NavTargetStationIndex < _sim.StationEntities.Count
+                    && world.IsAlive(_sim.StationEntities[player.NavTargetStationIndex]))
+                    return world.Get<Transform>(_sim.StationEntities[player.NavTargetStationIndex]).Position;
                 break;
         }
         return null;
     }
-
 }

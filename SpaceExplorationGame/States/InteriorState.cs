@@ -2,62 +2,53 @@ using System.Numerics;
 using Arch.Core;
 using SDL3;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.ECS;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
+using SpaceExplorationGame.ECS.Systems.Movement;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Customization;
-using SpaceExplorationGame.ECS.Systems.Movement;
-using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.UI.Overlays.Menu;
 
 namespace SpaceExplorationGame.States;
 
 /// <summary>
 /// Walkable interior state for space stations and settlements.
-/// Tile-based top-down view with NPC interactions, trade, repair, and missions.
+/// Rendering and input only — simulation logic lives in <see cref="InteriorSimulation"/>.
 /// </summary>
 public class InteriorState : GameState
 {
     public override GameStateType Type => GameStateType.Interior;
 
-    private InteriorData _interior = null!;
-    private Entity _playerAvatar;
+    // ── Simulation ──────────────────────────────────────────────────
+    private InteriorSimulation _sim = null!;
+    private SimulationPlayer _simPlayer = null!;
 
-    // Where we came from
+    // ── Origin data ─────────────────────────────────────────────────
     private readonly InteriorOrigin _origin;
     private readonly StarSystemData _starSystem;
     private readonly SpaceStationData? _station;
     private readonly PlanetData? _planet;
     private readonly SettlementData? _settlement;
 
-    // Movement
-    private const float BaseAvatarSpeed = 200f;
-    private const float InteractionRadius = 1.5f; // in tiles
-
-    // ECS Systems
-    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
+    // ── Input system ────────────────────────────────────────────────
     private AvatarMovementSystem _movementSystem = null!;
-    private VelocitySystem _velocitySystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
 
-    // Camera
+    // ── Camera ──────────────────────────────────────────────────────
     private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
         GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
 
-    // Interaction state
-    private InteriorNpc? _nearestNpc;
-    private InteriorInteractable? _nearestInteractable;
+    // ── Dialogue state ──────────────────────────────────────────────
     private bool _showingDialogue;
     private InteriorNpc? _dialogueNpc;
     private int _dialogueLine;
 
-    // In-game menu overlay
+    // ── Overlays ────────────────────────────────────────────────────
     private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.Interior };
-
-    // Service overlays (repair, missions)
     private readonly RepairOverlay _repairOverlay = new();
     private readonly MissionOverlay _missionOverlay = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();
@@ -66,6 +57,8 @@ public class InteriorState : GameState
     private readonly ShipDealerOverlay _shipDealer = new();
     private readonly SellCargoOverlay _sellCargo = new();
     private readonly HealthStationOverlay _healthStationOverlay = new();
+
+    private const float BaseAvatarSpeed = 200f;
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
@@ -79,59 +72,37 @@ public class InteriorState : GameState
 
     public override void Enter(Game game)
     {
-        _interior = _origin switch
-        {
-            InteriorOrigin.Station => game.WorldGenerator.GenerateStationInterior(game.Seeds, _starSystem, _station),
-            InteriorOrigin.Settlement => game.WorldGenerator.GenerateSettlementInterior(game.Seeds, _starSystem, _planet, _settlement),
-            _ => game.WorldGenerator.GenerateStationInterior(game.Seeds, _starSystem, _station)
-        };
+        // Get or create the simulation
+        _sim = game.Coordinator.FindOrCreate<InteriorSimulation>(
+            s => s.Origin == _origin && s.StarSystem.Index == _starSystem.Index,
+            () => { var sim = new InteriorSimulation(_origin, _starSystem, _station, _planet, _settlement); sim.Create(game); return sim; });
 
-        // Spawn player avatar at spawn point
-        float spawnX = _interior.SpawnPoint.X * GameConfig.TileSize;
-        float spawnY = _interior.SpawnPoint.Y * GameConfig.TileSize;
+        // Add player
+        _simPlayer = _sim.AddPlayer(game.Player);
 
-        // Calculate avatar speed from equipped parts
+        // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
-
-        _playerAvatar = EntityFactory.CreatePlayerAvatar(game.EcsWorld, spawnX, spawnY, avatarSpeed);
-        ref var playerVelocity = ref game.EcsWorld.Get<Velocity>(_playerAvatar);
-        playerVelocity.CanMoveTo = newPos =>
-        {
-            int tileX = (int)(newPos.X / GameConfig.TileSize);
-            int tileY = (int)(newPos.Y / GameConfig.TileSize);
-            return tileX >= 0 && tileX < _interior.Width &&
-                   tileY >= 0 && tileY < _interior.Height &&
-                   InteriorGenerator.IsWalkable(_interior.Tiles[tileX, tileY]);
-        };
-
-        // Initialize ECS systems
-        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(game.EcsWorld);
-        _dependentEntityCleanupSystem.Initialize();
-
-        _movementSystem = new AvatarMovementSystem(game.EcsWorld, game.Input, avatarSpeed);
+        _movementSystem = new AvatarMovementSystem(_sim.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 
-        _velocitySystem = new VelocitySystem(game.EcsWorld);
-        _velocitySystem.Initialize();
-
-        _cameraFollowSystem = new CameraFollowSystem(game.EcsWorld, _camera);
+        _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
 
-        // Camera setup
+        // Camera
+        float spawnX = _sim.Interior.SpawnPoint.X * GameConfig.TileSize;
+        float spawnY = _sim.Interior.SpawnPoint.Y * GameConfig.TileSize;
         _camera.Position = new Vector2(spawnX, spawnY);
         _camera.Zoom = GameConfig.InteriorZoomDefault;
         _camera.ClampZoom();
 
         // Music
         game.Audio.SetMusicTheme(MusicTheme.Interior);
-
-        // Notify mission system
-        if (_origin == InteriorOrigin.Settlement && _planet != null)
-            game.Player.NotifySettlementEntered(_starSystem.Index, _planet.Index);
     }
 
     public override void Exit(Game game)
     {
+        if (_sim != null && _simPlayer != null)
+            _sim.RemovePlayer(_simPlayer);
     }
 
     public override void HandleEvent(Game game, SDL.Event e)
@@ -142,27 +113,16 @@ public class InteriorState : GameState
     {
         var input = game.Input;
 
-        // Handle overlay interactions first
-        if (_repairOverlay.UpdateInput(game))
-            return;
-        if (_healthStationOverlay.UpdateInput(game))
-            return;
-        if (_missionOverlay.UpdateInput(game))
-            return;
+        if (_repairOverlay.UpdateInput(game)) return;
+        if (_healthStationOverlay.UpdateInput(game)) return;
+        if (_missionOverlay.UpdateInput(game)) return;
+        if (_shipCustomization.UpdateInput(game)) return;
+        if (_avatarCustomization.UpdateInput(game)) return;
+        if (_vehicleCustomization.UpdateInput(game)) return;
+        if (_shipDealer.UpdateInput(game)) return;
+        if (_sellCargo.UpdateInput(game)) return;
 
-        // Customization/dealer overlays take priority over game input
-        if (_shipCustomization.UpdateInput(game))
-            return;
-        if (_avatarCustomization.UpdateInput(game))
-            return;
-        if (_vehicleCustomization.UpdateInput(game))
-            return;
-        if (_shipDealer.UpdateInput(game))
-            return;
-        if (_sellCargo.UpdateInput(game))
-            return;
-
-        // Handle dialogue
+        // Dialogue
         if (_showingDialogue)
         {
             if (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact))
@@ -184,9 +144,7 @@ public class InteriorState : GameState
             return;
         }
 
-        // In-game menu overlay
-        if (_inGameMenuOverlay.UpdateInput(game))
-            return;
+        if (_inGameMenuOverlay.UpdateInput(game)) return;
         if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
@@ -196,33 +154,32 @@ public class InteriorState : GameState
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {
-            // Prefer interactable over NPC when both are nearby
-            if (_nearestInteractable != null)
-            {
-                HandleInteraction(game, _nearestInteractable);
-            }
-            else if (_nearestNpc != null)
+            if (_sim.NearestInteractable != null)
+                HandleInteraction(game, _sim.NearestInteractable);
+            else if (_sim.NearestNpc != null)
             {
                 _showingDialogue = true;
-                _dialogueNpc = _nearestNpc;
+                _dialogueNpc = _sim.NearestNpc;
                 _dialogueLine = 0;
             }
         }
 
-        // Camera zoom (handled per-frame so scroll events aren't missed)
+        // Camera zoom
         if (input.MouseWheelY != 0)
         {
             _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
             _camera.ClampZoom();
         }
+
+        // Movement input (write to entity each frame)
+        float dt = game.DeltaTime;
+        _movementSystem.Update(in dt);
     }
 
     public override void Update(Game game)
     {
         float dt = game.DeltaTime;
-        _dependentEntityCleanupSystem.Update(in dt);
 
-        // Handle customization/dealer overlays that need dt
         _shipCustomization.Update(game);
         _avatarCustomization.Update(game);
         _vehicleCustomization.Update(game);
@@ -230,53 +187,14 @@ public class InteriorState : GameState
         _sellCargo.Update(game);
         _inGameMenuOverlay.Update(game);
 
-        // Skip simulation when overlays or dialogue are active
+        // Skip post-processing when overlays are active
         if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
             return;
 
-        // Player movement (via system with tile collision)
-        _movementSystem.Update(in dt);
-        _velocitySystem.Update(in dt);
-
-        // Camera follows player + handles zoom
+        // Camera
         _cameraFollowSystem.Update(in dt);
-
-        // Get player position for proximity checks
-        ref var avatarTf = ref game.EcsWorld.Get<Transform>(_playerAvatar);
-
-        // Find nearest NPC and interactable
-        float playerTileX = avatarTf.Position.X / GameConfig.TileSize;
-        float playerTileY = avatarTf.Position.Y / GameConfig.TileSize;
-
-        _nearestNpc = null;
-        float nearestNpcDist = float.MaxValue;
-        foreach (var npc in _interior.Npcs)
-        {
-            float dx = npc.TilePos.X - playerTileX;
-            float dy = npc.TilePos.Y - playerTileY;
-            float dist = MathF.Sqrt(dx * dx + dy * dy);
-            if (dist < InteractionRadius && dist < nearestNpcDist)
-            {
-                nearestNpcDist = dist;
-                _nearestNpc = npc;
-            }
-        }
-
-        _nearestInteractable = null;
-        float nearestIntDist = float.MaxValue;
-        foreach (var interactable in _interior.Interactables)
-        {
-            float dx = interactable.TilePos.X - playerTileX;
-            float dy = interactable.TilePos.Y - playerTileY;
-            float dist = MathF.Sqrt(dx * dx + dy * dy);
-            if (dist < InteractionRadius && dist < nearestIntDist)
-            {
-                nearestIntDist = dist;
-                _nearestInteractable = interactable;
-            }
-        }
     }
 
     private void HandleInteraction(Game game, InteriorInteractable interactable)
@@ -332,22 +250,16 @@ public class InteriorState : GameState
                 game.ChangeState(new SolarSystemState(_starSystem, _station));
                 break;
             case InteriorOrigin.Settlement:
-                // Return to planet surface at the settlement location
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = _planet!.Index;
                 int landX = _settlement!.TileRect.X + _settlement.TileRect.Width / 2;
                 int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height / 2;
-                // If no saved surface positions exist (e.g. started from main menu),
-                // create them so the landing animation doesn't play on the planet surface.
                 if (!game.Player.HasSavedSurfacePositions)
                 {
                     float px = landX * GameConfig.TileSize;
                     float py = landY * GameConfig.TileSize;
                     game.Player.SaveSurfacePositions(
-                        px + 30, py,    // ship near settlement
-                        0, 0, false,    // no vehicle
-                        px, py,         // player at settlement
-                        false);         // not in vehicle
+                        px + 30, py, 0, 0, false, px, py, false);
                 }
                 game.ChangeState(new PlanetSurfaceState(_starSystem, _planet, landX, landY));
                 break;
@@ -358,33 +270,31 @@ public class InteriorState : GameState
     {
         var renderer = game.SpriteRenderer;
         var camera = _camera;
-        var avatarTf = game.EcsWorld.Get<Transform>(_playerAvatar);
+        var world = _sim.EcsWorld;
+        var avatarTf = world.Get<Transform>(_simPlayer.Entity);
 
-        // Draw world (background, tiles, room labels, NPCs, interactables, player avatar)
-        InteriorRenderer.RenderWorld(renderer, camera, _interior, avatarTf.Position, game.AvatarRenderer, game.GlobalTime, _planet);
+        // Draw world
+        InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, avatarTf.Position,
+            game.AvatarRenderer, game.GlobalTime, _planet);
 
-        // --- HUD ---
+        // HUD
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen;
 
-        // Unified HUD (top-left: location, player info, health)
-        HudRenderer.RenderInteriorHud(renderer, game.Player, _interior, _starSystem);
+        HudRenderer.RenderInteriorHud(renderer, game.Player, _sim.Interior, _starSystem);
 
-        // Interaction prompts
         if (!anyOverlayOpen)
         {
-            HudRenderer.RenderInteriorPrompt(renderer, _nearestInteractable, _nearestNpc,
+            HudRenderer.RenderInteriorPrompt(renderer, _sim.NearestInteractable, _sim.NearestNpc,
                 game.Input.GetActionHelpText(InputAction.Interact));
         }
 
-        // Dialogue box
+        // Dialogue
         if (_showingDialogue && _dialogueNpc != null)
-        {
             InteriorRenderer.RenderDialogue(renderer, w, h, _dialogueNpc, _dialogueLine);
-        }
 
         // Overlays
         _repairOverlay.Render(game);
@@ -395,12 +305,10 @@ public class InteriorState : GameState
         _vehicleCustomization.Render(game);
         _shipDealer.Render(game);
         _sellCargo.Render(game);
-
-        // In-game menu overlay drawn on top of everything
         _inGameMenuOverlay.Render(game);
 
-        // Minimap (top-right, unified style)
-        HudMinimapRenderer.RenderInteriorMinimap(renderer, _interior, avatarTf.Position);
+        // Minimap
+        HudMinimapRenderer.RenderInteriorMinimap(renderer, _sim.Interior, avatarTf.Position);
     }
 }
 

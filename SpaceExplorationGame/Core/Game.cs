@@ -4,6 +4,7 @@ using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Simulation;
 
 namespace SpaceExplorationGame.Core;
 
@@ -23,6 +24,9 @@ public class Game : IDisposable
     public InputManager Input { get; } = new();
     public SpriteRenderer SpriteRenderer { get; private set; } = null!;
     public TextureManager Textures { get; private set; } = null!;
+
+    // Simulation coordinator — always ticked, manages all active simulations
+    public SimulationCoordinator Coordinator { get; } = new();
 
     // Entity renderers (own their textures)
     public AvatarRenderer AvatarRenderer { get; private set; } = null!;
@@ -219,7 +223,13 @@ public class Game : IDisposable
             {
                 GlobalTime += GameConfig.FixedTimeStep;
                 DeltaTime = GameConfig.FixedTimeStep;
+
+                // Always tick all simulations first (physics, AI, combat)
+                Coordinator.Update(GameConfig.FixedTimeStep, GlobalTime);
+
+                // Then let the current state do per-tick post-processing (camera, effects)
                 _currentState?.Update(this);
+
                 accumulator -= GameConfig.FixedTimeStep;
                 steps++;
             }
@@ -253,6 +263,7 @@ public class Game : IDisposable
     public void Dispose()
     {
         _currentState?.Exit(this);
+        Coordinator.DestroyAll();
         Audio.Dispose();
         EcsWorld.Dispose();
         AvatarRenderer.Dispose();
