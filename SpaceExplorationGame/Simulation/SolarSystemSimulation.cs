@@ -367,24 +367,10 @@ public class SolarSystemSimulation : CombatSimulationBase
         EnemyEntities.Clear();
         foreach (var spawn in npcShipSpawns)
         {
-            Entity entity;
-            switch (spawn.Faction)
-            {
-                case Faction.Pirate:
-                    entity = EntityFactory.CreatePirateShip(EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.DangerLevel, spawn.LootCredits, spawn.Weapons);
-                    break;
-                case Faction.Trader:
-                    entity = EntityFactory.CreateTraderShip(EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.Weapons);
-                    break;
-                case Faction.Patrol:
-                    entity = EntityFactory.CreatePatrolShip(EcsWorld, spawn.Position,
-                        spawn.Rotation, spawn.Stats, spawn.Weapons);
-                    break;
-                default:
-                    continue;
-            }
+            if (spawn.Faction is not (Faction.Pirate or Faction.Trader or Faction.Patrol))
+                continue;
+
+            var entity = EntityFactory.CreateNpcShip(EcsWorld, spawn);
             EnemyEntities.Add(entity);
         }
     }

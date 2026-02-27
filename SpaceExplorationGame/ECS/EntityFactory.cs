@@ -2,6 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.Generation;
 
 namespace SpaceExplorationGame.ECS;
 
@@ -228,101 +229,76 @@ public static class EntityFactory
 
     // ── NPC Ships ───────────────────────────────────────────────────
 
-    /// <summary>Create a pirate NPC ship entity.</summary>
-    public static Entity CreatePirateShip(World world, Vector2 position, float rotation,
-        NpcShipStats stats, int dangerLevel, int lootCredits,
-        ShipWeaponSpec[] weapons)
+    /// <summary>Create any NPC ship entity from spawn data.</summary>
+    public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn)
     {
+        var stats = spawn.Stats;
+        var (spriteColor, thrusterColor, aiConfig, shieldRegenRate) = GetNpcShipProfile(spawn);
+
         var ship = world.Create(
-            new Transform(position, rotation),
-            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(255, 80, 80)),
+            new Transform(spawn.Position, spawn.Rotation),
+            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, spriteColor),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            new ShipComponent(Faction.Pirate, stats.MaxSpeed, stats.RotationSpeed,
+            new ShipComponent(spawn.Faction, stats.MaxSpeed, stats.RotationSpeed,
                 stats.Acceleration, GameConfig.ShipBrakeMultiplier,
-                weapons),
+                spawn.Weapons),
             ShipInputComponent.Default(),
-            new Health(stats.MaxHull, stats.MaxShield,
-                GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
-            new EnemyAI
-            {
-                Config = new EnemyAIConfig(
-                    Faction: Faction.Pirate,
-                    DetectRange: GameConfig.EnemyDetectRange,
-                    LootCredits: lootCredits,
-                    EngageDistance: GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent),
-                State = AIState.Patrol
-            },
-            new LootDrop
-            {
-                MinCredits = Math.Max(1, lootCredits / 2),
-                MaxCredits = lootCredits * 2,
-                ResourceDropChance = GameConfig.ResourceDropChance,
-                PartDropChance = GameConfig.PartDropChance,
-                DangerLevel = dangerLevel
-            }
+            new Health(stats.MaxHull, stats.MaxShield, shieldRegenRate, GameConfig.ShieldRegenDelay),
+            new EnemyAI { Config = aiConfig, State = AIState.Patrol }
         );
 
-        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(255, 130, 110));
+        if (spawn.LootCredits > 0)
+        {
+            world.Add(ship, new LootDrop
+            {
+                MinCredits = Math.Max(1, spawn.LootCredits / 2),
+                MaxCredits = spawn.LootCredits * 2,
+                ResourceDropChance = GameConfig.ResourceDropChance,
+                PartDropChance = GameConfig.PartDropChance,
+                DangerLevel = spawn.DangerLevel
+            });
+        }
+
+        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, thrusterColor);
         return ship;
     }
 
-    /// <summary>Create a trader NPC ship entity.</summary>
-    public static Entity CreateTraderShip(World world, Vector2 position, float rotation, NpcShipStats stats,
-        ShipWeaponSpec[] weapons)
+    private static (Color3 Sprite, Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen) GetNpcShipProfile(NpcShipSpawnData spawn)
     {
-        var ship = world.Create(
-            new Transform(position, rotation),
-            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(200, 160, 80)),
-            new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            new ShipComponent(Faction.Trader, stats.MaxSpeed, stats.RotationSpeed,
-                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
-                weapons),
-            ShipInputComponent.Default(),
-            new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate * 0.5f, GameConfig.ShieldRegenDelay),
-            new EnemyAI
-            {
-                Config = new EnemyAIConfig(
+        return spawn.Faction switch
+        {
+            Faction.Pirate => (
+                new Color3(255, 80, 80),
+                new Color3(255, 130, 110),
+                new EnemyAIConfig(
+                    Faction: Faction.Pirate,
+                    DetectRange: GameConfig.EnemyDetectRange,
+                    LootCredits: spawn.LootCredits,
+                    EngageDistance: GameConfig.EnemyEngageDistance,
+                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent),
+                GameConfig.BaseShieldRegenRate * 0.5f),
+            Faction.Trader => (
+                new Color3(200, 160, 80),
+                new Color3(255, 210, 120),
+                new EnemyAIConfig(
                     Faction: Faction.Trader,
                     DetectRange: 300f,
                     LootCredits: 0,
                     EngageDistance: 0f,
                     FleeHealthPercent: 0.5f),
-                State = AIState.Patrol
-            }
-        );
-
-        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(255, 210, 120));
-        return ship;
-    }
-
-    /// <summary>Create a patrol NPC ship entity.</summary>
-    public static Entity CreatePatrolShip(World world, Vector2 position, float rotation, NpcShipStats stats,
-        ShipWeaponSpec[] weapons)
-    {
-        var ship = world.Create(
-            new Transform(position, rotation),
-            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, new Color3(80, 140, 220)),
-            new Velocity(stats.MaxSpeed, stats.RotationSpeed),
-            new ShipComponent(Faction.Patrol, stats.MaxSpeed, stats.RotationSpeed,
-                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
-                weapons),
-            ShipInputComponent.Default(),
-            new Health(stats.MaxHull, stats.MaxShield, GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay),
-            new EnemyAI
-            {
-                Config = new EnemyAIConfig(
+                GameConfig.BaseShieldRegenRate * 0.5f),
+            Faction.Patrol => (
+                new Color3(80, 140, 220),
+                new Color3(130, 200, 255),
+                new EnemyAIConfig(
                     Faction: Faction.Patrol,
                     DetectRange: GameConfig.EnemyDetectRange * 1.5f,
                     LootCredits: 0,
                     EngageDistance: GameConfig.EnemyEngageDistance,
                     FleeHealthPercent: 0f),
-                State = AIState.Patrol
-            }
-        );
-
-        CreateShipThrusterEmitters(world, ship, stats.SpriteSize, new Color3(130, 200, 255));
-        return ship;
+                GameConfig.BaseShieldRegenRate),
+            _ => throw new ArgumentException($"Unsupported NPC faction: {spawn.Faction}")
+        };
     }
 
     private static void CreateShipThrusterEmitters(World world, Entity shipEntity, int shipSize, Color3 color)
