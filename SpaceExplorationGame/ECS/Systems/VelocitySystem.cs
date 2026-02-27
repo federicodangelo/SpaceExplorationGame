@@ -18,25 +18,25 @@ public partial class VelocitySystem : BaseSystem<World, float>
     public void ApplyVelocity(ref Transform transform, ref Velocity velocity, [Data] float dt)
     {
         // Integrate acceleration into linear velocity
-        velocity.Velocity += velocity.Acceleration * dt;
+        velocity.Linear += velocity.Acceleration * dt;
 
         // Clamp linear speed
         if (velocity.MaxSpeed > 0f &&
-            velocity.Velocity.LengthSquared() > velocity.MaxSpeed * velocity.MaxSpeed)
+            velocity.Linear.LengthSquared() > velocity.MaxSpeed * velocity.MaxSpeed)
         {
-            velocity.Velocity = Vector2.Normalize(velocity.Velocity) * velocity.MaxSpeed;
+            velocity.Linear = Vector2.Normalize(velocity.Linear) * velocity.MaxSpeed;
         }
 
         // Centralized damping
         if (velocity.Damping < 1f)
         {
-            velocity.Velocity *= Math.Clamp(velocity.Damping, 0f, 1f);
+            velocity.Linear *= Math.Clamp(velocity.Damping, 0f, 1f);
         }
 
         // Apply linear velocity to position
-        if (velocity.Velocity != Vector2.Zero)
+        if (velocity.Linear != Vector2.Zero)
         {
-            var nextPosition = transform.Position + velocity.Velocity * dt;
+            var nextPosition = transform.Position + velocity.Linear * dt;
             bool canMove = velocity.CanMoveTo?.Invoke(nextPosition) ?? true;
 
             if (canMove)
@@ -45,7 +45,7 @@ public partial class VelocitySystem : BaseSystem<World, float>
             }
             else
             {
-                velocity.Velocity = Vector2.Zero;
+                velocity.Linear = Vector2.Zero;
             }
         }
 

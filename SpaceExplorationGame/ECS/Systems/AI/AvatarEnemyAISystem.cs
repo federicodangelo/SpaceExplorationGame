@@ -201,7 +201,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     /// </summary>
     private void SetAccelerationTowardVelocity(ref Velocity velocity, Vector2 desiredVelocity)
     {
-        velocity.Acceleration += (desiredVelocity - velocity.Velocity) * 14f;
+        velocity.Acceleration += (desiredVelocity - velocity.Linear) * 14f;
     }
 
     private static void SetState(ref SurfaceAI ai, AIState newState)

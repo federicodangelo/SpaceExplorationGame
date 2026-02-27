@@ -107,7 +107,7 @@ public partial class ShipSystem : BaseSystem<World, float>
             float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
             Color3 color = CombatHelper.ResolveProjectileColor(ship.Faction);
             FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                lifetime, ship.Faction, color, sideOffset, velocity.Velocity, firingEntity);
+                lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity);
         }
     }
 
@@ -135,11 +135,11 @@ public partial class ShipSystem : BaseSystem<World, float>
 
         desiredDirection = Vector2.Normalize(desiredDirection);
 
-        float speed = velocity.Velocity.Length();
+        float speed = velocity.Linear.Length();
         if (speed < minSpeedForBrake)
             return;
 
-        var moveDir = velocity.Velocity / speed;
+        var moveDir = velocity.Linear / speed;
         float alignment = Vector2.Dot(moveDir, desiredDirection);
         if (alignment >= misalignmentThreshold)
             return;

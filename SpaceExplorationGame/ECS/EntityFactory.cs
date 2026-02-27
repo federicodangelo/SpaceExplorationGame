@@ -423,7 +423,7 @@ public static class EntityFactory
         var projectileVelocity = direction * speed + inheritedVelocity;
         return world.Create(
             new Transform(position, angle),
-            new Velocity(0f) { Velocity = projectileVelocity },
+            new Velocity(0f) { Linear = projectileVelocity },
             new Projectile
             {
                 Damage = damage,

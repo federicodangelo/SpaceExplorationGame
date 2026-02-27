@@ -57,7 +57,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         World.Query(in q, (ref Transform transform, ref Velocity velocity, ref Health health) =>
         {
             _playerPos = transform.Position;
-            _playerVelocity = velocity.Velocity;
+            _playerVelocity = velocity.Linear;
             _playerAlive = !health.IsDead;
         });
     }
@@ -86,7 +86,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
         UpdateShipAIByFaction(ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,
-            velocity.Velocity, target.Position, target.Velocity, target.HasTarget);
+            velocity.Linear, target.Position, target.Velocity, target.HasTarget);
     }
 
     private void UpdateShipAIByFaction(ref Transform transform, ref EnemyAI ai,
@@ -381,7 +381,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             if (entity == self || h.IsDead) return;
             if (!ShouldTargetFaction(selfFaction, ai.Config.Faction)) return;
 
-            TrySelectTarget(t.Position, v.Velocity, entity, selfPos, range,
+            TrySelectTarget(t.Position, v.Linear, entity, selfPos, range,
                 ref bestDist, ref bestPos, ref bestVelocity, ref bestTarget);
         });
 

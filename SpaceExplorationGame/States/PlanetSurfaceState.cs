@@ -469,7 +469,7 @@ public class PlanetSurfaceState : GameState
             float avatarSpeed = game.Player.AvatarWalkSpeed;
             avatarVelocity.MaxSpeed = avatarSpeed;
             avatarVelocity.MaxRotationSpeed = 0f;
-            avatarVelocity.Velocity = Vector2.Zero;
+            avatarVelocity.Linear = Vector2.Zero;
             avatarVelocity.Acceleration = Vector2.Zero;
             avatarVelocity.RotationVelocity = 0f;
         }

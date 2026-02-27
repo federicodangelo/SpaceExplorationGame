@@ -22,22 +22,22 @@ public class AvatarRenderer : IDisposable
         var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1f);
         renderer.DrawRect(camera, shadowPos, 16, 4, new Color4(0, 0, 0, 60));
 
-        float s = AvatarSize / 28f;
+        float scale = AvatarSize / 28f;
 
-        renderer.DrawRect(camera, position + new Vector2(0f, -10f * s), (int)(6f * s), (int)(6f * s), new Color4(200, 180, 150, 255));
-        renderer.DrawRect(camera, position + new Vector2(0f, -6f * s), (int)(6f * s), (int)(2f * s), new Color4(60, 180, 100, 255));
-        renderer.DrawRect(camera, position + new Vector2(0f, -1f * s), (int)(8f * s), (int)(8f * s), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(0f, -10f * scale), (int)(6f * scale), (int)(6f * scale), new Color4(200, 180, 150, 255));
+        renderer.DrawRect(camera, position + new Vector2(0f, -6f * scale), (int)(6f * scale), (int)(2f * scale), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(0f, -1f * scale), (int)(8f * scale), (int)(8f * scale), new Color4(60, 180, 100, 255));
 
-        renderer.DrawRect(camera, position + new Vector2(-5f * s, -1f * s), (int)(3f * s), (int)(6f * s), new Color4(60, 180, 100, 255));
-        renderer.DrawRect(camera, position + new Vector2(5f * s, -1f * s), (int)(3f * s), (int)(6f * s), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(-5f * scale, -1f * scale), (int)(3f * scale), (int)(6f * scale), new Color4(60, 180, 100, 255));
+        renderer.DrawRect(camera, position + new Vector2(5f * scale, -1f * scale), (int)(3f * scale), (int)(6f * scale), new Color4(60, 180, 100, 255));
 
-        renderer.DrawRect(camera, position + new Vector2(-2f * s, 7f * s), (int)(3f * s), (int)(8f * s), new Color4(50, 50, 140, 255));
-        renderer.DrawRect(camera, position + new Vector2(2f * s, 7f * s), (int)(3f * s), (int)(8f * s), new Color4(50, 50, 140, 255));
+        renderer.DrawRect(camera, position + new Vector2(-2f * scale, 7f * scale), (int)(3f * scale), (int)(8f * scale), new Color4(50, 50, 140, 255));
+        renderer.DrawRect(camera, position + new Vector2(2f * scale, 7f * scale), (int)(3f * scale), (int)(8f * scale), new Color4(50, 50, 140, 255));
 
-        renderer.DrawRect(camera, position + new Vector2(-2.5f * s, 12f * s), (int)(4f * s), (int)(2f * s), new Color4(80, 60, 40, 255));
-        renderer.DrawRect(camera, position + new Vector2(2.5f * s, 12f * s), (int)(4f * s), (int)(2f * s), new Color4(80, 60, 40, 255));
+        renderer.DrawRect(camera, position + new Vector2(-2.5f * scale, 12f * scale), (int)(4f * scale), (int)(2f * scale), new Color4(80, 60, 40, 255));
+        renderer.DrawRect(camera, position + new Vector2(2.5f * scale, 12f * scale), (int)(4f * scale), (int)(2f * scale), new Color4(80, 60, 40, 255));
 
-        renderer.DrawFilledCircle(camera, position + new Vector2(0f, -10f * s), 1.3f * s, new Color4(100, 180, 255, 240));
+        renderer.DrawFilledCircle(camera, position + new Vector2(0f, -10f * scale), 1.3f * scale, new Color4(100, 180, 255, 240));
     }
 
     public void Dispose()
@@ -45,3 +45,4 @@ public class AvatarRenderer : IDisposable
         GC.SuppressFinalize(this);
     }
 }
+

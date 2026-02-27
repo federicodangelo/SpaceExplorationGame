@@ -14,8 +14,8 @@ public class StationRenderer : IDisposable
     const int NumLightsOuterRing = 8;
     const double BlinkPeriod = 2.0; // seconds
 
-    static Color3 BlinkColor1 = new Color3(255, 40, 40); // red
-    static Color3 BlinkColor2 = new Color3(40, 255, 40); // green
+    private static Color3 BlinkColor1 = new Color3(255, 40, 40); // red
+    private static Color3 BlinkColor2 = new Color3(40, 255, 40); // green
 
     // Ring + hub
     const float RingInnerRadius = 76.0f;
@@ -58,15 +58,15 @@ public class StationRenderer : IDisposable
     const float OuterRingLightRadius = 3f;
     const float CenterLightRadius = 8f;
 
-    static readonly Color4 StrutColor = new(100, 100, 130, 255);
-    static readonly Color4 RingColor = new(145, 150, 195, 255);
-    static readonly Color4 PanelColor = new(50, 70, 160, 255);
-    static readonly Color4 HubOuterColor = new(170, 175, 220, 255);
-    static readonly Color4 HubOutlineColor = new(120, 120, 150, 255);
-    static readonly Color4 HubInnerColor = new(120, 125, 165, 255);
-    static readonly Color4 DockingMarkerWarmBase = new(255, 205, 110, 180);
-    static readonly Color4 DockingMarkerCoolBase = new(120, 190, 255, 170);
-    static readonly Color4 DockingMarkerNotchColor = new(40, 45, 70, 180);
+    private static readonly Color4 StrutColor = new(100, 100, 130, 255);
+    private static readonly Color4 RingColor = new(145, 150, 195, 255);
+    private static readonly Color4 PanelColor = new(50, 70, 160, 255);
+    private static readonly Color4 HubOuterColor = new(170, 175, 220, 255);
+    private static readonly Color4 HubOutlineColor = new(120, 120, 150, 255);
+    private static readonly Color4 HubInnerColor = new(120, 125, 165, 255);
+    private static readonly Color4 DockingMarkerWarmBase = new(255, 205, 110, 180);
+    private static readonly Color4 DockingMarkerCoolBase = new(120, 190, 255, 170);
+    private static readonly Color4 DockingMarkerNotchColor = new(40, 45, 70, 180);
 
     public StationRenderer(TextureManager textures)
     {

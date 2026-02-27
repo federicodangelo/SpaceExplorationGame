@@ -67,9 +67,9 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
             float strafeThrust = movementInput.X;
             Vector2 desiredAcceleration = (forward * forwardThrust) + (right * strafeThrust);
 
-            if (movementInput.Y > 0f && velocity.Velocity != Vector2.Zero)
+            if (movementInput.Y > 0f && velocity.Linear != Vector2.Zero)
             {
-                Vector2 brakeDirection = -Vector2.Normalize(velocity.Velocity);
+                Vector2 brakeDirection = -Vector2.Normalize(velocity.Linear);
                 desiredAcceleration += brakeDirection * movementInput.Y * ship.BrakeMultiplier;
             }
 

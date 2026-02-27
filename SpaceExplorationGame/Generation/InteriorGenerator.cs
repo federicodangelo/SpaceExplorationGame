@@ -537,7 +537,7 @@ public static class InteriorGenerator
             for (int dy = -1; dy <= 1; dy++)
             {
                 int ty = y + dy;
-                if (tx_InBounds(data, x, ty))
+                if (TileInBounds(data, x, ty))
                 {
                     if (dy == -1 || dy == 1)
                     {
@@ -568,7 +568,7 @@ public static class InteriorGenerator
             for (int dx = -1; dx <= 1; dx++)
             {
                 int tx = x + dx;
-                if (tx_InBounds(data, tx, y))
+                if (TileInBounds(data, tx, y))
                 {
                     if (dx == -1 || dx == 1)
                     {
@@ -597,7 +597,7 @@ public static class InteriorGenerator
             for (int dy = -1; dy <= 1; dy++)
             {
                 int ty = y + dy;
-                if (tx_InBounds(data, x, ty))
+                if (TileInBounds(data, x, ty))
                 {
                     if (data.Tiles[x, ty] == InteriorTileType.Wall)
                         data.Tiles[x, ty] = InteriorTileType.DoorOpen;
@@ -618,7 +618,7 @@ public static class InteriorGenerator
             for (int dx = -1; dx <= 1; dx++)
             {
                 int tx = x + dx;
-                if (tx_InBounds(data, tx, y))
+                if (TileInBounds(data, tx, y))
                 {
                     if (data.Tiles[tx, y] == InteriorTileType.Wall)
                         data.Tiles[tx, y] = InteriorTileType.DoorOpen;
@@ -629,7 +629,7 @@ public static class InteriorGenerator
         }
     }
 
-    private static bool tx_InBounds(InteriorData data, int x, int y)
+    private static bool TileInBounds(InteriorData data, int x, int y)
         => x >= 0 && x < data.Width && y >= 0 && y < data.Height;
 
     private static void PlaceCrates(InteriorData data, SeededRandom rng, InteriorRoom room, int count)
@@ -639,7 +639,7 @@ public static class InteriorGenerator
         {
             int cx = rng.NextInt(r.X + 2, r.X + r.Width - 2);
             int cy = rng.NextInt(r.Y + 2, r.Y + r.Height - 2);
-            if (tx_InBounds(data, cx, cy) && data.Tiles[cx, cy] == InteriorTileType.Floor)
+            if (TileInBounds(data, cx, cy) && data.Tiles[cx, cy] == InteriorTileType.Floor)
                 data.Tiles[cx, cy] = InteriorTileType.Crate;
         }
     }
@@ -654,7 +654,7 @@ public static class InteriorGenerator
         {
             int cx = startX + spacing * (i + 1);
             int cy = r.Y + 1;
-            if (tx_InBounds(data, cx, cy))
+            if (TileInBounds(data, cx, cy))
                 data.Tiles[cx, cy] = InteriorTileType.Console;
         }
     }
@@ -705,7 +705,7 @@ public static class InteriorGenerator
             int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
             int ny = rng.NextInt(room.TileRect.Y + 2, room.TileRect.Y + room.TileRect.Height - 2);
 
-            if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
+            if (TileInBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
                 data.Npcs.Add(CreateNpc(rng, "CIVILIAN", nx, ny,
                     CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));
@@ -756,7 +756,7 @@ public static class InteriorGenerator
             int nx = rng.NextInt(room.TileRect.X + 2, room.TileRect.X + room.TileRect.Width - 2);
             int ny = rng.NextInt(room.TileRect.Y + 2, room.TileRect.Y + room.TileRect.Height - 2);
 
-            if (tx_InBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
+            if (TileInBounds(data, nx, ny) && IsWalkable(data.Tiles[nx, ny]))
             {
                 data.Npcs.Add(CreateNpc(rng, "SETTLER", nx, ny,
                     CivilianDialogue, new Color3((byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220), (byte)rng.NextInt(120, 220))));

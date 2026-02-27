@@ -350,7 +350,7 @@ public class SolarSystemState : GameState
         _anchorOffset = shipPos - targetPos;
 
         ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-        vel.Velocity = Vector2.Zero;
+        vel.Linear = Vector2.Zero;
         vel.Acceleration = Vector2.Zero;
         vel.RotationVelocity = 0f;
 
@@ -450,7 +450,7 @@ public class SolarSystemState : GameState
             if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
             {
                 ref var vel = ref world.Get<Velocity>(_simPlayer.Entity);
-                speed = vel.Velocity.Length();
+                speed = vel.Linear.Length();
             }
             HudRenderer.RenderSolarSystemHud(renderer, game.Player, _starSystem,
                 world, _simPlayer.Entity, speed);

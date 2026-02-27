@@ -55,10 +55,10 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
         }
 
         // Keep linear movement fully aligned with facing to avoid floaty lateral drift.
-        if (velocity.Velocity != Vector2.Zero)
+        if (velocity.Linear != Vector2.Zero)
         {
-            float forwardSpeed = Vector2.Dot(velocity.Velocity, forward);
-            velocity.Velocity = forward * forwardSpeed;
+            float forwardSpeed = Vector2.Dot(velocity.Linear, forward);
+            velocity.Linear = forward * forwardSpeed;
         }
 
         velocity.Acceleration = Vector2.Zero;

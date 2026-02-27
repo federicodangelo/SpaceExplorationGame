@@ -100,7 +100,7 @@ public class ParticleSystem(World world) : BaseSystem<World, float>(world)
         if (World.Has<Velocity>(sourceEntity))
         {
             var velocity = World.Get<Velocity>(sourceEntity);
-            carrierVelocity = velocity.Velocity;
+            carrierVelocity = velocity.Linear;
             acceleration = velocity.Acceleration;
             rotationVelocity = velocity.RotationVelocity;
         }

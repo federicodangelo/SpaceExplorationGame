@@ -19,7 +19,7 @@ public static class ProjectileRenderer
         world.Query(in query, (ref Transform transform, ref Velocity velocity, ref Projectile proj) =>
         {
             var pos = transform.Position;
-            float speed = velocity.Velocity.Length();
+            float speed = velocity.Linear.Length();
             float rad = transform.Rotation * MathF.PI / 180f;
             var facingDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
 

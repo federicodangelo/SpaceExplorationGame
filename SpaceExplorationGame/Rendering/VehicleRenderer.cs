@@ -28,43 +28,43 @@ public class VehicleRenderer : IDisposable
 
     private static void DrawVehiclePrimitives(SpriteRenderer renderer, Camera camera, Vector2 position, float rotationDeg)
     {
-        float s = VehicleSize / 20f;
+        float scale = VehicleSize / 20f;
 
         DrawRotatedQuad(renderer, camera, position, rotationDeg,
-            new Vector2(-7f * s, -10f * s),
-            new Vector2(7f * s, -10f * s),
-            new Vector2(7f * s, 10f * s),
-            new Vector2(-7f * s, 10f * s),
+            new Vector2(-7f * scale, -10f * scale),
+            new Vector2(7f * scale, -10f * scale),
+            new Vector2(7f * scale, 10f * scale),
+            new Vector2(-7f * scale, 10f * scale),
             new Color4(180, 140, 80, 255));
 
         DrawRotatedQuad(renderer, camera, position, rotationDeg,
-            new Vector2(-5f * s, -7f * s),
-            new Vector2(5f * s, -7f * s),
-            new Vector2(5f * s, -3f * s),
-            new Vector2(-5f * s, -3f * s),
+            new Vector2(-5f * scale, -7f * scale),
+            new Vector2(5f * scale, -7f * scale),
+            new Vector2(5f * scale, -3f * scale),
+            new Vector2(-5f * scale, -3f * scale),
             new Color4(100, 180, 230, 255));
 
         DrawRotatedQuad(renderer, camera, position, rotationDeg,
-            new Vector2(-7f * s, -1f * s),
-            new Vector2(7f * s, -1f * s),
-            new Vector2(7f * s, 1f * s),
-            new Vector2(-7f * s, 1f * s),
+            new Vector2(-7f * scale, -1f * scale),
+            new Vector2(7f * scale, -1f * scale),
+            new Vector2(7f * scale, 1f * scale),
+            new Vector2(-7f * scale, 1f * scale),
             new Color4(100, 100, 110, 255));
 
-        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * s, -7f * s), 2.2f * s);
-        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * s, -7f * s), 2.2f * s);
-        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * s, 7f * s), 2.2f * s);
-        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * s, 7f * s), 2.2f * s);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * scale, -7f * scale), 2.2f * scale);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * scale, -7f * scale), 2.2f * scale);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(-8f * scale, 7f * scale), 2.2f * scale);
+        DrawWheel(renderer, camera, position, rotationDeg, new Vector2(8f * scale, 7f * scale), 2.2f * scale);
 
-        Vector2 headL = Rotate(new Vector2(-3f * s, -11f * s), rotationDeg);
-        Vector2 headR = Rotate(new Vector2(3f * s, -11f * s), rotationDeg);
-        renderer.DrawFilledCircle(camera, position + headL, 1f * s, new Color4(255, 255, 200, 255));
-        renderer.DrawFilledCircle(camera, position + headR, 1f * s, new Color4(255, 255, 200, 255));
+        Vector2 headL = Rotate(new Vector2(-3f * scale, -11f * scale), rotationDeg);
+        Vector2 headR = Rotate(new Vector2(3f * scale, -11f * scale), rotationDeg);
+        renderer.DrawFilledCircle(camera, position + headL, 1f * scale, new Color4(255, 255, 200, 255));
+        renderer.DrawFilledCircle(camera, position + headR, 1f * scale, new Color4(255, 255, 200, 255));
 
-        Vector2 tailL = Rotate(new Vector2(-3f * s, 11f * s), rotationDeg);
-        Vector2 tailR = Rotate(new Vector2(3f * s, 11f * s), rotationDeg);
-        renderer.DrawFilledCircle(camera, position + tailL, 1f * s, new Color4(255, 80, 80, 255));
-        renderer.DrawFilledCircle(camera, position + tailR, 1f * s, new Color4(255, 80, 80, 255));
+        Vector2 tailL = Rotate(new Vector2(-3f * scale, 11f * scale), rotationDeg);
+        Vector2 tailR = Rotate(new Vector2(3f * scale, 11f * scale), rotationDeg);
+        renderer.DrawFilledCircle(camera, position + tailL, 1f * scale, new Color4(255, 80, 80, 255));
+        renderer.DrawFilledCircle(camera, position + tailR, 1f * scale, new Color4(255, 80, 80, 255));
     }
 
     private static void DrawWheel(SpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, Vector2 offset, float radius)

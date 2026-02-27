@@ -29,7 +29,7 @@ public partial class AvatarMovementSystem : BaseSystem<World, float>
 
         // Critically damped response toward desired walk velocity.
         var targetVelocity = moveDir * _speed;
-        velocity.Acceleration = (targetVelocity - velocity.Velocity) * 18f;
+        velocity.Acceleration = (targetVelocity - velocity.Linear) * 18f;
         velocity.RotationVelocity = 0f;
     }
 }
