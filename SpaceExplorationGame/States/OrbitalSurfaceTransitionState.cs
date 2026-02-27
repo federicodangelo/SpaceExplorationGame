@@ -414,7 +414,7 @@ public class OrbitalSurfaceTransitionState : GameState
         return new Vector2(dstRect.X + targetU * dstRect.W, dstRect.Y + targetV * dstRect.H);
     }
 
-    private static float Lerp(float a, float b, float t) => a + (b - a) * Math.Clamp(t, 0f, 1f);
+    private static float Lerp(float a, float b, float t) => float.Lerp(a, b, Math.Clamp(t, 0f, 1f));
 
     private static float EaseInOut01(float t)
     {

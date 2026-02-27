@@ -19,7 +19,7 @@ public static class ParticleRenderer
             float life = 1f - t;
             if (life <= 0f) return;
 
-            float radius = particle.StartSize + (particle.EndSize - particle.StartSize) * t;
+            float radius = float.Lerp(particle.StartSize, particle.EndSize, t);
             byte alpha = (byte)Math.Clamp((int)(180f * life), 0, 255);
 
             renderer.DrawFilledCircle(camera, transform.Position, radius, particle.Color.WithAlpha(alpha));

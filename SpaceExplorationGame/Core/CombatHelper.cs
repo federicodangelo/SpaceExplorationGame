@@ -40,7 +40,7 @@ public static class CombatHelper
 
     private static float ComputePopupDuration(float min, float max)
     {
-        return min + (max - min) * NextUnitFloat(); ;
+        return float.Lerp(min, max, NextUnitFloat());
     }
 
     private static float NextUnitFloat()

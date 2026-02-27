@@ -164,10 +164,10 @@ public sealed class MusicGenerator
             float lfo2 = MathF.Sin((float)(_lfo2P * MathF.Tau));
 
             // ── Interpolated chord frequencies ───────────────
-            float pF1 = Lerp(_prevF1, _tgtF1, _chordBlend);
-            float pF2 = Lerp(_prevF2, _tgtF2, _chordBlend);
-            float pF3 = Lerp(_prevF3, _tgtF3, _chordBlend);
-            float bF = Lerp(_prevBass, _tgtBass, _chordBlend);
+            float pF1 = float.Lerp(_prevF1, _tgtF1, _chordBlend);
+            float pF2 = float.Lerp(_prevF2, _tgtF2, _chordBlend);
+            float pF3 = float.Lerp(_prevF3, _tgtF3, _chordBlend);
+            float bF = float.Lerp(_prevBass, _tgtBass, _chordBlend);
 
             float left = 0f, right = 0f;
 
@@ -319,8 +319,6 @@ public sealed class MusicGenerator
         int semitones = Pent[rem] + 12 * oct;
         return rootHz * MathF.Pow(2f, semitones / 12f);
     }
-
-    private static float Lerp(float a, float b, float t) => a + (b - a) * t;
 
     /// <summary>Fast inline xorshift noise (–1 … +1).</summary>
     private float Noise()

@@ -118,7 +118,7 @@ public class AsteroidRenderer
     private static byte BlendToByte(byte from, byte to, float t)
     {
         t = Math.Clamp(t, 0f, 1f);
-        return (byte)Math.Clamp(from + (to - from) * t, 0f, 255f);
+        return (byte)Math.Clamp(float.Lerp(from, to, t), 0f, 255f);
     }
 
     private static Vector2 Rotate(Vector2 v, float degrees)

@@ -348,9 +348,9 @@ public class PlanetRenderer
     {
         t = Math.Clamp(t, 0f, 1f);
         return new Color3(
-            (byte)Math.Clamp((int)(from.R + (to.R - from.R) * t), 0, 255),
-            (byte)Math.Clamp((int)(from.G + (to.G - from.G) * t), 0, 255),
-            (byte)Math.Clamp((int)(from.B + (to.B - from.B) * t), 0, 255));
+            (byte)Math.Clamp((int)float.Lerp(from.R, to.R, t), 0, 255),
+            (byte)Math.Clamp((int)float.Lerp(from.G, to.G, t), 0, 255),
+            (byte)Math.Clamp((int)float.Lerp(from.B, to.B, t), 0, 255));
     }
 
     private static Color3 Mul(Color3 c, float factor)
