@@ -110,22 +110,22 @@ public static class SolarSystemGenerator
         "kr", "pl", "tr", "gr", "br", "dr", "fr", "pr", "st", "ch"
     ];
 
-    public static SolarSystemContent Generate(
+    /// <summary>
+    /// Generates only the planet data for a star system, without stations, NPC spawns,
+    /// or asteroid belts. Useful for mission queries that only need planet metadata.
+    /// </summary>
+    public static List<PlanetData> GeneratePlanetsOnly(
         SeededRandom rng, StarSystemData starSystem)
     {
         var planets = new List<PlanetData>();
-        var asteroidBelts = new List<AsteroidBeltData>();
-        var stations = new List<SpaceStationData>();
-        var npcShipSpawns = new List<NpcShipSpawnData>();
-
         int planetCount = starSystem.PlanetCount;
-        float baseOrbitRadius = 3000f; // starting orbit distance from center
+        float baseOrbitRadius = 3000f;
         float orbitSpacing = 2000f;
 
         for (int i = 0; i < planetCount; i++)
         {
             float orbitRadius = baseOrbitRadius + i * orbitSpacing + rng.NextFloat(-400, 400);
-            float orbitSpeed = 0.0015f / (1f + i * 0.5f); // outer planets orbit slower
+            float orbitSpeed = 0.0015f / (1f + i * 0.5f);
 
             var planetType = GeneratePlanetType(rng, i, planetCount);
             var (color, radius) = GetPlanetProperties(planetType, rng);
@@ -160,6 +160,21 @@ public static class SolarSystemGenerator
                 HasSettlement = hasSolidSurface && rng.NextBool(0.3f)
             });
         }
+
+        return planets;
+    }
+
+    public static SolarSystemContent Generate(
+        SeededRandom rng, StarSystemData starSystem)
+    {
+        var planets = GeneratePlanetsOnly(rng, starSystem);
+        var asteroidBelts = new List<AsteroidBeltData>();
+        var stations = new List<SpaceStationData>();
+        var npcShipSpawns = new List<NpcShipSpawnData>();
+
+        int planetCount = starSystem.PlanetCount;
+        float baseOrbitRadius = 3000f; // starting orbit distance from center
+        float orbitSpacing = 2000f;
 
         // Asteroid belt (50% chance, usually between inner and outer planets)
         if (rng.NextBool(0.5f) && planetCount >= 4)
