@@ -95,20 +95,20 @@ public class SolarSystemSimulation : ISimulation
     private double _globalTime;
 
     // Reference to game for loot processing (needs Player, Audio access)
-    private Game _game = null!;
+    private readonly Game _game;
 
-    public SolarSystemSimulation(StarSystemData starSystem)
+    public SolarSystemSimulation(Game game, StarSystemData starSystem)
     {
+        _game = game;
         StarSystem = starSystem;
     }
 
-    public void Create(Game game)
+    public void Create()
     {
-        _game = game;
         EcsWorld = World.Create();
 
-        var rng = game.Seeds.GetStarSystemRandom(StarSystem.Index);
-        Content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, StarSystem);
+        var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
+        Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
         Planets = Content.Planets;
         AsteroidBelts = Content.AsteroidBelts;
         Stations = Content.Stations;
@@ -116,7 +116,7 @@ public class SolarSystemSimulation : ISimulation
         float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 center = new(centerX, centerY);
-        float time = (float)game.GlobalTime;
+        float time = (float)_game.GlobalTime;
 
         // Create star entity
         float starDisplayRadius = StarSystem.StarRadius * 2f;
@@ -204,8 +204,8 @@ public class SolarSystemSimulation : ISimulation
         SpawnNPCShips(Content.NpcShipSpawns);
 
         // Background stars and nebulae
-        var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xCAFEBABE);
-        var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
+        var bgRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xCAFEBABE);
+        var nebRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xFACEFEED);
         float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
 
@@ -280,10 +280,11 @@ public class SolarSystemSimulation : ISimulation
         EcsWorld = null!;
     }
 
-    public void Update(float dt, double globalTime)
+    public void Update(UpdateContext ctx)
     {
         if (EcsWorld == null) return;
-        _globalTime = globalTime;
+        float dt = ctx.Dt;
+        _globalTime = ctx.GlobalTime;
 
         _dependentEntityCleanupSystem.Update(in dt);
         _orbitSystem.Update(in dt);

@@ -1,5 +1,3 @@
-using SpaceExplorationGame.Core;
-
 namespace SpaceExplorationGame.Simulation;
 
 /// <summary>
@@ -51,16 +49,16 @@ public class SimulationCoordinator
     /// Update all active simulations. Destroys simulations that have had no players
     /// for longer than the timeout period.
     /// </summary>
-    public void Update(float dt, double globalTime)
+    public void Update(UpdateContext ctx)
     {
         for (int i = _simulations.Count - 1; i >= 0; i--)
         {
             var entry = _simulations[i];
-            entry.Simulation.Update(dt, globalTime);
+            entry.Simulation.Update(ctx);
 
             if (!entry.Simulation.HasPlayers)
             {
-                entry.EmptyTimer += dt;
+                entry.EmptyTimer += ctx.Dt;
                 if (entry.EmptyTimer >= DestroyDelaySeconds)
                 {
                     entry.Simulation.Destroy();
@@ -96,6 +94,7 @@ public class SimulationCoordinator
             return existing;
 
         var simulation = builder();
+        simulation.Create();
         Register(simulation);
         return simulation;
     }

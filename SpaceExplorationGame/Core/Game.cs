@@ -225,7 +225,7 @@ public class Game : IDisposable
                 DeltaTime = GameConfig.FixedTimeStep;
 
                 // Always tick all simulations first (physics, AI, combat)
-                Coordinator.Update(GameConfig.FixedTimeStep, GlobalTime);
+                Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime));
 
                 // Then let the current state do per-tick post-processing (camera, effects)
                 _currentState?.Update(this);

@@ -69,17 +69,18 @@ public class PlanetSurfaceSimulation : ISimulation
     private AvatarEnemyAISystem _enemyAISystem = null!;
 
     private double _globalTime;
-    private Game _game = null!;
+    private readonly Game _game;
 
     // Landing parameters
     private readonly int _landingTileX;
     private readonly int _landingTileY;
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
 
-    public PlanetSurfaceSimulation(StarSystemData starSystem, PlanetData planet,
+    public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         int landingTileX = -1, int landingTileY = -1,
         PlanetSurfaceData? preGeneratedSurfaceData = null)
     {
+        _game = game;
         StarSystem = starSystem;
         Planet = planet;
         _landingTileX = landingTileX;
@@ -87,14 +88,13 @@ public class PlanetSurfaceSimulation : ISimulation
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
     }
 
-    public void Create(Game game)
+    public void Create()
     {
-        _game = game;
         EcsWorld = World.Create();
 
         // Generate surface
         SurfaceData = _preGeneratedSurfaceData
-            ?? game.WorldGenerator.GeneratePlanetSurface(game.Seeds, StarSystem, Planet);
+            ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
 
         // Initialize ECS systems
         _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(EcsWorld);
@@ -146,10 +146,11 @@ public class PlanetSurfaceSimulation : ISimulation
         EcsWorld = null!;
     }
 
-    public void Update(float dt, double globalTime)
+    public void Update(UpdateContext ctx)
     {
         if (EcsWorld == null) return;
-        _globalTime = globalTime;
+        float dt = ctx.Dt;
+        _globalTime = ctx.GlobalTime;
 
         _dependentEntityCleanupSystem.Update(in dt);
 

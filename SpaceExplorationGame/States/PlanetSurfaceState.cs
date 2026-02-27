@@ -107,7 +107,7 @@ public class PlanetSurfaceState : GameState
         // Get or create the simulation
         _sim = game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
             s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planet.Index,
-            () => { var sim = new PlanetSurfaceSimulation(_starSystem, _planet, _landingTileX, _landingTileY, _preGeneratedSurfaceData); sim.Create(game); return sim; });
+            () => new PlanetSurfaceSimulation(game, _starSystem, _planet, _landingTileX, _landingTileY, _preGeneratedSurfaceData));
 
         // Add player
         _simPlayer = _sim.AddPlayer(game.Player);

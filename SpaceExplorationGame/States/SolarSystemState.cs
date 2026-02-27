@@ -79,7 +79,7 @@ public class SolarSystemState : GameState
         // Get or create the simulation
         _sim = game.Coordinator.FindOrCreate<SolarSystemSimulation>(
             s => s.StarSystem.Index == _starSystem.Index,
-            () => { var sim = new SolarSystemSimulation(_starSystem); sim.Create(game); return sim; });
+            () => new SolarSystemSimulation(game, _starSystem));
 
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);

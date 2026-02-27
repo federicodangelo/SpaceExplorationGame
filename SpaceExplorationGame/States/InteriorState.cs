@@ -75,7 +75,7 @@ public class InteriorState : GameState
         // Get or create the simulation
         _sim = game.Coordinator.FindOrCreate<InteriorSimulation>(
             s => s.Origin == _origin && s.StarSystem.Index == _starSystem.Index,
-            () => { var sim = new InteriorSimulation(_origin, _starSystem, _station, _planet, _settlement); sim.Create(game); return sim; });
+            () => new InteriorSimulation(game, _origin, _starSystem, _station, _planet, _settlement));
 
         // Add player
         _simPlayer = _sim.AddPlayer(game.Player);

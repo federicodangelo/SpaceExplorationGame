@@ -43,9 +43,12 @@ public class InteriorSimulation : ISimulation
 
     private const float BaseAvatarSpeed = 200f;
 
-    public InteriorSimulation(InteriorOrigin origin, StarSystemData starSystem,
+    private readonly Game _game;
+
+    public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
     {
+        _game = game;
         Origin = origin;
         StarSystem = starSystem;
         Station = station;
@@ -53,15 +56,15 @@ public class InteriorSimulation : ISimulation
         Settlement = settlement;
     }
 
-    public void Create(Game game)
+    public void Create()
     {
         EcsWorld = World.Create();
 
         Interior = Origin switch
         {
-            InteriorOrigin.Station => game.WorldGenerator.GenerateStationInterior(game.Seeds, StarSystem, Station),
-            InteriorOrigin.Settlement => game.WorldGenerator.GenerateSettlementInterior(game.Seeds, StarSystem, Planet, Settlement),
-            _ => game.WorldGenerator.GenerateStationInterior(game.Seeds, StarSystem, Station)
+            InteriorOrigin.Station => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, Station),
+            InteriorOrigin.Settlement => _game.WorldGenerator.GenerateSettlementInterior(_game.Seeds, StarSystem, Planet, Settlement),
+            _ => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, Station)
         };
 
         // Initialize ECS systems
@@ -79,9 +82,10 @@ public class InteriorSimulation : ISimulation
         EcsWorld = null!;
     }
 
-    public void Update(float dt, double globalTime)
+    public void Update(UpdateContext ctx)
     {
         if (EcsWorld == null) return;
+        float dt = ctx.Dt;
 
         _dependentEntityCleanupSystem.Update(in dt);
         _velocitySystem.Update(in dt);

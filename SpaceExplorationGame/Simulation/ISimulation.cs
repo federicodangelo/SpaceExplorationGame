@@ -4,9 +4,15 @@ using SpaceExplorationGame.Core;
 namespace SpaceExplorationGame.Simulation;
 
 /// <summary>
+/// Context passed to every simulation on each fixed-timestep tick.
+/// </summary>
+public readonly record struct UpdateContext(float Dt, double GlobalTime);
+
+/// <summary>
 /// Base interface for all game simulations (solar system, planet surface, interior).
 /// Simulations manage ECS entities and systems independently of rendering.
 /// They are always updated by the SimulationCoordinator, never paused.
+/// If a simulation needs a reference to <see cref="Game"/>, it should receive it via its constructor.
 /// </summary>
 public interface ISimulation
 {
@@ -17,7 +23,7 @@ public interface ISimulation
     bool HasPlayers { get; }
 
     /// <summary>Initialize the simulation: generate world content, create entities, set up ECS systems.</summary>
-    void Create(Game game);
+    void Create();
 
     /// <summary>Tear down the simulation: dispose the ECS world and release resources.</summary>
     void Destroy();
@@ -26,7 +32,7 @@ public interface ISimulation
     /// Advance the simulation by one tick. Called every fixed timestep by the SimulationCoordinator.
     /// Must not contain any rendering or audio code.
     /// </summary>
-    void Update(float dt, double globalTime);
+    void Update(UpdateContext ctx);
 
     /// <summary>
     /// Add a player to this simulation. Creates the player's entity and returns a SimulationPlayer
