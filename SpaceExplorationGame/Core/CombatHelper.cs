@@ -102,6 +102,62 @@ public static class CombatHelper
     }
 
     /// <summary>
+    /// Process damage events → SFX.
+    /// </summary>
+    public static void PlayDamageSfx(AudioManager audio, IReadOnlyList<DamageEvent> events,
+        Vector2 listenerPos, float volume)
+    {
+        for (int i = 0; i < events.Count; i++)
+        {
+            var evt = events[i];
+            audio.PlaySfxAtDistance(
+                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
+                evt.Position, listenerPos, volume);
+        }
+    }
+
+    /// <summary>
+    /// Process destroyed entities → explosions + SFX.
+    /// </summary>
+    /// <param name="audio">Audio manager for SFX.</param>
+    /// <param name="explosions">Explosion list to append to.</param>
+    /// <param name="destroyed">Destroyed entity events.</param>
+    /// <param name="listenerPos">Listener position for distance attenuation.</param>
+    /// <param name="npcExplosionColor">Callback that returns explosion color for an NPC faction.</param>
+    /// <param name="asteroidSize">Explosion radius for asteroids.</param>
+    /// <param name="playerSize">Explosion radius for player death.</param>
+    /// <param name="npcSize">Explosion radius for NPC death.</param>
+    /// <param name="playerExplosionColor">Explosion color for player death.</param>
+    public static void ProcessDestroyedEntities(
+        AudioManager audio, List<Explosion> explosions,
+        IReadOnlyList<DestroyedEntity> destroyed, Vector2 listenerPos,
+        Func<Faction, Color3> npcExplosionColor,
+        float asteroidSize = 15f, float playerSize = 50f, float npcSize = 30f,
+        Color3? playerExplosionColor = null, float npcSfxVolume = 1f)
+    {
+        var playerColor = playerExplosionColor ?? new Color3(255, 200, 80);
+        for (int i = 0; i < destroyed.Count; i++)
+        {
+            var d = destroyed[i];
+            if (d.Asteroid.HasValue)
+            {
+                explosions.Add(new Explosion(d.Position, asteroidSize, new Color3(140, 120, 100)));
+                audio.PlaySfxAtDistance(SfxType.SmallExplosion, d.Position, listenerPos, 0.5f);
+            }
+            else if (d.Faction == Faction.Player)
+            {
+                explosions.Add(new Explosion(d.Position, playerSize, playerColor));
+                audio.PlaySfx(SfxType.Explosion, 1.2f);
+            }
+            else
+            {
+                explosions.Add(new Explosion(d.Position, npcSize, npcExplosionColor(d.Faction)));
+                audio.PlaySfxAtDistance(SfxType.Explosion, d.Position, listenerPos, npcSfxVolume);
+            }
+        }
+    }
+
+    /// <summary>
     /// Update damage popups and explosions (timers, removal).
     /// </summary>
     public static void UpdateVisualEffects(List<DamagePopup> popups, List<Explosion> explosions, float dt)

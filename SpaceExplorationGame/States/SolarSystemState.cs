@@ -273,35 +273,13 @@ public class SolarSystemState : GameState
 
         // Damage events → visual popups + SFX
         CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
-        foreach (var evt in _sim.DamageEventsLastUpdate)
-        {
-            game.Audio.PlaySfxAtDistance(
-                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
-                evt.Position, _camera.Position, 0.6f);
-        }
+        CombatHelper.PlayDamageSfx(game.Audio, _sim.DamageEventsLastUpdate, _camera.Position, 0.6f);
 
         // Destroyed entities → explosions + SFX
-        foreach (var destroyed in _sim.DestroyedEntitiesLastUpdate)
-        {
-            if (destroyed.Asteroid.HasValue)
-            {
-                _explosions.Add(new Explosion(destroyed.Position, 15f, new Color3(140, 120, 100), 0.5f));
-                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, _camera.Position, 0.5f);
-            }
-            else if (destroyed.Faction == Faction.Player)
-            {
-                _explosions.Add(new Explosion(destroyed.Position, 50f, new Color3(255, 200, 80), 1.5f));
-                game.Audio.PlaySfx(SfxType.Explosion, 1.2f);
-            }
-            else
-            {
-                byte expR = destroyed.Faction == Faction.Pirate ? (byte)255 : (byte)200;
-                byte expG = destroyed.Faction == Faction.Pirate ? (byte)120 : (byte)200;
-                byte expB = destroyed.Faction == Faction.Pirate ? (byte)80 : (byte)200;
-                _explosions.Add(new Explosion(destroyed.Position, 30f, new Color3(expR, expG, expB)));
-                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, _camera.Position);
-            }
-        }
+        CombatHelper.ProcessDestroyedEntities(game.Audio, _explosions,
+            _sim.DestroyedEntitiesLastUpdate, _camera.Position,
+            faction => faction == Faction.Pirate
+                ? new Color3(255, 120, 80) : new Color3(200, 200, 200));
     }
 
     private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)

@@ -316,36 +316,15 @@ public class PlanetSurfaceState : GameState
 
         // Damage popups + SFX
         CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
-        foreach (var evt in _sim.DamageEventsLastUpdate)
-        {
-            game.Audio.PlaySfxAtDistance(
-                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
-                evt.Position, playerPos, 0.5f);
-        }
+        CombatHelper.PlayDamageSfx(game.Audio, _sim.DamageEventsLastUpdate, playerPos, 0.5f);
 
         // Destroyed entities → explosions + SFX
-        foreach (var destroyed in _sim.DestroyedEntitiesLastUpdate)
-        {
-            if (destroyed.Asteroid.HasValue)
-            {
-                _explosions.Add(new Explosion(destroyed.Position, 12f, new Color3(140, 120, 100), 0.4f));
-                game.Audio.PlaySfxAtDistance(SfxType.SmallExplosion, destroyed.Position, playerPos, 0.5f);
-            }
-            else if (destroyed.Faction == Faction.Player)
-            {
-                _explosions.Add(new Explosion(destroyed.Position, 25f, new Color3(255, 120, 80), 1.2f));
-                game.Audio.PlaySfx(SfxType.Explosion);
-            }
-            else
-            {
-                _explosions.Add(new Explosion(destroyed.Position, 15f,
-                    new Color3(
-                        destroyed.Faction == Faction.Fauna ? (byte)200 : (byte)255,
-                        destroyed.Faction == Faction.Fauna ? (byte)80 : (byte)150,
-                        destroyed.Faction == Faction.Fauna ? (byte)60 : (byte)50), 0.6f));
-                game.Audio.PlaySfxAtDistance(SfxType.Explosion, destroyed.Position, playerPos, 0.7f);
-            }
-        }
+        CombatHelper.ProcessDestroyedEntities(game.Audio, _explosions,
+            _sim.DestroyedEntitiesLastUpdate, playerPos,
+            faction => faction == Faction.Fauna
+                ? new Color3(200, 80, 60) : new Color3(255, 150, 50),
+            asteroidSize: 12f, playerSize: 25f, npcSize: 15f,
+            playerExplosionColor: new Color3(255, 120, 80), npcSfxVolume: 0.7f);
     }
 
     private void HandlePlayerShooting(Game game, float dt)
