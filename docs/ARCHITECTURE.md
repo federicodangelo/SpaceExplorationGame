@@ -68,6 +68,15 @@ SpaceExplorationGame/
 │   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
 │   ├── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum
 │   └── MissionGenerator.cs        # Deterministic mission generation per station/settlement board
+├── Simulation/
+│   ├── ISimulation.cs             # Interface + UpdateContext/AddContext value types
+│   ├── SimulationBase.cs          # Abstract base class (ECS world, player management, template methods)
+│   ├── CombatSimulationBase.cs    # Intermediate base for combat simulations (death/respawn, combat messages, music timer)
+│   ├── SimulationPlayer.cs        # Player presence within a simulation (PlayerData + Entity)
+│   ├── SimulationCoordinator.cs   # Manages all active simulations (lifecycle, 90s empty timeout, parent chain keep-alive)
+│   ├── SolarSystemSimulation.cs   # Solar system simulation (orbits, combat, NPC AI, mining, loot)
+│   ├── PlanetSurfaceSimulation.cs # Planet surface simulation (terrain, surface combat, avatar/vehicle, respawn)
+│   └── InteriorSimulation.cs      # Interior simulation (walkable rooms, NPC interaction, no combat)
 ├── Rendering/
 │   ├── Base/
 │   │   ├── FontRenderer.cs        # Text rendering helper used by UI/HUD and overlays
@@ -189,17 +198,64 @@ dotnet run -- --showcase star-type --star-type K
 ## Architecture Decisions
 
 ### Game States
-The game uses a state machine pattern. Each state (`GameState` subclass) owns its logic and rendering. When switching states, all ECS entities are destroyed and recreated — this keeps things simple and avoids stale entity issues.
+The game uses a state machine pattern. Each state (`GameState` subclass) handles **rendering and input** while delegating simulation logic to a separate `ISimulation` instance. When switching states, the player is removed from the current simulation and added to the next — but the simulation itself stays alive in the `SimulationCoordinator` for a configurable timeout (90s), allowing seamless return without data loss.
 
 `GameStateType` enum: `MainMenu`, `SolarSystem`, `PlanetSurface`, `Interior` (`FTLTransitionState` reports `SolarSystem` while playing the transition animation)
 
 States:
 - **MainMenuState**: Starting point selection with live preview. Animated starfield background with pulsing title glow. Uses **MainMenuOverlay** (extends `MenuPanelOverlayBase<MenuAction>`) to configure danger filter, location type, reroll location, edit seed, randomize seed, open debug tools, and start. Regenerates the entire galaxy via `Game.RegenerateGalaxy()` when seed changes, and updates preview text for the currently selected start context. Supports auto-launch via constructor parameter (for CLI location/sublocation flags). Displays the active galaxy seed and preview details.
-- **SolarSystemState**: Real-time flight with combat. Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay** (dual-tab map with Solar System and Galaxy views). Press Space to fire ship weapons (one or two equipped weapon slots with independent cooldowns and inherited ship velocity). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn by danger level using `NpcShipLoadoutHelper` (ship type, parts, weapon specs, and loot scaling). Enemy AI now uses cruise targets, directional braking, and faction-specific combat behaviors. Thruster particles are simulated via ECS (`ParticleEmitter` + `ParticleSystem`) and rendered with `ParticleRenderer`. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with cargo/credit penalties (`DeathHullPercent` is currently 100%, so no hull loss). When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. Uses OrbitSystem, VelocitySystem, CameraFollowSystem, LabelRenderer, InteractionProximitySystem, ShipMovementSystem, ProjectileSystem, ShieldRegenSystem, ShipEnemyAISystem, and ParticleSystem. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
-- **PlanetSurfaceState**: Tilemap exploration with combat. Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default), currently through `OrbitalSurfaceTransitionState` cinematic descent. On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, return to orbit uses `OrbitalSurfaceTransitionState` takeoff animation and the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death returns the player to the solar system with a 10% credit penalty. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. Uses AvatarMovementSystem (with terrain collision), VelocitySystem, CameraFollowSystem, ProjectileSystem, AvatarEnemyAISystem, and TileMapRenderer.
+- **SolarSystemState**: Rendering and input for space flight. Delegates all simulation logic to `SolarSystemSimulation` (obtained via `SimulationCoordinator.FindOrCreate`). Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay** (dual-tab map with Solar System and Galaxy views). Press Space to fire ship weapons (one or two equipped weapon slots with independent cooldowns and inherited ship velocity). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn by danger level using `NpcShipLoadoutHelper` (ship type, parts, weapon specs, and loot scaling). Enemy AI now uses cruise targets, directional braking, and faction-specific combat behaviors. Thruster particles are simulated via ECS (`ParticleEmitter` + `ParticleSystem`) and rendered with `ParticleRenderer`. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with cargo/credit penalties (`DeathHullPercent` is currently 100%, so no hull loss). When docking at a station, a **SpaceStationOverlay** opens on top. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. The state creates input-only ECS systems (`ShipMovementSystem`, `CameraFollowSystem`) that operate on the simulation's ECS world. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
+- **PlanetSurfaceState**: Rendering and input for planet exploration. Delegates all simulation logic to `PlanetSurfaceSimulation` (whose `Parent` is the `SolarSystemSimulation`). Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default), currently through `OrbitalSurfaceTransitionState` cinematic descent. On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, return to orbit uses `OrbitalSurfaceTransitionState` takeoff animation and the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death triggers an in-place respawn after a 2.5-second timer — the avatar is recreated near the ship at full HP with a 10% credit penalty (no return to orbit). While dead, all input except menu-back is blocked. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. The state creates input-only ECS systems (`AvatarMovementSystem`, `CameraFollowSystem`) on the simulation's ECS world.
 - **FTLTransitionState**: Intermediate animation state played during FTL jumps between star systems. 2D side-view style: the player's ship is rendered center-screen facing right with engine exhaust and FTL trail effects. Four phases: charge-up (1.6s — ship shakes, stars begin moving, engine glow builds), jump flash (0.15s — bright white-blue flash), hyperspace travel (2.5s — fast horizontal star streaks scrolling left, vertical energy waves sweeping across, long blue FTL trail behind ship), and exit flash (1.6s — arrival flash fades to reveal the new system). No player input is accepted. Automatically transitions to the target `SolarSystemState` when the animation completes. Triggered from `GalaxyMapPanel.TravelToSelected()` instead of a direct state change.
 - **OrbitalSurfaceTransitionState**: Bidirectional cinematic transition between orbit and surface. Landing mode animates ship alignment, descent, and touchdown while blending from orbital body rendering into terrain; takeoff mode plays the reverse flow. Input is disabled during transition. On completion, it changes state to `PlanetSurfaceState` (landing) or `SolarSystemState` (takeoff) and updates return-context metadata in `PlayerData`.
-- **InteriorState**: Walkable tile-based interior for both space stations and settlements. Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards, cargo terminals, and customization terminals (ship, ship dealer, avatar, vehicle). Station docking bays have five terminals: exit door, ship customization, ship dealer, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. No combat in interiors. No InGameMenuOverlay — Escape closes dialogues/overlays. Uses AvatarMovementSystem (with walkability collision), CameraFollowSystem, and TileMapRenderer.
+- **InteriorState**: Rendering and input for walkable interiors. Delegates simulation logic to `InteriorSimulation` (whose `Parent` is the `PlanetSurfaceSimulation`). Procedurally generated rooms connected by corridors (stations) or streets (settlements). Features NPCs with dialogue, repair stations, mission boards, cargo terminals, and customization terminals (ship, ship dealer, avatar, vehicle). Station docking bays have five terminals: exit door, ship customization, ship dealer, avatar customization, and vehicle customization. Avatar walk speed is dynamically computed from equipped avatar parts. Minimap shows room layout, NPCs, and interactable objects with color-coded dots. No combat in interiors. No InGameMenuOverlay — Escape closes dialogues/overlays. The state creates input-only ECS systems (`AvatarMovementSystem`, `CameraFollowSystem`) on the simulation's ECS world.
+
+### Simulation Architecture
+Simulation logic (ECS entity management, physics, combat, AI) is fully separated from rendering and input. Each game state delegates its domain logic to an `ISimulation` instance while retaining only rendering, overlay management, and input-to-ECS bridging.
+
+**Core types** (`Simulation/`):
+- `ISimulation` — interface: `EcsWorld`, `HasPlayers`, `Parent`, `Create()`, `Destroy()`, `Update(UpdateContext)`, `AddPlayer()`, `RemovePlayer()`
+- `UpdateContext` — readonly record struct passed each tick: `Dt`, `GlobalTime`
+- `AddContext` — readonly record struct for per-join data: `LandingTileX`, `LandingTileY`
+- `SimulationPlayer` — encapsulates a player's presence: `PlayerData` + `Entity` in the simulation's ECS world
+
+**Class hierarchy**:
+```
+ISimulation
+└── SimulationBase (abstract)
+    ├── CombatSimulationBase (abstract)
+    │   ├── SolarSystemSimulation
+    │   └── PlanetSurfaceSimulation
+    └── InteriorSimulation
+```
+
+**SimulationBase** — abstract base providing:
+- ECS `World` lifecycle (create on construction, dispose on destroy)
+- Player management: `Players`, `LocalPlayer`, `HasPlayers`
+- Template method `AddPlayer()`: calls `CreatePlayerEntity()` (abstract) → registers player → stores `LocalPlayer`
+- Template method `RemovePlayer()`: calls `DestroyPlayerEntity()` (virtual hook for cleanup) → destroys entity → updates list
+- Lookup helpers: `FindPlayerByEntity(Entity)`, `IsLocalPlayerEntity(Entity)`, `FindLocalPlayerByEntity(Entity)`
+- `Parent` link to the parent simulation (e.g., `PlanetSurfaceSimulation.Parent` → `SolarSystemSimulation`)
+
+**CombatSimulationBase** — intermediate base for combat simulations:
+- `PlayerDead`, `RespawnTimer` — death/respawn tracking
+- `CombatMessage`, `CombatMessageTimer` — floating loot/kill messages
+- `CombatMusicTimer` — combat music auto-disengage timer
+- `UpdateCombatTimers(dt)` — shared timer tick logic
+
+**SimulationCoordinator** — owned by `Game`, manages all active simulations:
+- `Register(ISimulation)` / `Unregister(ISimulation)` — manual lifecycle control
+- `FindOrCreate<T>(predicate, builder)` — reuse existing simulation or create a new one
+- `Update(UpdateContext)` — ticks all simulations every frame (never paused by overlays)
+- **Empty timeout**: simulations with no players are destroyed after 90 seconds
+- **Parent chain keep-alive**: when a simulation has players, its entire ancestor chain is kept alive
+
+**State ↔ Simulation interaction pattern**:
+1. State `Enter()` calls `game.Coordinator.FindOrCreate<T>(...)` to get/create its simulation
+2. State calls `simulation.AddPlayer(game.Player)` to join
+3. State creates input-only ECS systems (movement, camera) on `simulation.EcsWorld`
+4. State reads simulation public properties for rendering (entities, combat state, messages)
+5. State `Exit()` calls `simulation.RemovePlayer(player)` — simulation stays alive in coordinator
 
 ### Overlays
 Overlays are semi-transparent UI layers rendered on top of a game state. All overlays inherit from `OverlayBase`, which provides:
@@ -352,21 +408,21 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 
 > **Important**: The source generator overrides `Update()` without calling `BeforeUpdate()` / `AfterUpdate()`. Do not rely on those lifecycle hooks for per-frame state reset. Systems that need lifecycle control should be plain classes with manual `World.Query()` calls instead.
 
-| System                           | Location            | Base Class                  | Queries                                                   | Used By                                             |
-| -------------------------------- | ------------------- | --------------------------- | --------------------------------------------------------- | --------------------------------------------------- |
-| **OrbitSystem**                  | `Systems/`          | `BaseSystem` (source gen)   | `Transform + Orbit`                                       | SolarSystemState                                    |
-| **VelocitySystem**               | `Systems/`          | `BaseSystem` (source gen)   | `Transform + Velocity`                                    | SolarSystemState, PlanetSurfaceState                |
-| **CameraFollowSystem**           | `Systems/`          | `BaseSystem` (source gen)   | `PlayerControlled + Transform`                            | SolarSystemState, PlanetSurfaceState, InteriorState |
-| **InteractionProximitySystem**   | `Systems/`          | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable`                | SolarSystemState                                    |
-| **DependentEntityCleanupSystem** | `Systems/`          | `BaseSystem` (manual query) | `OwnedBy`                                                 | SolarSystemState, PlanetSurfaceState                |
-| **AvatarMovementSystem**         | `Systems/Movement/` | `BaseSystem` (source gen)   | `PlayerControlled + Transform + Velocity`                 | PlanetSurfaceState, InteriorState                   |
-| **ShipMovementSystem**           | `Systems/Movement/` | `BaseSystem` (manual)       | Single entity                                             | SolarSystemState                                    |
-| **VehicleMovementSystem**        | `Systems/Movement/` | `BaseSystem` (manual)       | Single entity                                             | PlanetSurfaceState                                  |
-| **ProjectileSystem**             | `Systems/Combat/`   | `BaseSystem` (source gen)   | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemState, PlanetSurfaceState                |
-| **ShieldRegenSystem**            | `Systems/Combat/`   | `BaseSystem` (source gen)   | `Health`                                                  | SolarSystemState                                    |
-| **ShipEnemyAISystem**            | `Systems/AI/`       | `BaseSystem` (source gen)   | `Transform + Velocity + EnemyAI + Health`                 | SolarSystemState                                    |
-| **AvatarEnemyAISystem**          | `Systems/AI/`       | `BaseSystem` (source gen)   | `Transform + Velocity + SurfaceAI + Health`               | PlanetSurfaceState                                  |
-| **ParticleSystem**               | `Systems/Effects/`  | `BaseSystem` (manual query) | `Transform + Particle`, `Transform + ParticleEmitter`     | SolarSystemState                                    |
+| System                           | Location            | Base Class                  | Queries                                                   | Used By                                                     |
+| -------------------------------- | ------------------- | --------------------------- | --------------------------------------------------------- | ----------------------------------------------------------- |
+| **OrbitSystem**                  | `Systems/`          | `BaseSystem` (source gen)   | `Transform + Orbit`                                       | SolarSystemSimulation                                       |
+| **VelocitySystem**               | `Systems/`          | `BaseSystem` (source gen)   | `Transform + Velocity`                                    | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **CameraFollowSystem**           | `Systems/`          | `BaseSystem` (source gen)   | `PlayerControlled + Transform`                            | SolarSystemState, PlanetSurfaceState, InteriorState (input) |
+| **InteractionProximitySystem**   | `Systems/`          | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable`                | SolarSystemSimulation                                       |
+| **DependentEntityCleanupSystem** | `Systems/`          | `BaseSystem` (manual query) | `OwnedBy`                                                 | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **AvatarMovementSystem**         | `Systems/Movement/` | `BaseSystem` (source gen)   | `PlayerControlled + Transform + Velocity`                 | PlanetSurfaceState, InteriorState (input)                   |
+| **ShipMovementSystem**           | `Systems/Movement/` | `BaseSystem` (manual)       | Single entity                                             | SolarSystemState (input)                                    |
+| **VehicleMovementSystem**        | `Systems/Movement/` | `BaseSystem` (manual)       | Single entity                                             | PlanetSurfaceState (input)                                  |
+| **ProjectileSystem**             | `Systems/Combat/`   | `BaseSystem` (source gen)   | `Transform + Velocity + Projectile`, `Transform + Health` | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **ShieldRegenSystem**            | `Systems/Combat/`   | `BaseSystem` (source gen)   | `Health`                                                  | SolarSystemSimulation                                       |
+| **ShipEnemyAISystem**            | `Systems/AI/`       | `BaseSystem` (source gen)   | `Transform + Velocity + EnemyAI + Health`                 | SolarSystemSimulation                                       |
+| **AvatarEnemyAISystem**          | `Systems/AI/`       | `BaseSystem` (source gen)   | `Transform + Velocity + SurfaceAI + Health`               | PlanetSurfaceSimulation                                     |
+| **ParticleSystem**               | `Systems/Effects/`  | `BaseSystem` (manual query) | `Transform + Particle`, `Transform + ParticleEmitter`     | SolarSystemSimulation                                       |
 
 Rendering helpers (not ECS systems but query ECS data):
 | Helper              | Location          | Description                                                                                 |
@@ -388,7 +444,7 @@ System details:
 - **ShipEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `EnemyAIConfig` records and per-entity mutable state. Implements smooth turning plus acceleration-based steering, directional braking, and per-entity cruise targets to avoid edge drift. Pirates engage player/traders and flee when low health; traders cruise/flee; patrols hunt pirates. Fires projectiles via a deferred spawn list, carrying inherited ship velocity for more consistent ballistic behavior.
 - **AvatarEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `SurfaceAIConfig` records. Sets acceleration intent toward desired velocity (`SetAccelerationTowardVelocity`) so movement is integrated by `VelocitySystem`; fauna chase/wander/short-range attack, while bandits patrol/chase/strafe/fire/flee.
 - **ParticleSystem**: Manual ECS effects system over `ParticleEmitter` and `Particle` components. Simulates particle drag/lifetime, queues spawns from active emitters (`Always`, `Never`, `WhenAccelerating`), caps live particle count, and supports viewport-based emitter validation bounds for performance.
-- **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemState and PlanetSurfaceState. Part drops are gated by `enablePartDrops` flag (space combat only) and tier is capped by danger level. Won't drop parts already owned or equipped.
+- **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemSimulation and PlanetSurfaceSimulation. Part drops are gated by `enablePartDrops` flag (space combat only) and tier is capped by danger level. Won't drop parts already owned or equipped.
 
 ### Rendering
 The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
@@ -511,7 +567,7 @@ Players can equip and swap avatar gear at **Avatar Customization** terminals in 
 
 **Ownership model**: Same as ship parts — buy once, own permanently, swap free, sell manually. Stored in `PlayerData.OwnedAvatarParts`. Combined stats via `PlayerData.GetCombinedAvatarStats()`.
 
-**Dynamic stat application**: Both `PlanetSurfaceState` and `InteriorState` compute avatar speed as `BaseAvatarSpeed (200) + CombinedAvatarStats.WalkSpeed` when entering the state.
+**Dynamic stat application**: Both `PlanetSurfaceSimulation` and `InteriorSimulation` compute avatar speed as `BaseAvatarSpeed (200) + CombinedAvatarStats.WalkSpeed` when creating the player avatar entity.
 
 ### Vehicle Customization
 Players can equip and swap vehicle parts at **Vehicle Customization** terminals in station interiors via the **VehicleCustomizationOverlay**. The system is defined in `VehicleParts.cs` and integrated into `PlayerData`.
@@ -531,7 +587,7 @@ Players can equip and swap vehicle parts at **Vehicle Customization** terminals 
 
 **Ownership model**: Same as ship/avatar parts. Stored in `PlayerData.OwnedVehicleParts`. Combined stats via `PlayerData.GetCombinedVehicleStats()`.
 
-**Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceState`, the `VehicleMovementSystem` is created with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction). Falls back to `GameConfig` defaults if a stat is zero.
+**Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceSimulation`, the `VehicleMovementSystem` is created with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction). Falls back to `GameConfig` defaults if a stat is zero.
 
 ### Asteroid Mining
 Players can mine asteroids in the solar system view by holding **Space** near an asteroid belt. The mining laser beam originates from the ship and targets the nearest asteroid within range (120 world pixels). Mining DPS equals the ship's combined `WeaponDamage` stat — weapons are dual-use for both combat and mining.
@@ -601,11 +657,11 @@ Players can accept, track, and complete missions from mission boards at space st
 6. Missions can be abandoned at any time (no penalty)
 
 **Integration Points**:
-- `SolarSystemState.Enter()` → `NotifySystemEntered()` (Patrol missions)
+- `SolarSystemSimulation.Create()` → `NotifySystemEntered()` (Patrol missions)
 - `SpaceStationOverlay.Open()` → `NotifyStationDocked()` (Delivery missions)
-- `PlanetSurfaceState.Enter()` → `NotifyPlanetLanded()` (Exploration missions)
-- `SolarSystemState.UpdateCombat()` → `NotifyPirateKilled()` (Bounty missions)
-- `SolarSystemState.UpdateCombat()` + `PlanetSurfaceState` → `NotifyResourceMined()` (Mining missions)
+- `PlanetSurfaceSimulation.Create()` → `NotifyPlanetLanded()` (Exploration missions)
+- `SolarSystemSimulation` combat handlers → `NotifyPirateKilled()` (Bounty missions)
+- `SolarSystemSimulation` + `PlanetSurfaceSimulation` → `NotifyResourceMined()` (Mining missions)
 
 **HUD Mission Tracker**: The most urgent active mission is displayed in the top-left HUD area (below health bars) with a colored type badge, title, progress text, and completion indicator. If the player has multiple active missions, a "+N MORE" count is shown.
 
@@ -690,14 +746,15 @@ Real-time projectile combat on planet surfaces. Players shoot with Space (fires 
 
 Base avatar weapon damage is 10. Total damage = base + equipped weapon's `WeaponDamage` bonus.
 
-**Avatar Health**: Persistent across planet visits. Base 100 HP + `Armor` stat from equipped avatar suit. Stored in `PlayerData.AvatarHealth` / `AvatarMaxHealth`. Health is synced from the ECS `Health` component back to `PlayerData` each frame and saved on state exit.
+**Avatar Health**: Persistent across planet visits. Base 100 HP + `Armor` stat from equipped avatar suit. Stored in `PlayerData.AvatarHealth` / `AvatarMaxHealth`. Health is synced from the ECS `Health` component back to `PlayerData` each frame and persisted when the player is removed from the simulation (via `DestroyPlayerEntity` hook).
 
 **Surface Loot Drops**: Destroyed enemies drop credits (fauna: 10–40, bandits: 20–80) with chances for resource drops (30–40%). Bandits have a small chance (5%) to drop equipment parts.
 
 **Avatar Death**: When HP reaches zero:
-- 2.5-second death screen with "YOU DIED" and "RETURNING TO ORBIT..."
+- 2.5-second death screen with "YOU DIED" and "RESPAWNING..."
 - Lose 10% of credits
-- Return to the solar system with full avatar health restored
+- Respawn near the landed ship at full avatar health (vehicle auto-stowed)
+- All input except menu-back is blocked while dead
 
 **Surface Combat HUD**: Avatar HP bar at bottom-left, floating damage numbers, explosion effects, combat loot messages. Enemy health bars above each enemy. Enemy dots on the minimap (red = fauna, orange = bandits).
 
@@ -757,7 +814,7 @@ Fully procedural audio engine using SDL3's built-in audio API (push-based stream
 | Landing        | Descending rumble          | ~0.5s    | Ship lands on planet                |
 | Takeoff        | Ascending rumble           | ~0.6s    | Ship takes off from planet          |
 
-**Combat Music Tracking**: `SolarSystemState` and `PlanetSurfaceState` maintain a `_combatMusicTimer` that resets on each damage event. When the timer exceeds `GameConfig.CombatMusicDelay` (5s), the music fades back from Combat to the state's default theme.
+**Combat Music Tracking**: `SolarSystemSimulation` and `PlanetSurfaceSimulation` (via `CombatSimulationBase`) maintain a `CombatMusicTimer` that resets on each damage event. The corresponding states read this timer to switch music themes — when it exceeds `GameConfig.CombatMusicDelay` (5s), the music fades back from Combat to the state's default theme.
 
 **Audio Config** (`GameConfig`):
 - `AudioMasterVolume = 0.5f` — overall output level
@@ -869,11 +926,12 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Loot drops (credits, resources, equipment parts scaled by danger)
 - [x] Player death and respawn with penalties
 - [x] Entity renderer architecture (Avatar, Vehicle, Spaceship, EnemyShip, Station, Asteroid, Planet, Star renderers own their textures)
+- [x] Simulation architecture (SimulationBase/CombatSimulationBase hierarchy, SimulationCoordinator with 90s timeout, state↔simulation separation)
 - [x] Scene renderer extraction (SolarSystemRenderer, ProjectileRenderer, PlanetSurfaceRenderer, InteriorRenderer, SettlementRenderer)
 - [x] Unified HUD renderer (HudRenderer: location info, stats, health bars, prompts, offscreen indicators across all states)
 - [x] Unified minimap renderer (HudMinimapRenderer: data-driven markers/areas, player-centered scrolling, settlement/room areas)
 - [x] Offscreen edge indicators (NPC ships, star, settlements with distance labels)
-- [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health)
+- [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health, in-place respawn near ship)
 - [x] In-game menu overlay (Resume / Map / Missions / Cargo / Controls / Main Menu) for SolarSystem and PlanetSurface states
 - [x] Main menu with 7 start options (including Inside Station and Inside Settlement)
 - [x] Main menu overlay (MenuPanelOverlayBase extraction)
