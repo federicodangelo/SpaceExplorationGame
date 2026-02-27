@@ -1,6 +1,6 @@
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Simulation;
+namespace SpaceExplorationGame.Simulation.Base;
 
 /// <summary>
 /// Intermediate base class for simulations that feature combat (solar system, planet surface).

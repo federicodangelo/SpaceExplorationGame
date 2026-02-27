@@ -5,6 +5,7 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Simulation;
+using SpaceExplorationGame.Simulation.Base;
 
 namespace SpaceExplorationGame.Core;
 

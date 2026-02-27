@@ -5,6 +5,7 @@ using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Simulation.Base;
 using SpaceExplorationGame.States;
 
 namespace SpaceExplorationGame.Simulation;

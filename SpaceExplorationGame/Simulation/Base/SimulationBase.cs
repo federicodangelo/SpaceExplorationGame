@@ -1,7 +1,7 @@
 using Arch.Core;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Simulation;
+namespace SpaceExplorationGame.Simulation.Base;
 
 /// <summary>
 /// Abstract base class for all simulations. Provides player management, ECS world lifecycle,

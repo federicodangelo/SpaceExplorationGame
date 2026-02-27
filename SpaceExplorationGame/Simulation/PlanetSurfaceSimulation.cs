@@ -7,6 +7,7 @@ using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Simulation.Base;
 
 namespace SpaceExplorationGame.Simulation;
 
