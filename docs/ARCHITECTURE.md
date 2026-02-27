@@ -632,13 +632,13 @@ Shared UI features:
 Players can accept, track, and complete missions from mission boards at space stations and settlements. The system supports 5 mission types with deterministic generation, automatic progress tracking, and credit rewards.
 
 **Mission Types**:
-| Type        | Objective                                   | Completion Trigger                      | Reward Range     |
-| ----------- | ------------------------------------------- | --------------------------------------- | ---------------- |
-| Delivery    | Dock at a target station in another system  | `NotifyStationDocked(targetSystem)`     | 300–1500 credits |
-| Mining      | Mine X units of a specific resource         | `NotifyResourceMined(resource, amount)` | 200–800 credits  |
-| Bounty Hunt | Destroy X pirate ships                      | `NotifyPirateKilled()`                  | 500–2000 credits |
-| Exploration | Land on a specific planet in another system | `NotifyPlanetLanded(system, planet)`    | 300–1000 credits |
-| Patrol      | Travel to a specific star system            | `NotifySystemEntered(system)`           | 200–600 credits  |
+| Type        | Objective                                   | Completion Trigger                               | Reward Range     |
+| ----------- | ------------------------------------------- | ------------------------------------------------ | ---------------- |
+| Delivery    | Dock at a target station in another system  | `Missions.NotifyStationDocked(targetSystem)`     | 300–1500 credits |
+| Mining      | Mine X units of a specific resource         | `Missions.NotifyResourceMined(resource, amount)` | 200–800 credits  |
+| Bounty Hunt | Destroy X pirate ships                      | `Missions.NotifyPirateKilled()`                  | 500–2000 credits |
+| Exploration | Land on a specific planet in another system | `Missions.NotifyPlanetLanded(system, planet)`    | 300–1000 credits |
+| Patrol      | Travel to a specific star system            | `Missions.NotifySystemEntered(system)`           | 200–600 credits  |
 
 **Mission Generation** (`MissionGenerator`):
 - Each mission board (station or settlement) generates 5 candidate missions using a deterministic seed derived from the board's location
@@ -651,17 +651,17 @@ Players can accept, track, and complete missions from mission boards at space st
 **Mission Lifecycle**:
 1. Visit a mission board → see available missions (filtered by already-claimed IDs)
 2. Accept a mission (up to 3 active at a time)
-3. Progress is tracked automatically via `PlayerData.Notify*` methods called from game states
+3. Progress is tracked automatically via `MissionTracker.Notify*` methods called from game states
 4. When all objectives are met, mission status changes to `Completed`
 5. Visit any mission board → turn in completed missions for credit rewards
 6. Missions can be abandoned at any time (no penalty)
 
 **Integration Points**:
-- `SolarSystemSimulation.Create()` → `NotifySystemEntered()` (Patrol missions)
-- `SpaceStationOverlay.Open()` → `NotifyStationDocked()` (Delivery missions)
-- `PlanetSurfaceSimulation.Create()` → `NotifyPlanetLanded()` (Exploration missions)
-- `SolarSystemSimulation` combat handlers → `NotifyPirateKilled()` (Bounty missions)
-- `SolarSystemSimulation` + `PlanetSurfaceSimulation` → `NotifyResourceMined()` (Mining missions)
+- `SolarSystemSimulation.Create()` → `Missions.NotifySystemEntered()` (Patrol missions)
+- `SpaceStationOverlay.Open()` → `Missions.NotifyStationDocked()` (Delivery missions)
+- `PlanetSurfaceSimulation.Create()` → `Missions.NotifyPlanetLanded()` (Exploration missions)
+- `SolarSystemSimulation` combat handlers → `Missions.NotifyPirateKilled()` (Bounty missions)
+- `SolarSystemSimulation` + `PlanetSurfaceSimulation` → `Missions.NotifyResourceMined()` (Mining missions)
 
 **HUD Mission Tracker**: The most urgent active mission is displayed in the top-left HUD area (below health bars) with a colored type badge, title, progress text, and completion indicator. If the player has multiple active missions, a "+N MORE" count is shown.
 
@@ -674,10 +674,14 @@ Players can accept, track, and complete missions from mission boards at space st
 - `MissionStatus` enum: Available, Active, Completed
 - `Mission` class: Id, Title, Description, Type, Status, target info (system/planet/resource), progress (CurrentAmount/RequiredAmount), CreditReward, origin info
 
-**PlayerData Mission Fields**:
-- `ActiveMissions` — list of accepted missions (max 3)
-- `ClaimedMissionIds` — HashSet of all accepted/completed mission IDs (prevents re-offering)
-- `MissionsCompleted` — lifetime counter
+**PlayerData Mission & Navigation Sub-objects**:
+- `PlayerData.Missions` (`MissionTracker`) — manages active missions, tracking, and notification callbacks
+  - `Active` — list of accepted missions (max 3)
+  - `ClaimedIds` — HashSet of all accepted/completed mission IDs (prevents re-offering)
+  - `Completed` — lifetime counter
+- `PlayerData.Navigation` (`NavigationTarget`) — manages the player's current navigation target
+  - `Type`, `PlanetIndex`, `MoonIndex`, `StationIndex`, `Name`, `Color`, `WorldX`, `WorldY`
+  - Methods: `SetStar()`, `SetPlanet()`, `SetMoon()`, `SetStation()`, `SetSurface()`, `Clear()`
 
 ### Customization Terminals in Interiors
 Both station docking bays and settlement landing pads contain customization terminals:

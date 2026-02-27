@@ -444,7 +444,7 @@ public class SolarSystemState : GameState
         {
             HudRenderer.RenderOffscreenIndicators(renderer, camera, world,
                 _sim.EnemyEntities, _simPlayer.Entity, 2500f);
-            if (!(game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.Star))
+            if (!(game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.Star))
                 HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
             HudRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
@@ -452,12 +452,12 @@ public class SolarSystemState : GameState
             HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _sim.StationEntities, _sim.PlanetEntities, world);
 
-            if (game.Player.HasNavigationTarget)
+            if (game.Player.Navigation.HasTarget)
             {
                 Vector2? targetPos = ResolveNavTargetPosition(game);
                 if (targetPos.HasValue)
                     HudRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
-                        targetPos.Value, game.Player.NavTargetName, game.Player.NavTargetColor);
+                        targetPos.Value, game.Player.Navigation.Name, game.Player.Navigation.Color);
             }
         }
 
@@ -499,27 +499,27 @@ public class SolarSystemState : GameState
     {
         var player = game.Player;
         var world = _sim.EcsWorld;
-        switch (player.NavTargetType)
+        switch (player.Navigation.Type)
         {
             case NavigationTargetType.Star:
                 if (world.IsAlive(_sim.StarEntity))
                     return world.Get<Transform>(_sim.StarEntity).Position;
                 break;
             case NavigationTargetType.Planet:
-                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _sim.PlanetEntities.Count
-                    && world.IsAlive(_sim.PlanetEntities[player.NavTargetPlanetIndex]))
-                    return world.Get<Transform>(_sim.PlanetEntities[player.NavTargetPlanetIndex]).Position;
+                if (player.Navigation.PlanetIndex >= 0 && player.Navigation.PlanetIndex < _sim.PlanetEntities.Count
+                    && world.IsAlive(_sim.PlanetEntities[player.Navigation.PlanetIndex]))
+                    return world.Get<Transform>(_sim.PlanetEntities[player.Navigation.PlanetIndex]).Position;
                 break;
             case NavigationTargetType.Moon:
-                if (player.NavTargetPlanetIndex >= 0 && player.NavTargetPlanetIndex < _sim.MoonEntities.Count
-                    && player.NavTargetMoonIndex >= 0 && player.NavTargetMoonIndex < _sim.MoonEntities[player.NavTargetPlanetIndex].Count
-                    && world.IsAlive(_sim.MoonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]))
-                    return world.Get<Transform>(_sim.MoonEntities[player.NavTargetPlanetIndex][player.NavTargetMoonIndex]).Position;
+                if (player.Navigation.PlanetIndex >= 0 && player.Navigation.PlanetIndex < _sim.MoonEntities.Count
+                    && player.Navigation.MoonIndex >= 0 && player.Navigation.MoonIndex < _sim.MoonEntities[player.Navigation.PlanetIndex].Count
+                    && world.IsAlive(_sim.MoonEntities[player.Navigation.PlanetIndex][player.Navigation.MoonIndex]))
+                    return world.Get<Transform>(_sim.MoonEntities[player.Navigation.PlanetIndex][player.Navigation.MoonIndex]).Position;
                 break;
             case NavigationTargetType.Station:
-                if (player.NavTargetStationIndex >= 0 && player.NavTargetStationIndex < _sim.StationEntities.Count
-                    && world.IsAlive(_sim.StationEntities[player.NavTargetStationIndex]))
-                    return world.Get<Transform>(_sim.StationEntities[player.NavTargetStationIndex]).Position;
+                if (player.Navigation.StationIndex >= 0 && player.Navigation.StationIndex < _sim.StationEntities.Count
+                    && world.IsAlive(_sim.StationEntities[player.Navigation.StationIndex]))
+                    return world.Get<Transform>(_sim.StationEntities[player.Navigation.StationIndex]).Position;
                 break;
         }
         return null;

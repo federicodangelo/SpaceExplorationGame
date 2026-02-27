@@ -140,7 +140,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     private void UpdateMissionsOption(Game game)
     {
-        int missionCount = game.Player.ActiveMissions.Count;
+        int missionCount = game.Player.Missions.Active.Count;
         string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
         Menu.SetOption(2, new(InGameMenuOption.Missions, label));
     }

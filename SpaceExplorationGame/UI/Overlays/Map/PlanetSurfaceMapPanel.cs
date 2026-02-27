@@ -194,15 +194,15 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
     private bool IsCurrentNavTarget(PlayerData player, SurfaceMapSelection sel)
     {
-        if (player.NavTargetType != NavigationTargetType.SurfaceTarget) return false;
+        if (player.Navigation.Type != NavigationTargetType.SurfaceTarget) return false;
 
         return sel.Type switch
         {
             SurfaceMapObjectType.Settlement when sel.SettlementIndex >= 0
                 && sel.SettlementIndex < _surfaceData.Settlements.Count =>
-                player.NavTargetName == _surfaceData.Settlements[sel.SettlementIndex].Name,
-            SurfaceMapObjectType.Ship => player.NavTargetName == "SHIP",
-            SurfaceMapObjectType.Location => player.NavTargetName == $"({sel.TileX}, {sel.TileY})",
+                player.Navigation.Name == _surfaceData.Settlements[sel.SettlementIndex].Name,
+            SurfaceMapObjectType.Ship => player.Navigation.Name == "SHIP",
+            SurfaceMapObjectType.Location => player.Navigation.Name == $"({sel.TileX}, {sel.TileY})",
             _ => false
         };
     }
@@ -220,18 +220,18 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 var settlement = _surfaceData.Settlements[_selectedObject.SettlementIndex];
                 float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * tileSize;
                 float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * tileSize;
-                player.SetNavTargetSurface(settlement.Name, new Color3(255, 220, 100), sx, sy);
+                player.Navigation.SetSurface(settlement.Name, new Color3(255, 220, 100), sx, sy);
                 break;
 
             case SurfaceMapObjectType.Ship:
-                player.SetNavTargetSurface("SHIP", new Color3(120, 200, 255),
+                player.Navigation.SetSurface("SHIP", new Color3(120, 200, 255),
                     _shipTilePos.X * tileSize, _shipTilePos.Y * tileSize);
                 break;
 
             case SurfaceMapObjectType.Location when _selectedObject.TileX >= 0 && _selectedObject.TileY >= 0:
                 float lx = (_selectedObject.TileX + 0.5f) * tileSize;
                 float ly = (_selectedObject.TileY + 0.5f) * tileSize;
-                player.SetNavTargetSurface($"({_selectedObject.TileX}, {_selectedObject.TileY})",
+                player.Navigation.SetSurface($"({_selectedObject.TileX}, {_selectedObject.TileY})",
                     new Color3(200, 200, 100), lx, ly);
                 break;
         }
@@ -339,14 +339,14 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
 
         // Active nav target marker (if it is a location not currently selected)
-        if (game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+        if (game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
         {
             bool alreadyShown = _selectedObject.Type != SurfaceMapObjectType.None
                                 && IsCurrentNavTarget(game.Player, _selectedObject);
             if (!alreadyShown)
             {
-                float ntx = game.Player.NavTargetWorldX / GameConfig.TileSize;
-                float nty = game.Player.NavTargetWorldY / GameConfig.TileSize;
+                float ntx = game.Player.Navigation.WorldX / GameConfig.TileSize;
+                float nty = game.Player.Navigation.WorldY / GameConfig.TileSize;
                 DrawTargetBrackets(renderer, camera, new Vector2(ntx, nty), 4f / camera.Zoom, game);
             }
         }
@@ -354,7 +354,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         // Mission markers on settlements
         float mPulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
         byte mAlpha = (byte)(140 + (int)(mPulse * 115));
-        foreach (var mission in game.Player.ActiveMissions)
+        foreach (var mission in game.Player.Missions.Active)
         {
             if (mission.Status != MissionStatus.Completed
                 && mission.Type == MissionType.SettlementDelivery
@@ -427,13 +427,13 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         py += 8;
         renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f);
         py += 18;
-        if (game.Player.HasNavigationTarget)
+        if (game.Player.Navigation.HasTarget)
         {
-            renderer.DrawTextScreen(px, py, game.Player.NavTargetName.ToUpper(),
-                game.Player.NavTargetColor, 1.8f);
+            renderer.DrawTextScreen(px, py, game.Player.Navigation.Name.ToUpper(),
+                game.Player.Navigation.Color, 1.8f);
             py += 22;
             renderer.DrawTextScreen(px, py,
-                $"TYPE: {game.Player.NavTargetType.ToString().ToUpper()}",
+                $"TYPE: {game.Player.Navigation.Type.ToString().ToUpper()}",
                 new Color3(180, 180, 200), 1.3f);
         }
         else

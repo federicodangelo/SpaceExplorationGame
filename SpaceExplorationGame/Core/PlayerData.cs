@@ -15,13 +15,19 @@ public enum PlayerType
 
 /// <summary>
 /// Persistent player data that survives across state changes.
-/// Split into partial classes by concern: see PlayerData.Cargo.cs,
-/// PlayerData.Missions.cs, and PlayerData.Navigation.cs.
+/// Delegates mission tracking to <see cref="MissionTracker"/>
+/// and navigation targeting to <see cref="NavigationTarget"/>.
 /// </summary>
-public partial class PlayerData
+public class PlayerData
 {
     /// <summary>Whether this is the local or a remote player.</summary>
     public PlayerType Type { get; set; } = PlayerType.Local;
+
+    /// <summary>Mission tracking (accept, abandon, turn-in, objective notifications).</summary>
+    public MissionTracker Missions { get; } = new();
+
+    /// <summary>Navigation target state (orbital and surface waypoints).</summary>
+    public NavigationTarget Navigation { get; } = new();
 
     // Current ship
     public ShipType CurrentShipType { get; set; } = ShipTypeCatalog.StarterShip;
@@ -80,13 +86,10 @@ public partial class PlayerData
         OwnedVehicleParts.Clear();
 
         // Missions
-        ActiveMissions.Clear();
-        ClaimedMissionIds.Clear();
-        MissionsCompleted = 0;
-        TrackedMissionIndex = -1;
+        Missions.Reset();
 
         // Navigation target
-        ClearNavigationTarget();
+        Navigation.Clear();
     }
 
     /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>

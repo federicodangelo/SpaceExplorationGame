@@ -284,7 +284,7 @@ public class GalaxyMapPanel : MapPanelBase
         // Mission markers
         float pulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
         byte missionAlpha = (byte)(140 + (int)(pulse * 115));
-        foreach (var mission in game.Player.ActiveMissions)
+        foreach (var mission in game.Player.Missions.Active)
         {
             if (mission.Status != MissionStatus.Completed &&
                 mission.Target.HasSystem && mission.Target.SystemIndex < _starSystems.Count)
@@ -391,7 +391,7 @@ public class GalaxyMapPanel : MapPanelBase
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
             renderer.DrawTextScreen(cx, selY + 112, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
 
-            var missionsHere = game.Player.ActiveMissions.Where(m =>
+            var missionsHere = game.Player.Missions.Active.Where(m =>
                 m.Target.IsSystem(_selectedSystemIndex) ||
                 (m.Status == MissionStatus.Completed && m.TurnIn.IsSystem(_selectedSystemIndex))).ToList();
 

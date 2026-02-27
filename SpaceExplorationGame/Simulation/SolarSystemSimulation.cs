@@ -293,7 +293,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         player.ReturnMoonIndex = -1;
 
         // Notify mission system
-        player.NotifySystemEntered(StarSystem.Index);
+        player.Missions.NotifySystemEntered(StarSystem.Index);
 
         return CreatePlayerShip(player, startPos);
     }
@@ -474,7 +474,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate
             && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } pirateStopper)
         {
-            pirateStopper.Data.NotifyPirateKilled();
+            pirateStopper.Data.Missions.NotifyPirateKilled();
         }
 
         if (EcsWorld.IsAlive(destroyed.Entity))

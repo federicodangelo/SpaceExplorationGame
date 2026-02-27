@@ -112,7 +112,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         base.Open();
 
         game.Player.Refuel(game.Player.ShipMaxFuel);
-        game.Player.NotifyStationDocked(starSystem.Index);
+        game.Player.Missions.NotifyStationDocked(starSystem.Index);
     }
 
     // ── Menu actions ──

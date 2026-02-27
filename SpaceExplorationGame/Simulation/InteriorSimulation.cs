@@ -90,7 +90,7 @@ public class InteriorSimulation : SimulationBase
 
         // Notify mission system
         if (Origin == InteriorOrigin.Settlement && Planet != null)
-            player.NotifySettlementEntered(StarSystem.Index, Planet.Index);
+            player.Missions.NotifySettlementEntered(StarSystem.Index, Planet.Index);
 
         return avatarEntity;
     }

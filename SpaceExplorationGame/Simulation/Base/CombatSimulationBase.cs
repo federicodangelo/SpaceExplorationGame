@@ -192,7 +192,7 @@ public abstract class CombatSimulationBase : SimulationBase
         var resInfo = ResourceCatalog.Get(resource);
         if (added > 0)
         {
-            playerData.NotifyResourceMined(resource, added);
+            playerData.Missions.NotifyResourceMined(resource, added);
             return $"+{added} {resInfo.Name.ToUpper()}";
         }
         return "CARGO FULL!";

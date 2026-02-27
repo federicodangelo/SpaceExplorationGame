@@ -165,8 +165,8 @@ public class PlanetSurfaceState : GameState
             game.Player.AvatarHealth = health.Hull;
         }
 
-        if (game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
-            game.Player.ClearNavigationTarget();
+        if (game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
+            game.Player.Navigation.Clear();
 
         _surfaceMapOverlay.Cleanup();
 
@@ -543,11 +543,11 @@ public class PlanetSurfaceState : GameState
             _sim.SurfaceData.Settlements);
 
         // Navigation target
-        if (game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+        if (game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
         {
-            var targetPos = new Vector2(game.Player.NavTargetWorldX, game.Player.NavTargetWorldY);
+            var targetPos = new Vector2(game.Player.Navigation.WorldX, game.Player.Navigation.WorldY);
             HudRenderer.RenderSurfaceNavTargetMarker(renderer, camera,
-                targetPos, game.Player.NavTargetName, game.Player.NavTargetColor,
+                targetPos, game.Player.Navigation.Name, game.Player.Navigation.Color,
                 (float)game.GlobalTime);
         }
 
@@ -625,17 +625,17 @@ public class PlanetSurfaceState : GameState
         {
             HudRenderer.RenderSettlementOffscreenIndicators(renderer, camera,
                 _sim.SurfaceData.Settlements, game.Player);
-            if (!(game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget
-                && game.Player.NavTargetName == "SHIP"))
+            if (!(game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget
+                && game.Player.Navigation.Name == "SHIP"))
                 HudRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
             HudRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _planet.Index, _sim.SurfaceData.Settlements);
 
-            if (game.Player.HasNavigationTarget && game.Player.NavTargetType == NavigationTargetType.SurfaceTarget)
+            if (game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
             {
-                var targetPos = new Vector2(game.Player.NavTargetWorldX, game.Player.NavTargetWorldY);
+                var targetPos = new Vector2(game.Player.Navigation.WorldX, game.Player.Navigation.WorldY);
                 HudRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
-                    targetPos, game.Player.NavTargetName, game.Player.NavTargetColor);
+                    targetPos, game.Player.Navigation.Name, game.Player.Navigation.Color);
             }
         }
 

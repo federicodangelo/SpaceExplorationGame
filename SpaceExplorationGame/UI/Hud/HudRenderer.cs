@@ -36,7 +36,7 @@ public static partial class HudRenderer
         string dangerStr = FormatDanger(starSystem.DangerLevel);
         string locationLine = $"{starSystem.Name}  |  CLASS {starSystem.StarClass} STAR  |  {dangerStr}  |  SPD {speed:F0}";
         string infoLine = FormatPlayerInfo(player);
-        var tracked = player.GetTrackedMission();
+        var tracked = player.Missions.GetTracked();
         var stats = player.GetCombinedStats();
         bool hasShield = stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip);
 
@@ -52,7 +52,7 @@ public static partial class HudRenderer
         if (tracked != null)
         {
             panelH += SepGap + LineHeight * 2 + 4;
-            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+            if (player.Missions.Active.Count > 1) panelH += LineHeight;
         }
         panelH += Padding;
 
@@ -101,7 +101,7 @@ public static partial class HudRenderer
         string mode = inVehicle ? "VEHICLE" : "ON FOOT";
         string locationLine = $"{planet.Name.ToUpper()}  |  {planet.Type.ToString().ToUpper()}  |  {dangerStr}  |  {mode}";
         string infoLine = FormatPlayerInfo(player);
-        var tracked = player.GetTrackedMission();
+        var tracked = player.Missions.GetTracked();
         bool hasHealth = ecsWorld.IsAlive(playerAvatar) && ecsWorld.Has<Health>(playerAvatar);
         Health avatarHealth = default;
         if (hasHealth) avatarHealth = ecsWorld.Get<Health>(playerAvatar);
@@ -117,7 +117,7 @@ public static partial class HudRenderer
         if (tracked != null)
         {
             panelH += SepGap + LineHeight * 2 + 4;
-            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+            if (player.Missions.Active.Count > 1) panelH += LineHeight;
         }
         panelH += Padding;
 
@@ -161,7 +161,7 @@ public static partial class HudRenderer
         string dangerStr = FormatDanger(starSystem.DangerLevel);
         string locationLine = $"{interior.Name.ToUpper()}  |  {typeLabel}  |  {starSystem.Name}  |  {dangerStr}";
         string infoLine = FormatPlayerInfo(player);
-        var tracked = player.GetTrackedMission();
+        var tracked = player.Missions.GetTracked();
 
         // Measure panel width
         float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
@@ -174,7 +174,7 @@ public static partial class HudRenderer
         if (tracked != null)
         {
             panelH += SepGap + LineHeight * 2 + 4;
-            if (player.ActiveMissions.Count > 1) panelH += LineHeight;
+            if (player.Missions.Active.Count > 1) panelH += LineHeight;
         }
         panelH += Padding;
 
@@ -250,7 +250,7 @@ public static partial class HudRenderer
     /// <summary>Render mission tracker content (no background).</summary>
     private static void RenderMissionContent(SpriteRenderer renderer, float x, float y, PlayerData player)
     {
-        var tracked = player.GetTrackedMission();
+        var tracked = player.Missions.GetTracked();
         if (tracked == null) return;
 
         bool completed = tracked.Status == MissionStatus.Completed;
@@ -262,10 +262,10 @@ public static partial class HudRenderer
         renderer.DrawTextScreen(x + 10, y + LineHeight + 2, tracked.ProgressText,
             completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), TextScale);
 
-        int totalActive = player.ActiveMissions.Count;
+        int totalActive = player.Missions.Active.Count;
         if (totalActive > 1)
         {
-            int completedCount = player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
+            int completedCount = player.Missions.Active.Count(m => m.Status == MissionStatus.Completed);
             string extra = completedCount > 0
                 ? $"+{totalActive - 1} MORE ({completedCount} READY)"
                 : $"+{totalActive - 1} MORE";

@@ -214,14 +214,14 @@ public class SolarSystemMapPanel : MapPanelBase
     {
         return sel.Type switch
         {
-            SolarMapObjectType.Star => player.NavTargetType == NavigationTargetType.Star,
-            SolarMapObjectType.Planet => player.NavTargetType == NavigationTargetType.Planet
-                                        && player.NavTargetPlanetIndex == sel.PlanetIndex,
-            SolarMapObjectType.Moon => player.NavTargetType == NavigationTargetType.Moon
-                                      && player.NavTargetPlanetIndex == sel.PlanetIndex
-                                      && player.NavTargetMoonIndex == sel.MoonIndex,
-            SolarMapObjectType.Station => player.NavTargetType == NavigationTargetType.Station
-                                         && player.NavTargetStationIndex == sel.StationIndex,
+            SolarMapObjectType.Star => player.Navigation.Type == NavigationTargetType.Star,
+            SolarMapObjectType.Planet => player.Navigation.Type == NavigationTargetType.Planet
+                                        && player.Navigation.PlanetIndex == sel.PlanetIndex,
+            SolarMapObjectType.Moon => player.Navigation.Type == NavigationTargetType.Moon
+                                      && player.Navigation.PlanetIndex == sel.PlanetIndex
+                                      && player.Navigation.MoonIndex == sel.MoonIndex,
+            SolarMapObjectType.Station => player.Navigation.Type == NavigationTargetType.Station
+                                         && player.Navigation.StationIndex == sel.StationIndex,
             _ => false
         };
     }
@@ -233,22 +233,22 @@ public class SolarSystemMapPanel : MapPanelBase
         switch (_selectedObject.Type)
         {
             case SolarMapObjectType.Star when _currentStarSystem != null:
-                player.SetNavTargetStar(_currentStarSystem.Name, new Color3(255, 220, 80));
+                player.Navigation.SetStar(_currentStarSystem.Name, new Color3(255, 220, 80));
                 break;
             case SolarMapObjectType.Planet when _selectedObject.PlanetIndex >= 0 && _selectedObject.PlanetIndex < _planets.Count:
                 var planet = _planets[_selectedObject.PlanetIndex];
-                player.SetNavTargetPlanet(_selectedObject.PlanetIndex, planet.Name, planet.Color);
+                player.Navigation.SetPlanet(_selectedObject.PlanetIndex, planet.Name, planet.Color);
                 break;
             case SolarMapObjectType.Moon when _selectedObject.PlanetIndex >= 0 && _selectedObject.PlanetIndex < _planets.Count
                                            && _selectedObject.MoonIndex >= 0
                                            && _selectedObject.MoonIndex < _planets[_selectedObject.PlanetIndex].Moons.Count:
                 var moon = _planets[_selectedObject.PlanetIndex].Moons[_selectedObject.MoonIndex];
-                player.SetNavTargetMoon(_selectedObject.PlanetIndex, _selectedObject.MoonIndex,
+                player.Navigation.SetMoon(_selectedObject.PlanetIndex, _selectedObject.MoonIndex,
                     moon.Name, moon.Color);
                 break;
             case SolarMapObjectType.Station when _selectedObject.StationIndex >= 0 && _selectedObject.StationIndex < _stations.Count:
                 var station = _stations[_selectedObject.StationIndex];
-                player.SetNavTargetStation(_selectedObject.StationIndex, station.Name, new Color3(100, 200, 255));
+                player.Navigation.SetStation(_selectedObject.StationIndex, station.Name, new Color3(100, 200, 255));
                 break;
         }
     }
@@ -277,7 +277,7 @@ public class SolarSystemMapPanel : MapPanelBase
 
         bool isStarHovered = _hoveredObject.Type == SolarMapObjectType.Star;
         bool isStarSelected = _selectedObject.Type == SolarMapObjectType.Star;
-        bool isStarTarget = game.Player.NavTargetType == NavigationTargetType.Star;
+        bool isStarTarget = game.Player.Navigation.Type == NavigationTargetType.Star;
         if (isStarHovered || isStarSelected)
             renderer.DrawCircle(camera, starCenter, starDisplay + 6, new Color3(255, 255, 200));
         if (isStarTarget)
@@ -298,7 +298,7 @@ public class SolarSystemMapPanel : MapPanelBase
 
             bool isPHovered = _hoveredObject.Type == SolarMapObjectType.Planet && _hoveredObject.PlanetIndex == i;
             bool isPSelected = _selectedObject.Type == SolarMapObjectType.Planet && _selectedObject.PlanetIndex == i;
-            bool isPTarget = game.Player.NavTargetType == NavigationTargetType.Planet && game.Player.NavTargetPlanetIndex == i;
+            bool isPTarget = game.Player.Navigation.Type == NavigationTargetType.Planet && game.Player.Navigation.PlanetIndex == i;
 
             if (isPHovered || isPSelected)
                 renderer.DrawCircle(camera, pPos, pRadius + 4, new Color3(255, 255, 255));
@@ -324,8 +324,8 @@ public class SolarSystemMapPanel : MapPanelBase
 
                 bool isMHovered = _hoveredObject is { Type: SolarMapObjectType.Moon } && _hoveredObject.PlanetIndex == i && _hoveredObject.MoonIndex == j;
                 bool isMSelected = _selectedObject is { Type: SolarMapObjectType.Moon } && _selectedObject.PlanetIndex == i && _selectedObject.MoonIndex == j;
-                bool isMTarget = game.Player.NavTargetType == NavigationTargetType.Moon
-                                 && game.Player.NavTargetPlanetIndex == i && game.Player.NavTargetMoonIndex == j;
+                bool isMTarget = game.Player.Navigation.Type == NavigationTargetType.Moon
+                                 && game.Player.Navigation.PlanetIndex == i && game.Player.Navigation.MoonIndex == j;
 
                 if (isMHovered || isMSelected)
                     renderer.DrawCircle(camera, mPos, mRadius + 3, new Color3(200, 200, 220));
@@ -348,7 +348,7 @@ public class SolarSystemMapPanel : MapPanelBase
 
             bool isSHovered = _hoveredObject.Type == SolarMapObjectType.Station && _hoveredObject.StationIndex == i;
             bool isSSelected = _selectedObject.Type == SolarMapObjectType.Station && _selectedObject.StationIndex == i;
-            bool isSTarget = game.Player.NavTargetType == NavigationTargetType.Station && game.Player.NavTargetStationIndex == i;
+            bool isSTarget = game.Player.Navigation.Type == NavigationTargetType.Station && game.Player.Navigation.StationIndex == i;
 
             if (isSHovered || isSSelected)
                 renderer.DrawCircle(camera, sPos, ds + 4, new Color3(100, 200, 255));
@@ -364,7 +364,7 @@ public class SolarSystemMapPanel : MapPanelBase
         {
             float mPulse = (float)(0.5 + 0.5 * Math.Sin(game.GlobalTime * 3.0));
             byte mAlpha = (byte)(140 + (int)(mPulse * 115));
-            foreach (var mission in game.Player.ActiveMissions)
+            foreach (var mission in game.Player.Missions.Active)
             {
                 if (mission.Status != MissionStatus.Completed &&
                     mission.Target.HasSystem && mission.Target.SystemIndex == _currentStarSystem.Index)
@@ -464,12 +464,12 @@ public class SolarSystemMapPanel : MapPanelBase
         py += 8;
         renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f);
         py += 18;
-        if (game.Player.HasNavigationTarget)
+        if (game.Player.Navigation.HasTarget)
         {
-            renderer.DrawTextScreen(px, py, game.Player.NavTargetName.ToUpper(),
-                game.Player.NavTargetColor, 1.8f);
+            renderer.DrawTextScreen(px, py, game.Player.Navigation.Name.ToUpper(),
+                game.Player.Navigation.Color, 1.8f);
             py += 22;
-            renderer.DrawTextScreen(px, py, $"TYPE: {game.Player.NavTargetType.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f);
+            renderer.DrawTextScreen(px, py, $"TYPE: {game.Player.Navigation.Type.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f);
         }
         else
         {

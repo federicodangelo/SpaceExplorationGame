@@ -187,7 +187,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         }
 
         // Notify mission system
-        player.NotifyPlanetLanded(StarSystem.Index, Planet.Index);
+        player.Missions.NotifyPlanetLanded(StarSystem.Index, Planet.Index);
 
         return avatarEntity;
     }

@@ -64,7 +64,7 @@ public static partial class HudRenderer
         for (int i = 0; i < planetEntities.Count; i++)
         {
             // Skip if this planet is the current nav target (target indicator takes priority)
-            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.Planet, NavTargetPlanetIndex: var pi } && pi == i)
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.Planet, PlanetIndex: var pi } } && pi == i)
                 continue;
             if (!ecsWorld.IsAlive(planetEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(planetEntities[i]).Position;
@@ -84,7 +84,7 @@ public static partial class HudRenderer
         for (int i = 0; i < stationEntities.Count; i++)
         {
             // Skip if this station is the current nav target (target indicator takes priority)
-            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.Station, NavTargetStationIndex: var si } && si == i)
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.Station, StationIndex: var si } } && si == i)
                 continue;
             if (!ecsWorld.IsAlive(stationEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(stationEntities[i]).Position;
@@ -119,8 +119,8 @@ public static partial class HudRenderer
         foreach (var s in settlements)
         {
             // Skip if this settlement is the current nav target (target indicator takes priority)
-            if (player is { HasNavigationTarget: true, NavTargetType: NavigationTargetType.SurfaceTarget }
-                && player.NavTargetName == s.Name)
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.SurfaceTarget } }
+                && player.Navigation.Name == s.Name)
                 continue;
 
             // Point toward the center of the settlement
@@ -136,7 +136,7 @@ public static partial class HudRenderer
         PlayerData player, int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
         World ecsWorld)
     {
-        var missions = player.ActiveMissions;
+        var missions = player.Missions.Active;
         if (missions.Count == 0) return;
 
         foreach (var mission in missions)
@@ -191,7 +191,7 @@ public static partial class HudRenderer
     public static void RenderPlanetSurfaceMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
         PlayerData player, int systemIndex, int planetIndex, List<SettlementData> settlements)
     {
-        var missions = player.ActiveMissions;
+        var missions = player.Missions.Active;
         if (missions.Count == 0 || settlements.Count == 0) return;
 
         foreach (var mission in missions)
@@ -294,7 +294,7 @@ public static partial class HudRenderer
         int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
         List<PlanetData> planets, World ecsWorld)
     {
-        var missions = player.ActiveMissions;
+        var missions = player.Missions.Active;
         if (missions.Count == 0) return;
 
         float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));
@@ -374,7 +374,7 @@ public static partial class HudRenderer
         PlayerData player, float globalTime,
         int systemIndex, int planetIndex, List<SettlementData> settlements)
     {
-        var missions = player.ActiveMissions;
+        var missions = player.Missions.Active;
         if (missions.Count == 0 || settlements.Count == 0) return;
 
         float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));

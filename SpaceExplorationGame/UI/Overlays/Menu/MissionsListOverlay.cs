@@ -18,7 +18,7 @@ public class MissionsListOverlay : ListPanelOverlay
     {
         get
         {
-            int count = _game?.Player.ActiveMissions.Count ?? 0;
+            int count = _game?.Player.Missions.Active.Count ?? 0;
             return Math.Max(220, 90 + count * ItemHeight + 60);
         }
     }
@@ -29,7 +29,7 @@ public class MissionsListOverlay : ListPanelOverlay
             var input = CurrentInput;
             if (input == null) return "";
 
-            int count = _game?.Player.ActiveMissions.Count ?? 0;
+            int count = _game?.Player.Missions.Active.Count ?? 0;
 
             if (count <= 0)
                 return $"{input.GetActionHelpText(InputAction.MenuBack)}: BACK";
@@ -41,7 +41,7 @@ public class MissionsListOverlay : ListPanelOverlay
         }
     }
 
-    protected override int ItemCount => _game?.Player.ActiveMissions.Count ?? 0;
+    protected override int ItemCount => _game?.Player.Missions.Active.Count ?? 0;
     protected override float ItemHeight => 80f;
     protected override float ListOffsetY => 0f;
 
@@ -51,29 +51,29 @@ public class MissionsListOverlay : ListPanelOverlay
         base.Open();
 
         // Pre-select the currently tracked mission if any
-        var tracked = game.Player.GetTrackedMission();
+        var tracked = game.Player.Missions.GetTracked();
         if (tracked != null)
         {
-            int idx = game.Player.ActiveMissions.IndexOf(tracked);
+            int idx = game.Player.Missions.Active.IndexOf(tracked);
             if (idx >= 0) SelectedIndex = idx;
         }
     }
 
     protected override void OnItemConfirmed(Game game, int index)
     {
-        if (index < 0 || index >= game.Player.ActiveMissions.Count) return;
+        if (index < 0 || index >= game.Player.Missions.Active.Count) return;
 
-        game.Player.TrackedMissionIndex = index;
-        var m = game.Player.ActiveMissions[index];
+        game.Player.Missions.TrackedIndex = index;
+        var m = game.Player.Missions.Active[index];
         SetStatus($"TRACKING: [{m.TypeLabel}] {m.Title}", 2f);
     }
 
     protected override void OnItemSecondary(Game game, int index)
     {
-        if (index < 0 || index >= game.Player.ActiveMissions.Count) return;
+        if (index < 0 || index >= game.Player.Missions.Active.Count) return;
 
-        var mission = game.Player.ActiveMissions[index];
-        game.Player.AbandonMission(mission);
+        var mission = game.Player.Missions.Active[index];
+        game.Player.Missions.Abandon(mission);
         ClampSelection();
         SetStatus("MISSION ABANDONED", 2f);
     }
@@ -81,10 +81,10 @@ public class MissionsListOverlay : ListPanelOverlay
     protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
-        var active = game.Player.ActiveMissions;
+        var active = game.Player.Missions.Active;
 
         // Mission count
-        string countText = $"{active.Count}/{PlayerData.MaxActiveMissions}";
+        string countText = $"{active.Count}/{MissionTracker.MaxActive}";
         float countW = renderer.MeasureText(countText, 1.5f);
         renderer.DrawTextScreen(panelX + panelW - countW - 15, PanelY + 17, countText,
             new Color3(180, 180, 200), 1.5f);
@@ -103,10 +103,10 @@ public class MissionsListOverlay : ListPanelOverlay
             return;
         }
 
-        int trackedIdx = game.Player.TrackedMissionIndex;
+        int trackedIdx = game.Player.Missions.TrackedIndex;
         if (trackedIdx < 0)
         {
-            var tracked = game.Player.GetTrackedMission();
+            var tracked = game.Player.Missions.GetTracked();
             if (tracked != null) trackedIdx = active.IndexOf(tracked);
         }
 

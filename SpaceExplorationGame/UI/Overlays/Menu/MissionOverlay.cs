@@ -45,7 +45,7 @@ public class MissionOverlay : ListPanelOverlay
     protected override int ItemCount => _currentTab switch
     {
         Tab.Available => _availableMissions.Count,
-        Tab.Active => _game?.Player.ActiveMissions.Count ?? 0,
+        Tab.Active => _game?.Player.Missions.Active.Count ?? 0,
         _ => 0
     };
 
@@ -67,10 +67,10 @@ public class MissionOverlay : ListPanelOverlay
 
         // Filter out missions already claimed by the player
         _availableMissions = allMissions
-            .Where(m => !game.Player.ClaimedMissionIds.Contains(m.Id))
+            .Where(m => !game.Player.Missions.ClaimedIds.Contains(m.Id))
             .ToList();
 
-        _currentTab = game.Player.HasCompletedMissions ? Tab.Active : Tab.Available;
+        _currentTab = game.Player.Missions.HasCompleted ? Tab.Active : Tab.Available;
 
         base.Open();
     }
@@ -105,26 +105,27 @@ public class MissionOverlay : ListPanelOverlay
         if (_currentTab == Tab.Available && index < _availableMissions.Count)
         {
             var mission = _availableMissions[index];
-            if (game.Player.ActiveMissions.Count >= PlayerData.MaxActiveMissions)
+            if (game.Player.Missions.Active.Count >= MissionTracker.MaxActive)
             {
-                SetStatus($"MAX {PlayerData.MaxActiveMissions} ACTIVE MISSIONS!", 2.5f);
+                SetStatus($"MAX {MissionTracker.MaxActive} ACTIVE MISSIONS!", 2.5f);
             }
             else
             {
-                game.Player.AcceptMission(mission);
+                game.Player.Missions.Accept(mission);
                 _availableMissions.RemoveAt(index);
                 ClampSelection();
                 SetStatus("MISSION ACCEPTED!", 2f);
             }
         }
-        else if (_currentTab == Tab.Active && index < game.Player.ActiveMissions.Count)
+        else if (_currentTab == Tab.Active && index < game.Player.Missions.Active.Count)
         {
-            var mission = game.Player.ActiveMissions[index];
+            var mission = game.Player.Missions.Active[index];
             if (mission.Status == MissionStatus.Completed)
             {
                 if (_currentSystem != null && mission.TurnIn.IsSystem(_currentSystem.Index))
                 {
-                    int reward = game.Player.TurnInMission(mission);
+                    int reward = game.Player.Missions.TurnIn(mission);
+                    game.Player.Credits += reward;
                     ClampSelection();
                     SetStatus($"MISSION COMPLETE! +{reward} CREDITS", 2.5f);
                 }
@@ -139,10 +140,10 @@ public class MissionOverlay : ListPanelOverlay
 
     protected override void OnItemSecondary(Game game, int index)
     {
-        if (_currentTab == Tab.Active && index < game.Player.ActiveMissions.Count)
+        if (_currentTab == Tab.Active && index < game.Player.Missions.Active.Count)
         {
-            var mission = game.Player.ActiveMissions[index];
-            game.Player.AbandonMission(mission);
+            var mission = game.Player.Missions.Active[index];
+            game.Player.Missions.Abandon(mission);
             ClampSelection();
             SetStatus("MISSION ABANDONED", 2f);
         }
@@ -154,9 +155,9 @@ public class MissionOverlay : ListPanelOverlay
         float panelX, float contentY, float panelW, float contentH)
     {
         // Mission count display
-        int activeCount = game.Player.ActiveMissions.Count;
-        int completedCount = game.Player.ActiveMissions.Count(m => m.Status == MissionStatus.Completed);
-        string countText = $"ACTIVE: {activeCount}/{PlayerData.MaxActiveMissions}";
+        int activeCount = game.Player.Missions.Active.Count;
+        int completedCount = game.Player.Missions.Active.Count(m => m.Status == MissionStatus.Completed);
+        string countText = $"ACTIVE: {activeCount}/{MissionTracker.MaxActive}";
         if (completedCount > 0) countText += $"  READY: {completedCount}";
         renderer.DrawTextScreen(panelX + panelW - 300, PanelY + 17, countText,
             new Color3(180, 180, 200), 1.5f);
@@ -252,7 +253,7 @@ public class MissionOverlay : ListPanelOverlay
     private void RenderActiveMissions(SpriteRenderer renderer, float panelX, float startY,
         float panelW, float listH, Game game)
     {
-        var active = game.Player.ActiveMissions;
+        var active = game.Player.Missions.Active;
         if (active.Count == 0)
         {
             renderer.DrawTextScreen(panelX + 20, startY + 20, "NO ACTIVE MISSIONS",
