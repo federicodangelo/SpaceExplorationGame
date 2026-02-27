@@ -395,7 +395,7 @@ public class SolarSystemState : GameState
         _labelRenderer.Render();
 
         // Mission markers
-        HudRenderer.RenderSolarSystemMissionMarkers(renderer, camera,
+        HudIndicatorsRenderer.RenderSolarSystemMissionMarkers(renderer, camera,
             game.Player, (float)game.GlobalTime, _starSystem.Index,
             _sim.StationEntities, _sim.PlanetEntities, _sim.Planets, world);
 
@@ -442,21 +442,21 @@ public class SolarSystemState : GameState
         // Off-screen indicators
         if (!_sim.PlayerDead)
         {
-            HudRenderer.RenderOffscreenIndicators(renderer, camera, world,
+            HudIndicatorsRenderer.RenderOffscreenIndicators(renderer, camera, world,
                 _sim.EnemyEntities, _simPlayer.Entity, 2500f);
             if (!(game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.Star))
-                HudRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
-            HudRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
+                HudIndicatorsRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
+            HudIndicatorsRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
                 _sim.StationEntities, _sim.Stations, 5000f, game.Player);
-            HudRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
+            HudIndicatorsRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _sim.StationEntities, _sim.PlanetEntities, world);
 
             if (game.Player.Navigation.HasTarget)
             {
                 Vector2? targetPos = ResolveNavTargetPosition(game);
                 if (targetPos.HasValue)
-                    HudRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
+                    HudIndicatorsRenderer.RenderNavTargetOffscreenIndicator(renderer, camera,
                         targetPos.Value, game.Player.Navigation.Name, game.Player.Navigation.Color);
             }
         }

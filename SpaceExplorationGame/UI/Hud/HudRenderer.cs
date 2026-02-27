@@ -11,9 +11,9 @@ namespace SpaceExplorationGame.UI.Hud;
 /// Unified HUD renderer shared across all game states.
 /// TOP-LEFT: location info, player stats (credits/cargo), health/shields.
 /// TOP-RIGHT: minimap (delegated to HudMinimapRenderer).
-/// Off-screen indicators and mission markers in HudRenderer.Indicators.cs.
+/// Off-screen indicators and mission markers in HudIndicatorsRenderer.
 /// </summary>
-public static partial class HudRenderer
+public static class HudRenderer
 {
     // Layout constants
     private const float Padding = 10f;

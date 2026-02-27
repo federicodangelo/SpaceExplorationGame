@@ -8,10 +8,10 @@ using SpaceExplorationGame.Rendering.Base;
 namespace SpaceExplorationGame.UI.Hud;
 
 /// <summary>
-/// Partial class for off-screen edge indicators, world-space mission markers,
+/// Renders off-screen edge indicators, world-space mission markers,
 /// and navigation target markers.
 /// </summary>
-public static partial class HudRenderer
+public static class HudIndicatorsRenderer
 {
     // ── Off-screen indicators ──────────────────────────────────────────
 
