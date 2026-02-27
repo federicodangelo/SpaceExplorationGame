@@ -9,7 +9,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders asteroids using primitive geometry.
 /// </summary>
-public class AsteroidRenderer : IDisposable
+public class AsteroidRenderer
 {
     private static readonly Vector2[] BaseShape =
     [
@@ -127,10 +127,5 @@ public class AsteroidRenderer : IDisposable
         float c = MathF.Cos(r);
         float s = MathF.Sin(r);
         return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

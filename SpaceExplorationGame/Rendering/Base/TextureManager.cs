@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.Rendering.Base;
 /// Provides low-level texture creation utilities used by entity renderers.
 /// Each renderer owns its own textures; this class only wraps the SDL renderer handle.
 /// </summary>
-public class TextureManager : IDisposable
+public class TextureManager
 {
     private readonly nint _renderer;
 
@@ -70,10 +70,5 @@ public class TextureManager : IDisposable
     {
         if (texture != nint.Zero)
             SDL.DestroyTexture(texture);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

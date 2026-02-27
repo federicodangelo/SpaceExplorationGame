@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders the player's ground vehicle using primitive geometry.
 /// </summary>
-public class VehicleRenderer : IDisposable
+public class VehicleRenderer
 {
     private const float VehicleSize = 40f;
 
@@ -100,10 +100,5 @@ public class VehicleRenderer : IDisposable
     {
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

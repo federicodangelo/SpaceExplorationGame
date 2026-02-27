@@ -8,7 +8,7 @@ namespace SpaceExplorationGame.Rendering;
 /// Renders the player's spaceship in all contexts (solar system flight and planet surface).
 /// Uses primitive geometry (triangles/rectangles/circles) for a retro look.
 /// </summary>
-public class SpaceshipRenderer : IDisposable
+public class SpaceshipRenderer
 {
     public SpaceshipRenderer()
     {
@@ -169,10 +169,5 @@ public class SpaceshipRenderer : IDisposable
     {
         DrawRotatedTriangleScreen(renderer, cx, cy, rotationDeg, p1, p2, p3, color);
         DrawRotatedTriangleScreen(renderer, cx, cy, rotationDeg, p1, p3, p4, color);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

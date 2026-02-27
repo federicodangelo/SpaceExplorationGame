@@ -8,7 +8,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders NPC ships (pirates, traders, patrols) using primitive geometry.
 /// </summary>
-public class EnemyShipRenderer : IDisposable
+public class EnemyShipRenderer
 {
     public EnemyShipRenderer()
     {
@@ -164,10 +164,5 @@ public class EnemyShipRenderer : IDisposable
     {
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

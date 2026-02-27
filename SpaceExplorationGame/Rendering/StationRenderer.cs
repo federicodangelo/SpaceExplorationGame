@@ -9,7 +9,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders space stations using primitive geometry.
 /// </summary>
-public class StationRenderer : IDisposable
+public class StationRenderer
 {
     const int NumLightsOuterRing = 8;
     const double BlinkPeriod = 2.0; // seconds
@@ -253,10 +253,5 @@ public class StationRenderer : IDisposable
             Vector2 off = n * o;
             renderer.DrawLine(camera, start + off, end + off, color);
         }
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

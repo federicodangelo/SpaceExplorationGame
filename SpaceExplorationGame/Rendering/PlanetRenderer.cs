@@ -10,7 +10,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders planets and moons procedurally using layered circles.
 /// </summary>
-public class PlanetRenderer : IDisposable
+public class PlanetRenderer
 {
     private readonly Camera _screenSpaceCamera;
 
@@ -374,10 +374,5 @@ public class PlanetRenderer : IDisposable
             x ^= x >> 16;
             return (x & 0x00FFFFFFu) / 16777215f;
         }
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

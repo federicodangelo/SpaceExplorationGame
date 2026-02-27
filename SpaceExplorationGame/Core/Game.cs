@@ -267,15 +267,6 @@ public class Game : IDisposable
         Coordinator.DestroyAll();
         Audio.Dispose();
         EcsWorld.Dispose();
-        AvatarRenderer.Dispose();
-        VehicleRenderer.Dispose();
-        SpaceshipRenderer.Dispose();
-        StationRenderer.Dispose();
-        AsteroidRenderer.Dispose();
-        PlanetRenderer.Dispose();
-        StarRenderer.Dispose();
-        EnemyShipRenderer.Dispose();
-        Textures.Dispose();
         SpriteRenderer.Dispose();
         SDL.DestroyRenderer(Renderer);
         SDL.DestroyWindow(Window);

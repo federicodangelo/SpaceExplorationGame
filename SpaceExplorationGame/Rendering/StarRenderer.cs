@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders stars procedurally using layered circles (core + glow).
 /// </summary>
-public class StarRenderer : IDisposable
+public class StarRenderer
 {
     public StarRenderer()
     {
@@ -68,10 +68,5 @@ public class StarRenderer : IDisposable
             new Color4(255, 245, 220, alpha),
             new Color4(color.R, color.G, color.B, alpha),
             0f);
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }

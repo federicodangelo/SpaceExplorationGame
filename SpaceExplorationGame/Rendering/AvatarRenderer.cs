@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders the player avatar using primitive shapes for a retro look.
 /// </summary>
-public class AvatarRenderer : IDisposable
+public class AvatarRenderer
 {
     private const float AvatarSize = 28f;
 
@@ -38,11 +38,6 @@ public class AvatarRenderer : IDisposable
         renderer.DrawRect(camera, position + new Vector2(2.5f * scale, 12f * scale), (int)(4f * scale), (int)(2f * scale), new Color4(80, 60, 40, 255));
 
         renderer.DrawFilledCircle(camera, position + new Vector2(0f, -10f * scale), 1.3f * scale, new Color4(100, 180, 255, 240));
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
     }
 }
 
