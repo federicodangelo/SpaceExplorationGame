@@ -151,6 +151,12 @@ public class SolarSystemState : GameState
             return;
         }
 
+        // Block gameplay input when player dead
+        if (_sim.PlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        {
+            return;
+        }
+
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {

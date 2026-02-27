@@ -17,11 +17,8 @@ namespace SpaceExplorationGame.Simulation;
 /// stations, asteroids, NPC ships) and runs physics, orbits, combat, and AI systems.
 /// Contains NO rendering or audio code — states read simulation state for presentation.
 /// </summary>
-public class SolarSystemSimulation : ISimulation
+public class SolarSystemSimulation : CombatSimulationBase
 {
-    // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; }
-
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
     public List<PlanetData> Planets { get; private set; } = [];
@@ -41,12 +38,6 @@ public class SolarSystemSimulation : ISimulation
     public List<BackgroundStar> BackgroundStars { get; } = [];
     public List<NebulaCloud> BackgroundNebulae { get; } = [];
 
-    // ── Players ─────────────────────────────────────────────────────
-    private readonly List<SimulationPlayer> _players = [];
-    public IReadOnlyList<SimulationPlayer> Players => _players;
-    public bool HasPlayers => _players.Count > 0;
-    public SimulationPlayer? LocalPlayer { get; private set; }
-    public ISimulation? Parent { get; }
 
     // ── Proximity (updated per-player) ──────────────────────────────
     public int NearbyPlanetIndex { get; private set; } = -1;
@@ -54,9 +45,7 @@ public class SolarSystemSimulation : ISimulation
     public int NearbyMoonPlanetIndex { get; private set; } = -1;
     public int NearbyMoonIndex { get; private set; } = -1;
 
-    // ── Combat state ────────────────────────────────────────────────
-    public bool PlayerDead { get; private set; }
-    public float RespawnTimer { get; private set; }
+    // ── Combat state (solar-system-specific) ─────────────────────
     private const float RespawnDelay = 3f;
 
     // Mining tracking
@@ -64,13 +53,6 @@ public class SolarSystemSimulation : ISimulation
     public float MiningHudTimer { get; private set; }
     public string? MiningMessage { get; private set; }
     public float MiningMessageTimer { get; private set; }
-
-    // Combat messages (loot, kill)
-    public string? CombatMessage { get; private set; }
-    public float CombatMessageTimer { get; private set; }
-
-    // Combat music tracking (exposed for states to set music theme)
-    public float CombatMusicTimer { get; private set; }
 
     // ── System event outputs (consumed by states for audio/visual) ──
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate =>
@@ -93,21 +75,13 @@ public class SolarSystemSimulation : ISimulation
 
     private const float InteractionRadius = 20f;
 
-    // Stored for orbit system
-    private double _globalTime;
-
-    // Reference to game for loot processing (needs Player, Audio access)
-    private readonly Game _game;
-
     public SolarSystemSimulation(Game game, StarSystemData starSystem, ISimulation? parent = null)
+        : base(game, parent)
     {
-        _game = game;
         StarSystem = starSystem;
-        Parent = parent;
-        EcsWorld = World.Create();
     }
 
-    public void Create()
+    public override void Create()
     {
         var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
         Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
@@ -235,7 +209,7 @@ public class SolarSystemSimulation : ISimulation
         float sysH = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         _orbitSystem = new OrbitSystem(
             EcsWorld,
-            () => (float)_globalTime,
+            () => (float)_game.GlobalTime,
             () => new Vector2(sysW, sysH));
         _orbitSystem.Initialize();
 
@@ -266,7 +240,7 @@ public class SolarSystemSimulation : ISimulation
         _particleSystem.Initialize();
     }
 
-    public void Destroy()
+    public override void Destroy()
     {
         PlanetEntities.Clear();
         StationEntities.Clear();
@@ -275,16 +249,12 @@ public class SolarSystemSimulation : ISimulation
         EnemyEntities.Clear();
         BackgroundStars.Clear();
         BackgroundNebulae.Clear();
-        _players.Clear();
-        PlayerDead = false;
-
-        EcsWorld.Dispose();
+        base.Destroy();
     }
 
-    public void Update(UpdateContext ctx)
+    public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
-        _globalTime = ctx.GlobalTime;
 
         _dependentEntityCleanupSystem.Update(in dt);
         _orbitSystem.Update(in dt);
@@ -318,47 +288,28 @@ public class SolarSystemSimulation : ISimulation
         }
 
         // Sync player health to PlayerData
-        foreach (var player in _players)
+        foreach (var player in Players)
         {
-            if (!PlayerDead && EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
+            if (EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
             {
                 ref var health = ref EcsWorld.Get<Health>(player.Entity);
                 player.Data.ShipHealth = health.Hull;
             }
         }
 
-        // Combat music timer
-        if (CombatMusicTimer > 0)
-            CombatMusicTimer -= dt;
-
-        // Tick message timers
+        // Combat music & message timers
         if (MiningHudTimer > 0) MiningHudTimer -= dt;
         if (MiningMessageTimer > 0)
         {
             MiningMessageTimer -= dt;
             if (MiningMessageTimer <= 0) MiningMessage = null;
         }
-        CombatHelper.UpdateCombatMessageTimer(ref _combatMessage, ref _combatMessageTimer, dt);
-        CombatMessage = _combatMessage;
-        CombatMessageTimer = _combatMessageTimer;
+        UpdateCombatTimers(dt);
     }
 
-    // Backing fields for ref passing to CombatHelper
-    private string? _combatMessage;
-    private float _combatMessageTimer;
-
-    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
+    protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
     {
         Vector2 startPos = DeterminePlayerStartPosition(player);
-        var entity = CreatePlayerShip(player, startPos);
-
-        var simPlayer = new SimulationPlayer(player) { Entity = entity };
-        _players.Add(simPlayer);
-        if (player.Type == PlayerType.Local)
-            LocalPlayer = simPlayer;
-
-        // Notify mission system
-        player.NotifySystemEntered(StarSystem.Index);
 
         // Clear return context
         player.SolarSystemReturnContext = PlayerData.ReturnContext.Default;
@@ -367,25 +318,10 @@ public class SolarSystemSimulation : ISimulation
         player.ReturnMoonPlanetIndex = -1;
         player.ReturnMoonIndex = -1;
 
-        return simPlayer;
-    }
+        // Notify mission system
+        player.NotifySystemEntered(StarSystem.Index);
 
-    public void RemovePlayer(SimulationPlayer player)
-    {
-        if (EcsWorld.IsAlive(player.Entity))
-            EcsWorld.Destroy(player.Entity);
-        _players.Remove(player);
-        if (player == LocalPlayer)
-            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
-    }
-
-    /// <summary>Find the SimulationPlayer that owns the given entity, or null.</summary>
-    public SimulationPlayer? FindPlayerByEntity(Entity entity)
-    {
-        foreach (var p in _players)
-            if (p.Entity == entity)
-                return p;
-        return null;
+        return CreatePlayerShip(player, startPos);
     }
 
     /// <summary>Sync the player ship's ShipComponent with current equipment stats.</summary>
@@ -525,15 +461,15 @@ public class SolarSystemSimulation : ISimulation
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
             bool localPlayerInvolved =
-                (evt.OwnerFaction == Faction.Player && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local)
+                (evt.OwnerFaction == Faction.Player && IsLocalPlayerEntity(evt.OwnerEntity))
                 || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
-                    && FindPlayerByEntity(evt.Target)?.Type == PlayerType.Local);
+                    && IsLocalPlayerEntity(evt.Target));
             if (localPlayerInvolved)
                 CombatMusicTimer = GameConfig.CombatMusicDelay;
 
             // Track last asteroid hit for mining HUD (only for local player's projectiles)
             if (evt.OwnerFaction == Faction.Player
-                && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local
+                && IsLocalPlayerEntity(evt.OwnerEntity)
                 && EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<AsteroidField>(evt.Target))
             {
                 LastHitAsteroid = evt.Target;
@@ -542,7 +478,7 @@ public class SolarSystemSimulation : ISimulation
         }
 
         // Process destroyed entities
-        var combatRng = new SeededRandom((ulong)(_globalTime * 1000) ^ 0xDEADBEEF);
+        var combatRng = new SeededRandom((ulong)(_game.GlobalTime * 1000) ^ 0xDEADBEEF);
         foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
         {
             if (destroyed.Asteroid.HasValue)
@@ -550,7 +486,7 @@ public class SolarSystemSimulation : ISimulation
                 // Asteroid destroyed — collect resources only if local player mined it
                 var asteroid = destroyed.Asteroid.Value;
                 if (destroyed.KillerFaction == Faction.Player
-                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } lootPlayer)
+                    && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } lootPlayer)
                 {
                     var playerData = lootPlayer.Data;
                     int added = playerData.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
@@ -580,14 +516,14 @@ public class SolarSystemSimulation : ISimulation
             else if (destroyed.Faction == Faction.Player)
             {
                 // A player ship was destroyed — only handle death for the local player
-                if (FindPlayerByEntity(destroyed.Entity)?.Type == PlayerType.Local)
+                if (IsLocalPlayerEntity(destroyed.Entity))
                     HandlePlayerDeath();
             }
             else
             {
                 // Enemy died — apply loot only if local player killed it
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
-                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local })
+                    && IsLocalPlayerEntity(destroyed.KillerEntity))
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(_game, destroyed.Loot.Value, combatRng,
                         resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);
@@ -595,7 +531,7 @@ public class SolarSystemSimulation : ISimulation
                 }
 
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate
-                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } pirateStopper)
+                    && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } pirateStopper)
                 {
                     pirateStopper.Data.NotifyPirateKilled();
                 }

@@ -202,6 +202,12 @@ public class PlanetSurfaceState : GameState
             return;
         }
 
+        // Block gameplay input when player dead
+        if (_sim.PlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        {
+            return;
+        }
+
         if (input.IsActionPressed(InputAction.ToggleMap))
         {
             var avatarPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
@@ -282,14 +288,6 @@ public class PlanetSurfaceState : GameState
 
         // Visual effects
         CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
-
-        // Death handling: return to orbit
-        if (_sim.PlayerDead && _sim.RespawnTimer <= 0)
-        {
-            game.Player.AvatarHealth = game.Player.AvatarMaxHealth;
-            game.ChangeState(new SolarSystemState(_starSystem));
-            return;
-        }
 
         // Combat music
         if (_sim.CombatMusicTimer > 0)
@@ -589,9 +587,18 @@ public class PlanetSurfaceState : GameState
         }
 
         // Player avatar
-        var avatarTf = world.Get<Transform>(_simPlayer.Entity);
-        if (!_inVehicle && !_sim.PlayerDead && !_playerInsideShip)
-            game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
+        Vector2 avatarPos;
+        if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
+        {
+            ref var avatarTf = ref world.Get<Transform>(_simPlayer.Entity);
+            avatarPos = avatarTf.Position;
+            if (!_inVehicle && !_playerInsideShip)
+                game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
+        }
+        else
+        {
+            avatarPos = shipTf.Position; // fallback when dead
+        }
 
         // Rocks, enemies, projectiles
         SurfaceRockRenderer.RenderRocks(renderer, camera, world);
@@ -625,7 +632,7 @@ public class PlanetSurfaceState : GameState
         if (_sim.PlayerDead)
         {
             HudRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, new Color3(255, 80, 80), 3f);
-            HudRenderer.RenderCenteredMessage(renderer, "RETURNING TO ORBIT...", 20, new Color3(200, 200, 200), 1.5f);
+            HudRenderer.RenderCenteredMessage(renderer, "RESPAWNING...", 20, new Color3(200, 200, 200), 1.5f);
         }
 
         // Minimap
@@ -633,7 +640,7 @@ public class PlanetSurfaceState : GameState
             ? world.Get<Transform>(_sim.VehicleEntity).Position
             : null;
         HudMinimapRenderer.RenderPlanetSurfaceMinimap(renderer, _sim.SurfaceData,
-            avatarTf.Position, shipTf.Position, vehiclePos, world);
+            avatarPos, shipTf.Position, vehiclePos, world);
 
         // Off-screen indicators
         if (!_sim.PlayerDead && !_playerInsideShip)

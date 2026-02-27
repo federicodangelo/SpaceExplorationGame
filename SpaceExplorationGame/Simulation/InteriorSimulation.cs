@@ -14,11 +14,8 @@ namespace SpaceExplorationGame.Simulation;
 /// Manages player avatar movement, NPC/interactable proximity, and tile collision.
 /// Contains NO rendering or audio code.
 /// </summary>
-public class InteriorSimulation : ISimulation
+public class InteriorSimulation : SimulationBase
 {
-    // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; }
-
     // ── Data ────────────────────────────────────────────────────────
     public InteriorOrigin Origin { get; }
     public StarSystemData StarSystem { get; }
@@ -26,13 +23,6 @@ public class InteriorSimulation : ISimulation
     public PlanetData? Planet { get; }
     public SettlementData? Settlement { get; }
     public InteriorData Interior { get; private set; } = null!;
-
-    // ── Players ─────────────────────────────────────────────────────
-    private readonly List<SimulationPlayer> _players = [];
-    public IReadOnlyList<SimulationPlayer> Players => _players;
-    public bool HasPlayers => _players.Count > 0;
-    public SimulationPlayer? LocalPlayer { get; private set; }
-    public ISimulation? Parent { get; }
 
     // ── Proximity ───────────────────────────────────────────────────
     public InteriorNpc? NearestNpc { get; private set; }
@@ -45,23 +35,19 @@ public class InteriorSimulation : ISimulation
 
     private const float BaseAvatarSpeed = 200f;
 
-    private readonly Game _game;
-
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
         ISimulation? parent = null)
+        : base(game, parent)
     {
-        EcsWorld = World.Create();
-        _game = game;
         Origin = origin;
         StarSystem = starSystem;
         Station = station;
         Planet = planet;
         Settlement = settlement;
-        Parent = parent;
     }
 
-    public void Create()
+    public override void Create()
     {
         Interior = Origin switch
         {
@@ -78,13 +64,7 @@ public class InteriorSimulation : ISimulation
         _velocitySystem.Initialize();
     }
 
-    public void Destroy()
-    {
-        _players.Clear();
-        EcsWorld.Dispose();
-    }
-
-    public void Update(UpdateContext ctx)
+    public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
 
@@ -95,7 +75,7 @@ public class InteriorSimulation : ISimulation
         UpdateProximity();
     }
 
-    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
+    protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
     {
         float spawnX = Interior.SpawnPoint.X * GameConfig.TileSize;
         float spawnY = Interior.SpawnPoint.Y * GameConfig.TileSize;
@@ -117,20 +97,7 @@ public class InteriorSimulation : ISimulation
         if (Origin == InteriorOrigin.Settlement && Planet != null)
             player.NotifySettlementEntered(StarSystem.Index, Planet.Index);
 
-        var simPlayer = new SimulationPlayer(player) { Entity = avatarEntity };
-        _players.Add(simPlayer);
-        if (player.Type == PlayerType.Local)
-            LocalPlayer = simPlayer;
-        return simPlayer;
-    }
-
-    public void RemovePlayer(SimulationPlayer player)
-    {
-        if (EcsWorld.IsAlive(player.Entity))
-            EcsWorld.Destroy(player.Entity);
-        _players.Remove(player);
-        if (player == LocalPlayer)
-            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
+        return avatarEntity;
     }
 
     // ── Proximity ───────────────────────────────────────────────────

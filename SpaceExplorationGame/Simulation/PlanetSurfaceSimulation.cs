@@ -15,11 +15,8 @@ namespace SpaceExplorationGame.Simulation;
 /// The player avatar, ship, and vehicle entities are created via AddPlayer and helper methods.
 /// Contains NO rendering or audio code.
 /// </summary>
-public class PlanetSurfaceSimulation : ISimulation
+public class PlanetSurfaceSimulation : CombatSimulationBase
 {
-    // ── ECS ─────────────────────────────────────────────────────────
-    public World EcsWorld { get; }
-
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
     public PlanetData Planet { get; }
@@ -30,31 +27,13 @@ public class PlanetSurfaceSimulation : ISimulation
     public Entity VehicleEntity { get; set; }
     public bool VehicleDeployed { get; set; }
 
-    // ── Players ─────────────────────────────────────────────────────
-    private readonly List<SimulationPlayer> _players = [];
-    public IReadOnlyList<SimulationPlayer> Players => _players;
-    public bool HasPlayers => _players.Count > 0;
-    public SimulationPlayer? LocalPlayer { get; private set; }
-    public ISimulation? Parent { get; }
-
     // ── Proximity state ─────────────────────────────────────────────
     public SettlementData? NearSettlement { get; private set; }
     public bool NearShip { get; private set; }
     public bool NearVehicle { get; private set; }
 
     private const float BoardShipRadius = 30f;
-
-    // ── Combat state ────────────────────────────────────────────────
-    public bool PlayerDead { get; private set; }
-    public float RespawnTimer { get; private set; }
     private const float RespawnDelay = 2.5f;
-
-    public string? CombatMessage { get; private set; }
-    public float CombatMessageTimer { get; private set; }
-    private string? _combatMessage;
-    private float _combatMessageTimer;
-
-    public float CombatMusicTimer { get; private set; }
 
     // ── System event outputs ────────────────────────────────────────
     public IReadOnlyList<DamageEvent> DamageEventsLastUpdate =>
@@ -70,24 +49,19 @@ public class PlanetSurfaceSimulation : ISimulation
     private ProjectileSystem _projectileSystem = null!;
     private AvatarEnemyAISystem _enemyAISystem = null!;
 
-    private double _globalTime;
-    private readonly Game _game;
-
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         PlanetSurfaceData? preGeneratedSurfaceData = null,
         ISimulation? parent = null)
+        : base(game, parent)
     {
-        EcsWorld = World.Create();
-        _game = game;
         StarSystem = starSystem;
         Planet = planet;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
-        Parent = parent;
     }
 
-    public void Create()
+    public override void Create()
     {
         // Generate surface
         SurfaceData = _preGeneratedSurfaceData
@@ -135,25 +109,19 @@ public class PlanetSurfaceSimulation : ISimulation
         }
     }
 
-    public void Destroy()
+    public override void Destroy()
     {
-        _players.Clear();
-        PlayerDead = false;
-        EcsWorld.Dispose();
+        base.Destroy();
     }
 
-    public void Update(UpdateContext ctx)
+    public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
-        _globalTime = ctx.GlobalTime;
 
         _dependentEntityCleanupSystem.Update(in dt);
 
         // AI (enemy movement + shooting)
-        if (!PlayerDead)
-        {
-            _enemyAISystem.Update(in dt);
-        }
+        _enemyAISystem.Update(in dt);
 
         // Physics (moves all entities with velocity: projectiles, player, enemies)
         _velocitySystem.Update(in dt);
@@ -176,16 +144,20 @@ public class PlanetSurfaceSimulation : ISimulation
         // Combat
         UpdateCombat(dt);
 
-        // Death timer
+        // Death timer / auto-respawn
         if (PlayerDead)
         {
             RespawnTimer -= dt;
+            if (RespawnTimer <= 0)
+            {
+                HandleAvatarRespawn();
+            }
         }
 
         // Sync avatar health to PlayerData
-        foreach (var player in _players)
+        foreach (var player in Players)
         {
-            if (!PlayerDead && EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
+            if (EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
             {
                 var health = EcsWorld.Get<Health>(player.Entity);
                 player.Data.AvatarHealth = health.Hull;
@@ -193,15 +165,10 @@ public class PlanetSurfaceSimulation : ISimulation
         }
 
         // Tick message timers
-        CombatHelper.UpdateCombatMessageTimer(ref _combatMessage, ref _combatMessageTimer, dt);
-        CombatMessage = _combatMessage;
-        CombatMessageTimer = _combatMessageTimer;
-
-        if (CombatMusicTimer > 0)
-            CombatMusicTimer -= dt;
+        UpdateCombatTimers(dt);
     }
 
-    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
+    protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
     {
         int lzTileX = ctx.LandingTileX >= 0 ? ctx.LandingTileX : SurfaceData.LandingZone.X;
         int lzTileY = ctx.LandingTileY >= 0 ? ctx.LandingTileY : SurfaceData.LandingZone.Y;
@@ -251,36 +218,7 @@ public class PlanetSurfaceSimulation : ISimulation
         // Notify mission system
         player.NotifyPlanetLanded(StarSystem.Index, Planet.Index);
 
-        var simPlayer = new SimulationPlayer(player) { Entity = avatarEntity };
-        _players.Add(simPlayer);
-        if (player.Type == PlayerType.Local)
-            LocalPlayer = simPlayer;
-        return simPlayer;
-    }
-
-    public void RemovePlayer(SimulationPlayer player)
-    {
-        // Persist avatar health
-        if (!PlayerDead && EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
-        {
-            var health = EcsWorld.Get<Health>(player.Entity);
-            player.Data.AvatarHealth = health.Hull;
-        }
-
-        if (EcsWorld.IsAlive(player.Entity))
-            EcsWorld.Destroy(player.Entity);
-        _players.Remove(player);
-        if (player == LocalPlayer)
-            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
-    }
-
-    /// <summary>Find the SimulationPlayer that owns the given entity, or null.</summary>
-    public SimulationPlayer? FindPlayerByEntity(Entity entity)
-    {
-        foreach (var p in _players)
-            if (p.Entity == entity)
-                return p;
-        return null;
+        return avatarEntity;
     }
 
     /// <summary>Create a vehicle entity in the simulation world.</summary>
@@ -363,22 +301,22 @@ public class PlanetSurfaceSimulation : ISimulation
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
             bool localPlayerInvolved =
-                (evt.OwnerFaction == Faction.Player && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local)
+                (evt.OwnerFaction == Faction.Player && IsLocalPlayerEntity(evt.OwnerEntity))
                 || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
-                    && FindPlayerByEntity(evt.Target)?.Type == PlayerType.Local);
+                    && IsLocalPlayerEntity(evt.Target));
             if (localPlayerInvolved)
                 CombatMusicTimer = GameConfig.CombatMusicDelay;
         }
 
         // Process destroyed entities
-        var combatRng = new SeededRandom((ulong)(_globalTime * 1000) ^ 0xBEEFCAFE);
+        var combatRng = new SeededRandom((ulong)(_game.GlobalTime * 1000) ^ 0xBEEFCAFE);
         foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
         {
             if (destroyed.Asteroid.HasValue)
             {
                 var rock = destroyed.Asteroid.Value;
                 if (destroyed.KillerFaction == Faction.Player
-                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } miner)
+                    && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } miner)
                 {
                     var playerData = miner.Data;
                     int added = playerData.AddCargo(rock.Resource, rock.ResourceAmount);
@@ -401,14 +339,14 @@ public class PlanetSurfaceSimulation : ISimulation
             }
             else if (destroyed.Faction == Faction.Player)
             {
-                if (FindPlayerByEntity(destroyed.Entity)?.Type == PlayerType.Local)
+                if (IsLocalPlayerEntity(destroyed.Entity))
                     HandleAvatarDeath();
             }
             else
             {
                 // Enemy died — apply loot if local player killed it
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
-                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local })
+                    && IsLocalPlayerEntity(destroyed.KillerEntity))
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(_game, destroyed.Loot.Value, combatRng);
                     _combatMessageTimer = 3f;
@@ -425,10 +363,46 @@ public class PlanetSurfaceSimulation : ISimulation
         if (LocalPlayer is not { } player) return;
         PlayerDead = true;
         RespawnTimer = RespawnDelay;
+
+        if (EcsWorld.IsAlive(player.Entity))
+            EcsWorld.Destroy(player.Entity);
+
         int creditsLost = (int)(player.Data.Credits * 0.1f);
         player.Data.Credits -= creditsLost;
 
         _combatMessage = creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
         _combatMessageTimer = RespawnDelay;
+    }
+
+    private void HandleAvatarRespawn()
+    {
+        if (LocalPlayer is not { } player) return;
+        PlayerDead = false;
+
+        // Respawn near the landed ship
+        var shipPos = EcsWorld.IsAlive(ShipEntity)
+            ? EcsWorld.Get<Transform>(ShipEntity).Position
+            : new Vector2(SurfaceData.LandingZone.X * GameConfig.TileSize,
+                          SurfaceData.LandingZone.Y * GameConfig.TileSize);
+
+        player.Data.RecalculateAvatarStats();
+        float avatarSpeed = 200f + player.Data.GetCombinedAvatarStats().WalkSpeed;
+        player.Data.AvatarHealth = player.Data.AvatarMaxHealth;
+
+        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld,
+            shipPos.X, shipPos.Y - 20f, avatarSpeed,
+            maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth);
+        ref var avatarVelocity = ref EcsWorld.Get<Velocity>(avatarEntity);
+        avatarVelocity.CanMoveTo = CanMoveToTerrain;
+
+        player.Entity = avatarEntity;
+
+        // Stow vehicle on respawn
+        if (VehicleDeployed)
+            StowVehicle();
+        player.Data.InVehicle = false;
+
+        _combatMessage = "RESPAWNED";
+        _combatMessageTimer = 3f;
     }
 }
