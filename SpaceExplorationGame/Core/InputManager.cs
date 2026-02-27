@@ -299,11 +299,6 @@ public class InputManager
         }
     }
 
-    public void UpdateGamepads()
-    {
-
-    }
-
     // Key queries
     public bool IsKeyDown(SDL.Scancode key) => _keysDown.Contains(key);
     public bool IsKeyPressed(SDL.Scancode key) => _keysPressed.Contains(key);
