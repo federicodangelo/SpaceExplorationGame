@@ -111,7 +111,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         Menu.SelectedIndex = 0;
         base.Open();
 
-        game.Player.Refuel(GameConfig.StationRefuelAmount);
+        game.Player.Refuel(game.Player.ShipMaxFuel);
         game.Player.NotifyStationDocked(starSystem.Index);
     }
 
@@ -202,7 +202,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         renderer.DrawTextScreen(px + 20, statusY + 10, $"SHIP: {game.Player.CurrentShipType.Name.ToUpper()}", new Color3(150, 150, 200), 2f);
         renderer.DrawTextScreen(px + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", new Color3(100, 255, 100), 1.5f);
         renderer.DrawTextScreen(px + 20, statusY + 60, $"FUEL: {game.Player.ShipFuel:F0}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
-        renderer.DrawTextScreen(px + 20, statusY + 80, $"[REFUELED +{GameConfig.StationRefuelAmount:F0}]", new Color3(80, 200, 120), 1.5f);
+        renderer.DrawTextScreen(px + 20, statusY + 80, $"[FULLY REFUELED]", new Color3(80, 200, 120), 1.5f);
 
         float barX = px + 250;
         float barW = 200;
