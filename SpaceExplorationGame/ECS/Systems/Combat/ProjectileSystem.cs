@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.System;
+using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.Combat;
@@ -73,23 +74,8 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             {
                 if (target.Entity == projEntity) continue;
 
-                // Don't hit entities of the same faction
-                if (target.Faction == proj.OwnerFaction) continue;
-
-                // Player projectiles skip player-controlled entities
-                if (proj.OwnerFaction == Faction.Player && target.Faction == Faction.Player)
-                    continue;
-
-                // Pirate projectiles should not hit other pirates
-                if (proj.OwnerFaction == Faction.Pirate && target.Faction == Faction.Pirate)
-                    continue;
-                // Patrol/trader projectiles should not hit player or each other (friendly fire off)
-                if ((proj.OwnerFaction == Faction.Patrol || proj.OwnerFaction == Faction.Trader) &&
-                    (target.Faction == Faction.Player || (target.Faction.HasValue && target.Faction != Faction.Pirate)))
-                    continue;
-                // Fauna/Bandit projectiles should not hit each other
-                if ((proj.OwnerFaction == Faction.Fauna || proj.OwnerFaction == Faction.Bandit) &&
-                    (target.Faction == Faction.Fauna || target.Faction == Faction.Bandit))
+                // Faction-based hit filtering
+                if (!FactionRules.CanHit(proj.OwnerFaction, target.Faction))
                     continue;
 
                 float dist = Vector2.Distance(projPos, target.Position);
