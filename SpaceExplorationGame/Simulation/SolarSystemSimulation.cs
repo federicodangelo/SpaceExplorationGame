@@ -531,8 +531,10 @@ public class SolarSystemSimulation : ISimulation
             if (localPlayerInvolved)
                 CombatMusicTimer = GameConfig.CombatMusicDelay;
 
-            // Track last asteroid hit for mining HUD
-            if (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<AsteroidField>(evt.Target))
+            // Track last asteroid hit for mining HUD (only for local player's projectiles)
+            if (evt.OwnerFaction == Faction.Player
+                && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local
+                && EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<AsteroidField>(evt.Target))
             {
                 LastHitAsteroid = evt.Target;
                 MiningHudTimer = 2f;
