@@ -9,6 +9,12 @@ namespace SpaceExplorationGame.Simulation;
 public readonly record struct UpdateContext(float Dt, double GlobalTime);
 
 /// <summary>
+/// Context passed to <see cref="ISimulation.AddPlayer"/> when a player joins a simulation.
+/// Contains per-player, per-join data such as landing coordinates that may differ each time.
+/// </summary>
+public readonly record struct AddContext(int LandingTileX = -1, int LandingTileY = -1);
+
+/// <summary>
 /// Base interface for all game simulations (solar system, planet surface, interior).
 /// Simulations manage ECS entities and systems independently of rendering.
 /// They are always updated by the SimulationCoordinator, never paused.
@@ -46,7 +52,7 @@ public interface ISimulation
     /// that the calling state can use for input and rendering. The returned entity is the player's
     /// primary entity (ship in solar system, avatar on planet surface, etc.).
     /// </summary>
-    SimulationPlayer AddPlayer(PlayerData player);
+    SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default);
 
     /// <summary>
     /// Remove a player from this simulation. Destroys the player's entity.

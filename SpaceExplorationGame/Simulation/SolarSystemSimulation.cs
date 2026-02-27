@@ -346,7 +346,7 @@ public class SolarSystemSimulation : ISimulation
     private string? _combatMessage;
     private float _combatMessageTimer;
 
-    public SimulationPlayer AddPlayer(PlayerData player)
+    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
     {
         Vector2 startPos = DeterminePlayerStartPosition(player);
         var entity = CreatePlayerShip(player, startPos);

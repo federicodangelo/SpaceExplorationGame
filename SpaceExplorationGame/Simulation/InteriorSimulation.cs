@@ -94,7 +94,7 @@ public class InteriorSimulation : ISimulation
         UpdateProximity();
     }
 
-    public SimulationPlayer AddPlayer(PlayerData player)
+    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
     {
         float spawnX = Interior.SpawnPoint.X * GameConfig.TileSize;
         float spawnY = Interior.SpawnPoint.Y * GameConfig.TileSize;

@@ -72,13 +72,9 @@ public class PlanetSurfaceSimulation : ISimulation
     private double _globalTime;
     private readonly Game _game;
 
-    // Landing parameters
-    private readonly int _landingTileX;
-    private readonly int _landingTileY;
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
-        int landingTileX = -1, int landingTileY = -1,
         PlanetSurfaceData? preGeneratedSurfaceData = null,
         ISimulation? parent = null)
     {
@@ -86,8 +82,6 @@ public class PlanetSurfaceSimulation : ISimulation
         _game = game;
         StarSystem = starSystem;
         Planet = planet;
-        _landingTileX = landingTileX;
-        _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
         Parent = parent;
     }
@@ -207,10 +201,10 @@ public class PlanetSurfaceSimulation : ISimulation
             CombatMusicTimer -= dt;
     }
 
-    public SimulationPlayer AddPlayer(PlayerData player)
+    public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
     {
-        int lzTileX = _landingTileX >= 0 ? _landingTileX : SurfaceData.LandingZone.X;
-        int lzTileY = _landingTileY >= 0 ? _landingTileY : SurfaceData.LandingZone.Y;
+        int lzTileX = ctx.LandingTileX >= 0 ? ctx.LandingTileX : SurfaceData.LandingZone.X;
+        int lzTileY = ctx.LandingTileY >= 0 ? ctx.LandingTileY : SurfaceData.LandingZone.Y;
         float lzX = lzTileX * GameConfig.TileSize;
         float lzY = lzTileY * GameConfig.TileSize;
 

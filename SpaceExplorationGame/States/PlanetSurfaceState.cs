@@ -90,6 +90,7 @@ public class PlanetSurfaceState : GameState
         _startMode = startMode;
     }
 
+
     public override void Enter(Game game)
     {
         _surfaceMapOverlay = new PlanetSurfaceMapOverlay(game.Textures);
@@ -108,10 +109,10 @@ public class PlanetSurfaceState : GameState
         var parentSim = game.Coordinator.Find<SolarSystemSimulation>(s => s.StarSystem.Index == _starSystem.Index);
         _sim = game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
             s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planet.Index,
-            () => new PlanetSurfaceSimulation(game, _starSystem, _planet, _landingTileX, _landingTileY, _preGeneratedSurfaceData, parentSim));
+            () => new PlanetSurfaceSimulation(game, _starSystem, _planet, _preGeneratedSurfaceData, parentSim));
 
         // Add player
-        _simPlayer = _sim.AddPlayer(game.Player);
+        _simPlayer = _sim.AddPlayer(game.Player, new AddContext(_landingTileX, _landingTileY));
 
         // Determine start mode
         bool hasSavedPositions = game.Player.HasSavedSurfacePositions;
