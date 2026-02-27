@@ -78,6 +78,7 @@ public class MainMenuState : GameState
     public override void Enter(Game game)
     {
         game.Player.Reset();
+        game.Coordinator.DestroyAll();
         game.Audio.SetMusicTheme(MusicTheme.MainMenu);
 
         if (_autoDebugLaunchRequest != DebugLaunchRequest.None)
