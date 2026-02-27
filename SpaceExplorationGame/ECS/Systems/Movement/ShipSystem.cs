@@ -12,7 +12,6 @@ namespace SpaceExplorationGame.ECS.Systems.Movement;
 public partial class ShipSystem : BaseSystem<World, float>
 {
     private readonly List<ProjectileSpawn> _pendingProjectiles = [];
-
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
 
     public ShipSystem(World world) : base(world)
@@ -25,15 +24,16 @@ public partial class ShipSystem : BaseSystem<World, float>
 
         ProcessShipQuery(World, dt);
 
-        foreach (var (pos, dir, damage, speed, lifetime, faction, color, inheritedVelocity) in _pendingProjectiles)
+        foreach (var spawn in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime, inheritedVelocity);
+            EntityFactory.CreateProjectile(World, spawn.OwnerEntity, spawn.Pos, spawn.Dir, spawn.Damage, spawn.Speed,
+                spawn.Faction, spawn.Color, spawn.Lifetime, spawn.InheritedVelocity);
         }
     }
 
     [Query]
     [All(typeof(Transform), typeof(Velocity), typeof(ShipInputComponent), typeof(ShipComponent))]
-    public void ProcessShip(ref Transform transform, ref Velocity velocity, ref ShipInputComponent input, ref ShipComponent ship, [Data] in float dt)
+    public void ProcessShip(Entity entity, ref Transform transform, ref Velocity velocity, ref ShipInputComponent input, ref ShipComponent ship, [Data] in float dt)
     {
         velocity.Acceleration = Vector2.Zero;
         velocity.RotationVelocity = Math.Clamp(input.RotationSpeed,
@@ -60,7 +60,7 @@ public partial class ShipSystem : BaseSystem<World, float>
         TickWeaponCooldowns(ref ship, dt);
         if (input.Shoot)
         {
-            TryFireProjectiles(ref transform, ref velocity, ref ship);
+            TryFireProjectiles(entity, ref transform, ref velocity, ref ship);
         }
     }
 
@@ -80,7 +80,7 @@ public partial class ShipSystem : BaseSystem<World, float>
             ship.WeaponCooldowns = new float[ship.Weapons.Length];
     }
 
-    private void TryFireProjectiles(ref Transform transform, ref Velocity velocity,
+    private void TryFireProjectiles(Entity firingEntity, ref Transform transform, ref Velocity velocity,
         ref ShipComponent ship)
     {
         EnsureCooldownArray(ref ship);
@@ -107,18 +107,18 @@ public partial class ShipSystem : BaseSystem<World, float>
             float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
             Color3 color = CombatHelper.ResolveProjectileColor(ship.Faction);
             FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                lifetime, ship.Faction, color, sideOffset, velocity.Velocity);
+                lifetime, ship.Faction, color, sideOffset, velocity.Velocity, firingEntity);
         }
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
-        float lifetime, Faction faction, Color3 color, float lateralOffset, Vector2 inheritedVelocity)
+        float lifetime, Faction faction, Color3 color, float lateralOffset, Vector2 inheritedVelocity, Entity firingEntity)
     {
         var lateral = new Vector2(-direction.Y, direction.X);
         var spawnPos = origin + direction * 20f + lateral * lateralOffset;
 
         _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed,
-            lifetime, faction, color, inheritedVelocity));
+            lifetime, faction, color, inheritedVelocity, firingEntity));
     }
 
     private static Vector2 FacingDirection(float rotationDeg)

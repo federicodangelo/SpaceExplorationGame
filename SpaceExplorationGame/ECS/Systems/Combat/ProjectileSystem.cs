@@ -6,7 +6,7 @@ using SpaceExplorationGame.ECS.Components;
 namespace SpaceExplorationGame.ECS.Systems.Combat;
 
 /// <summary>A projectile hit event: which projectile hit which target and for how much damage.</summary>
-public readonly record struct ProjectileHit(Entity Projectile, Entity Target, float Damage, Faction OwnerFaction);
+public readonly record struct ProjectileHit(Entity Projectile, Entity Target, float Damage, Faction OwnerFaction, Entity OwnerEntity);
 
 /// <summary>Per-frame snapshot of a live projectile's state for collision checking.</summary>
 public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position, Projectile Proj);
@@ -15,10 +15,10 @@ public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position
 public readonly record struct TargetSnapshot(Entity Entity, Vector2 Position, float Radius, Faction? Faction);
 
 /// <summary>An entity destroyed by projectile damage this frame.</summary>
-public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction);
+public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction, Entity KillerEntity);
 
 /// <summary>A damage event from a projectile hit (for visual effects).</summary>
-public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target, Faction OwnerFaction);
+public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target, Faction OwnerFaction, Entity OwnerEntity);
 
 /// <summary>
 /// Moves projectiles, checks lifetime expiry, and detects collision with Health entities.
@@ -95,7 +95,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                 float dist = Vector2.Distance(projPos, target.Position);
                 if (dist < proj.CollisionRadius + target.Radius)
                 {
-                    _hits.Add(new ProjectileHit(projEntity, target.Entity, proj.Damage, proj.OwnerFaction));
+                    _hits.Add(new ProjectileHit(projEntity, target.Entity, proj.Damage, proj.OwnerFaction, proj.OwnerEntity));
                 }
             }
         }
@@ -114,7 +114,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             health.TakeDamage(hit.Damage);
 
             var targetPos = World.Get<Transform>(hit.Target).Position;
-            DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target, hit.OwnerFaction));
+            DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target, hit.OwnerFaction, hit.OwnerEntity));
 
             // Destroy the projectile (HashSet handles duplicates automatically)
             _expired.Add(hit.Projectile);
@@ -147,7 +147,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                     faction = Faction.Player;
                 }
 
-                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid, hit.OwnerFaction));
+                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid, hit.OwnerFaction, hit.OwnerEntity));
             }
         }
 

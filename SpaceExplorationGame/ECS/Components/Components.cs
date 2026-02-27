@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.AOT.SourceGenerator;
+using Arch.Core;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Components;
@@ -275,6 +276,7 @@ public struct Projectile
     public float Lifetime;           // seconds remaining before despawn
     public float CollisionRadius;    // hit detection radius
     public Faction OwnerFaction;     // who fired it (to avoid self-hits)
+    public Entity OwnerEntity;       // the entity that fired this projectile (for multi-player attribution)
     public Color3 Color;             // projectile color
 }
 

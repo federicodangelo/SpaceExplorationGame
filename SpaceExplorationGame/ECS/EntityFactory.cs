@@ -415,9 +415,9 @@ public static class EntityFactory
     // ── Projectiles ─────────────────────────────────────────────────
 
     /// <summary>Create a projectile entity fired in a given direction.</summary>
-    public static Entity CreateProjectile(World world, Vector2 position, Vector2 direction,
+    public static Entity CreateProjectile(World world, Entity ownerEntity, Vector2 position, Vector2 direction,
         float damage, float speed, Faction ownerFaction, Color3 color,
-        float lifetime, Vector2 inheritedVelocity = default)
+        float lifetime, Vector2 inheritedVelocity)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
         var projectileVelocity = direction * speed + inheritedVelocity;
@@ -431,6 +431,7 @@ public static class EntityFactory
                 Lifetime = lifetime,
                 CollisionRadius = GameConfig.ProjectileRadius,
                 OwnerFaction = ownerFaction,
+                OwnerEntity = ownerEntity,
                 Color = color
             }
         );

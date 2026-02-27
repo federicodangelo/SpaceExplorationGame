@@ -13,6 +13,9 @@ public class SimulationPlayer
     /// <summary>Persistent player data (credits, inventory, stats, etc.).</summary>
     public PlayerData Data { get; }
 
+    /// <summary>Shorthand for <see cref="Data"/>.<see cref="PlayerData.Type"/>.</summary>
+    public PlayerType Type => Data.Type;
+
     /// <summary>The player's primary entity in this simulation (ship, avatar, etc.).</summary>
     public Entity Entity { get; set; }
 

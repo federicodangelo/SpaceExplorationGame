@@ -381,9 +381,9 @@ public class PlanetSurfaceState : GameState
                 aimDir = _lastMoveDir;
 
             var spawnPos = avatarTf.Position + aimDir * 14f;
-            EntityFactory.CreateProjectile(_sim.EcsWorld, spawnPos, aimDir,
+            EntityFactory.CreateProjectile(_sim.EcsWorld, _simPlayer.Entity, spawnPos, aimDir,
                 weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
-                new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime);
+                new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime, Vector2.Zero);
             game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
         }
     }

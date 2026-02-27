@@ -34,6 +34,7 @@ public class PlanetSurfaceSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public SimulationPlayer? LocalPlayer { get; private set; }
     public ISimulation? Parent { get; }
 
     // ── Proximity state ─────────────────────────────────────────────
@@ -158,12 +159,11 @@ public class PlanetSurfaceSimulation : ISimulation
         _velocitySystem.Update(in dt);
 
         // Sync vehicle position/rotation when driving
-        if (_players.Count > 0 && VehicleDeployed)
+        if (LocalPlayer is { } vehicleDriver && VehicleDeployed)
         {
-            var player = _players[0];
-            if (EcsWorld.IsAlive(player.Entity) && EcsWorld.IsAlive(VehicleEntity) && player.Data.InVehicle)
+            if (EcsWorld.IsAlive(vehicleDriver.Entity) && EcsWorld.IsAlive(VehicleEntity) && vehicleDriver.Data.InVehicle)
             {
-                ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
+                ref var avatarTf = ref EcsWorld.Get<Transform>(vehicleDriver.Entity);
                 ref var vehicleTf = ref EcsWorld.Get<Transform>(VehicleEntity);
                 vehicleTf.Position = avatarTf.Position;
                 vehicleTf.Rotation = avatarTf.Rotation;
@@ -253,6 +253,8 @@ public class PlanetSurfaceSimulation : ISimulation
 
         var simPlayer = new SimulationPlayer(player) { Entity = avatarEntity };
         _players.Add(simPlayer);
+        if (player.Type == PlayerType.Local)
+            LocalPlayer = simPlayer;
         return simPlayer;
     }
 
@@ -268,6 +270,17 @@ public class PlanetSurfaceSimulation : ISimulation
         if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
+        if (player == LocalPlayer)
+            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
+    }
+
+    /// <summary>Find the SimulationPlayer that owns the given entity, or null.</summary>
+    public SimulationPlayer? FindPlayerByEntity(Entity entity)
+    {
+        foreach (var p in _players)
+            if (p.Entity == entity)
+                return p;
+        return null;
     }
 
     /// <summary>Create a vehicle entity in the simulation world.</summary>
@@ -306,11 +319,10 @@ public class PlanetSurfaceSimulation : ISimulation
         NearShip = false;
         NearVehicle = false;
 
-        if (_players.Count == 0) return;
-        var player = _players[0];
-        if (!EcsWorld.IsAlive(player.Entity)) return;
+        if (LocalPlayer is not { } local) return;
+        if (!EcsWorld.IsAlive(local.Entity)) return;
 
-        var avatarPos = EcsWorld.Get<Transform>(player.Entity).Position;
+        var avatarPos = EcsWorld.Get<Transform>(local.Entity).Position;
 
         // Settlement proximity
         foreach (var settlement in SurfaceData.Settlements)
@@ -348,15 +360,13 @@ public class PlanetSurfaceSimulation : ISimulation
         _projectileSystem.Update(in dt);
 
         // Process damage events
-        var playerPos = _players.Count > 0 && EcsWorld.IsAlive(_players[0].Entity)
-            ? EcsWorld.Get<Transform>(_players[0].Entity).Position
-            : Vector2.Zero;
-
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
-            bool playerInvolved = evt.OwnerFaction == Faction.Player
-                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target));
-            if (playerInvolved)
+            bool localPlayerInvolved =
+                (evt.OwnerFaction == Faction.Player && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local)
+                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
+                    && FindPlayerByEntity(evt.Target)?.Type == PlayerType.Local);
+            if (localPlayerInvolved)
                 CombatMusicTimer = GameConfig.CombatMusicDelay;
         }
 
@@ -367,9 +377,10 @@ public class PlanetSurfaceSimulation : ISimulation
             if (destroyed.Asteroid.HasValue)
             {
                 var rock = destroyed.Asteroid.Value;
-                if (destroyed.KillerFaction == Faction.Player && _players.Count > 0)
+                if (destroyed.KillerFaction == Faction.Player
+                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } miner)
                 {
-                    var playerData = _players[0].Data;
+                    var playerData = miner.Data;
                     int added = playerData.AddCargo(rock.Resource, rock.ResourceAmount);
                     var resInfo = ResourceCatalog.Get(rock.Resource);
                     if (added > 0)
@@ -390,12 +401,14 @@ public class PlanetSurfaceSimulation : ISimulation
             }
             else if (destroyed.Faction == Faction.Player)
             {
-                HandleAvatarDeath();
+                if (FindPlayerByEntity(destroyed.Entity)?.Type == PlayerType.Local)
+                    HandleAvatarDeath();
             }
             else
             {
-                // Enemy died — apply loot if player killed it
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue && _players.Count > 0)
+                // Enemy died — apply loot if local player killed it
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
+                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local })
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(_game, destroyed.Loot.Value, combatRng);
                     _combatMessageTimer = 3f;
@@ -409,11 +422,9 @@ public class PlanetSurfaceSimulation : ISimulation
 
     private void HandleAvatarDeath()
     {
-        if (_players.Count == 0) return;
+        if (LocalPlayer is not { } player) return;
         PlayerDead = true;
         RespawnTimer = RespawnDelay;
-
-        var player = _players[0];
         int creditsLost = (int)(player.Data.Credits * 0.1f);
         player.Data.Credits -= creditsLost;
 

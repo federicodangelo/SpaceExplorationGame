@@ -26,6 +26,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     public IReadOnlyList<SurfaceProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
 
     // Per-frame cached state for [Query] method access
+    private Entity _currentAIEntity;
     private float _dt;
     private Vector2 _playerPos;
     private bool _playerAlive;
@@ -44,9 +45,10 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         ProcessSurfaceAIQuery(World);
 
         // Spawn pending projectiles
-        foreach (var (pos, dir, damage, speed, faction, color, lifetime) in _pendingProjectiles)
+        foreach (var spawn in _pendingProjectiles)
         {
-            EntityFactory.CreateProjectile(World, pos, dir, damage, speed, faction, color, lifetime);
+            EntityFactory.CreateProjectile(World, spawn.OwnerEntity, spawn.Pos, spawn.Dir, spawn.Damage, spawn.Speed,
+                spawn.Faction, spawn.Color, spawn.Lifetime, Vector2.Zero);
         }
     }
 
@@ -66,10 +68,11 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     /// <summary>Source-generated query: iterates all surface AI entities.</summary>
     [Query]
     [All(typeof(Transform), typeof(Velocity), typeof(SurfaceAI), typeof(Health))]
-    public void ProcessSurfaceAI(ref Transform transform, ref Velocity velocity,
+    public void ProcessSurfaceAI(Entity entity, ref Transform transform, ref Velocity velocity,
         ref SurfaceAI ai, ref Health health)
     {
         if (health.IsDead) return;
+        _currentAIEntity = entity;
 
         ai.StateTimer += _dt;
         ai.FireCooldown -= _dt;
@@ -106,7 +109,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Fauna, new Color3(200, 60, 60), 0.1f));
+                    ai.Config.ProjectileSpeed, Faction.Fauna, new Color3(200, 60, 60), 0.1f, _currentAIEntity));
             }
         }
         else
@@ -172,7 +175,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Bandit, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime));
+                    ai.Config.ProjectileSpeed, Faction.Bandit, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime, _currentAIEntity));
             }
         }
         else

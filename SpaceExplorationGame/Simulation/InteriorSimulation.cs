@@ -31,6 +31,7 @@ public class InteriorSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public SimulationPlayer? LocalPlayer { get; private set; }
     public ISimulation? Parent { get; }
 
     // ── Proximity ───────────────────────────────────────────────────
@@ -118,6 +119,8 @@ public class InteriorSimulation : ISimulation
 
         var simPlayer = new SimulationPlayer(player) { Entity = avatarEntity };
         _players.Add(simPlayer);
+        if (player.Type == PlayerType.Local)
+            LocalPlayer = simPlayer;
         return simPlayer;
     }
 
@@ -126,6 +129,8 @@ public class InteriorSimulation : ISimulation
         if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
+        if (player == LocalPlayer)
+            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
     }
 
     // ── Proximity ───────────────────────────────────────────────────
@@ -135,11 +140,10 @@ public class InteriorSimulation : ISimulation
         NearestNpc = null;
         NearestInteractable = null;
 
-        if (_players.Count == 0) return;
-        var player = _players[0];
-        if (!EcsWorld.IsAlive(player.Entity)) return;
+        if (LocalPlayer is not { } local) return;
+        if (!EcsWorld.IsAlive(local.Entity)) return;
 
-        ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
+        ref var avatarTf = ref EcsWorld.Get<Transform>(local.Entity);
         float playerTileX = avatarTf.Position.X / GameConfig.TileSize;
         float playerTileY = avatarTf.Position.Y / GameConfig.TileSize;
 

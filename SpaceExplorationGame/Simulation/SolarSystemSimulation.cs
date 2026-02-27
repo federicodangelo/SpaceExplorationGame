@@ -45,6 +45,7 @@ public class SolarSystemSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public SimulationPlayer? LocalPlayer { get; private set; }
     public ISimulation? Parent { get; }
 
     // ── Proximity (updated per-player) ──────────────────────────────
@@ -353,6 +354,8 @@ public class SolarSystemSimulation : ISimulation
 
         var simPlayer = new SimulationPlayer(player) { Entity = entity };
         _players.Add(simPlayer);
+        if (player.Type == PlayerType.Local)
+            LocalPlayer = simPlayer;
 
         // Notify mission system
         player.NotifySystemEntered(StarSystem.Index);
@@ -372,6 +375,17 @@ public class SolarSystemSimulation : ISimulation
         if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
         _players.Remove(player);
+        if (player == LocalPlayer)
+            LocalPlayer = _players.FirstOrDefault(p => p.Type == PlayerType.Local);
+    }
+
+    /// <summary>Find the SimulationPlayer that owns the given entity, or null.</summary>
+    public SimulationPlayer? FindPlayerByEntity(Entity entity)
+    {
+        foreach (var p in _players)
+            if (p.Entity == entity)
+                return p;
+        return null;
     }
 
     /// <summary>Sync the player ship's ShipComponent with current equipment stats.</summary>
@@ -472,12 +486,11 @@ public class SolarSystemSimulation : ISimulation
         NearbyMoonPlanetIndex = -1;
         NearbyMoonIndex = -1;
 
-        if (_players.Count == 0) return;
-        var player = _players[0];
-        if (!EcsWorld.IsAlive(player.Entity)) return;
+        if (LocalPlayer is not { } local) return;
+        if (!EcsWorld.IsAlive(local.Entity)) return;
 
-        ref var shipTransform = ref EcsWorld.Get<Transform>(player.Entity);
-        player.Data.ShipWorldPosition = shipTransform.Position;
+        ref var shipTransform = ref EcsWorld.Get<Transform>(local.Entity);
+        local.Data.ShipWorldPosition = shipTransform.Position;
 
         _proximitySystem.FindNearest(shipTransform.Position);
 
@@ -511,9 +524,11 @@ public class SolarSystemSimulation : ISimulation
         // Process damage events
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
-            bool playerInvolved = evt.OwnerFaction == Faction.Player
-                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target));
-            if (playerInvolved)
+            bool localPlayerInvolved =
+                (evt.OwnerFaction == Faction.Player && FindPlayerByEntity(evt.OwnerEntity)?.Type == PlayerType.Local)
+                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
+                    && FindPlayerByEntity(evt.Target)?.Type == PlayerType.Local);
+            if (localPlayerInvolved)
                 CombatMusicTimer = GameConfig.CombatMusicDelay;
 
             // Track last asteroid hit for mining HUD
@@ -530,11 +545,12 @@ public class SolarSystemSimulation : ISimulation
         {
             if (destroyed.Asteroid.HasValue)
             {
-                // Asteroid destroyed — collect resources only if player mined it
+                // Asteroid destroyed — collect resources only if local player mined it
                 var asteroid = destroyed.Asteroid.Value;
-                if (destroyed.KillerFaction == Faction.Player && _players.Count > 0)
+                if (destroyed.KillerFaction == Faction.Player
+                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } lootPlayer)
                 {
-                    var playerData = _players[0].Data;
+                    var playerData = lootPlayer.Data;
                     int added = playerData.AddCargo(asteroid.Resource, asteroid.ResourceAmount);
                     var resInfo = ResourceCatalog.Get(asteroid.Resource);
                     if (added > 0)
@@ -561,21 +577,25 @@ public class SolarSystemSimulation : ISimulation
             }
             else if (destroyed.Faction == Faction.Player)
             {
-                HandlePlayerDeath();
+                // A player ship was destroyed — only handle death for the local player
+                if (FindPlayerByEntity(destroyed.Entity)?.Type == PlayerType.Local)
+                    HandlePlayerDeath();
             }
             else
             {
-                // Enemy died — apply loot only if player killed it
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue && _players.Count > 0)
+                // Enemy died — apply loot only if local player killed it
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
+                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local })
                 {
                     _combatMessage = CombatHelper.ProcessLootDrop(_game, destroyed.Loot.Value, combatRng,
                         resourceAmountMax: 5 + destroyed.Loot.Value.DangerLevel * 2, enablePartDrops: true);
                     _combatMessageTimer = 3f;
                 }
 
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate && _players.Count > 0)
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate
+                    && FindPlayerByEntity(destroyed.KillerEntity) is { Type: PlayerType.Local } pirateStopper)
                 {
-                    _players[0].Data.NotifyPirateKilled();
+                    pirateStopper.Data.NotifyPirateKilled();
                 }
 
                 if (EcsWorld.IsAlive(destroyed.Entity))
@@ -589,8 +609,7 @@ public class SolarSystemSimulation : ISimulation
 
     private void HandlePlayerDeath()
     {
-        if (_players.Count == 0) return;
-        var player = _players[0];
+        if (LocalPlayer is not { } player) return;
 
         PlayerDead = true;
         RespawnTimer = RespawnDelay;
@@ -616,8 +635,7 @@ public class SolarSystemSimulation : ISimulation
 
     private void HandlePlayerRespawn()
     {
-        if (_players.Count == 0) return;
-        var player = _players[0];
+        if (LocalPlayer is not { } player) return;
 
         PlayerDead = false;
 

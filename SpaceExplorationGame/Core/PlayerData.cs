@@ -3,10 +3,24 @@ namespace SpaceExplorationGame.Core;
 using System.Numerics;
 
 /// <summary>
+/// Distinguishes the locally-controlled player from remote (networked) players.
+/// </summary>
+public enum PlayerType
+{
+    /// <summary>The player running on this machine — receives input, drives the camera, owns HUD state.</summary>
+    Local,
+    /// <summary>A remote player connected via network. Never drives local proximity / HUD logic.</summary>
+    Remote,
+}
+
+/// <summary>
 /// Persistent player data that survives across state changes.
 /// </summary>
 public class PlayerData
 {
+    /// <summary>Whether this is the local or a remote player.</summary>
+    public PlayerType Type { get; set; } = PlayerType.Local;
+
     // Current ship
     public ShipType CurrentShipType { get; set; } = ShipTypeCatalog.StarterShip;
     public float ShipHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
