@@ -254,61 +254,36 @@ public static class SolarSystemGenerator
         int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
         int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
 
-        for (int i = 0; i < pirateCount; i++)
+        SpawnFaction(enemyRng, npcShipSpawns, Faction.Pirate, pirateCount,
+            dangerLevel, qualityTier, center, spawnRadius, 250f);
+        SpawnFaction(enemyRng, npcShipSpawns, Faction.Trader, traderCount,
+            dangerLevel, qualityTier, center, spawnRadius, 300f);
+        SpawnFaction(enemyRng, npcShipSpawns, Faction.Patrol, patrolCount,
+            dangerLevel, qualityTier, center, spawnRadius, 300f);
+    }
+
+    private static void SpawnFaction(SeededRandom rng, List<NpcShipSpawnData> spawns,
+        Faction faction, int count, int dangerLevel, int qualityTier,
+        Vector2 center, float maxRadius, float minRadius)
+    {
+        for (int i = 0; i < count; i++)
         {
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Pirate, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Pirate, qualityTier, enemyRng);
+            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(faction, dangerLevel, rng);
+            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, faction, qualityTier, rng);
             var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
             var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-            int lootCredits = NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout);
+            int lootCredits = faction == Faction.Pirate
+                ? NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout) : 0;
 
-            npcShipSpawns.Add(new NpcShipSpawnData
+            spawns.Add(new NpcShipSpawnData
             {
-                Position = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 250f),
-                Rotation = enemyRng.NextFloat(0, 360),
-                Faction = Faction.Pirate,
+                Position = SpawnPositionInOrbitZone(rng, center, maxRadius, minRadius),
+                Rotation = rng.NextFloat(0, 360),
+                Faction = faction,
                 Stats = stats,
                 Weapons = weapons,
                 DangerLevel = dangerLevel,
                 LootCredits = lootCredits
-            });
-        }
-
-        for (int i = 0; i < traderCount; i++)
-        {
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Trader, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Trader, qualityTier, enemyRng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-
-            npcShipSpawns.Add(new NpcShipSpawnData
-            {
-                Position = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f),
-                Rotation = enemyRng.NextFloat(0, 360),
-                Faction = Faction.Trader,
-                Stats = stats,
-                Weapons = weapons,
-                DangerLevel = dangerLevel,
-                LootCredits = 0
-            });
-        }
-
-        for (int i = 0; i < patrolCount; i++)
-        {
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(Faction.Patrol, dangerLevel, enemyRng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, Faction.Patrol, qualityTier, enemyRng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-
-            npcShipSpawns.Add(new NpcShipSpawnData
-            {
-                Position = SpawnPositionInOrbitZone(enemyRng, center, spawnRadius, 300f),
-                Rotation = enemyRng.NextFloat(0, 360),
-                Faction = Faction.Patrol,
-                Stats = stats,
-                Weapons = weapons,
-                DangerLevel = dangerLevel,
-                LootCredits = 0
             });
         }
     }
