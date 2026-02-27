@@ -84,9 +84,7 @@ public static class CombatHelper
         if (enablePartDrops && rng.NextFloat() < loot.PartDropChance)
         {
             int maxTier = Math.Min(3, 1 + loot.DangerLevel / 2);
-            var candidates = ShipPartCatalog.AllParts
-                .Where(p => p.Tier > 0 && p.Tier <= maxTier)
-                .ToArray();
+            var candidates = ShipPartCatalog.GetPartsUpToTier(maxTier);
 
             if (candidates.Length > 0)
             {

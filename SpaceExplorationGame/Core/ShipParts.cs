@@ -212,6 +212,24 @@ public static class ShipPartCatalog
     public static ShipPart? GetById(string id) =>
         Array.Find(AllParts, p => p.Id == id);
 
+    /// <summary>Pre-computed parts grouped by max tier for loot drops. Index = maxTier (1–3).</summary>
+    private static readonly ShipPart[][] PartsByMaxTier = BuildPartsByMaxTier();
+
+    private static ShipPart[][] BuildPartsByMaxTier()
+    {
+        var result = new ShipPart[4][];
+        for (int tier = 0; tier <= 3; tier++)
+        {
+            int maxTier = tier;
+            result[tier] = Array.FindAll(AllParts, p => p.Tier > 0 && p.Tier <= maxTier);
+        }
+        return result;
+    }
+
+    /// <summary>Get all droppable parts up to the given max tier (cached, no allocation).</summary>
+    public static ShipPart[] GetPartsUpToTier(int maxTier) =>
+        PartsByMaxTier[Math.Clamp(maxTier, 0, 3)];
+
     /// <summary>Get all parts that fit a given slot type.</summary>
     public static ShipPart[] GetPartsForSlot(ShipSlotType slot) =>
         slot switch
