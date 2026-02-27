@@ -494,6 +494,8 @@ public class PlanetSurfaceState : GameState
             case StarshipMenuOption.TakeOff:
                 _playerInsideShip = true;
                 game.Player.InVehicle = false;
+                if (_sim.VehicleDeployed)
+                    _sim.StowVehicle();
                 game.Player.ClearSavedSurfacePositions();
 
                 var launchShipTf = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity);
