@@ -225,7 +225,7 @@ public static class InteriorRenderer
 
             // Shadow beneath feet
             var shadowPos = npcPos + new Vector2(0, 8);
-            renderer.DrawRect(camera, shadowPos, 12, 3, new Color4(0, 0, 0, 60));
+            renderer.DrawRect(camera, shadowPos, 12, 3, RenderColors.EntityShadow);
 
             // Body
             renderer.DrawRect(camera, npcPos, 10, 14, npc.Color);

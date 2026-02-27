@@ -123,18 +123,16 @@ public class EnemyShipRenderer
         float h = barHeight * zoom;
 
         // Background
-        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w, h, new Color4(40, 40, 40, 180));
+        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w, h, RenderColors.HealthBarBackground);
         // Hull fill
-        byte hullR = hullPercent > 0.5f ? (byte)(255 * (1 - hullPercent) * 2) : (byte)255;
-        byte hullG = hullPercent > 0.5f ? (byte)255 : (byte)(255 * hullPercent * 2);
-        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w * hullPercent, h, new Color4(hullR, hullG, 0, 200));
+        renderer.DrawRectScreen(screenPos.X, screenPos.Y, w * hullPercent, h, RenderColors.HullFillColor(hullPercent));
 
         // Shield bar (if has shields)
         if (maxShield > 0)
         {
             float shieldY = screenPos.Y - h - 1;
-            renderer.DrawRectScreen(screenPos.X, shieldY, w, h, new Color4(40, 40, 60, 180));
-            renderer.DrawRectScreen(screenPos.X, shieldY, w * shieldPercent, h, new Color4(80, 160, 255, 200));
+            renderer.DrawRectScreen(screenPos.X, shieldY, w, h, RenderColors.ShieldBarBackground);
+            renderer.DrawRectScreen(screenPos.X, shieldY, w * shieldPercent, h, RenderColors.ShieldBarFill);
         }
     }
 

@@ -9,6 +9,23 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class StarRenderer
 {
+    // Flicker phase weights derived from star color channels
+    private const float PhaseWeightR = 0.013f;
+    private const float PhaseWeightG = 0.007f;
+    private const float PhaseWeightB = 0.005f;
+    private const float FlickerBase = 0.92f;
+    private const float FlickerAmplitude = 0.08f;
+    private const float FlickerSpeed = 7.2f;
+
+    // Glow / core proportions relative to star radius
+    private const float GlowRadiusMultiplier = 1.35f;
+    private const float GlowTransitionRatio = 0.45f;
+    private const float CoreRadiusMultiplier = 0.75f;
+
+    // Glow base alpha differs slightly between screen and world rendering
+    private const byte GlowBaseAlphaScreen = 90;
+    private const byte GlowBaseAlphaWorld = 95;
+
     public StarRenderer()
     {
     }
@@ -25,20 +42,25 @@ public class StarRenderer
         float x, float y, float displaySize, Color3 color, byte alpha, float globalTime)
     {
         float radius = displaySize * 0.5f;
-        float phase = (color.R * 0.013f + color.G * 0.007f + color.B * 0.005f);
-        float flicker = 0.92f + 0.08f * (0.5f + 0.5f * MathF.Sin(globalTime * 7.2f + phase * 2f));
+        float flicker = ComputeFlicker(color, globalTime);
 
         // Surrounding glow
-        renderer.DrawFilledCircleScreen(x, y, radius * 1.35f,
-            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(90, flicker))),
+        renderer.DrawFilledCircleScreen(x, y, radius * GlowRadiusMultiplier,
+            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(GlowBaseAlphaScreen, flicker))),
             new Color4(color.R, color.G, color.B, 0),
-            radius * 0.45f);
+            radius * GlowTransitionRatio);
 
         // Core circle (bright center -> star color)
-        renderer.DrawFilledCircleScreen(x, y, radius * 0.75f,
-            new Color4(255, 245, 220, alpha),
+        renderer.DrawFilledCircleScreen(x, y, radius * CoreRadiusMultiplier,
+            RenderColors.StarCoreHighlight.WithAlpha(alpha),
             new Color4(color.R, color.G, color.B, alpha),
             0f);
+    }
+
+    private static float ComputeFlicker(Color3 color, float globalTime)
+    {
+        float phase = color.R * PhaseWeightR + color.G * PhaseWeightG + color.B * PhaseWeightB;
+        return FlickerBase + FlickerAmplitude * (0.5f + 0.5f * MathF.Sin(globalTime * FlickerSpeed + phase * 2f));
     }
 
     private static byte ScaleAlpha(byte baseAlpha, byte layerAlpha)
@@ -54,18 +76,17 @@ public class StarRenderer
     private static void RenderStarWorld(SpriteRenderer renderer, Camera camera,
         Vector2 starCenter, float starDisplayRadius, Color3 color, byte alpha, float globalTime)
     {
-        float phase = (color.R * 0.013f + color.G * 0.007f + color.B * 0.005f);
-        float flicker = 0.92f + 0.08f * (0.5f + 0.5f * MathF.Sin(globalTime * 7.2f + phase * 2f));
+        float flicker = ComputeFlicker(color, globalTime);
 
         // Surrounding glow
-        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * 1.35f,
-            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(95, flicker))),
+        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * GlowRadiusMultiplier,
+            new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(GlowBaseAlphaWorld, flicker))),
             new Color4(color.R, color.G, color.B, 0),
-            starDisplayRadius * 0.45f);
+            starDisplayRadius * GlowTransitionRatio);
 
         // Core circle (bright center -> star color)
-        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * 0.75f,
-            new Color4(255, 245, 220, alpha),
+        renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * CoreRadiusMultiplier,
+            RenderColors.StarCoreHighlight.WithAlpha(alpha),
             new Color4(color.R, color.G, color.B, alpha),
             0f);
     }

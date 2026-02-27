@@ -78,7 +78,7 @@ public static class SurfaceRockRenderer
                 float barX = pos.X - barWidth / 2f;
 
                 // Background
-                renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, new Color4(40, 40, 40, 180));
+                renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, RenderColors.HealthBarBackground);
 
                 // Health fill
                 float fillWidth = barWidth * health.HullPercent;

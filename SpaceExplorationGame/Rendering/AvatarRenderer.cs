@@ -20,7 +20,7 @@ public class AvatarRenderer
     {
         // Shadow beneath feet
         var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1f);
-        renderer.DrawRect(camera, shadowPos, 16, 4, new Color4(0, 0, 0, 60));
+        renderer.DrawRect(camera, shadowPos, 16, 4, RenderColors.EntityShadow);
 
         float scale = AvatarSize / 28f;
 

@@ -39,14 +39,12 @@ public static class SurfaceEnemyRenderer
             float barX = pos.X - barWidth / 2f;
 
             // Background
-            renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, new Color4(40, 40, 40, 180));
+            renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, RenderColors.HealthBarBackground);
 
             // Health fill
             float fillWidth = barWidth * health.HullPercent;
-            byte hr = health.HullPercent > 0.5f ? (byte)80 : (byte)255;
-            byte hg = health.HullPercent > 0.5f ? (byte)200 : (byte)(200 * health.HullPercent * 2);
-            byte hb = 60;
-            renderer.DrawRect(camera, new Vector2(barX, barY), (int)fillWidth, (int)barHeight, new Color3(hr, hg, hb));
+            var fillColor = RenderColors.HullFillColor(health.HullPercent);
+            renderer.DrawRect(camera, new Vector2(barX, barY), (int)fillWidth, (int)barHeight, new Color3(fillColor.R, fillColor.G, fillColor.B));
         });
     }
 
@@ -54,7 +52,7 @@ public static class SurfaceEnemyRenderer
     private static void RenderFauna(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
         // Shadow beneath feet
-        renderer.DrawRect(camera, pos + new Vector2(0, 8), 14, 4, new Color4(0, 0, 0, 60));
+        renderer.DrawRect(camera, pos + new Vector2(0, 8), 14, 4, RenderColors.EntityShadow);
 
         // Body (reddish-brown oval)
         renderer.DrawRect(camera, pos - new Vector2(7, 5), 14, 10, new Color3(180, 60, 60));
@@ -77,7 +75,7 @@ public static class SurfaceEnemyRenderer
     private static void RenderBandit(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
         // Shadow beneath feet
-        renderer.DrawRect(camera, pos + new Vector2(0, 9), 10, 3, new Color4(0, 0, 0, 60));
+        renderer.DrawRect(camera, pos + new Vector2(0, 9), 10, 3, RenderColors.EntityShadow);
 
         // Head (tan)
         renderer.DrawRect(camera, pos - new Vector2(3, 8), 6, 5, new Color3(200, 160, 120));
