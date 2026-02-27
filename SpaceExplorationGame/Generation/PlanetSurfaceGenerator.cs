@@ -23,47 +23,47 @@ public enum TerrainType
 /// </summary>
 public class PlanetSurfaceData
 {
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public TerrainType[,] Tiles { get; set; } = null!;
-    public List<SettlementData> Settlements { get; set; } = [];
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public TerrainType[,] Tiles { get; init; } = null!;
+    public List<SettlementData> Settlements { get; init; } = [];
     public TilePos LandingZone { get; set; }
 
     /// <summary>Spawn positions for hostile fauna (world-space coordinates).</summary>
-    public List<CreatureSpawn> FaunaSpawns { get; set; } = [];
+    public List<CreatureSpawn> FaunaSpawns { get; init; } = [];
     /// <summary>Spawn positions for hostile bandits (world-space coordinates).</summary>
-    public List<CreatureSpawn> BanditSpawns { get; set; } = [];
+    public List<CreatureSpawn> BanditSpawns { get; init; } = [];
     /// <summary>Spawn positions for mineable rocks (world-space coordinates + resource info).</summary>
-    public List<RockSpawn> RockSpawns { get; set; } = [];
+    public List<RockSpawn> RockSpawns { get; init; } = [];
 }
 
 /// <summary>A building within a settlement layout.</summary>
 public class SettlementBuilding
 {
-    public float X { get; set; } // world-space top-left
-    public float Y { get; set; }
-    public float W { get; set; } // world-space size
-    public float H { get; set; }
-    public Color3 Color { get; set; }
-    public bool HasAntenna { get; set; }
-    public bool HasChimney { get; set; }
-    public int WindowRows { get; set; } // 0 = no windows
-    public int WindowCols { get; set; }
+    public float X { get; init; } // world-space top-left
+    public float Y { get; init; }
+    public float W { get; init; } // world-space size
+    public float H { get; init; }
+    public Color3 Color { get; init; }
+    public bool HasAntenna { get; init; }
+    public bool HasChimney { get; init; }
+    public int WindowRows { get; init; } // 0 = no windows
+    public int WindowCols { get; init; }
 }
 
 /// <summary>Pre-computed visual layout of a settlement.</summary>
 public class SettlementLayout
 {
-    public List<SettlementBuilding> Buildings { get; set; } = [];
-    public List<Rect> Streets { get; set; } = [];
-    public List<Vector2> Lights { get; set; } = [];
+    public List<SettlementBuilding> Buildings { get; init; } = [];
+    public List<Rect> Streets { get; init; } = [];
+    public List<Vector2> Lights { get; init; } = [];
     public Rect Perimeter { get; set; }
 }
 
 public class SettlementData
 {
-    public string Name { get; set; } = "";
-    public TileRect TileRect { get; set; } = new(0, 0, 8, 6);
+    public string Name { get; init; } = "";
+    public TileRect TileRect { get; init; } = new(0, 0, 8, 6);
     public SettlementLayout Layout { get; set; } = null!;
 }
 

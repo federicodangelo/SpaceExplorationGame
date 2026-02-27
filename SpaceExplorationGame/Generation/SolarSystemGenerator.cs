@@ -9,31 +9,31 @@ namespace SpaceExplorationGame.Generation;
 /// </summary>
 public class PlanetData
 {
-    public int Index { get; set; }
-    public string Name { get; set; } = "";
-    public PlanetType Type { get; set; }
-    public float OrbitRadius { get; set; }       // distance from star in world pixels
-    public float OrbitSpeed { get; set; }         // radians per second
-    public float StartAngle { get; set; }         // starting orbital angle
-    public float Radius { get; set; }             // visual radius
-    public Color3 Color { get; set; }
-    public bool HasSolidSurface { get; set; }
-    public int MoonCount { get; set; }
-    public bool HasRings { get; set; }
-    public List<MoonData> Moons { get; set; } = [];
-    public bool HasSettlement { get; set; }
+    public int Index { get; init; }
+    public string Name { get; init; } = "";
+    public PlanetType Type { get; init; }
+    public float OrbitRadius { get; init; }       // distance from star in world pixels
+    public float OrbitSpeed { get; init; }         // radians per second
+    public float StartAngle { get; init; }         // starting orbital angle
+    public float Radius { get; init; }             // visual radius
+    public Color3 Color { get; init; }
+    public bool HasSolidSurface { get; init; }
+    public int MoonCount { get; init; }
+    public bool HasRings { get; init; }
+    public List<MoonData> Moons { get; init; } = [];
+    public bool HasSettlement { get; init; }
 }
 
 public class MoonData
 {
-    public int Index { get; set; }
-    public string Name { get; set; } = "";
-    public float OrbitRadius { get; set; }
-    public float OrbitSpeed { get; set; }
-    public float StartAngle { get; set; }
-    public float Radius { get; set; }
-    public Color3 Color { get; set; }
-    public PlanetType Type { get; set; } = PlanetType.Rocky;
+    public int Index { get; init; }
+    public string Name { get; init; } = "";
+    public float OrbitRadius { get; init; }
+    public float OrbitSpeed { get; init; }
+    public float StartAngle { get; init; }
+    public float Radius { get; init; }
+    public Color3 Color { get; init; }
+    public PlanetType Type { get; init; } = PlanetType.Rocky;
 
     /// <summary>Convert moon data to PlanetData for surface generation.</summary>
     public PlanetData ToPlanetData(int parentPlanetIndex)
@@ -59,30 +59,30 @@ public class MoonData
 
 public class AsteroidBeltData
 {
-    public float InnerRadius { get; set; }
-    public float OuterRadius { get; set; }
-    public int AsteroidCount { get; set; }
+    public float InnerRadius { get; init; }
+    public float OuterRadius { get; init; }
+    public int AsteroidCount { get; init; }
 }
 
 public class SpaceStationData
 {
-    public int Index { get; set; }
-    public string Name { get; set; } = "";
-    public int OrbitParentPlanetIndex { get; set; } = -1; // -1 = orbits star
-    public float OrbitRadius { get; set; }
-    public float OrbitSpeed { get; set; }
-    public float StartAngle { get; set; }
+    public int Index { get; init; }
+    public string Name { get; init; } = "";
+    public int OrbitParentPlanetIndex { get; init; } = -1; // -1 = orbits star
+    public float OrbitRadius { get; init; }
+    public float OrbitSpeed { get; init; }
+    public float StartAngle { get; init; }
 }
 
 public class NpcShipSpawnData
 {
-    public Vector2 Position { get; set; }
-    public float Rotation { get; set; }
-    public Faction Faction { get; set; }
-    public NpcShipStats Stats { get; set; }
-    public ShipWeaponSpec[] Weapons { get; set; } = [];
-    public int DangerLevel { get; set; }
-    public int LootCredits { get; set; }
+    public Vector2 Position { get; init; }
+    public float Rotation { get; init; }
+    public Faction Faction { get; init; }
+    public NpcShipStats Stats { get; init; }
+    public ShipWeaponSpec[] Weapons { get; init; } = [];
+    public int DangerLevel { get; init; }
+    public int LootCredits { get; init; }
 }
 
 

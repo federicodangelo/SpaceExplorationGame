@@ -30,9 +30,9 @@ public enum InteriorType
 /// </summary>
 public class InteriorRoom
 {
-    public string Name { get; set; } = "";
-    public RoomFunction Function { get; set; }
-    public TileRect TileRect { get; set; }
+    public string Name { get; init; } = "";
+    public RoomFunction Function { get; init; }
+    public TileRect TileRect { get; init; }
     public int CenterX => TileRect.CenterX;
     public int CenterY => TileRect.CenterY;
 }
@@ -60,11 +60,11 @@ public enum RoomFunction
 /// </summary>
 public class InteriorNpc
 {
-    public string Name { get; set; } = "";
-    public string Role { get; set; } = "";
-    public TilePos TilePos { get; set; }
-    public string[] DialogueLines { get; set; } = [];
-    public Color3 Color { get; set; } = new(100, 200, 255);
+    public string Name { get; init; } = "";
+    public string Role { get; init; } = "";
+    public TilePos TilePos { get; init; }
+    public string[] DialogueLines { get; init; } = [];
+    public Color3 Color { get; init; } = new(100, 200, 255);
 }
 
 /// <summary>
@@ -72,9 +72,9 @@ public class InteriorNpc
 /// </summary>
 public class InteriorInteractable
 {
-    public string Name { get; set; } = "";
-    public InteractableType Type { get; set; }
-    public TilePos TilePos { get; set; }
+    public string Name { get; init; } = "";
+    public InteractableType Type { get; init; }
+    public TilePos TilePos { get; init; }
 }
 
 public enum InteractableType
@@ -95,14 +95,14 @@ public enum InteractableType
 /// </summary>
 public class InteriorData
 {
-    public InteriorType Type { get; set; }
-    public string Name { get; set; } = "";
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public InteriorTileType[,] Tiles { get; set; } = null!;
-    public List<InteriorRoom> Rooms { get; set; } = [];
-    public List<InteriorNpc> Npcs { get; set; } = [];
-    public List<InteriorInteractable> Interactables { get; set; } = [];
+    public InteriorType Type { get; init; }
+    public string Name { get; init; } = "";
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public InteriorTileType[,] Tiles { get; init; } = null!;
+    public List<InteriorRoom> Rooms { get; init; } = [];
+    public List<InteriorNpc> Npcs { get; init; } = [];
+    public List<InteriorInteractable> Interactables { get; init; } = [];
     public TilePos SpawnPoint { get; set; }
 }
 

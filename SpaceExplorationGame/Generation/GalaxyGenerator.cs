@@ -9,15 +9,15 @@ namespace SpaceExplorationGame.Generation;
 /// </summary>
 public class StarSystemData
 {
-    public int Index { get; set; }
-    public string Name { get; set; } = "";
-    public Vector2 GalaxyPosition { get; set; }  // position on galaxy map in world pixels
-    public StarClass StarClass { get; set; }
-    public float StarRadius { get; set; }
-    public Color3 StarColor { get; set; }
-    public int PlanetCount { get; set; }
-    public bool HasSpaceStation { get; set; }
-    public int DangerLevel { get; set; }   // 1-5, determines enemy count/strength
+    public int Index { get; init; }
+    public string Name { get; init; } = "";
+    public Vector2 GalaxyPosition { get; init; }  // position on galaxy map in world pixels
+    public StarClass StarClass { get; init; }
+    public float StarRadius { get; init; }
+    public Color3 StarColor { get; init; }
+    public int PlanetCount { get; init; }
+    public bool HasSpaceStation { get; init; }
+    public int DangerLevel { get; init; }   // 1-5, determines enemy count/strength
 }
 
 /// <summary>
