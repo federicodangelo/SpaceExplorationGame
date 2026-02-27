@@ -63,12 +63,20 @@ public static class GalaxyGenerator
             float x = centerX + MathF.Cos(angle) * dist * galaxyRadius;
             float y = centerY + MathF.Sin(angle) * dist * galaxyRadius;
 
-            // Generate unique name
+            // Generate unique name (with retry limit to avoid infinite loop)
             string name;
+            int nameAttempts = 0;
+            const int MaxNameAttempts = 50;
             do
             {
                 name = rng.Pick(StarNamePrefixes) + " " + rng.Pick(StarNameSuffixes);
-            } while (usedNames.Contains(name));
+                nameAttempts++;
+            } while (usedNames.Contains(name) && nameAttempts < MaxNameAttempts);
+
+            // Fallback: append system index to guarantee uniqueness
+            if (usedNames.Contains(name))
+                name = $"{rng.Pick(StarNamePrefixes)} {rng.Pick(StarNameSuffixes)}-{i}";
+
             usedNames.Add(name);
 
             // Determine star class (weighted distribution)
