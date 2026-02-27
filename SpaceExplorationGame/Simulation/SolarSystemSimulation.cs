@@ -45,6 +45,7 @@ public class SolarSystemSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public ISimulation? Parent { get; }
 
     // ── Proximity (updated per-player) ──────────────────────────────
     public int NearbyPlanetIndex { get; private set; } = -1;
@@ -97,10 +98,11 @@ public class SolarSystemSimulation : ISimulation
     // Reference to game for loot processing (needs Player, Audio access)
     private readonly Game _game;
 
-    public SolarSystemSimulation(Game game, StarSystemData starSystem)
+    public SolarSystemSimulation(Game game, StarSystemData starSystem, ISimulation? parent = null)
     {
         _game = game;
         StarSystem = starSystem;
+        Parent = parent;
         EcsWorld = World.Create();
     }
 

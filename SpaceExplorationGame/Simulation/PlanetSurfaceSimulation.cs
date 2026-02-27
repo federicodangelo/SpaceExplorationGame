@@ -34,6 +34,7 @@ public class PlanetSurfaceSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public ISimulation? Parent { get; }
 
     // ── Proximity state ─────────────────────────────────────────────
     public SettlementData? NearSettlement { get; private set; }
@@ -78,7 +79,8 @@ public class PlanetSurfaceSimulation : ISimulation
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         int landingTileX = -1, int landingTileY = -1,
-        PlanetSurfaceData? preGeneratedSurfaceData = null)
+        PlanetSurfaceData? preGeneratedSurfaceData = null,
+        ISimulation? parent = null)
     {
         EcsWorld = World.Create();
         _game = game;
@@ -87,6 +89,7 @@ public class PlanetSurfaceSimulation : ISimulation
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
+        Parent = parent;
     }
 
     public void Create()

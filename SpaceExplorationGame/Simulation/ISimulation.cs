@@ -22,6 +22,13 @@ public interface ISimulation
     /// <summary>Whether any players are currently present in this simulation.</summary>
     bool HasPlayers { get; }
 
+    /// <summary>
+    /// Optional parent simulation. When a simulation has players, all ancestors in the
+    /// parent chain are kept alive (their empty-timers are reset) so that upper-level
+    /// simulations are never destroyed while a player is in a lower-level one.
+    /// </summary>
+    ISimulation? Parent { get; }
+
     /// <summary>Initialize the simulation: generate world content, create entities, set up ECS systems.</summary>
     void Create();
 

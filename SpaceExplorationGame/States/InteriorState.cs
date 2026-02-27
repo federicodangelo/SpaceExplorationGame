@@ -73,9 +73,13 @@ public class InteriorState : GameState
     public override void Enter(Game game)
     {
         // Get or create the simulation
+        ISimulation? parentSim = _origin == InteriorOrigin.Settlement && _planet != null
+            ? game.Coordinator.Find<PlanetSurfaceSimulation>(
+                s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planet.Index)
+            : game.Coordinator.Find<SolarSystemSimulation>(s => s.StarSystem.Index == _starSystem.Index);
         _sim = game.Coordinator.FindOrCreate<InteriorSimulation>(
             s => s.Origin == _origin && s.StarSystem.Index == _starSystem.Index,
-            () => new InteriorSimulation(game, _origin, _starSystem, _station, _planet, _settlement));
+            () => new InteriorSimulation(game, _origin, _starSystem, _station, _planet, _settlement, parentSim));
 
         // Add player
         _simPlayer = _sim.AddPlayer(game.Player);

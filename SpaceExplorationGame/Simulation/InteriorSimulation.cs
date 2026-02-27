@@ -31,6 +31,7 @@ public class InteriorSimulation : ISimulation
     private readonly List<SimulationPlayer> _players = [];
     public IReadOnlyList<SimulationPlayer> Players => _players;
     public bool HasPlayers => _players.Count > 0;
+    public ISimulation? Parent { get; }
 
     // ── Proximity ───────────────────────────────────────────────────
     public InteriorNpc? NearestNpc { get; private set; }
@@ -46,7 +47,8 @@ public class InteriorSimulation : ISimulation
     private readonly Game _game;
 
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
-        SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
+        SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
+        ISimulation? parent = null)
     {
         EcsWorld = World.Create();
         _game = game;
@@ -55,6 +57,7 @@ public class InteriorSimulation : ISimulation
         Station = station;
         Planet = planet;
         Settlement = settlement;
+        Parent = parent;
     }
 
     public void Create()

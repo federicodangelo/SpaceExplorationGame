@@ -56,7 +56,19 @@ public class SimulationCoordinator
             var entry = _simulations[i];
             entry.Simulation.Update(ctx);
 
-            if (!entry.Simulation.HasPlayers)
+            if (entry.Simulation.HasPlayers)
+            {
+                entry.EmptyTimer = 0f;
+
+                // Keep the entire ancestor chain alive
+                var ancestor = entry.Simulation.Parent;
+                while (ancestor != null)
+                {
+                    ResetEmptyTimer(ancestor);
+                    ancestor = ancestor.Parent;
+                }
+            }
+            else
             {
                 entry.EmptyTimer += ctx.Dt;
                 if (entry.EmptyTimer >= DestroyDelaySeconds)
@@ -65,9 +77,17 @@ public class SimulationCoordinator
                     _simulations.RemoveAt(i);
                 }
             }
-            else
+        }
+    }
+
+    private void ResetEmptyTimer(ISimulation simulation)
+    {
+        foreach (var entry in _simulations)
+        {
+            if (entry.Simulation == simulation)
             {
                 entry.EmptyTimer = 0f;
+                return;
             }
         }
     }
