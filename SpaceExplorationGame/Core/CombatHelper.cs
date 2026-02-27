@@ -14,7 +14,6 @@ namespace SpaceExplorationGame.Core;
 /// </summary>
 public static class CombatHelper
 {
-    static private Random _random = new();
 
     /// <summary>
     /// Create damage popups from projectile system damage events.
@@ -46,7 +45,7 @@ public static class CombatHelper
 
     private static float NextUnitFloat()
     {
-        return _random.NextSingle();
+        return Random.Shared.NextSingle();
     }
 
     /// <summary>
