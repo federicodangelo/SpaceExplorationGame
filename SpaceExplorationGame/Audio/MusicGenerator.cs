@@ -261,6 +261,13 @@ public sealed class MusicGenerator
 
             buffer[i * 2] += left;
             buffer[i * 2 + 1] += right;
+
+            // Wrap phase accumulators to prevent floating-point precision loss over long sessions
+            _droneP1 %= 1.0; _droneP2 %= 1.0; _droneSub %= 1.0;
+            _padP1 %= 1.0; _padP2 %= 1.0; _padP3 %= 1.0;
+            _arpP %= 1.0;
+            _bassP %= 1.0;
+            _lfo1P %= 1.0; _lfo2P %= 1.0;
         }
     }
 
