@@ -278,7 +278,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     protected override string? ApplyDeathPenalties(SimulationPlayer player)
     {
-        int creditsLost = (int)(player.Data.Credits * 0.1f);
+        int creditsLost = (int)(player.Data.Credits * GameConfig.DeathCreditsLossPercent);
         player.Data.Credits -= creditsLost;
         return creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
     }
