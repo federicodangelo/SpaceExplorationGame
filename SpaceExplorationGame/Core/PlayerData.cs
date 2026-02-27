@@ -299,15 +299,17 @@ public class PlayerData
     public bool InVehicle { get; set; } = false;    // currently driving?
 
     // Avatar health (persistent across surface visits)
-    public float AvatarHealth { get; set; } = 100f;
-    public float AvatarMaxHealth { get; set; } = 100f;
+    public float AvatarHealth { get; set; } = GameConfig.AvatarBaseMaxHealth;
+    public float AvatarMaxHealth { get; private set; } = GameConfig.AvatarBaseMaxHealth;
+    public float AvatarWalkSpeed { get; private set; } = GameConfig.AvatarBaseWalkSpeed;
 
     /// <summary>Recalculate avatar max health from base + suit armor stat.</summary>
     public void RecalculateAvatarStats()
     {
         var stats = GetCombinedAvatarStats();
-        AvatarMaxHealth = 100f + stats.Armor;
+        AvatarMaxHealth = GameConfig.AvatarBaseMaxHealth + stats.Armor;
         AvatarHealth = Math.Min(AvatarHealth, AvatarMaxHealth);
+        AvatarWalkSpeed = GameConfig.AvatarBaseWalkSpeed + stats.WalkSpeed;
     }
 
     // Avatar equipment

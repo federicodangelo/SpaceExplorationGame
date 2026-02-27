@@ -105,18 +105,6 @@ public static class CombatHelper
     }
 
     /// <summary>
-    /// Tick down a combat message timer, clearing the message when it expires.
-    /// </summary>
-    public static void UpdateCombatMessageTimer(ref string? combatMessage, ref float combatMessageTimer, float dt)
-    {
-        if (combatMessageTimer > 0)
-        {
-            combatMessageTimer -= dt;
-            if (combatMessageTimer <= 0) combatMessage = null;
-        }
-    }
-
-    /// <summary>
     /// Update damage popups and explosions (timers, removal).
     /// </summary>
     public static void UpdateVisualEffects(List<DamagePopup> popups, List<Explosion> explosions, float dt)

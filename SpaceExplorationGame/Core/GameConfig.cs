@@ -68,6 +68,11 @@ public static class GameConfig
     public const float VehicleBrakeMultiplier = 0.92f; // brake damping per frame
     public const float VehicleMountRadius = 35f;      // distance to mount/dismount
 
+    // Avatar
+    public const float AvatarBaseWalkSpeed = 200f;   // pixels/sec
+
+    public const float AvatarBaseMaxHealth = 100f;
+
     // ── Combat ──────────────────────────────────────────────────
     // Projectiles
     public const float ProjectileRadius = 4f;          // collision radius

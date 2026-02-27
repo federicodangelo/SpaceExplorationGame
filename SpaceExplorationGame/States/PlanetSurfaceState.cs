@@ -48,8 +48,6 @@ public class PlanetSurfaceState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
     private VehicleMovementSystem? _vehicleMovementSystem;
 
-    private const float BaseAvatarSpeed = 200f;
-
     // ── Visual effects ──────────────────────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
@@ -98,9 +96,9 @@ public class PlanetSurfaceState : GameState
         _inGameMenuOverlay.OnMapRequested = g =>
         {
             var avatarPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
-            var shipPos = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity).Position;
-            Vector2? vehiclePos = _sim.VehicleDeployed
-                ? _sim.EcsWorld.Get<Transform>(_sim.VehicleEntity).Position
+            var shipPos = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity).Position;
+            Vector2? vehiclePos = _sim.LocalVehicleDeployed
+                ? _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity).Position
                 : null;
             _surfaceMapOverlay.Open(g, _starSystem, _planet, _sim.SurfaceData,
                 shipPos, avatarPos, vehiclePos);
@@ -123,7 +121,7 @@ public class PlanetSurfaceState : GameState
         if (hasSavedPositions)
         {
             _playerInsideShip = false;
-            if (game.Player.SavedPlayerInVehicle && _sim.VehicleDeployed)
+            if (game.Player.SavedPlayerInVehicle && _sim.LocalVehicleDeployed)
             {
                 MountVehicle(game);
             }
@@ -137,7 +135,7 @@ public class PlanetSurfaceState : GameState
         game.Player.ClearSavedSurfacePositions();
 
         // Initialize input/camera systems on simulation's ECS world
-        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+        float avatarSpeed = game.Player.AvatarWalkSpeed;
         _movementSystem = new AvatarMovementSystem(_sim.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 
@@ -212,9 +210,9 @@ public class PlanetSurfaceState : GameState
         if (input.IsActionPressed(InputAction.ToggleMap))
         {
             var avatarPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
-            var shipPos = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity).Position;
-            Vector2? vehiclePos = _sim.VehicleDeployed
-                ? _sim.EcsWorld.Get<Transform>(_sim.VehicleEntity).Position
+            var shipPos = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity).Position;
+            Vector2? vehiclePos = _sim.LocalVehicleDeployed
+                ? _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity).Position
                 : null;
             _surfaceMapOverlay.Open(game, _starSystem, _planet, _sim.SurfaceData,
                 shipPos, avatarPos, vehiclePos);
@@ -410,7 +408,7 @@ public class PlanetSurfaceState : GameState
         {
             BoardShip(game);
         }
-        else if (_sim.NearVehicle && _sim.VehicleDeployed)
+        else if (_sim.NearVehicle && _sim.LocalVehicleDeployed)
         {
             MountVehicle(game);
         }
@@ -425,14 +423,14 @@ public class PlanetSurfaceState : GameState
 
     private void MountVehicle(Game game)
     {
-        if (!_sim.VehicleDeployed)
+        if (!_sim.LocalVehicleDeployed)
         {
-            var shipTf = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity);
+            var shipTf = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
             _sim.DeployVehicle(shipTf.Position.X, shipTf.Position.Y);
         }
 
         ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-        ref var vTf = ref _sim.EcsWorld.Get<Transform>(_sim.VehicleEntity);
+        ref var vTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
         avatarTf.Position = vTf.Position;
         avatarTf.Rotation = vTf.Rotation;
 
@@ -458,9 +456,9 @@ public class PlanetSurfaceState : GameState
     private void DismountVehicle(Game game)
     {
         ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-        if (_sim.VehicleDeployed)
+        if (_sim.LocalVehicleDeployed)
         {
-            ref var vehicleTf = ref _sim.EcsWorld.Get<Transform>(_sim.VehicleEntity);
+            ref var vehicleTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
             avatarTf.Position = vehicleTf.Position + new Vector2(20, 0);
         }
         avatarTf.Rotation = 0f;
@@ -468,7 +466,7 @@ public class PlanetSurfaceState : GameState
         if (_sim.EcsWorld.Has<Velocity>(_simPlayer.Entity))
         {
             ref var avatarVelocity = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-            float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+            float avatarSpeed = game.Player.AvatarWalkSpeed;
             avatarVelocity.MaxSpeed = avatarSpeed;
             avatarVelocity.MaxRotationSpeed = 0f;
             avatarVelocity.Velocity = Vector2.Zero;
@@ -484,7 +482,7 @@ public class PlanetSurfaceState : GameState
     {
         _playerInsideShip = true;
         _starshipMenuOverlay.HasVehicle = game.Player.HasVehicle;
-        _starshipMenuOverlay.VehicleDeployed = _sim.VehicleDeployed;
+        _starshipMenuOverlay.VehicleDeployed = _sim.LocalVehicleDeployed;
         _starshipMenuOverlay.Open();
     }
 
@@ -495,11 +493,11 @@ public class PlanetSurfaceState : GameState
             case StarshipMenuOption.TakeOff:
                 _playerInsideShip = true;
                 game.Player.InVehicle = false;
-                if (_sim.VehicleDeployed)
+                if (_sim.LocalVehicleDeployed)
                     _sim.StowVehicle();
                 game.Player.ClearSavedSurfacePositions();
 
-                var launchShipTf = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity);
+                var launchShipTf = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
                 int launchTileX = Math.Clamp((int)MathF.Round(launchShipTf.Position.X / GameConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Width - 1));
                 int launchTileY = Math.Clamp((int)MathF.Round(launchShipTf.Position.Y / GameConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Height - 1));
 
@@ -515,7 +513,7 @@ public class PlanetSurfaceState : GameState
 
             case StarshipMenuOption.DisembarkOnFoot:
                 _playerInsideShip = false;
-                ref var shipTf = ref _sim.EcsWorld.Get<Transform>(_sim.ShipEntity);
+                ref var shipTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
                 ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
                 avatarTf.Position = shipTf.Position + new Vector2(30, 0);
                 avatarTf.Rotation = 0f;
@@ -530,18 +528,18 @@ public class PlanetSurfaceState : GameState
 
     private void SaveSurfacePositions(Game game)
     {
-        var shipTf = _sim.EcsWorld.Get<Transform>(_sim.ShipEntity);
+        var shipTf = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
         float vehicleX = 0, vehicleY = 0;
-        if (_sim.VehicleDeployed)
+        if (_sim.LocalVehicleDeployed)
         {
-            var vehicleTf = _sim.EcsWorld.Get<Transform>(_sim.VehicleEntity);
+            var vehicleTf = _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
             vehicleX = vehicleTf.Position.X;
             vehicleY = vehicleTf.Position.Y;
         }
         var avatarTf = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
         game.Player.SaveSurfacePositions(
             shipTf.Position.X, shipTf.Position.Y,
-            vehicleX, vehicleY, _sim.VehicleDeployed,
+            vehicleX, vehicleY, _sim.LocalVehicleDeployed,
             avatarTf.Position.X, avatarTf.Position.Y,
             _inVehicle);
     }
@@ -575,14 +573,14 @@ public class PlanetSurfaceState : GameState
         }
 
         // Ship
-        var shipTf = world.Get<Transform>(_sim.ShipEntity);
+        var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
         game.SpaceshipRenderer.RenderLanded(renderer, camera, shipTf.Position,
             game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 
         // Vehicle
-        if (_sim.VehicleDeployed)
+        if (_sim.LocalVehicleDeployed)
         {
-            var vehicleTf = world.Get<Transform>(_sim.VehicleEntity);
+            var vehicleTf = world.Get<Transform>(_sim.LocalVehicleEntity);
             game.VehicleRenderer.Render(renderer, camera, vehicleTf.Position,
                 vehicleTf.Rotation, _inVehicle);
         }
@@ -614,7 +612,7 @@ public class PlanetSurfaceState : GameState
         if (!_sim.PlayerDead && !_playerInsideShip)
         {
             HudRenderer.RenderPlanetSurfacePrompt(renderer,
-                _inVehicle, _sim.NearShip, _sim.NearVehicle, _sim.VehicleDeployed, _sim.NearSettlement,
+                _inVehicle, _sim.NearShip, _sim.NearVehicle, _sim.LocalVehicleDeployed, _sim.NearSettlement,
                 game.Input.GetActionHelpText(InputAction.Interact));
         }
 
@@ -637,8 +635,8 @@ public class PlanetSurfaceState : GameState
         }
 
         // Minimap
-        Vector2? vehiclePos = _sim.VehicleDeployed && !_inVehicle
-            ? world.Get<Transform>(_sim.VehicleEntity).Position
+        Vector2? vehiclePos = _sim.LocalVehicleDeployed && !_inVehicle
+            ? world.Get<Transform>(_sim.LocalVehicleEntity).Position
             : null;
         HudMinimapRenderer.RenderPlanetSurfaceMinimap(renderer, _sim.SurfaceData,
             avatarPos, shipTf.Position, vehiclePos, world);

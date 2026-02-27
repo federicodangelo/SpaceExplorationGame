@@ -163,12 +163,12 @@ public static class EntityFactory
 
     /// <summary>Create the player avatar entity for planet surface or interior walking.</summary>
     public static Entity CreatePlayerAvatar(World world, float x, float y, float speed,
-        float maxHealth = 0f, float currentHealth = 0f)
+        float maxHealth = 0f, float currentHealth = 0f, Func<Vector2, bool>? canMoveTo = null)
     {
         var entity = world.Create(
             new Transform(x, y),
             Sprite.ColoredRect(12, 12, new Color3(100, 255, 100)),
-            new Velocity(speed),
+            new Velocity(speed) { CanMoveTo = canMoveTo },
             new PlayerControlled()
         );
 
@@ -441,12 +441,12 @@ public static class EntityFactory
 
     /// <summary>Create a hostile fauna entity on a planet surface.</summary>
     public static Entity CreateFauna(World world, Vector2 position, float wanderAngle,
-        float hullMultiplier = 1f, float damageMultiplier = 1f)
+        float hullMultiplier = 1f, float damageMultiplier = 1f, Func<Vector2, bool>? canMoveTo = null)
     {
         return world.Create(
             new Transform(position),
             Sprite.ColoredRect(14, 14, new Color3(180, 60, 60)),
-            new Velocity(GameConfig.FaunaSpeed),
+            new Velocity(GameConfig.FaunaSpeed) { CanMoveTo = canMoveTo },
             new Health(GameConfig.FaunaBaseHull * hullMultiplier),
             new SurfaceAI
             {
@@ -476,12 +476,12 @@ public static class EntityFactory
 
     /// <summary>Create a hostile bandit NPC entity on a planet surface.</summary>
     public static Entity CreateBandit(World world, Vector2 position, float wanderAngle,
-        float hullMultiplier = 1f, float damageMultiplier = 1f)
+        float hullMultiplier = 1f, float damageMultiplier = 1f, Func<Vector2, bool>? canMoveTo = null)
     {
         return world.Create(
             new Transform(position),
             Sprite.ColoredRect(12, 12, new Color3(200, 100, 60)),
-            new Velocity(GameConfig.BanditSpeed),
+            new Velocity(GameConfig.BanditSpeed) { CanMoveTo = canMoveTo },
             new Health(GameConfig.BanditBaseHull * hullMultiplier),
             new SurfaceAI
             {

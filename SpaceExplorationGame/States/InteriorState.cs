@@ -58,8 +58,6 @@ public class InteriorState : GameState
     private readonly SellCargoOverlay _sellCargo = new();
     private readonly HealthStationOverlay _healthStationOverlay = new();
 
-    private const float BaseAvatarSpeed = 200f;
-
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
     {
@@ -85,7 +83,7 @@ public class InteriorState : GameState
         _simPlayer = _sim.AddPlayer(game.Player);
 
         // Initialize input/camera systems on simulation's ECS world
-        float avatarSpeed = BaseAvatarSpeed + game.Player.GetCombinedAvatarStats().WalkSpeed;
+        float avatarSpeed = game.Player.AvatarWalkSpeed;
         _movementSystem = new AvatarMovementSystem(_sim.EcsWorld, game.Input, avatarSpeed);
         _movementSystem.Initialize();
 

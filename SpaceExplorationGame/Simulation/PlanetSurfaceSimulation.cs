@@ -24,9 +24,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public PlanetSurfaceData SurfaceData { get; private set; } = null!;
 
     // ── Entities ────────────────────────────────────────────────────
-    public Entity ShipEntity { get; set; }
-    public Entity VehicleEntity { get; set; }
-    public bool VehicleDeployed { get; set; }
+    public Entity LocalShipEntity { get; set; }
+    public Entity LocalVehicleEntity { get; set; }
+    public bool LocalVehicleDeployed { get; set; }
 
     // ── Proximity state ─────────────────────────────────────────────
     public SettlementData? NearSettlement { get; private set; }
@@ -34,20 +34,13 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public bool NearVehicle { get; private set; }
 
     private const float BoardShipRadius = 30f;
-    private const float RespawnDelay = 2.5f;
+    protected override float RespawnDelay => 2.5f;
 
-    // ── System event outputs ────────────────────────────────────────
-    public IReadOnlyList<DamageEvent> DamageEventsLastUpdate =>
-        _projectileSystem?.DamageEventsLastUpdate ?? (IReadOnlyList<DamageEvent>)[];
-    public IReadOnlyList<DestroyedEntity> DestroyedEntitiesLastUpdate =>
-        _projectileSystem?.DestroyedLastUpdate ?? (IReadOnlyList<DestroyedEntity>)[];
+    // ── System event outputs (planet-surface-specific) ─────────────
     public IReadOnlyList<SurfaceProjectileSpawn> EnemyProjectilesSpawnedLastUpdate =>
         _enemyAISystem?.ProjectilesSpawnedLastUpdate ?? (IReadOnlyList<SurfaceProjectileSpawn>)[];
 
-    // ── ECS Systems ─────────────────────────────────────────────────
-    private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
-    private VelocitySystem _velocitySystem = null!;
-    private ProjectileSystem _projectileSystem = null!;
+    // ── ECS Systems (planet-surface-specific) ──────────────────────
     private AvatarEnemyAISystem _enemyAISystem = null!;
 
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
@@ -68,15 +61,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         SurfaceData = _preGeneratedSurfaceData
             ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
 
-        // Initialize ECS systems
-        _dependentEntityCleanupSystem = new DependentEntityCleanupSystem(EcsWorld);
-        _dependentEntityCleanupSystem.Initialize();
-
-        _velocitySystem = new VelocitySystem(EcsWorld);
-        _velocitySystem.Initialize();
-
-        _projectileSystem = new ProjectileSystem(EcsWorld);
-        _projectileSystem.Initialize();
+        // Initialize shared ECS systems (velocity, projectiles, cleanup)
+        InitCoreSystems();
 
         _enemyAISystem = new AvatarEnemyAISystem(EcsWorld);
         _enemyAISystem.Initialize();
@@ -84,23 +70,13 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Spawn fauna
         foreach (var (fx, fy, angle) in SurfaceData.FaunaSpawns)
         {
-            var fauna = EntityFactory.CreateFauna(EcsWorld, new Vector2(fx, fy), angle);
-            if (EcsWorld.Has<Velocity>(fauna))
-            {
-                ref var faunaVelocity = ref EcsWorld.Get<Velocity>(fauna);
-                faunaVelocity.CanMoveTo = CanMoveToTerrain;
-            }
+            EntityFactory.CreateFauna(EcsWorld, new Vector2(fx, fy), angle, canMoveTo: CanMoveToTerrain);
         }
 
         // Spawn bandits
         foreach (var (bx, by, angle) in SurfaceData.BanditSpawns)
         {
-            var bandit = EntityFactory.CreateBandit(EcsWorld, new Vector2(bx, by), angle);
-            if (EcsWorld.Has<Velocity>(bandit))
-            {
-                ref var banditVelocity = ref EcsWorld.Get<Velocity>(bandit);
-                banditVelocity.CanMoveTo = CanMoveToTerrain;
-            }
+            EntityFactory.CreateBandit(EcsWorld, new Vector2(bx, by), angle, canMoveTo: CanMoveToTerrain);
         }
 
         // Spawn mineable rocks
@@ -128,12 +104,12 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         _velocitySystem.Update(in dt);
 
         // Sync vehicle position/rotation when driving
-        if (LocalPlayer is { } vehicleDriver && VehicleDeployed)
+        if (LocalPlayer is { } vehicleDriver && LocalVehicleDeployed)
         {
-            if (EcsWorld.IsAlive(vehicleDriver.Entity) && EcsWorld.IsAlive(VehicleEntity) && vehicleDriver.Data.InVehicle)
+            if (EcsWorld.IsAlive(vehicleDriver.Entity) && EcsWorld.IsAlive(LocalVehicleEntity) && vehicleDriver.Data.InVehicle)
             {
                 ref var avatarTf = ref EcsWorld.Get<Transform>(vehicleDriver.Entity);
-                ref var vehicleTf = ref EcsWorld.Get<Transform>(VehicleEntity);
+                ref var vehicleTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
                 vehicleTf.Position = avatarTf.Position;
                 vehicleTf.Rotation = avatarTf.Rotation;
             }
@@ -143,27 +119,13 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         UpdateProximity();
 
         // Combat
-        UpdateCombat(dt);
+        ProcessCombatResults(dt);
 
-        // Death timer / auto-respawn
-        if (PlayerDead)
-        {
-            RespawnTimer -= dt;
-            if (RespawnTimer <= 0)
-            {
-                HandleAvatarRespawn();
-            }
-        }
+        // Death / respawn timer
+        UpdateDeathTimer(dt);
 
         // Sync avatar health to PlayerData
-        foreach (var player in Players)
-        {
-            if (EcsWorld.IsAlive(player.Entity) && EcsWorld.Has<Health>(player.Entity))
-            {
-                var health = EcsWorld.Get<Health>(player.Entity);
-                player.Data.AvatarHealth = health.Hull;
-            }
-        }
+        SyncAllPlayerHealth();
 
         // Tick message timers
         UpdateCombatTimers(dt);
@@ -178,7 +140,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         // Recalculate avatar stats
         player.RecalculateAvatarStats();
-        float avatarSpeed = 200f + player.GetCombinedAvatarStats().WalkSpeed;
+        float avatarSpeed = player.AvatarWalkSpeed;
         float maxHp = player.AvatarMaxHealth;
         float curHp = player.AvatarHealth;
 
@@ -201,19 +163,27 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         }
 
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, playerStartX, playerStartY, avatarSpeed,
-            maxHealth: maxHp, currentHealth: curHp);
-        ref var avatarVelocity = ref EcsWorld.Get<Velocity>(avatarEntity);
-        avatarVelocity.CanMoveTo = CanMoveToTerrain;
+            maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain);
 
         // Create ship entity
-        ShipEntity = EntityFactory.CreateLandedShip(EcsWorld, shipX, shipY);
+        var shipEntity = EntityFactory.CreateLandedShip(EcsWorld, shipX, shipY);
+
+        if (player.Type == PlayerType.Local)
+        {
+            LocalShipEntity = shipEntity;
+        }
 
         // Deploy vehicle if it was deployed before
         if (player.HasSavedSurfacePositions && player.SavedVehicleDeployed)
         {
-            VehicleEntity = EntityFactory.CreateVehicle(EcsWorld,
+            var vehicleEntity = EntityFactory.CreateVehicle(EcsWorld,
                 player.SavedVehicleX, player.SavedVehicleY);
-            VehicleDeployed = true;
+
+            if (player.Type == PlayerType.Local)
+            {
+                LocalVehicleEntity = vehicleEntity;
+                LocalVehicleDeployed = true;
+            }
         }
 
         // Notify mission system
@@ -225,17 +195,17 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     /// <summary>Create a vehicle entity in the simulation world.</summary>
     public Entity DeployVehicle(float x, float y)
     {
-        VehicleEntity = EntityFactory.CreateVehicle(EcsWorld, x, y);
-        VehicleDeployed = true;
-        return VehicleEntity;
+        LocalVehicleEntity = EntityFactory.CreateVehicle(EcsWorld, x, y);
+        LocalVehicleDeployed = true;
+        return LocalVehicleEntity;
     }
 
     /// <summary>Remove the vehicle entity from the simulation.</summary>
     public void StowVehicle()
     {
-        if (VehicleDeployed && EcsWorld.IsAlive(VehicleEntity))
-            EcsWorld.Destroy(VehicleEntity);
-        VehicleDeployed = false;
+        if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
+            EcsWorld.Destroy(LocalVehicleEntity);
+        LocalVehicleDeployed = false;
     }
 
     // ── Terrain collision ───────────────────────────────────────────
@@ -278,132 +248,73 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         }
 
         // Ship proximity
-        if (EcsWorld.IsAlive(ShipEntity))
+        if (EcsWorld.IsAlive(LocalShipEntity))
         {
-            var shipPos = EcsWorld.Get<Transform>(ShipEntity).Position;
+            var shipPos = EcsWorld.Get<Transform>(LocalShipEntity).Position;
             NearShip = Vector2.Distance(avatarPos, shipPos) < BoardShipRadius;
         }
 
         // Vehicle proximity
-        if (VehicleDeployed && EcsWorld.IsAlive(VehicleEntity))
+        if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
         {
-            var vehiclePos = EcsWorld.Get<Transform>(VehicleEntity).Position;
+            var vehiclePos = EcsWorld.Get<Transform>(LocalVehicleEntity).Position;
             NearVehicle = Vector2.Distance(avatarPos, vehiclePos) < GameConfig.VehicleMountRadius;
         }
     }
 
-    // ── Combat ──────────────────────────────────────────────────────
+    // ── Virtual hook overrides ──────────────────────────────────────
 
-    private void UpdateCombat(float dt)
+    protected override ulong CombatRngSeed => 0xBEEFCAFE;
+
+    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, string? resourceMsg)
     {
-        _projectileSystem.Update(in dt);
-
-        // Process damage events
-        foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
+        if (resourceMsg != null)
         {
-            bool localPlayerInvolved =
-                (evt.OwnerFaction == Faction.Player && IsLocalPlayerEntity(evt.OwnerEntity))
-                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
-                    && IsLocalPlayerEntity(evt.Target));
-            if (localPlayerInvolved)
-                CombatMusicTimer = GameConfig.CombatMusicDelay;
+            CombatMessage = resourceMsg;
+            CombatMessageTimer = 2.5f;
         }
-
-        // Process destroyed entities
-        var combatRng = new SeededRandom((ulong)(_game.GlobalTime * 1000) ^ 0xBEEFCAFE);
-        foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
-        {
-            if (destroyed.Asteroid.HasValue)
-            {
-                var rock = destroyed.Asteroid.Value;
-                if (destroyed.KillerFaction == Faction.Player
-                    && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } miner)
-                {
-                    var playerData = miner.Data;
-                    int added = playerData.AddCargo(rock.Resource, rock.ResourceAmount);
-                    var resInfo = ResourceCatalog.Get(rock.Resource);
-                    if (added > 0)
-                    {
-                        _combatMessage = $"+{added} {resInfo.Name.ToUpper()}";
-                        _combatMessageTimer = 2.5f;
-                        playerData.NotifyResourceMined(rock.Resource, added);
-                    }
-                    else
-                    {
-                        _combatMessage = "CARGO FULL!";
-                        _combatMessageTimer = 2.5f;
-                    }
-                }
-
-                if (EcsWorld.IsAlive(destroyed.Entity))
-                    EcsWorld.Destroy(destroyed.Entity);
-            }
-            else if (destroyed.Faction == Faction.Player)
-            {
-                if (IsLocalPlayerEntity(destroyed.Entity))
-                    HandleAvatarDeath();
-            }
-            else
-            {
-                // Enemy died — apply loot if local player killed it
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
-                    && IsLocalPlayerEntity(destroyed.KillerEntity))
-                {
-                    _combatMessage = CombatHelper.ProcessLootDrop(_game, destroyed.Loot.Value, combatRng);
-                    _combatMessageTimer = 3f;
-                }
-
-                if (EcsWorld.IsAlive(destroyed.Entity))
-                    EcsWorld.Destroy(destroyed.Entity);
-            }
-        }
+        base.OnAsteroidDestroyed(destroyed, resourceMsg);
     }
 
-    private void HandleAvatarDeath()
+    protected override string? ApplyDeathPenalties(SimulationPlayer player)
     {
-        if (LocalPlayer is not { } player) return;
-        PlayerDead = true;
-        RespawnTimer = RespawnDelay;
-
-        if (EcsWorld.IsAlive(player.Entity))
-            EcsWorld.Destroy(player.Entity);
-
         int creditsLost = (int)(player.Data.Credits * 0.1f);
         player.Data.Credits -= creditsLost;
-
-        _combatMessage = creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
-        _combatMessageTimer = RespawnDelay;
+        return creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
     }
 
-    private void HandleAvatarRespawn()
+    protected override void HandlePlayerRespawn()
     {
         if (LocalPlayer is not { } player) return;
         PlayerDead = false;
 
         // Respawn near the landed ship
-        var shipPos = EcsWorld.IsAlive(ShipEntity)
-            ? EcsWorld.Get<Transform>(ShipEntity).Position
+        var shipPos = EcsWorld.IsAlive(LocalShipEntity)
+            ? EcsWorld.Get<Transform>(LocalShipEntity).Position
             : new Vector2(SurfaceData.LandingZone.X * GameConfig.TileSize,
                           SurfaceData.LandingZone.Y * GameConfig.TileSize);
 
         player.Data.RecalculateAvatarStats();
-        float avatarSpeed = 200f + player.Data.GetCombinedAvatarStats().WalkSpeed;
         player.Data.AvatarHealth = player.Data.AvatarMaxHealth;
 
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld,
-            shipPos.X, shipPos.Y - 20f, avatarSpeed,
-            maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth);
-        ref var avatarVelocity = ref EcsWorld.Get<Velocity>(avatarEntity);
-        avatarVelocity.CanMoveTo = CanMoveToTerrain;
+            shipPos.X, shipPos.Y - 20f, player.Data.AvatarWalkSpeed,
+            maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth,
+            canMoveTo: CanMoveToTerrain);
 
         player.Entity = avatarEntity;
 
         // Stow vehicle on respawn
-        if (VehicleDeployed)
+        if (LocalVehicleDeployed)
             StowVehicle();
         player.Data.InVehicle = false;
 
-        _combatMessage = "RESPAWNED";
-        _combatMessageTimer = 3f;
+        CombatMessage = "RESPAWNED";
+        CombatMessageTimer = 3f;
+    }
+
+    protected override void SyncPlayerHealth(SimulationPlayer player, float hull)
+    {
+        player.Data.AvatarHealth = hull;
     }
 }

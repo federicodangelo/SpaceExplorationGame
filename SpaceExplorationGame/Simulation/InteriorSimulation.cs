@@ -34,8 +34,6 @@ public class InteriorSimulation : SimulationBase
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
 
-    private const float BaseAvatarSpeed = 200f;
-
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
         ISimulation? parent = null)
@@ -81,18 +79,14 @@ public class InteriorSimulation : SimulationBase
         float spawnX = Interior.SpawnPoint.X * GameConfig.TileSize;
         float spawnY = Interior.SpawnPoint.Y * GameConfig.TileSize;
 
-        float avatarSpeed = BaseAvatarSpeed + player.GetCombinedAvatarStats().WalkSpeed;
-
-        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, avatarSpeed);
-        ref var playerVelocity = ref EcsWorld.Get<Velocity>(avatarEntity);
-        playerVelocity.CanMoveTo = newPos =>
+        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, player.AvatarWalkSpeed, canMoveTo: pos =>
         {
-            int tileX = (int)(newPos.X / GameConfig.TileSize);
-            int tileY = (int)(newPos.Y / GameConfig.TileSize);
+            int tileX = (int)(pos.X / GameConfig.TileSize);
+            int tileY = (int)(pos.Y / GameConfig.TileSize);
             return tileX >= 0 && tileX < Interior.Width &&
                    tileY >= 0 && tileY < Interior.Height &&
                    InteriorGenerator.IsWalkable(Interior.Tiles[tileX, tileY]);
-        };
+        });
 
         // Notify mission system
         if (Origin == InteriorOrigin.Settlement && Planet != null)
