@@ -281,9 +281,12 @@ public class InteriorState : GameState
         InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, avatarTf.Position,
             game.AvatarRenderer, game.GlobalTime, _planet);
 
-        // HUD
+        // Atmospheric post-processing (vignette)
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
+        InteriorRenderer.RenderAtmosphere(renderer, w, h);
+
+        // HUD
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
             || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen;

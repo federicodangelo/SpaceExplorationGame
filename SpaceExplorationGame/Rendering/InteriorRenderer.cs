@@ -12,17 +12,57 @@ namespace SpaceExplorationGame.Rendering;
 public static class InteriorRenderer
 {
     /// <summary>
-    /// Renders the full interior world (background, tiles, NPCs, interactables, player avatar).
+    /// Renders the full interior world (background, tiles, NPCs, interactables, player avatar, atmosphere).
     /// </summary>
     public static void RenderWorld(ISpriteRenderer renderer, Camera camera, InteriorData interior,
         Vector2 playerPos, AvatarRenderer avatarRenderer, double globalTime, PlanetData? planet)
     {
         RenderExteriorBackground(renderer, camera, interior, planet);
         RenderTiles(renderer, camera, interior, globalTime);
+        RenderRoomAmbientTint(renderer, camera, interior);
         RenderRoomLabels(renderer, camera, interior);
         RenderNpcs(renderer, camera, interior, globalTime);
         RenderInteractableMarkers(renderer, camera, interior, globalTime);
         RenderPlayerAvatar(renderer, camera, playerPos, avatarRenderer);
+    }
+
+    /// <summary>
+    /// Renders the vignette and atmosphere overlays on top of the scene (called from state after world render).
+    /// </summary>
+    public static void RenderAtmosphere(ISpriteRenderer renderer, int screenW, int screenH)
+    {
+        // Vignette: darken edges of the screen
+        int bandSize = 120;
+        byte maxAlpha = 60;
+
+        // Top band
+        for (int i = 0; i < bandSize; i += 20)
+        {
+            byte alpha = (byte)(maxAlpha * (1f - (float)i / bandSize));
+            renderer.DrawRectScreen(0, i, screenW, 20,
+                new Color4(0, 0, 0, alpha));
+        }
+        // Bottom band
+        for (int i = 0; i < bandSize; i += 20)
+        {
+            byte alpha = (byte)(maxAlpha * (1f - (float)i / bandSize));
+            renderer.DrawRectScreen(0, screenH - i - 20, screenW, 20,
+                new Color4(0, 0, 0, alpha));
+        }
+        // Left band
+        for (int i = 0; i < bandSize; i += 20)
+        {
+            byte alpha = (byte)(maxAlpha * (1f - (float)i / bandSize));
+            renderer.DrawRectScreen(i, 0, 20, screenH,
+                new Color4(0, 0, 0, alpha));
+        }
+        // Right band
+        for (int i = 0; i < bandSize; i += 20)
+        {
+            byte alpha = (byte)(maxAlpha * (1f - (float)i / bandSize));
+            renderer.DrawRectScreen(screenW - i - 20, 0, 20, screenH,
+                new Color4(0, 0, 0, alpha));
+        }
     }
 
     /// <summary>
@@ -379,6 +419,44 @@ public static class InteriorRenderer
                 }
             });
     }
+
+    /// <summary>Renders a subtle per-room ambient color tint overlay.</summary>
+    private static void RenderRoomAmbientTint(ISpriteRenderer renderer, Camera camera, InteriorData interior)
+    {
+        foreach (var room in interior.Rooms)
+        {
+            var tint = GetRoomAmbientTint(room.Function);
+            if (tint.A == 0) continue;
+
+            var r = room.TileRect;
+            float roomWorldX = (r.X + r.Width / 2f) * GameConfig.TileSize;
+            float roomWorldY = (r.Y + r.Height / 2f) * GameConfig.TileSize;
+            float roomWorldW = r.Width * GameConfig.TileSize;
+            float roomWorldH = r.Height * GameConfig.TileSize;
+
+            renderer.DrawRect(camera,
+                new Vector2(roomWorldX, roomWorldY),
+                (int)roomWorldW, (int)roomWorldH, tint);
+        }
+    }
+
+    /// <summary>Returns a subtle tint color per room function.</summary>
+    private static Color4 GetRoomAmbientTint(RoomFunction func) => func switch
+    {
+        RoomFunction.Medbay => new Color4(30, 80, 120, 15),
+        RoomFunction.Cantina => new Color4(120, 80, 30, 15),
+        RoomFunction.CommandCenter => new Color4(30, 40, 100, 12),
+        RoomFunction.DockingBay => new Color4(40, 40, 30, 10),
+        RoomFunction.CargoBay => new Color4(50, 45, 30, 12),
+        RoomFunction.CrewQuarters => new Color4(60, 50, 80, 10),
+        RoomFunction.TradingPost => new Color4(80, 70, 40, 12),
+        RoomFunction.Market => new Color4(90, 80, 40, 12),
+        RoomFunction.Housing => new Color4(70, 60, 50, 10),
+        RoomFunction.Generator => new Color4(40, 80, 50, 12),
+        RoomFunction.CommsCenter => new Color4(40, 60, 90, 12),
+        RoomFunction.LandingPad => new Color4(50, 50, 40, 8),
+        _ => new Color4(0, 0, 0, 0)
+    };
 
     /// <summary>Renders room name labels above each room.</summary>
     private static void RenderRoomLabels(ISpriteRenderer renderer, Camera camera, InteriorData interior)
