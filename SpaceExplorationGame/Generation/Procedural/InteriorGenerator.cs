@@ -112,6 +112,8 @@ public class InteriorData
     public int Width { get; init; }
     public int Height { get; init; }
     public InteriorTileType[,] Tiles { get; init; } = null!;
+    /// <summary>Room function for each tile (null if not part of a named room).</summary>
+    public RoomFunction?[,] RoomTiles { get; set; } = null!;
     public List<InteriorRoom> Rooms { get; init; } = [];
     public List<InteriorNpc> Npcs { get; init; } = [];
     public List<InteriorInteractable> Interactables { get; init; } = [];
@@ -197,7 +199,8 @@ public static class InteriorGenerator
             Name = stationName,
             Width = StationWidth,
             Height = StationHeight,
-            Tiles = new InteriorTileType[StationWidth, StationHeight]
+            Tiles = new InteriorTileType[StationWidth, StationHeight],
+            RoomTiles = new RoomFunction?[StationWidth, StationHeight]
         };
 
         // Fill with void
@@ -286,6 +289,9 @@ public static class InteriorGenerator
         // Place NPCs
         PlaceStationNpcs(data, rng);
 
+        // Build room tile lookup
+        BuildRoomTileMap(data);
+
         return data;
     }
 
@@ -300,7 +306,8 @@ public static class InteriorGenerator
             Name = settlementName,
             Width = SettlementWidth,
             Height = SettlementHeight,
-            Tiles = new InteriorTileType[SettlementWidth, SettlementHeight]
+            Tiles = new InteriorTileType[SettlementWidth, SettlementHeight],
+            RoomTiles = new RoomFunction?[SettlementWidth, SettlementHeight]
         };
 
         // Fill with void
@@ -391,6 +398,9 @@ public static class InteriorGenerator
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);
+
+        // Build room tile lookup
+        BuildRoomTileMap(data);
 
         return data;
     }
@@ -575,6 +585,19 @@ public static class InteriorGenerator
 
     private static bool TileInBounds(InteriorData data, int x, int y)
         => x >= 0 && x < data.Width && y >= 0 && y < data.Height;
+
+    /// <summary>Build a per-tile room function map from the room list.</summary>
+    private static void BuildRoomTileMap(InteriorData data)
+    {
+        foreach (var room in data.Rooms)
+        {
+            var r = room.TileRect;
+            for (int x = r.X; x < r.X + r.Width && x < data.Width; x++)
+                for (int y = r.Y; y < r.Y + r.Height && y < data.Height; y++)
+                    if (x >= 0 && y >= 0)
+                        data.RoomTiles[x, y] = room.Function;
+        }
+    }
 
     private static void PlaceCrates(InteriorData data, SeededRandom rng, InteriorRoom room, int count)
     {

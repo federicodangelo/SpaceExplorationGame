@@ -164,6 +164,50 @@ public static class InteriorRenderer
             {
                 var tile = interior.Tiles[x, y];
                 int ts = GameConfig.TileSize;
+                var roomFunc = (x >= 0 && x < interior.Width && y >= 0 && y < interior.Height)
+                    ? interior.RoomTiles[x, y] : null;
+
+                // Floor detail patterns based on room function
+                if (tile == InteriorTileType.Floor && roomFunc != null)
+                {
+                    switch (roomFunc.Value)
+                    {
+                        // Station corridors / cargo: metal grate pattern
+                        case RoomFunction.Corridor:
+                        case RoomFunction.CargoBay:
+                            if ((x + y) % 3 == 0)
+                                renderer.DrawRect(camera, worldPos, ts - 2, 1, new Color3(50, 50, 58));
+                            if ((x - y) % 4 == 0)
+                                renderer.DrawRect(camera, worldPos, 1, ts - 2, new Color3(50, 50, 58));
+                            break;
+                        // Medbay: clean tile with cross markers
+                        case RoomFunction.Medbay:
+                            if ((x + y) % 4 == 0)
+                            {
+                                renderer.DrawRect(camera, worldPos, 4, 1, new Color3(80, 80, 90));
+                                renderer.DrawRect(camera, worldPos, 1, 4, new Color3(80, 80, 90));
+                            }
+                            break;
+                        // Command: subtle grid overlay
+                        case RoomFunction.CommandCenter:
+                            renderer.DrawRect(camera, worldPos + new Vector2(ts / 2f - 1, 0), 1, ts, new Color3(55, 55, 65));
+                            renderer.DrawRect(camera, worldPos + new Vector2(0, ts / 2f - 1), ts, 1, new Color3(55, 55, 65));
+                            break;
+                    }
+                }
+
+                // Street tile detail: dirt/gravel texture
+                if (tile == InteriorTileType.StreetTile)
+                {
+                    int dh = (hash >> 8) & 0xF;
+                    if (dh < 4)
+                    {
+                        float dx = ((hash >> 4) & 0xF) - 8;
+                        float dy = ((hash >> 12) & 0xF) - 8;
+                        renderer.DrawRect(camera, worldPos + new Vector2(dx, dy), 2, 2,
+                            new Color3((byte)(45 + dh * 3), (byte)(42 + dh * 2), (byte)(38 + dh * 2)));
+                    }
+                }
 
                 // Wall detail: highlight top edge
                 if (tile == InteriorTileType.Wall)
