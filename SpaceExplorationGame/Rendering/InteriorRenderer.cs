@@ -163,13 +163,25 @@ public static class InteriorRenderer
             (x, y, worldPos, hash) =>
             {
                 var tile = interior.Tiles[x, y];
+                int ts = GameConfig.TileSize;
 
                 // Wall detail: highlight top edge
                 if (tile == InteriorTileType.Wall)
                 {
-                    var topEdge = new Vector2(x * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                                              y * GameConfig.TileSize + 2);
-                    renderer.DrawRect(camera, topEdge, GameConfig.TileSize, 2, new Color3(55, 55, 65));
+                    var topEdge = new Vector2(x * ts + ts / 2f, y * ts + 2);
+                    renderer.DrawRect(camera, topEdge, ts, 2, new Color3(55, 55, 65));
+                }
+
+                // Window: translucent blue pane with highlight
+                if (tile == InteriorTileType.Window)
+                {
+                    float shimmer = MathF.Sin((float)globalTime * 1.5f + x * 3 + y * 7) * 0.15f + 0.85f;
+                    byte wr = (byte)(30 * shimmer);
+                    byte wg = (byte)(50 * shimmer);
+                    byte wb = (byte)(90 * shimmer);
+                    renderer.DrawRect(camera, worldPos, ts - 4, ts - 4, new Color3(wr, wg, wb));
+                    // Highlight line
+                    renderer.DrawRect(camera, worldPos + new Vector2(-4, -4), 2, ts - 8, new Color3(60, 80, 120));
                 }
 
                 // Console glow
@@ -179,23 +191,129 @@ public static class InteriorRenderer
                     byte gr = (byte)(40 * pulse);
                     byte gg = (byte)(120 * pulse);
                     byte gb = (byte)(180 * pulse);
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 8, GameConfig.TileSize - 8, new Color3(gr, gg, gb));
+                    renderer.DrawRect(camera, worldPos, ts - 8, ts - 8, new Color3(gr, gg, gb));
                 }
 
                 // Crate detail: cross pattern
                 if (tile == InteriorTileType.Crate)
                 {
-                    renderer.DrawRect(camera, worldPos, GameConfig.TileSize - 6, 2, new Color3(120, 100, 60));
-                    renderer.DrawRect(camera, worldPos, 2, GameConfig.TileSize - 6, new Color3(120, 100, 60));
+                    renderer.DrawRect(camera, worldPos, ts - 6, 2, new Color3(120, 100, 60));
+                    renderer.DrawRect(camera, worldPos, 2, ts - 6, new Color3(120, 100, 60));
                 }
 
                 // Landing pad markings
                 if (tile == InteriorTileType.LandingPad)
                 {
                     if ((x + y) % 2 == 0)
-                    {
                         renderer.DrawRect(camera, worldPos, 4, 4, new Color3(80, 80, 40));
-                    }
+                }
+
+                // Table: dark surface with edge highlight
+                if (tile == InteriorTileType.Table)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 6, ts - 6, new Color3(75, 55, 40));
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -(ts / 2 - 4)), ts - 6, 2, new Color3(110, 85, 60));
+                }
+
+                // Chair: small seat
+                if (tile == InteriorTileType.Chair)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 14, ts - 14, new Color3(80, 65, 55));
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -4), ts - 16, 2, new Color3(95, 75, 60));
+                }
+
+                // Plant: green leaves over brown pot
+                if (tile == InteriorTileType.Plant)
+                {
+                    // Pot
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, 4), 8, 8, new Color3(100, 70, 40));
+                    // Leaves (sway slightly)
+                    float sway = MathF.Sin((float)globalTime * 2f + x * 5 + y * 3) * 2f;
+                    renderer.DrawRect(camera, worldPos + new Vector2(sway - 3, -4), 6, 8, new Color3(40, 110, 50));
+                    renderer.DrawRect(camera, worldPos + new Vector2(sway + 3, -6), 6, 6, new Color3(50, 130, 55));
+                    renderer.DrawRect(camera, worldPos + new Vector2(sway, -8), 4, 4, new Color3(60, 140, 60));
+                }
+
+                // Rug: subtle patterned overlay
+                if (tile == InteriorTileType.Rug)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 2, ts - 2, new Color3(80, 50, 60));
+                    // Inner pattern
+                    if ((x + y) % 2 == 0)
+                        renderer.DrawRect(camera, worldPos, ts - 10, ts - 10, new Color3(95, 60, 70));
+                }
+
+                // Pipe: horizontal pipe with rivet details
+                if (tile == InteriorTileType.Pipe)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 4, 6, new Color3(80, 80, 90));
+                    // Rivets
+                    renderer.DrawRect(camera, worldPos + new Vector2(-6, 0), 3, 3, new Color3(100, 100, 110));
+                    renderer.DrawRect(camera, worldPos + new Vector2(6, 0), 3, 3, new Color3(100, 100, 110));
+                }
+
+                // Light: glowing circle
+                if (tile == InteriorTileType.Light)
+                {
+                    float glow = MathF.Sin((float)globalTime * 2f + x * 7) * 0.1f + 0.9f;
+                    byte lr = (byte)(200 * glow);
+                    byte lg = (byte)(195 * glow);
+                    byte lb = (byte)(140 * glow);
+                    renderer.DrawRect(camera, worldPos, 6, 6, new Color3(lr, lg, lb));
+                    // Outer glow
+                    renderer.DrawRect(camera, worldPos, 12, 12, new Color3((byte)(lr / 3), (byte)(lg / 3), (byte)(lb / 3)));
+                }
+
+                // Shelf: stacked horizontal bars
+                if (tile == InteriorTileType.Shelf)
+                {
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -6), ts - 6, 3, new Color3(95, 80, 60));
+                    renderer.DrawRect(camera, worldPos, ts - 6, 3, new Color3(90, 75, 55));
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, 6), ts - 6, 3, new Color3(85, 70, 50));
+                    // Items on shelves (small colored dots)
+                    renderer.DrawRect(camera, worldPos + new Vector2(-4, -8), 3, 3, new Color3(120, 60, 60));
+                    renderer.DrawRect(camera, worldPos + new Vector2(4, -2), 3, 3, new Color3(60, 120, 80));
+                }
+
+                // Bed: pillow and blanket
+                if (tile == InteriorTileType.Bed)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 4, ts - 4, new Color3(60, 50, 75));
+                    // Pillow
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -(ts / 2 - 6)), ts - 10, 6, new Color3(180, 175, 160));
+                    // Blanket fold line
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, 2), ts - 8, 2, new Color3(80, 65, 95));
+                }
+
+                // Bar counter: wooden surface with tap
+                if (tile == InteriorTileType.BarCounter)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 2, ts - 4, new Color3(90, 65, 45));
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -(ts / 2 - 3)), ts - 2, 2, new Color3(110, 80, 55));
+                    // Drinks (small colored squares)
+                    if ((x + y) % 3 == 0)
+                        renderer.DrawRect(camera, worldPos + new Vector2(2, 2), 4, 5, new Color3(160, 120, 40));
+                }
+
+                // Generator: machinery with pulsing core
+                if (tile == InteriorTileType.Generator)
+                {
+                    renderer.DrawRect(camera, worldPos, ts - 4, ts - 4, new Color3(55, 65, 70));
+                    float pulse = MathF.Sin((float)globalTime * 4f + x + y) * 0.4f + 0.6f;
+                    byte er = (byte)(80 * pulse);
+                    byte eg = (byte)(180 * pulse);
+                    byte eb = (byte)(100 * pulse);
+                    renderer.DrawRect(camera, worldPos, 8, 8, new Color3(er, eg, eb));
+                }
+
+                // Antenna: tall vertical structure
+                if (tile == InteriorTileType.Antenna)
+                {
+                    renderer.DrawRect(camera, worldPos, 4, ts - 4, new Color3(70, 85, 95));
+                    // Blinking light at top
+                    float blink = MathF.Sin((float)globalTime * 5f) > 0 ? 1f : 0.3f;
+                    renderer.DrawRect(camera, worldPos + new Vector2(0, -(ts / 2 - 4)), 4, 4,
+                        new Color3((byte)(255 * blink), (byte)(50 * blink), (byte)(50 * blink)));
                 }
             });
     }

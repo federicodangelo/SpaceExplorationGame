@@ -16,6 +16,18 @@ public enum InteriorTileType
     FloorAccent, // Decorative floor (walkable, different color)
     LandingPad,  // Spawn point floor (walkable)
     StreetTile,  // Settlement outdoor walkway
+    Table,       // Furniture — impassable table surface
+    Chair,       // Furniture — walkable seat
+    Plant,       // Decorative potted plant (impassable)
+    Rug,         // Decorative rug on floor (walkable)
+    Window,      // Transparent wall section showing exterior (impassable)
+    Pipe,        // Exposed pipe / duct (impassable decoration)
+    Light,       // Ceiling light marker (walkable, emits glow)
+    Shelf,       // Storage shelf (impassable)
+    Bed,         // Crew quarters bed (impassable)
+    BarCounter,  // Cantina bar counter (impassable)
+    Generator,   // Power generator equipment (impassable)
+    Antenna,     // Communications antenna (impassable)
 }
 
 /// <summary>Whether the interior belongs to a station or a settlement.</summary>
@@ -224,14 +236,15 @@ public static class InteriorGenerator
         // Add decorative crates in cargo bay
         PlaceCrates(data, rng, cargo, 6);
 
-        // Add consoles in command center
-        PlaceConsoles(data, command, 1);
-
         // Add accent floors in trading post
         for (int x = trading.TileRect.X + 2; x < trading.TileRect.X + trading.TileRect.Width - 2; x++)
             for (int y = trading.TileRect.Y + 2; y < trading.TileRect.Y + trading.TileRect.Height - 2; y++)
                 if (data.Tiles[x, y] == InteriorTileType.Floor)
                     data.Tiles[x, y] = InteriorTileType.FloorAccent;
+
+        // Furnish all rooms with appropriate furniture
+        foreach (var room in data.Rooms)
+            FurnishRoom(data, rng, room);
 
         // Spawn point
         data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
@@ -334,6 +347,10 @@ public static class InteriorGenerator
         PlaceCrates(data, rng, housing1, 2);
         PlaceCrates(data, rng, housing2, 2);
 
+        // Furnish all rooms with appropriate furniture
+        foreach (var room in data.Rooms)
+            FurnishRoom(data, rng, room);
+
         // Spawn point
         data.SpawnPoint = new TilePos(landing.CenterX, landing.CenterY);
 
@@ -391,6 +408,18 @@ public static class InteriorGenerator
             InteriorTileType.FloorAccent => new(70, 65, 80),
             InteriorTileType.LandingPad => new(50, 55, 65),
             InteriorTileType.StreetTile => new(55, 50, 45),
+            InteriorTileType.Table => new(90, 70, 50),
+            InteriorTileType.Chair => new(70, 60, 55),
+            InteriorTileType.Plant => new(35, 80, 40),
+            InteriorTileType.Rug => new(80, 50, 60),
+            InteriorTileType.Window => new(20, 30, 60),
+            InteriorTileType.Pipe => new(70, 70, 80),
+            InteriorTileType.Light => new(65, 65, 75),
+            InteriorTileType.Shelf => new(85, 70, 55),
+            InteriorTileType.Bed => new(70, 55, 80),
+            InteriorTileType.BarCounter => new(80, 60, 45),
+            InteriorTileType.Generator => new(50, 65, 70),
+            InteriorTileType.Antenna => new(60, 80, 90),
             InteriorTileType.Void => new(10, 10, 15),
             _ => new(40, 40, 40)
         };
@@ -401,7 +430,9 @@ public static class InteriorGenerator
     {
         return type is InteriorTileType.Floor or InteriorTileType.DoorOpen
             or InteriorTileType.FloorAccent or InteriorTileType.LandingPad
-            or InteriorTileType.StreetTile or InteriorTileType.Console;
+            or InteriorTileType.StreetTile or InteriorTileType.Console
+            or InteriorTileType.Chair or InteriorTileType.Rug
+            or InteriorTileType.Light;
     }
 
     #region Layout Helpers
@@ -578,6 +609,187 @@ public static class InteriorGenerator
         data.Interactables.Add(new InteriorInteractable { Name = name, Type = type, TilePos = new(x, y) });
         if (markConsole)
             data.Tiles[x, y] = InteriorTileType.Console;
+    }
+
+    /// <summary>Place room-specific furniture and decorations based on room function.</summary>
+    private static void FurnishRoom(InteriorData data, SeededRandom rng, InteriorRoom room)
+    {
+        var r = room.TileRect;
+        switch (room.Function)
+        {
+            case RoomFunction.CrewQuarters:
+            case RoomFunction.Housing:
+                // Place beds along left wall
+                for (int y = r.Y + 2; y < r.Y + r.Height - 2; y += 2)
+                    if (TileInBounds(data, r.X + 1, y) && data.Tiles[r.X + 1, y] == InteriorTileType.Floor)
+                        data.Tiles[r.X + 1, y] = InteriorTileType.Bed;
+                // Rug in center
+                PlaceRugPatch(data, r.CenterX - 1, r.CenterY - 1, 3, 2);
+                // Plant in corner
+                PlaceTileIfFloor(data, r.X + r.Width - 2, r.Y + 1, InteriorTileType.Plant);
+                break;
+
+            case RoomFunction.Cantina:
+                // Bar counter across the top
+                for (int x = r.X + 2; x < r.X + r.Width - 2; x++)
+                    PlaceTileIfFloor(data, x, r.Y + 2, InteriorTileType.BarCounter);
+                // Tables and chairs
+                PlaceTableWithChairs(data, r.X + 3, r.CenterY + 1);
+                PlaceTableWithChairs(data, r.X + r.Width - 4, r.CenterY + 1);
+                // Plants by entrance
+                PlaceTileIfFloor(data, r.X + 1, r.Y + r.Height - 2, InteriorTileType.Plant);
+                PlaceTileIfFloor(data, r.X + r.Width - 2, r.Y + r.Height - 2, InteriorTileType.Plant);
+                break;
+
+            case RoomFunction.CommandCenter:
+                // Consoles along walls
+                PlaceConsoles(data, room, 3);
+                // Central table
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Table);
+                PlaceTileIfFloor(data, r.CenterX - 1, r.CenterY, InteriorTileType.Table);
+                PlaceTileIfFloor(data, r.CenterX + 1, r.CenterY, InteriorTileType.Table);
+                // Chairs around table
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY - 1, InteriorTileType.Chair);
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY + 1, InteriorTileType.Chair);
+                break;
+
+            case RoomFunction.Medbay:
+                // Beds along right wall
+                for (int y = r.Y + 2; y < r.Y + r.Height - 2; y += 2)
+                    PlaceTileIfFloor(data, r.X + r.Width - 2, y, InteriorTileType.Bed);
+                // Light in center
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Light);
+                // Shelf on left wall
+                PlaceTileIfFloor(data, r.X + 1, r.CenterY, InteriorTileType.Shelf);
+                break;
+
+            case RoomFunction.TradingPost:
+            case RoomFunction.Market:
+                // Shelves along walls
+                for (int y = r.Y + 2; y < r.Y + r.Height - 2; y += 2)
+                {
+                    PlaceTileIfFloor(data, r.X + 1, y, InteriorTileType.Shelf);
+                    PlaceTileIfFloor(data, r.X + r.Width - 2, y, InteriorTileType.Shelf);
+                }
+                // Rug in center
+                PlaceRugPatch(data, r.CenterX - 1, r.CenterY, 3, 1);
+                break;
+
+            case RoomFunction.CargoBay:
+                // Extra pipes on walls
+                for (int x = r.X + 2; x < r.X + r.Width - 2; x += 3)
+                    PlaceTileIfFloor(data, x, r.Y + 1, InteriorTileType.Pipe);
+                // Lights
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY - 1, InteriorTileType.Light);
+                break;
+
+            case RoomFunction.DockingBay:
+            case RoomFunction.LandingPad:
+                // Pipes along top wall
+                for (int x = r.X + 2; x < r.X + r.Width - 2; x += 4)
+                    PlaceTileIfFloor(data, x, r.Y + 1, InteriorTileType.Pipe);
+                // Lights along center
+                PlaceTileIfFloor(data, r.CenterX - 3, r.CenterY - 3, InteriorTileType.Light);
+                PlaceTileIfFloor(data, r.CenterX + 3, r.CenterY - 3, InteriorTileType.Light);
+                break;
+
+            case RoomFunction.Generator:
+                // Generator equipment
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Generator);
+                PlaceTileIfFloor(data, r.CenterX - 1, r.CenterY, InteriorTileType.Generator);
+                // Pipes
+                for (int x = r.X + 1; x < r.X + r.Width - 1; x += 2)
+                    PlaceTileIfFloor(data, x, r.Y + 1, InteriorTileType.Pipe);
+                break;
+
+            case RoomFunction.CommsCenter:
+                // Antenna in center
+                PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Antenna);
+                // Consoles
+                PlaceConsoles(data, room, 2);
+                break;
+        }
+
+        // Windows on exterior walls (walls adjacent to Void)
+        PlaceWindows(data, rng, room);
+
+        // Lights in corridors and larger rooms
+        PlaceRoomLights(data, rng, room);
+    }
+
+    /// <summary>Place a small rectangular rug patch.</summary>
+    private static void PlaceRugPatch(InteriorData data, int startX, int startY, int w, int h)
+    {
+        for (int x = startX; x < startX + w; x++)
+            for (int y = startY; y < startY + h; y++)
+                PlaceTileIfFloor(data, x, y, InteriorTileType.Rug);
+    }
+
+    /// <summary>Place a table with chairs on each side.</summary>
+    private static void PlaceTableWithChairs(InteriorData data, int cx, int cy)
+    {
+        PlaceTileIfFloor(data, cx, cy, InteriorTileType.Table);
+        PlaceTileIfFloor(data, cx - 1, cy, InteriorTileType.Chair);
+        PlaceTileIfFloor(data, cx + 1, cy, InteriorTileType.Chair);
+    }
+
+    /// <summary>Place windows on walls adjacent to void (exterior walls).</summary>
+    private static void PlaceWindows(InteriorData data, SeededRandom rng, InteriorRoom room)
+    {
+        var r = room.TileRect;
+        // Check each wall tile — if adjacent to void on the outside, maybe place a window
+        for (int x = r.X + 2; x < r.X + r.Width - 2; x++)
+        {
+            // Top wall
+            if (TileInBounds(data, x, r.Y) && data.Tiles[x, r.Y] == InteriorTileType.Wall &&
+                TileInBounds(data, x, r.Y - 1) && data.Tiles[x, r.Y - 1] == InteriorTileType.Void)
+            {
+                if (rng.NextBool(0.3f))
+                    data.Tiles[x, r.Y] = InteriorTileType.Window;
+            }
+            // Bottom wall
+            if (TileInBounds(data, x, r.Y + r.Height - 1) && data.Tiles[x, r.Y + r.Height - 1] == InteriorTileType.Wall &&
+                TileInBounds(data, x, r.Y + r.Height) && data.Tiles[x, r.Y + r.Height] == InteriorTileType.Void)
+            {
+                if (rng.NextBool(0.3f))
+                    data.Tiles[x, r.Y + r.Height - 1] = InteriorTileType.Window;
+            }
+        }
+        for (int y = r.Y + 2; y < r.Y + r.Height - 2; y++)
+        {
+            // Left wall
+            if (TileInBounds(data, r.X, y) && data.Tiles[r.X, y] == InteriorTileType.Wall &&
+                TileInBounds(data, r.X - 1, y) && data.Tiles[r.X - 1, y] == InteriorTileType.Void)
+            {
+                if (rng.NextBool(0.3f))
+                    data.Tiles[r.X, y] = InteriorTileType.Window;
+            }
+            // Right wall
+            if (TileInBounds(data, r.X + r.Width - 1, y) && data.Tiles[r.X + r.Width - 1, y] == InteriorTileType.Wall &&
+                TileInBounds(data, r.X + r.Width, y) && data.Tiles[r.X + r.Width, y] == InteriorTileType.Void)
+            {
+                if (rng.NextBool(0.3f))
+                    data.Tiles[r.X + r.Width - 1, y] = InteriorTileType.Window;
+            }
+        }
+    }
+
+    /// <summary>Place ceiling lights in rooms that don't already have many.</summary>
+    private static void PlaceRoomLights(InteriorData data, SeededRandom rng, InteriorRoom room)
+    {
+        var r = room.TileRect;
+        // Place lights every ~4 tiles in a grid pattern
+        for (int x = r.X + 2; x < r.X + r.Width - 2; x += 4)
+            for (int y = r.Y + 2; y < r.Y + r.Height - 2; y += 4)
+                if (TileInBounds(data, x, y) && data.Tiles[x, y] == InteriorTileType.Floor && rng.NextBool(0.4f))
+                    data.Tiles[x, y] = InteriorTileType.Light;
+    }
+
+    /// <summary>Place a tile only if the target position currently has a walkable Floor tile.</summary>
+    private static void PlaceTileIfFloor(InteriorData data, int x, int y, InteriorTileType tile)
+    {
+        if (TileInBounds(data, x, y) && data.Tiles[x, y] == InteriorTileType.Floor)
+            data.Tiles[x, y] = tile;
     }
 
     #endregion
