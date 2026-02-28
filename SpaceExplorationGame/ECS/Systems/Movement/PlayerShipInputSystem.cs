@@ -1,8 +1,8 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.System;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.ECS.Systems.Movement;
 

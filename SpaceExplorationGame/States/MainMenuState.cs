@@ -652,9 +652,6 @@ public class MainMenuState : GameState
     {
         var renderer = game.SpriteRenderer;
 
-        SDL.SetRenderDrawColor(game.Renderer, 2, 2, 8, 255);
-        SDL.RenderClear(game.Renderer);
-
         foreach (var (x, y, brightness, speed) in _bgStars)
         {
             float blink = (byte)Math.Clamp(brightness + 30 * MathF.Sin(_animTimer * speed * 2f + x), 20, 200);

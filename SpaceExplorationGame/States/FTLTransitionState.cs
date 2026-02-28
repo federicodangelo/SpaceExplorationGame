@@ -2,7 +2,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.States;
 

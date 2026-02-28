@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Platform;
 using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
@@ -151,7 +152,7 @@ public static class InteriorRenderer
     private static void RenderTiles(SpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
-        TileMapRenderer.RenderTiles(renderer, camera, interior.Width, interior.Height,
+        renderer.RenderTiles(camera, interior.Width, interior.Height,
             (x, y) =>
             {
                 var tile = interior.Tiles[x, y];

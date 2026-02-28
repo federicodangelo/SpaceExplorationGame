@@ -1,6 +1,6 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Platform;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;

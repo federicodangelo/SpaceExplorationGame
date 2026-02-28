@@ -4,7 +4,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.States;
 
@@ -320,7 +320,7 @@ public class OrbitalSurfaceTransitionState : GameState
             }
         }
 
-        return game.Textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
+        return game.Textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
     }
 
     private Vector2 DrawTerrainLandingBlend(Game game, float planetX, float planetY, float planetRadius,
@@ -363,9 +363,7 @@ public class OrbitalSurfaceTransitionState : GameState
         };
 
         byte a = (byte)Math.Clamp((int)(terrainBlend * 255), 0, 255);
-        SDL.SetTextureAlphaMod(_terrainTexture, a);
-        SDL.RenderTexture(game.Renderer, _terrainTexture, in srcRect, in dstRect);
-        SDL.SetTextureAlphaMod(_terrainTexture, 255);
+        game.SpriteRenderer.DrawTextureScreen(_terrainTexture, in srcRect, in dstRect, a);
 
         float markerP = EaseInOut01(Math.Clamp((descentP - 0.22f) / 0.78f, 0f, 1f)) * terrainBlend;
         byte markerAlpha = (byte)Math.Clamp((int)(markerP * 255f), 0, 255);

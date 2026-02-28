@@ -1,12 +1,10 @@
-using SDL3;
 using Arch.Core;
-using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Simulation;
-using SpaceExplorationGame.Simulation.Base;
 using SpaceExplorationGame.UI;
+using SpaceExplorationGame.Platform;
+using System.Diagnostics;
 
 namespace SpaceExplorationGame.Core;
 
@@ -15,15 +13,14 @@ namespace SpaceExplorationGame.Core;
 /// </summary>
 public class Game : IDisposable
 {
-    // SDL
-    public nint Window { get; private set; }
-    public nint Renderer { get; private set; }
+    // Platform specific bindings
+    public Platform.Platform Platform { get; private set; } = null!;
 
     // ECS
     public World EcsWorld { get; private set; } = null!;
 
     // Core systems
-    public InputManager Input { get; } = new();
+    public InputManager Input { get; private set; } = null!;
     public SpriteRenderer SpriteRenderer { get; private set; } = null!;
     public TextureManager Textures { get; private set; } = null!;
 
@@ -76,37 +73,15 @@ public class Game : IDisposable
 
     public void Initialize(ulong? galaxySeed = null)
     {
-        // Init SDL
-        if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
-        {
-            throw new Exception($"SDL init failed: {SDL.GetError()}");
-        }
-
-        if (!SDL.CreateWindowAndRenderer(
-                GameConfig.WindowTitle,
-                GameConfig.WindowWidth,
-                GameConfig.WindowHeight,
-                0,
-                out var window,
-                out var renderer))
-        {
-            throw new Exception($"Window creation failed: {SDL.GetError()}");
-        }
-
-        Window = window;
-        Renderer = renderer;
-
-        // Enable VSync to cap framerate and avoid screen tearing
-        SDL.SetRenderVSync(renderer, 1);
+        // Platform and rendering setup
+        Platform = new Platform.Platform();
+        Textures = Platform.Textures;
+        SpriteRenderer = Platform.SpriteRenderer;
+        Input = Platform.InputManager;
+        Audio = Platform.AudioManager;
 
         // ECS world
         EcsWorld = World.Create();
-
-        // Texture manager (procedural pixel art)
-        Textures = new TextureManager(Renderer);
-
-        // Sprite renderer
-        SpriteRenderer = new SpriteRenderer(Renderer, Textures);
 
         // Entity renderers
         AvatarRenderer = new AvatarRenderer();
@@ -117,13 +92,6 @@ public class Game : IDisposable
         PlanetRenderer = new PlanetRenderer();
         StarRenderer = new StarRenderer();
         EnemyShipRenderer = new EnemyShipRenderer();
-
-        // Audio
-        Audio = new AudioManager(
-            masterVolume: GameConfig.AudioMasterVolume,
-            musicVolume: GameConfig.AudioMusicVolume,
-            sfxVolume: GameConfig.AudioSfxVolume);
-        Audio.Initialize();
 
         // Seed manager
         Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
@@ -184,18 +152,19 @@ public class Game : IDisposable
 
     public void Run()
     {
-        var previousTime = SDL.GetPerformanceCounter();
-        var frequency = (double)SDL.GetPerformanceFrequency();
+        var sw = new Stopwatch();
+        sw.Start();
+        double previousTime = sw.Elapsed.TotalSeconds;
         double accumulator = 0;
 
         _fpsTitleAccumTime = 0;
         _fpsTitleFrameCount = 0;
-        SDL.SetWindowTitle(Window, GameConfig.WindowTitle);
+        SpriteRenderer.SetTitle(GameConfig.WindowTitle);
 
         while (IsRunning)
         {
-            var currentTime = SDL.GetPerformanceCounter();
-            var elapsed = (currentTime - previousTime) / frequency;
+            var currentTime = sw.Elapsed.TotalSeconds;
+            var elapsed = currentTime - previousTime;
             previousTime = currentTime;
 
             // Cap max elapsed to avoid spiral of death
@@ -251,8 +220,7 @@ public class Game : IDisposable
             Audio.Update((float)elapsed);
 
             // Render
-            SDL.SetRenderDrawColor(Renderer, 0, 0, 0, 255);
-            SDL.RenderClear(Renderer);
+            SpriteRenderer.BeginFrame();
 
             _debugTimer.Time("State Render", () => _currentState?.Render(this));
 
@@ -261,14 +229,14 @@ public class Game : IDisposable
                 _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
             }
 
-            SDL.RenderPresent(Renderer);
+            SpriteRenderer.EndFrame();
 
             _fpsTitleAccumTime += elapsed;
             _fpsTitleFrameCount++;
             if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
             {
                 double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
-                SDL.SetWindowTitle(Window, $"{GameConfig.WindowTitle} - AVG FPS: {avgFps:F1}");
+                SpriteRenderer.SetTitle($"{GameConfig.WindowTitle} - AVG FPS: {avgFps:F1}");
                 _fpsTitleAccumTime = 0;
                 _fpsTitleFrameCount = 0;
             }
@@ -281,10 +249,7 @@ public class Game : IDisposable
         Coordinator.DestroyAll();
         Audio.Dispose();
         EcsWorld.Dispose();
-        SpriteRenderer.Dispose();
-        SDL.DestroyRenderer(Renderer);
-        SDL.DestroyWindow(Window);
-        SDL.Quit();
+        Platform.Dispose();
         GC.SuppressFinalize(this);
     }
 }

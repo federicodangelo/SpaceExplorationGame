@@ -1,8 +1,9 @@
 using SDL3;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Rendering.Base;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Rendering.Base;
+namespace SpaceExplorationGame.Platform;
 
 /// <summary>
 /// Renders text using pre-built multi-scale font atlas textures.
@@ -116,7 +117,7 @@ public class FontRenderer : IDisposable
             }
 
             // Create SDL texture via TextureManager
-            nint texture = _textures.CreateTextureFromPixels(pixels, atlasW, atlasH, SDL.ScaleMode.Nearest);
+            nint texture = _textures.CreateTextureFromPixels(pixels, atlasW, atlasH, TextureScaleMode.Nearest);
 
             _fontAtlases[si] = new FontAtlasEntry
             {

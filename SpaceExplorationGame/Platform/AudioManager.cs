@@ -1,7 +1,8 @@
 using System.Numerics;
 using SDL3;
+using SpaceExplorationGame.Audio;
 
-namespace SpaceExplorationGame.Audio;
+namespace SpaceExplorationGame.Platform;
 
 /// <summary>
 /// Central audio manager — procedurally generated music and sound effects via SDL3.

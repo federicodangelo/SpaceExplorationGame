@@ -1,8 +1,9 @@
 using System.Numerics;
 using System.Text;
 using SDL3;
+using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Core;
+namespace SpaceExplorationGame.Platform;
 
 public enum InputAction
 {

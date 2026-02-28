@@ -2,7 +2,7 @@ using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 
@@ -199,7 +199,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             }
         }
 
-        _terrainTexture = game.Textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
+        _terrainTexture = game.Textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             W = bottomRight.X - topLeft.X,
             H = bottomRight.Y - topLeft.Y
         };
-        SDL.RenderTexture(game.Renderer, _terrainTexture, nint.Zero, in dstRect);
+        game.SpriteRenderer.DrawTextureScreen(_terrainTexture, in dstRect);
 
         float tileScreenW = (bottomRight.X - topLeft.X) / worldW;
         float tileScreenH = (bottomRight.Y - topLeft.Y) / worldH;

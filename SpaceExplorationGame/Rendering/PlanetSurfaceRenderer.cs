@@ -1,7 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -13,7 +13,7 @@ public static class PlanetSurfaceRenderer
     /// <summary>Renders the terrain tiles with per-tile detail overlays.</summary>
     public static void RenderTerrain(SpriteRenderer renderer, Camera camera, PlanetSurfaceData surfaceData)
     {
-        TileMapRenderer.RenderTiles(renderer, camera, surfaceData.Width, surfaceData.Height,
+        renderer.RenderTiles(camera, surfaceData.Width, surfaceData.Height,
             (x, y) => PlanetSurfaceGenerator.GetTerrainColor(surfaceData.Tiles[x, y]),
             800f,
             (x, y, worldPos, hash) =>

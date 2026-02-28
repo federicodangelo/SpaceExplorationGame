@@ -2,17 +2,17 @@ using SDL3;
 using System.Numerics;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Rendering.Base;
+namespace SpaceExplorationGame.Platform;
 
 /// <summary>
 /// Shared utility for rendering tile-based maps with per-tile color variation.
 /// Used by PlanetSurfaceState and InteriorState.
 /// </summary>
-public static class TileMapRenderer
+public class TileMapRenderer
 {
     // Reusable buffers for batched tile rendering (avoids per-frame allocs).
-    private static SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
-    private static int[] _indexBuf = new int[1536];
+    private SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
+    private int[] _indexBuf = new int[1536];
 
     /// <summary>
     /// Renders visible tiles with deterministic per-tile brightness variation.
@@ -26,7 +26,7 @@ public static class TileMapRenderer
     /// <param name="getColor">Returns (R, G, B) for the tile at (x, y), or null to skip.</param>
     /// <param name="variationDivisor">Controls brightness variation strength (higher = subtler).</param>
     /// <param name="renderDetail">Optional per-tile detail callback: (x, y, worldPos, hash).</param>
-    public static void RenderTiles(
+    public void RenderTiles(
         SpriteRenderer renderer, Camera camera,
         int mapWidth, int mapHeight,
         Func<int, int, Color3?> getColor,
@@ -144,7 +144,7 @@ public static class TileMapRenderer
         }
     }
 
-    public static int GetTileHash(int x, int y)
+    private static int GetTileHash(int x, int y)
     {
         return (x * 374761393 + y * 668265263) ^ (x * y);
     }

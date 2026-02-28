@@ -1,7 +1,13 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Rendering.Base;
+namespace SpaceExplorationGame.Platform;
+
+public enum TextureScaleMode
+{
+    Nearest,
+    Linear
+}
 
 /// <summary>
 /// Provides low-level texture creation utilities used by entity renderers.
@@ -18,7 +24,7 @@ public class TextureManager
 
     /// <summary>Creates an SDL texture from a raw RGBA pixel array. Used by entity renderers to generate their own textures.</summary>
     public nint CreateTextureFromPixels(byte[] pixels, int width, int height,
-        SDL.ScaleMode scaleMode = SDL.ScaleMode.Linear)
+        TextureScaleMode scaleMode = TextureScaleMode.Linear)
     {
         unsafe
         {
@@ -38,7 +44,7 @@ public class TextureManager
 
                 // Enable alpha blending and configure filtering on the texture
                 SDL.SetTextureBlendMode(texture, SDL.BlendMode.Blend);
-                SDL.SetTextureScaleMode(texture, scaleMode);
+                SDL.SetTextureScaleMode(texture, scaleMode == TextureScaleMode.Linear ? SDL.ScaleMode.Linear : SDL.ScaleMode.Nearest);
 
                 return texture;
             }

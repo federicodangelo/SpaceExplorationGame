@@ -2,7 +2,7 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Rendering.Base;
+namespace SpaceExplorationGame.Platform;
 
 /// <summary>
 /// Handles rendering sprites, colored rectangles, and basic shapes using SDL3.
@@ -10,20 +10,24 @@ namespace SpaceExplorationGame.Rendering.Base;
 public class SpriteRenderer : IDisposable
 {
     private readonly nint _renderer;
+    private readonly nint _window;
     private readonly FontRenderer _fontRenderer;
     private readonly TextureManager _textures;
+    private readonly TileMapRenderer _tileMapRenderer;
 
     // Cached circle texture (RGBA) used for drawing filled circles up to 256x256
     private nint _cachedCircleTexture = nint.Zero;
     private const int CachedCircleSize = 64; // max texture size (pixels)
 
-    public SpriteRenderer(nint renderer, TextureManager textures)
+    public SpriteRenderer(nint window, nint renderer, TextureManager textures)
     {
+        _window = window;
         _renderer = renderer;
         _textures = textures;
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
         _fontRenderer = new FontRenderer(renderer, textures);
+        _tileMapRenderer = new TileMapRenderer();
         _cachedCircleTexture = CreateCachedCircleTexture();
     }
 
@@ -241,6 +245,34 @@ public class SpriteRenderer : IDisposable
         {
             SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
         }
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, 255);
+    }
+
+    public void DrawTextureScreen(nint texture, in SDL.FRect dstRect, byte alpha = 255)
+    {
+
+        if (texture == nint.Zero) return;
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, alpha);
+
+        SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, 255);
+    }
+
+    public void DrawTextureScreen(nint texture, in SDL.FRect srcRect, in SDL.FRect dstRect, byte alpha = 255)
+    {
+
+        if (texture == nint.Zero) return;
+
+        if (alpha < 255)
+            SDL.SetTextureAlphaMod(texture, alpha);
+
+        SDL.RenderTexture(_renderer, texture, in srcRect, in dstRect);
 
         if (alpha < 255)
             SDL.SetTextureAlphaMod(texture, 255);
@@ -659,6 +691,32 @@ public class SpriteRenderer : IDisposable
         }
 
         // Use TextureManager helper to create a texture from pixel data.
-        return _textures.CreateTextureFromPixels(pixels, w, h, SDL.ScaleMode.Nearest);
+        return _textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
+    }
+
+    public void BeginFrame()
+    {
+        SDL.SetRenderDrawColor(_renderer, 0, 0, 0, 255);
+        SDL.RenderClear(_renderer);
+    }
+
+    public void EndFrame()
+    {
+        SDL.RenderPresent(_renderer);
+    }
+
+    public void SetTitle(string title)
+    {
+        SDL.SetWindowTitle(_window, title);
+    }
+
+    public void RenderTiles(
+        Camera camera,
+        int mapWidth, int mapHeight,
+        Func<int, int, Color3?> getColor,
+        float variationDivisor = 800f,
+        Action<int, int, Vector2, int>? renderDetail = null)
+    {
+        _tileMapRenderer.RenderTiles(this, camera, mapWidth, mapHeight, getColor, variationDivisor, renderDetail);
     }
 }
