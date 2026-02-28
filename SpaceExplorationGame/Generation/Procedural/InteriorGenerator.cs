@@ -830,8 +830,8 @@ public static class InteriorGenerator
                     PlaceTileIfFloor(data, r.X + r.Width - 2, y, InteriorTileType.Bed);
                 // Light in center
                 PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Light);
-                // Shelf on left wall
-                PlaceTileIfFloor(data, r.X + 1, r.CenterY, InteriorTileType.Shelf);
+                // Shelf on left wall (offset from center so it doesn't block corridor entry)
+                PlaceTileIfFloor(data, r.X + 1, r.Y + 1, InteriorTileType.Shelf);
                 break;
 
             case RoomFunction.TradingPost:
