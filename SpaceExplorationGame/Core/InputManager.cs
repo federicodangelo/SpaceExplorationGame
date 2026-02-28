@@ -174,8 +174,16 @@ public class InputManager
         ActiveInputMethod = InputMethod.MouseKeyboard;
     }
 
+    public void ProcessEvents()
+    {
+        while (SDL.PollEvent(out var e))
+        {
+            ProcessEvent(e);
+        }
+    }
+
     /// <summary>Feed an SDL event into the input manager.</summary>
-    public void ProcessEvent(SDL.Event e)
+    private void ProcessEvent(SDL.Event e)
     {
         switch ((SDL.EventType)e.Type)
         {

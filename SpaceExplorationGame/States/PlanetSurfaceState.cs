@@ -175,10 +175,6 @@ public class PlanetSurfaceState : GameState
             _sim.RemovePlayer(_simPlayer);
     }
 
-    public override void HandleEvent(Game game, SDL.Event e)
-    {
-    }
-
     public override void UpdateInput(Game game)
     {
         if (_waitingToOpenStarshipMenuAfterLanding) return;

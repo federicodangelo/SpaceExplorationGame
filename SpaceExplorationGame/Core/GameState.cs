@@ -37,9 +37,6 @@ public abstract class GameState : IDebugInfoProvider
     /// <summary>Render the current frame.</summary>
     public abstract void Render(Game game);
 
-    /// <summary>Handle SDL events (input, etc).</summary>
-    public abstract void HandleEvent(Game game, SDL3.SDL.Event e);
-
     /// <inheritdoc />
     public virtual IReadOnlyList<DebugTimingEntry>? GetDebugTimings() => _debugTimer.Entries;
 

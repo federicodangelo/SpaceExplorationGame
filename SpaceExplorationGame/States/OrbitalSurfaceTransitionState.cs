@@ -277,10 +277,6 @@ public class OrbitalSurfaceTransitionState : GameState
         }
     }
 
-    public override void HandleEvent(Game game, SDL.Event e)
-    {
-    }
-
     private Vector2 WorldToScreenFromSolarSnapshot(Vector2 world)
     {
         Vector2 delta = (world - _solarCameraStart) * _solarZoomStart;

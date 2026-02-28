@@ -206,11 +206,7 @@ public class Game : IDisposable
 
             // Process events
             Input.BeginFrame();
-            while (SDL.PollEvent(out var e))
-            {
-                Input.ProcessEvent(e);
-                _currentState?.HandleEvent(this, e);
-            }
+            Input.ProcessEvents();
 
             if (Input.QuitRequested)
             {

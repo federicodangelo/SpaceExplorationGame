@@ -201,8 +201,6 @@ public class FTLTransitionState : GameState
         RenderHudText(renderer);
     }
 
-    public override void HandleEvent(Game game, SDL.Event e) { }
-
     // ─────────────────────────────────────────────────────────────
     //  SYSTEM STARS (source & target)
     // ─────────────────────────────────────────────────────────────

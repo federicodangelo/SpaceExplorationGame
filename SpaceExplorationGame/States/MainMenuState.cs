@@ -129,7 +129,6 @@ public class MainMenuState : GameState
     }
 
     public override void Exit(Game game) { }
-    public override void HandleEvent(Game game, SDL.Event e) { }
 
     public override void UpdateInput(Game game)
     {
