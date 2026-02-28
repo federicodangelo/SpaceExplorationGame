@@ -298,6 +298,9 @@ public static class InteriorGenerator
         foreach (var room in data.Rooms)
             FurnishRoom(data, rng, room);
 
+        // Remove any furniture that blocks doorway access
+        ClearDoorwayObstructions(data);
+
         // Spawn point
         data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
 
@@ -446,6 +449,9 @@ public static class InteriorGenerator
         // Furnish all rooms with appropriate furniture
         foreach (var room in data.Rooms)
             FurnishRoom(data, rng, room);
+
+        // Remove any furniture that blocks doorway access
+        ClearDoorwayObstructions(data);
 
         // Spawn point
         data.SpawnPoint = new TilePos(landing.CenterX, landing.CenterY);
@@ -830,8 +836,8 @@ public static class InteriorGenerator
                     PlaceTileIfFloor(data, r.X + r.Width - 2, y, InteriorTileType.Bed);
                 // Light in center
                 PlaceTileIfFloor(data, r.CenterX, r.CenterY, InteriorTileType.Light);
-                // Shelf on left wall (offset from center so it doesn't block corridor entry)
-                PlaceTileIfFloor(data, r.X + 1, r.Y + 1, InteriorTileType.Shelf);
+                // Shelf on left wall
+                PlaceTileIfFloor(data, r.X + 1, r.CenterY, InteriorTileType.Shelf);
                 break;
 
             case RoomFunction.TradingPost:
@@ -961,6 +967,42 @@ public static class InteriorGenerator
     {
         if (TileInBounds(data, x, y) && data.Tiles[x, y] == InteriorTileType.Floor)
             data.Tiles[x, y] = tile;
+    }
+
+    /// <summary>
+    /// Removes non-walkable furniture tiles adjacent to DoorOpen tiles
+    /// so that room entrances are never obstructed.
+    /// </summary>
+    private static void ClearDoorwayObstructions(InteriorData data)
+    {
+        for (int x = 0; x < data.Width; x++)
+        {
+            for (int y = 0; y < data.Height; y++)
+            {
+                if (data.Tiles[x, y] != InteriorTileType.DoorOpen) continue;
+
+                // Check all four cardinal neighbours
+                ClearIfObstructing(data, x - 1, y);
+                ClearIfObstructing(data, x + 1, y);
+                ClearIfObstructing(data, x, y - 1);
+                ClearIfObstructing(data, x, y + 1);
+            }
+        }
+    }
+
+    /// <summary>
+    /// If the tile at (x,y) is a non-walkable furniture/decoration tile
+    /// (not a structural Wall), revert it to Floor so doorways stay clear.
+    /// </summary>
+    private static void ClearIfObstructing(InteriorData data, int x, int y)
+    {
+        if (!TileInBounds(data, x, y)) return;
+        var tile = data.Tiles[x, y];
+        // Keep walls, void, and already-walkable tiles
+        if (tile == InteriorTileType.Wall || tile == InteriorTileType.Void || IsWalkable(tile))
+            return;
+        // Everything else is furniture blocking the doorway — clear it
+        data.Tiles[x, y] = InteriorTileType.Floor;
     }
 
     #endregion
