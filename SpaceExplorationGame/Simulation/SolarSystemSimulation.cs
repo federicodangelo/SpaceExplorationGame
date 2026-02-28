@@ -23,13 +23,13 @@ public class SolarSystemSimulation : CombatSimulationBase
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
     public List<PlanetData> Planets { get; private set; } = [];
-    public List<SpaceStationData> Stations { get; private set; } = [];
+    public List<SpaceStationData> SpaceStations { get; private set; } = [];
     public SolarSystemContent Content { get; private set; }
 
     // ── Entities ────────────────────────────────────────────────────
     public Entity StarEntity { get; private set; }
     public List<Entity> PlanetEntities { get; } = [];
-    public List<Entity> StationEntities { get; } = [];
+    public List<Entity> SpaceStationEntities { get; } = [];
     public List<List<Entity>> MoonEntities { get; } = [];
     public List<Entity> AsteroidEntities { get; } = [];
     public List<Entity> EnemyEntities { get; } = [];
@@ -41,7 +41,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     // ── Proximity (updated per-player) ──────────────────────────────
     public int NearbyPlanetIndex { get; private set; } = -1;
-    public int NearbyStationIndex { get; private set; } = -1;
+    public int NearbySpaceStationIndex { get; private set; } = -1;
     public int NearbyMoonPlanetIndex { get; private set; } = -1;
     public int NearbyMoonIndex { get; private set; } = -1;
 
@@ -81,7 +81,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
         Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
         Planets = Content.Planets;
-        Stations = Content.Stations;
+        SpaceStations = Content.SpaceStations;
 
         float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
         float totalH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
@@ -92,7 +92,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         SpawnStar(StarSystem, center);
         SpawnPlanets(Content.Planets, center, globalTime);
-        SpawnStations(Content.Stations, globalTime);
+        SpawnSpaceStations(Content.SpaceStations, globalTime);
         SpawnAsteroids(Content.AsteroidBelts, new SeededRandom(rng.DeriveChildSeed(999)));
         SpawnNPCShips(Content.NpcShipSpawns);
         SpawnBackground(totalW, totalH);
@@ -123,7 +123,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     public override void Destroy()
     {
         PlanetEntities.Clear();
-        StationEntities.Clear();
+        SpaceStationEntities.Clear();
         MoonEntities.Clear();
         AsteroidEntities.Clear();
         EnemyEntities.Clear();
@@ -167,7 +167,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     public override IReadOnlyList<string>? GetDebugInfo()
     {
         _debugInfo.Begin();
-        _debugInfo.Add($"Planets: {Planets.Count}  Stations: {Stations.Count}");
+        _debugInfo.Add($"Planets: {Planets.Count}  Stations: {SpaceStations.Count}");
         _debugInfo.Add($"Asteroids: {AsteroidEntities.Count}  Enemies: {EnemyEntities.Count}");
         _debugInfo.Add($"Players: {Players.Count}");
         return _debugInfo.Entries;
@@ -179,7 +179,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         // Clear return context
         player.SolarSystemReturnContext = PlayerData.ReturnContext.Default;
-        player.ReturnStationIndex = -1;
+        player.ReturnSpaceStationIndex = -1;
         player.ReturnPlanetIndex = -1;
         player.ReturnMoonPlanetIndex = -1;
         player.ReturnMoonIndex = -1;
@@ -220,10 +220,10 @@ public class SolarSystemSimulation : CombatSimulationBase
     {
         var returnCtx = player.SolarSystemReturnContext;
 
-        if (returnCtx == PlayerData.ReturnContext.FromStation && player.ReturnStationIndex >= 0
-            && player.ReturnStationIndex < StationEntities.Count)
+        if (returnCtx == PlayerData.ReturnContext.FromSpaceStation && player.ReturnSpaceStationIndex >= 0
+            && player.ReturnSpaceStationIndex < SpaceStationEntities.Count)
         {
-            return EcsWorld.Get<Transform>(StationEntities[player.ReturnStationIndex]).Position;
+            return EcsWorld.Get<Transform>(SpaceStationEntities[player.ReturnSpaceStationIndex]).Position;
         }
 
         if (returnCtx == PlayerData.ReturnContext.FromPlanet && player.ReturnPlanetIndex >= 0
@@ -256,9 +256,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private void SpawnStar(StarSystemData starSystem, Vector2 center)
     {
-        float starDisplayRadius = starSystem.StarRadius * 2f;
-        StarEntity = EntityFactory.CreateStar(EcsWorld, center, starDisplayRadius,
-            starSystem.Name, starSystem.StarColor, starSystem.Index);
+        StarEntity = EntityFactory.CreateStar(EcsWorld, center, starSystem);
     }
 
     private void SpawnPlanets(List<PlanetData> planets, Vector2 center, float globalTime)
@@ -270,10 +268,7 @@ public class SolarSystemSimulation : CombatSimulationBase
                 MathF.Cos(angle) * planet.OrbitRadius,
                 MathF.Sin(angle) * planet.OrbitRadius);
 
-            var planetEntity = EntityFactory.CreatePlanet(EcsWorld, pos, StarEntity,
-                planet.Name, planet.Radius, planet.Color,
-                planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle,
-                planet.Index, planet.HasSolidSurface);
+            var planetEntity = EntityFactory.CreatePlanet(EcsWorld, pos, StarEntity, planet);
             PlanetEntities.Add(planetEntity);
 
             var planetMoons = SpawnPlanetMoons(planet, planetEntity, pos, globalTime);
@@ -291,31 +286,28 @@ public class SolarSystemSimulation : CombatSimulationBase
                 MathF.Cos(moonAngle) * moon.OrbitRadius,
                 MathF.Sin(moonAngle) * moon.OrbitRadius);
 
-            var moonEntity = EntityFactory.CreateMoon(EcsWorld, moonPos, planetEntity,
-                moon.Name, moon.Radius, moon.Color,
-                moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
+            var moonEntity = EntityFactory.CreateMoon(EcsWorld, moonPos, planetEntity, moon);
             planetMoons.Add(moonEntity);
         }
         return planetMoons;
     }
 
-    private void SpawnStations(List<SpaceStationData> stations, float globalTime)
+    private void SpawnSpaceStations(List<SpaceStationData> spaceStations, float globalTime)
     {
-        foreach (var station in stations)
+        foreach (var spaceStation in spaceStations)
         {
-            Entity parent = station.OrbitParentPlanetIndex >= 0 && station.OrbitParentPlanetIndex < PlanetEntities.Count
-                ? PlanetEntities[station.OrbitParentPlanetIndex]
+            Entity parent = spaceStation.OrbitParentPlanetIndex >= 0 && spaceStation.OrbitParentPlanetIndex < PlanetEntities.Count
+                ? PlanetEntities[spaceStation.OrbitParentPlanetIndex]
                 : StarEntity;
 
             var parentTransform = EcsWorld.Get<Transform>(parent);
-            float stAngle = station.StartAngle + station.OrbitSpeed * globalTime;
+            float stAngle = spaceStation.StartAngle + spaceStation.OrbitSpeed * globalTime;
             var stPos = parentTransform.Position + new Vector2(
-                MathF.Cos(stAngle) * station.OrbitRadius,
-                MathF.Sin(stAngle) * station.OrbitRadius);
+                MathF.Cos(stAngle) * spaceStation.OrbitRadius,
+                MathF.Sin(stAngle) * spaceStation.OrbitRadius);
 
-            var stEntity = EntityFactory.CreateStation(EcsWorld, stPos, parent,
-                station.Name, station.OrbitRadius, station.OrbitSpeed, station.StartAngle, station.Index);
-            StationEntities.Add(stEntity);
+            var stEntity = EntityFactory.CreateSpaceStation(EcsWorld, stPos, parent, spaceStation);
+            SpaceStationEntities.Add(stEntity);
         }
     }
 
@@ -388,7 +380,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     private void UpdateProximity()
     {
         NearbyPlanetIndex = -1;
-        NearbyStationIndex = -1;
+        NearbySpaceStationIndex = -1;
         NearbyMoonPlanetIndex = -1;
         NearbyMoonIndex = -1;
 
@@ -416,7 +408,7 @@ public class SolarSystemSimulation : CombatSimulationBase
                     }
                     break;
                 case CelestialType.SpaceStation:
-                    NearbyStationIndex = StationEntities.IndexOf(_proximitySystem.NearestEntity);
+                    NearbySpaceStationIndex = SpaceStationEntities.IndexOf(_proximitySystem.NearestEntity);
                     break;
             }
         }
@@ -501,14 +493,14 @@ public class SolarSystemSimulation : CombatSimulationBase
         PlayerDead = false;
 
         Vector2 respawnPos = Content.StartingPosition;
-        int nearestStationIdx = -1;
+        int nearestSpaceStationIdx = -1;
 
-        if (StationEntities.Count > 0)
+        if (SpaceStationEntities.Count > 0)
         {
             float bestDist = float.MaxValue;
-            for (int i = 0; i < StationEntities.Count; i++)
+            for (int i = 0; i < SpaceStationEntities.Count; i++)
             {
-                var stEntity = StationEntities[i];
+                var stEntity = SpaceStationEntities[i];
                 if (!EcsWorld.IsAlive(stEntity)) continue;
                 var stPos = EcsWorld.Get<Transform>(stEntity).Position;
                 float dist = Vector2.Distance(stPos, respawnPos);
@@ -516,7 +508,7 @@ public class SolarSystemSimulation : CombatSimulationBase
                 {
                     bestDist = dist;
                     respawnPos = stPos + new Vector2(50, 0);
-                    nearestStationIdx = i;
+                    nearestSpaceStationIdx = i;
                 }
             }
         }
@@ -528,7 +520,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         CombatMessageTimer = 3f;
 
         // Expose respawn station index for state to auto-open station menu
-        RespawnStationIndex = nearestStationIdx;
+        RespawnSpaceStationIndex = nearestSpaceStationIdx;
     }
 
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)
@@ -536,6 +528,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         player.Data.ShipHealth = hull;
     }
 
-    /// <summary>Index of station where player respawned (-1 if none). Reset by state after reading.</summary>
-    public int RespawnStationIndex { get; set; } = -1;
+    /// <summary>Index of space station where player respawned (-1 if none). Reset by state after reading.</summary>
+    public int RespawnSpaceStationIndex { get; set; } = -1;
 }

@@ -30,7 +30,7 @@ public class InteriorState : GameState
     // ── Origin data ─────────────────────────────────────────────────
     private readonly InteriorOrigin _origin;
     private readonly StarSystemData _starSystem;
-    private readonly SpaceStationData? _station;
+    private readonly SpaceStationData? _spaceStation;
     private readonly PlanetData? _planet;
     private readonly SettlementData? _settlement;
 
@@ -59,11 +59,11 @@ public class InteriorState : GameState
     private readonly HealthStationOverlay _healthStationOverlay = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
-        SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null)
+        SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null)
     {
         _origin = origin;
         _starSystem = starSystem;
-        _station = station;
+        _spaceStation = spaceStation;
         _planet = planet;
         _settlement = settlement;
     }
@@ -77,7 +77,7 @@ public class InteriorState : GameState
             : game.Coordinator.Find<SolarSystemSimulation>(s => s.StarSystem.Index == _starSystem.Index);
         _sim = game.Coordinator.FindOrCreate<InteriorSimulation>(
             s => s.Origin == _origin && s.StarSystem.Index == _starSystem.Index,
-            () => new InteriorSimulation(game, _origin, _starSystem, _station, _planet, _settlement, parentSim));
+            () => new InteriorSimulation(game, _origin, _starSystem, _spaceStation, _planet, _settlement, parentSim));
 
         // Add player
         _simPlayer = _sim.AddPlayer(game.Player);
@@ -217,8 +217,8 @@ public class InteriorState : GameState
             case InteractableType.MissionBoard:
             {
                 ulong boardSeed;
-                if (_origin == InteriorOrigin.Station && _station != null)
-                    boardSeed = MissionGenerator.GetStationBoardSeed(game.Seeds, _starSystem.Index, _station.Index);
+                if (_origin == InteriorOrigin.SpaceStation && _spaceStation != null)
+                    boardSeed = MissionGenerator.GetSpaceStationBoardSeed(game.Seeds, _starSystem.Index, _spaceStation.Index);
                 else if (_planet != null && _settlement != null)
                     boardSeed = MissionGenerator.GetSettlementBoardSeed(game.Seeds, _starSystem.Index, _planet.Index, _settlement.TileRect.X, _settlement.TileRect.Y);
                 else
@@ -251,10 +251,10 @@ public class InteriorState : GameState
     {
         switch (_origin)
         {
-            case InteriorOrigin.Station:
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
-                game.Player.ReturnStationIndex = _station!.Index;
-                game.ChangeState(new SolarSystemState(_starSystem, _station));
+            case InteriorOrigin.SpaceStation:
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
+                game.Player.ReturnSpaceStationIndex = _spaceStation!.Index;
+                game.ChangeState(new SolarSystemState(_starSystem, _spaceStation));
                 break;
             case InteriorOrigin.Settlement:
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
@@ -331,6 +331,6 @@ public class InteriorState : GameState
 /// <summary>Where the interior was entered from.</summary>
 public enum InteriorOrigin
 {
-    Station,
+    SpaceStation,
     Settlement
 }

@@ -8,11 +8,11 @@ using SpaceExplorationGame.UI.Overlays.Map.Base;
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
 /// <summary>Type of object hovered/selected in the solar system map.</summary>
-public enum SolarMapObjectType { None, Star, Planet, Moon, Station }
+public enum SolarMapObjectType { None, Star, Planet, Moon, SpaceStation }
 
 /// <summary>Identifies a clickable object in the solar system map.</summary>
 public readonly record struct SolarMapSelection(
-    SolarMapObjectType Type, int PlanetIndex = -1, int MoonIndex = -1, int StationIndex = -1);
+    SolarMapObjectType Type, int PlanetIndex = -1, int MoonIndex = -1, int SpaceStationIndex = -1);
 
 /// <summary>
 /// Map panel showing the current solar system with interactive planets, moons, and stations.
@@ -28,7 +28,7 @@ public class SolarSystemMapPanel : MapPanelBase
     // ── State ──
     private StarSystemData? _currentStarSystem;
     private List<PlanetData> _planets = [];
-    private List<SpaceStationData> _stations = [];
+    private List<SpaceStationData> _spaceStations = [];
     private SolarMapSelection _hoveredObject = new(SolarMapObjectType.None);
     private SolarMapSelection _selectedObject = new(SolarMapObjectType.None);
 
@@ -44,7 +44,7 @@ public class SolarSystemMapPanel : MapPanelBase
             _currentStarSystem = starSystems[game.Player.CurrentStarSystemIndex];
             var content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, _currentStarSystem);
             _planets = content.Planets;
-            _stations = content.Stations;
+            _spaceStations = content.SpaceStations;
         }
 
         _hoveredObject = new(SolarMapObjectType.None);
@@ -100,43 +100,43 @@ public class SolarSystemMapPanel : MapPanelBase
             }
 
             // Planets and moons
-            for (int i = 0; i < _planets.Count; i++)
+            foreach (var planet in _planets)
             {
-                var pPos = GetPlanetWorldPos(_planets[i], time);
+                var pPos = GetPlanetWorldPos(planet, time);
                 var pScreen = Camera.WorldToScreen(pPos);
-                float pHitR = MathF.Max(_planets[i].Radius * Camera.Zoom, 12f);
+                float pHitR = MathF.Max(planet.Radius * Camera.Zoom, 12f);
                 float pDist = (selectionPoint - pScreen).LengthSquared();
                 if (pDist < pHitR * pHitR && pDist < bestDist)
                 {
                     bestDist = pDist;
-                    _hoveredObject = new(SolarMapObjectType.Planet, PlanetIndex: i);
+                    _hoveredObject = new(SolarMapObjectType.Planet, PlanetIndex: planet.Index);
                 }
 
-                for (int j = 0; j < _planets[i].Moons.Count; j++)
+                foreach (var moon in planet.Moons)
                 {
-                    var mPos = GetMoonWorldPos(_planets[i], _planets[i].Moons[j], time);
+                    var mPos = GetMoonWorldPos(planet, moon, time);
                     var mScreen = Camera.WorldToScreen(mPos);
-                    float mHitR = MathF.Max(_planets[i].Moons[j].Radius * Camera.Zoom, 10f);
+                    float mHitR = MathF.Max(moon.Radius * Camera.Zoom, 10f);
                     float mDist = (selectionPoint - mScreen).LengthSquared();
                     if (mDist < mHitR * mHitR && mDist < bestDist)
                     {
                         bestDist = mDist;
-                        _hoveredObject = new(SolarMapObjectType.Moon, PlanetIndex: i, MoonIndex: j);
+                        _hoveredObject = new(SolarMapObjectType.Moon, PlanetIndex: planet.Index, MoonIndex: moon.Index);
                     }
                 }
             }
 
             // Stations
-            for (int i = 0; i < _stations.Count; i++)
+            foreach (var spaceStation in _spaceStations)
             {
-                var sPos = GetStationWorldPos(_stations[i], time);
+                var sPos = GetStationWorldPos(spaceStation, time);
                 var sScreen = Camera.WorldToScreen(sPos);
                 float sHitR = MathF.Max(8f * Camera.Zoom, 10f);
                 float sDist = (selectionPoint - sScreen).LengthSquared();
                 if (sDist < sHitR * sHitR && sDist < bestDist)
                 {
                     bestDist = sDist;
-                    _hoveredObject = new(SolarMapObjectType.Station, StationIndex: i);
+                    _hoveredObject = new(SolarMapObjectType.SpaceStation, SpaceStationIndex: spaceStation.Index);
                 }
             }
         }
@@ -220,8 +220,8 @@ public class SolarSystemMapPanel : MapPanelBase
             SolarMapObjectType.Moon => player.Navigation.Type == NavigationTargetType.Moon
                                       && player.Navigation.PlanetIndex == sel.PlanetIndex
                                       && player.Navigation.MoonIndex == sel.MoonIndex,
-            SolarMapObjectType.Station => player.Navigation.Type == NavigationTargetType.Station
-                                         && player.Navigation.StationIndex == sel.StationIndex,
+            SolarMapObjectType.SpaceStation => player.Navigation.Type == NavigationTargetType.SpaceStation
+                                         && player.Navigation.SpaceStationIndex == sel.SpaceStationIndex,
             _ => false
         };
     }
@@ -246,9 +246,9 @@ public class SolarSystemMapPanel : MapPanelBase
                 player.Navigation.SetMoon(_selectedObject.PlanetIndex, _selectedObject.MoonIndex,
                     moon.Name, moon.Color);
                 break;
-            case SolarMapObjectType.Station when _selectedObject.StationIndex >= 0 && _selectedObject.StationIndex < _stations.Count:
-                var station = _stations[_selectedObject.StationIndex];
-                player.Navigation.SetStation(_selectedObject.StationIndex, station.Name, new Color3(100, 200, 255));
+            case SolarMapObjectType.SpaceStation when _selectedObject.SpaceStationIndex >= 0 && _selectedObject.SpaceStationIndex < _spaceStations.Count:
+                var spaceStation = _spaceStations[_selectedObject.SpaceStationIndex];
+                player.Navigation.SetStation(_selectedObject.SpaceStationIndex, spaceStation.Name, new Color3(100, 200, 255));
                 break;
         }
     }
@@ -288,17 +288,16 @@ public class SolarSystemMapPanel : MapPanelBase
             _currentStarSystem?.Name ?? "STAR", new Color3(255, 220, 80), Math.Max(1f, camera.Zoom * 18f));
 
         // Planets
-        for (int i = 0; i < _planets.Count; i++)
+        foreach (var planet in _planets)
         {
-            var planet = _planets[i];
             var pPos = GetPlanetWorldPos(planet, time);
             float pRadius = Math.Max(planet.Radius, 4f);
 
             renderer.DrawFilledCircle(camera, pPos, pRadius, planet.Color.WithAlpha(220));
 
-            bool isPHovered = _hoveredObject.Type == SolarMapObjectType.Planet && _hoveredObject.PlanetIndex == i;
-            bool isPSelected = _selectedObject.Type == SolarMapObjectType.Planet && _selectedObject.PlanetIndex == i;
-            bool isPTarget = game.Player.Navigation.Type == NavigationTargetType.Planet && game.Player.Navigation.PlanetIndex == i;
+            bool isPHovered = _hoveredObject.Type == SolarMapObjectType.Planet && _hoveredObject.PlanetIndex == planet.Index;
+            bool isPSelected = _selectedObject.Type == SolarMapObjectType.Planet && _selectedObject.PlanetIndex == planet.Index;
+            bool isPTarget = game.Player.Navigation.Type == NavigationTargetType.Planet && game.Player.Navigation.PlanetIndex == planet.Index;
 
             if (isPHovered || isPSelected)
                 renderer.DrawCircle(camera, pPos, pRadius + 4, new Color3(255, 255, 255));
@@ -314,18 +313,17 @@ public class SolarSystemMapPanel : MapPanelBase
                 renderer.DrawCircle(camera, pPos, moon.OrbitRadius, new Color4(40, 45, 65, 80), 32);
 
             // Moons
-            for (int j = 0; j < planet.Moons.Count; j++)
+            foreach (var moon in planet.Moons)
             {
-                var moon = planet.Moons[j];
                 var mPos = GetMoonWorldPos(planet, moon, time);
                 float mRadius = Math.Max(moon.Radius, 2f);
 
                 renderer.DrawFilledCircle(camera, mPos, mRadius, moon.Color.WithAlpha(180));
 
-                bool isMHovered = _hoveredObject is { Type: SolarMapObjectType.Moon } && _hoveredObject.PlanetIndex == i && _hoveredObject.MoonIndex == j;
-                bool isMSelected = _selectedObject is { Type: SolarMapObjectType.Moon } && _selectedObject.PlanetIndex == i && _selectedObject.MoonIndex == j;
+                bool isMHovered = _hoveredObject is { Type: SolarMapObjectType.Moon } && _hoveredObject.PlanetIndex == planet.Index && _hoveredObject.MoonIndex == moon.Index;
+                bool isMSelected = _selectedObject is { Type: SolarMapObjectType.Moon } && _selectedObject.PlanetIndex == planet.Index && _selectedObject.MoonIndex == moon.Index;
                 bool isMTarget = game.Player.Navigation.Type == NavigationTargetType.Moon
-                                 && game.Player.Navigation.PlanetIndex == i && game.Player.Navigation.MoonIndex == j;
+                                 && game.Player.Navigation.PlanetIndex == planet.Index && game.Player.Navigation.MoonIndex == moon.Index;
 
                 if (isMHovered || isMSelected)
                     renderer.DrawCircle(camera, mPos, mRadius + 3, new Color3(200, 200, 220));
@@ -338,17 +336,16 @@ public class SolarSystemMapPanel : MapPanelBase
         }
 
         // Stations
-        for (int i = 0; i < _stations.Count; i++)
+        foreach (var spaceStation in _spaceStations)
         {
-            var station = _stations[i];
-            var sPos = GetStationWorldPos(station, time);
+            var sPos = GetStationWorldPos(spaceStation, time);
 
             float ds = Math.Max(6f, 3f / camera.Zoom);
             renderer.DrawFilledCircle(camera, sPos, ds * 0.6f, new Color4(100, 200, 255, 220));
 
-            bool isSHovered = _hoveredObject.Type == SolarMapObjectType.Station && _hoveredObject.StationIndex == i;
-            bool isSSelected = _selectedObject.Type == SolarMapObjectType.Station && _selectedObject.StationIndex == i;
-            bool isSTarget = game.Player.Navigation.Type == NavigationTargetType.Station && game.Player.Navigation.StationIndex == i;
+            bool isSHovered = _hoveredObject.Type == SolarMapObjectType.SpaceStation && _hoveredObject.SpaceStationIndex == spaceStation.Index;
+            bool isSSelected = _selectedObject.Type == SolarMapObjectType.SpaceStation && _selectedObject.SpaceStationIndex == spaceStation.Index;
+            bool isSTarget = game.Player.Navigation.Type == NavigationTargetType.SpaceStation && game.Player.Navigation.SpaceStationIndex == spaceStation.Index;
 
             if (isSHovered || isSSelected)
                 renderer.DrawCircle(camera, sPos, ds + 4, new Color3(100, 200, 255));
@@ -356,7 +353,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 DrawTargetBrackets(renderer, camera, sPos, ds + 8, game);
 
             renderer.DrawText(camera, sPos + new Vector2(0, ds + 4),
-                station.Name, new Color3(100, 200, 255), Math.Max(1f, camera.Zoom * 12f));
+                spaceStation.Name, new Color3(100, 200, 255), Math.Max(1f, camera.Zoom * 12f));
         }
 
         // Mission markers on planets/stations
@@ -381,9 +378,9 @@ public class SolarSystemMapPanel : MapPanelBase
                     }
                     else
                     {
-                        for (int si = 0; si < _stations.Count; si++)
+                        foreach (var spaceStation in _spaceStations)
                         {
-                            var sPos2 = GetStationWorldPos(_stations[si], time);
+                            var sPos2 = GetStationWorldPos(spaceStation, time);
                             float sR = Math.Max(6f, 3f / camera.Zoom);
                             renderer.DrawCircle(camera, sPos2, sR + 6, new Color4(mc.R, mc.G, mc.B, mAlpha));
                             renderer.DrawCircle(camera, sPos2, sR + 9, new Color4(mc.R, mc.G, mc.B, (byte)(mAlpha / 3)));
@@ -395,9 +392,9 @@ public class SolarSystemMapPanel : MapPanelBase
                 if (mission.Status == MissionStatus.Completed &&
                     mission.TurnIn.HasSystem && mission.TurnIn.SystemIndex == _currentStarSystem.Index)
                 {
-                    for (int si = 0; si < _stations.Count; si++)
+                    foreach (var spaceStation in _spaceStations)
                     {
-                        var sPos2 = GetStationWorldPos(_stations[si], time);
+                        var sPos2 = GetStationWorldPos(spaceStation, time);
                         float sR = Math.Max(6f, 3f / camera.Zoom);
                         renderer.DrawCircle(camera, sPos2, sR + 6, new Color4(100, 255, 100, mAlpha));
                         renderer.DrawCircle(camera, sPos2, sR + 9, new Color4(100, 255, 100, (byte)(mAlpha / 3)));
@@ -437,7 +434,7 @@ public class SolarSystemMapPanel : MapPanelBase
             py += 24;
             renderer.DrawTextScreen(px, py, $"CLASS {_currentStarSystem.StarClass} STAR", new Color3(180, 180, 200), 1.3f);
             py += 16;
-            renderer.DrawTextScreen(px, py, $"PLANETS: {_planets.Count}  STATIONS: {_stations.Count}", new Color3(180, 180, 200), 1.3f);
+            renderer.DrawTextScreen(px, py, $"PLANETS: {_planets.Count}  SPACE STATIONS: {_spaceStations.Count}", new Color3(180, 180, 200), 1.3f);
             py += 20;
         }
 
@@ -584,15 +581,15 @@ public class SolarSystemMapPanel : MapPanelBase
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
-            case SolarMapObjectType.Station when sel.StationIndex >= 0 && sel.StationIndex < _stations.Count:
-                var station = _stations[sel.StationIndex];
-                renderer.DrawTextScreen(px, py, "SELECTED: STATION", new Color3(100, 120, 160), 1.3f);
+            case SolarMapObjectType.SpaceStation when sel.SpaceStationIndex >= 0 && sel.SpaceStationIndex < _spaceStations.Count:
+                var spaceStation = _spaceStations[sel.SpaceStationIndex];
+                renderer.DrawTextScreen(px, py, "SELECTED: SPACE STATION", new Color3(100, 120, 160), 1.3f);
                 py += 20;
-                renderer.DrawTextScreen(px, py, station.Name.ToUpper() + targetTag,
+                renderer.DrawTextScreen(px, py, spaceStation.Name.ToUpper() + targetTag,
                     isTarget ? new Color3(255, 200, 50) : new Color3(100, 200, 255), 1.8f);
                 py += 26;
-                string orbitLabel = station.OrbitParentPlanetIndex >= 0 && station.OrbitParentPlanetIndex < _planets.Count
-                    ? $"ORBITS: {_planets[station.OrbitParentPlanetIndex].Name.ToUpper()}"
+                string orbitLabel = spaceStation.OrbitParentPlanetIndex >= 0 && spaceStation.OrbitParentPlanetIndex < _planets.Count
+                    ? $"ORBITS: {_planets[spaceStation.OrbitParentPlanetIndex].Name.ToUpper()}"
                     : "ORBITS: STAR";
                 renderer.DrawTextScreen(px, py, orbitLabel, new Color3(200, 200, 200), 1.5f);
                 py += 20;

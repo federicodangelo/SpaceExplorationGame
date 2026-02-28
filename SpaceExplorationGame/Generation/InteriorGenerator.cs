@@ -3,7 +3,7 @@ using SpaceExplorationGame.Core;
 namespace SpaceExplorationGame.Generation;
 
 /// <summary>
-/// Tile types used in interior layouts (stations and settlements).
+/// Tile types used in interior layouts (space stations and settlements).
 /// </summary>
 public enum InteriorTileType
 {
@@ -21,7 +21,7 @@ public enum InteriorTileType
 /// <summary>Whether the interior belongs to a station or a settlement.</summary>
 public enum InteriorType
 {
-    Station,
+    SpaceStation,
     Settlement
 }
 
@@ -181,7 +181,7 @@ public static class InteriorGenerator
     {
         var data = new InteriorData
         {
-            Type = InteriorType.Station,
+            Type = InteriorType.SpaceStation,
             Name = stationName,
             Width = StationWidth,
             Height = StationHeight,

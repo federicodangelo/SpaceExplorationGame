@@ -77,21 +77,21 @@ public readonly record struct StatDiff(string Label, float Diff);
 public readonly record struct SolarSystemContent(
     List<PlanetData> Planets,
     List<AsteroidBeltData> AsteroidBelts,
-    List<SpaceStationData> Stations,
+    List<SpaceStationData> SpaceStations,
     List<NpcShipSpawnData> NpcShipSpawns,
     Vector2 StartingPosition);
 
 // ── Menu start helpers ───────────────────────────────────────────
 
 /// <summary>A star system paired with a planet.</summary>
-public readonly record struct SystemPlanet(StarSystemData System, PlanetData Planet);
+public readonly record struct SystemPlanet(StarSystemData StarSystem, PlanetData Planet);
 
 /// <summary>A star system paired with a space station.</summary>
-public readonly record struct SystemStation(StarSystemData System, SpaceStationData Station);
+public readonly record struct SystemSpaceStation(StarSystemData StarSystem, SpaceStationData SpaceStation);
 
 /// <summary>A star system, planet, and settlement combination.</summary>
 public readonly record struct SystemPlanetSettlement(
-    StarSystemData System, PlanetData Planet, SettlementData Settlement);
+    StarSystemData StarSystem, PlanetData Planet, SettlementData Settlement);
 
 // ── Projectiles ──────────────────────────────────────────────────
 

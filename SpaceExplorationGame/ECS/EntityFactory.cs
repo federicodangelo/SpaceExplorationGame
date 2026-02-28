@@ -15,45 +15,42 @@ public static class EntityFactory
     // ── Celestial Bodies ────────────────────────────────────────────
 
     /// <summary>Create a star entity at the center of a solar system.</summary>
-    public static Entity CreateStar(World world, Vector2 position, float displayRadius,
-        string name, Color3 color, int dataIndex)
+    public static Entity CreateStar(World world, Vector2 position, StarSystemData starSystem)
     {
+        float displayRadius = starSystem.StarRadius * 2f;
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(displayRadius * 2), (int)(displayRadius * 2), color),
+            Sprite.ColoredRect((int)(displayRadius * 2), (int)(displayRadius * 2), starSystem.StarColor),
             new CelestialBody
             {
                 Type = CelestialType.Star,
-                Name = name,
+                Name = starSystem.Name,
                 Radius = displayRadius,
-                DataIndex = dataIndex
+                DataIndex = starSystem.Index
             },
-            new Label { Text = name, OffsetY = (int)(displayRadius + 15) }
+            new Label { Text = starSystem.Name, OffsetY = (int)(displayRadius + 15) }
         );
     }
 
     /// <summary>Create a planet entity orbiting a star.</summary>
-    public static Entity CreatePlanet(World world, Vector2 position, Entity starEntity,
-        string name, float radius, Color3 color,
-        float orbitRadius, float orbitSpeed, float startAngle,
-        int dataIndex, bool hasSolidSurface)
+    public static Entity CreatePlanet(World world, Vector2 position, Entity starEntity, PlanetData planet)
     {
         var entity = world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), color),
+            Sprite.ColoredRect((int)(planet.Radius * 2), (int)(planet.Radius * 2), planet.Color),
             new CelestialBody
             {
                 Type = CelestialType.Planet,
-                Name = name,
-                Radius = radius,
-                DataIndex = dataIndex,
-                HasSolidSurface = hasSolidSurface
+                Name = planet.Name,
+                Radius = planet.Radius,
+                DataIndex = planet.Index,
+                HasSolidSurface = planet.HasSolidSurface
             },
-            new Orbit(starEntity, orbitRadius, orbitSpeed, startAngle),
-            new Label { Text = name, OffsetY = (int)(radius + 10) }
+            new Orbit(starEntity, planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle),
+            new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 10) }
         );
 
-        if (hasSolidSurface)
+        if (planet.HasSolidSurface)
         {
             world.Add(entity, new Interactable
             {
@@ -66,23 +63,21 @@ public static class EntityFactory
     }
 
     /// <summary>Create a moon entity orbiting a planet.</summary>
-    public static Entity CreateMoon(World world, Vector2 position, Entity parentPlanet,
-        string name, float radius, Color3 color,
-        float orbitRadius, float orbitSpeed, float startAngle, int dataIndex)
+    public static Entity CreateMoon(World world, Vector2 position, Entity parentPlanet, MoonData moon)
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(radius * 2), (int)(radius * 2), color),
+            Sprite.ColoredRect((int)(moon.Radius * 2), (int)(moon.Radius * 2), moon.Color),
             new CelestialBody
             {
                 Type = CelestialType.Moon,
-                Name = name,
-                Radius = radius,
-                DataIndex = dataIndex,
+                Name = moon.Name,
+                Radius = moon.Radius,
+                DataIndex = moon.Index,
                 HasSolidSurface = true
             },
-            new Orbit(parentPlanet, orbitRadius, orbitSpeed, startAngle),
-            new Label { Text = name, OffsetY = (int)(radius + 8) },
+            new Orbit(parentPlanet, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle),
+            new Label { Text = moon.Name, OffsetY = (int)(moon.Radius + 8) },
             new Interactable
             {
                 Type = InteractionType.LandOnPlanet,
@@ -92,8 +87,7 @@ public static class EntityFactory
     }
 
     /// <summary>Create a space station entity orbiting a parent body (star or planet).</summary>
-    public static Entity CreateStation(World world, Vector2 position, Entity parent,
-        string name, float orbitRadius, float orbitSpeed, float startAngle, int dataIndex)
+    public static Entity CreateSpaceStation(World world, Vector2 position, Entity parent, SpaceStationData spaceStation)
     {
         return world.Create(
             new Transform(position),
@@ -101,15 +95,15 @@ public static class EntityFactory
             new CelestialBody
             {
                 Type = CelestialType.SpaceStation,
-                Name = name,
+                Name = spaceStation.Name,
                 Radius = 120,
-                DataIndex = dataIndex
+                DataIndex = spaceStation.Index
             },
-            new Orbit(parent, orbitRadius, orbitSpeed, startAngle),
-            new Label { Text = name, OffsetY = 280 },
+            new Orbit(parent, spaceStation.OrbitRadius, spaceStation.OrbitSpeed, spaceStation.StartAngle),
+            new Label { Text = spaceStation.Name, OffsetY = 280 },
             new Interactable
             {
-                Type = InteractionType.DockAtStation,
+                Type = InteractionType.DockAtSpaceStation,
                 Label = "Dock"
             }
         );

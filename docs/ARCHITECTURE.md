@@ -680,7 +680,7 @@ Players can accept, track, and complete missions from mission boards at space st
   - `ClaimedIds` — HashSet of all accepted/completed mission IDs (prevents re-offering)
   - `Completed` — lifetime counter
 - `PlayerData.Navigation` (`NavigationTarget`) — manages the player's current navigation target
-  - `Type`, `PlanetIndex`, `MoonIndex`, `StationIndex`, `Name`, `Color`, `WorldX`, `WorldY`
+  - `Type`, `PlanetIndex`, `MoonIndex`, `SpaceStationIndex`, `Name`, `Color`, `WorldX`, `WorldY`
   - Methods: `SetStar()`, `SetPlanet()`, `SetMoon()`, `SetStation()`, `SetSurface()`, `Clear()`
 
 ### Customization Terminals in Interiors

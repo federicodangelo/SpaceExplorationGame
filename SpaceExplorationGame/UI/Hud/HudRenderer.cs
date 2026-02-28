@@ -157,7 +157,7 @@ public static class HudRenderer
     public static void RenderInteriorHud(SpriteRenderer renderer, PlayerData player,
         InteriorData interior, StarSystemData starSystem)
     {
-        string typeLabel = interior.Type == InteriorType.Station ? "STATION" : "SETTLEMENT";
+        string typeLabel = interior.Type == InteriorType.SpaceStation ? "SPACE STATION" : "SETTLEMENT";
         string dangerStr = FormatDanger(starSystem.DangerLevel);
         string locationLine = $"{interior.Name.ToUpper()}  |  {typeLabel}  |  {starSystem.Name}  |  {dangerStr}";
         string infoLine = FormatPlayerInfo(player);
@@ -342,8 +342,7 @@ public static class HudRenderer
 
     /// <summary>Render solar system interaction prompts (planet, moon, station panels).</summary>
     public static void RenderSolarSystemPrompt(SpriteRenderer renderer,
-        int nearbyPlanetIndex, int nearbyMoonIndex, int nearbyMoonPlanetIndex,
-        int nearbyStationIndex,
+        int nearbyPlanetIndex, int nearbyMoonIndex, int nearbyMoonPlanetIndex, int nearbySpaceStationIndex,
         List<PlanetData> planets, List<SpaceStationData> stations,
         string interactHelpText)
     {
@@ -378,9 +377,9 @@ public static class HudRenderer
                  new Color3(180, 180, 180),
                  new Color3(150, 150, 150)]);
         }
-        else if (nearbyStationIndex >= 0)
+        else if (nearbySpaceStationIndex >= 0)
         {
-            RenderPrompt(renderer, $"[{interactHelpText}] DOCK AT {stations[nearbyStationIndex].Name.ToUpper()}",
+            RenderPrompt(renderer, $"[{interactHelpText}] DOCK AT {stations[nearbySpaceStationIndex].Name.ToUpper()}",
                 100, 200, 255);
         }
     }

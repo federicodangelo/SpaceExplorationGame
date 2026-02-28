@@ -43,7 +43,7 @@ public static class InteriorRenderer
         float bgH = bgBottom - bgTop;
         var bgCenter = new Vector2(bgLeft + bgW / 2f, bgTop + bgH / 2f);
 
-        if (interior.Type == InteriorType.Station)
+        if (interior.Type == InteriorType.SpaceStation)
         {
             RenderSpaceBackground(renderer, camera, bgCenter, bgW, bgH, bgLeft, bgTop, bgRight, bgBottom);
         }
@@ -136,9 +136,9 @@ public static class InteriorRenderer
         var bl = new Vector2(0, interiorPixelH);
         var br = new Vector2(interiorPixelW, interiorPixelH);
 
-        byte lr = interior.Type == InteriorType.Station ? (byte)40 : (byte)50;
-        byte lg = interior.Type == InteriorType.Station ? (byte)50 : (byte)45;
-        byte lb = interior.Type == InteriorType.Station ? (byte)80 : (byte)35;
+        byte lr = interior.Type == InteriorType.SpaceStation ? (byte)40 : (byte)50;
+        byte lg = interior.Type == InteriorType.SpaceStation ? (byte)50 : (byte)45;
+        byte lb = interior.Type == InteriorType.SpaceStation ? (byte)80 : (byte)35;
 
         var lineColor = new Color3(lr, lg, lb);
         renderer.DrawLine(camera, tl, tr, lineColor);

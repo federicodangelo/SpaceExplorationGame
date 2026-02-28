@@ -18,7 +18,7 @@ public enum StationMenuOption
     AvatarCustomization,
     VehicleCustomization,
     Disembark,
-    ExitStation
+    ExitSpaceStation
 }
 
 /// <summary>
@@ -28,7 +28,7 @@ public enum StationMenuOption
 public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
 {
     private StarSystemData _starSystem = null!;
-    private SpaceStationData _station = null!;
+    private SpaceStationData _spaceStation = null!;
     private readonly RepairOverlay _repairOverlay = new();
     private readonly HealthStationOverlay _healthStationOverlay = new();
     private readonly MissionOverlay _missionOverlay = new();
@@ -90,7 +90,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
         new(StationMenuOption.Disembark, "DISEMBARK"),
-        new(StationMenuOption.ExitStation, "LAUNCH"),
+        new(StationMenuOption.ExitSpaceStation, "LAUNCH"),
     ])
     {
         ItemHeight = 50f,
@@ -104,10 +104,10 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
 
     // ── Open ──
 
-    public void Open(StarSystemData starSystem, SpaceStationData station, Game game)
+    public void Open(StarSystemData starSystem, SpaceStationData spaceStation, Game game)
     {
         _starSystem = starSystem;
-        _station = station;
+        _spaceStation = spaceStation;
         Menu.SelectedIndex = 0;
         base.Open();
 
@@ -128,7 +128,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 _healthStationOverlay.Open();
                 break;
             case StationMenuOption.Missions:
-                var boardSeed = MissionGenerator.GetStationBoardSeed(game.Seeds, _starSystem.Index, _station.Index);
+                var boardSeed = MissionGenerator.GetSpaceStationBoardSeed(game.Seeds, _starSystem.Index, _spaceStation.Index);
                 _missionOverlay.Open(game, _starSystem, boardSeed);
                 break;
             case StationMenuOption.SellCargo:
@@ -147,13 +147,13 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 _vehicleCustomization.Open();
                 break;
             case StationMenuOption.Disembark:
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromStation;
-                game.Player.ReturnStationIndex = _station.Index;
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
+                game.Player.ReturnSpaceStationIndex = _spaceStation.Index;
                 Close();
                 game.ChangeState(new InteriorState(
-                    InteriorOrigin.Station, _starSystem, station: _station));
+                    InteriorOrigin.SpaceStation, _starSystem, spaceStation: _spaceStation));
                 break;
-            case StationMenuOption.ExitStation:
+            case StationMenuOption.ExitSpaceStation:
                 Close();
                 break;
         }
@@ -192,7 +192,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
 
         // Station info header
-        renderer.DrawTextScreen(px + 20, py + 55, _station.Name.ToUpper(), new Color3(200, 200, 200), 2f);
+        renderer.DrawTextScreen(px + 20, py + 55, _spaceStation.Name.ToUpper(), new Color3(200, 200, 200), 2f);
         renderer.DrawTextScreen(px + 20, py + 80, $"IN SYSTEM: {_starSystem.Name}", new Color3(120, 120, 150), 1.5f);
         renderer.DrawLineScreen(px + 20, py + 105, px + pw - 20, py + 105, new Color3(60, 80, 140));
 

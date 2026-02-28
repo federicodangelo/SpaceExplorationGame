@@ -20,7 +20,7 @@ public class InteriorSimulation : SimulationBase
     // ── Data ────────────────────────────────────────────────────────
     public InteriorOrigin Origin { get; }
     public StarSystemData StarSystem { get; }
-    public SpaceStationData? Station { get; }
+    public SpaceStationData? SpaceStation { get; }
     public PlanetData? Planet { get; }
     public SettlementData? Settlement { get; }
     public InteriorData Interior { get; private set; } = null!;
@@ -37,13 +37,13 @@ public class InteriorSimulation : SimulationBase
 
 
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
-        SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
+        SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null,
         ISimulation? parent = null)
         : base(game, parent)
     {
         Origin = origin;
         StarSystem = starSystem;
-        Station = station;
+        SpaceStation = spaceStation;
         Planet = planet;
         Settlement = settlement;
     }
@@ -52,9 +52,9 @@ public class InteriorSimulation : SimulationBase
     {
         Interior = Origin switch
         {
-            InteriorOrigin.Station => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, Station),
+            InteriorOrigin.SpaceStation => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, SpaceStation),
             InteriorOrigin.Settlement => _game.WorldGenerator.GenerateSettlementInterior(_game.Seeds, StarSystem, Planet, Settlement),
-            _ => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, Station)
+            _ => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, SpaceStation)
         };
 
         // Initialize ECS systems

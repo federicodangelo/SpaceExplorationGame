@@ -123,7 +123,7 @@ public struct OwnedBy
     }
 }
 
-/// <summary>Marks an entity as interactable (e.g., land on planet, dock at station)</summary>
+/// <summary>Marks an entity as interactable (e.g., land on planet, dock at space station)</summary>
 [Component]
 public struct Interactable
 {
@@ -134,7 +134,7 @@ public struct Interactable
 public enum InteractionType
 {
     LandOnPlanet,
-    DockAtStation
+    DockAtSpaceStation
 }
 
 /// <summary>Per-frame ship input intent used by both player and NPC ships.</summary>

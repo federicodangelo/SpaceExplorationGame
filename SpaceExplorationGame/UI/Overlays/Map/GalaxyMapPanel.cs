@@ -382,7 +382,7 @@ public class GalaxyMapPanel : MapPanelBase
             renderer.DrawTextScreen(cx, selY + 52, $"CLASS {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
             renderer.DrawTextScreen(cx, selY + 72, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
             renderer.DrawTextScreen(cx, selY + 92,
-                $"STATION: {(sys.HasSpaceStation ? "YES" : "NO")}",
+                $"SPACE STATION: {(sys.HasSpaceStation ? "YES" : "NO")}",
                 sys.HasSpaceStation ? new Color3(100, 255, 200) : new Color3(120, 120, 120), 1.5f);
 
             string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)}";

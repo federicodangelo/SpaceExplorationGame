@@ -61,7 +61,7 @@ public class PlayerData
         CurrentStarSystemIndex = -1;
         CurrentPlanetIndex = -1;
         SolarSystemReturnContext = ReturnContext.Default;
-        ReturnStationIndex = -1;
+        ReturnSpaceStationIndex = -1;
         ReturnPlanetIndex = -1;
         ReturnMoonPlanetIndex = -1;
         ReturnMoonIndex = -1;
@@ -179,9 +179,9 @@ public class PlayerData
     public int CurrentPlanetIndex { get; set; } = -1;
 
     // Return context: where to place the player when re-entering the solar system
-    public enum ReturnContext { Default, FromStation, FromPlanet, FromMoon }
+    public enum ReturnContext { Default, FromSpaceStation, FromPlanet, FromMoon }
     public ReturnContext SolarSystemReturnContext { get; set; } = ReturnContext.Default;
-    public int ReturnStationIndex { get; set; } = -1;
+    public int ReturnSpaceStationIndex { get; set; } = -1;
     public int ReturnPlanetIndex { get; set; } = -1;
     public int ReturnMoonPlanetIndex { get; set; } = -1;  // which planet the moon belongs to
     public int ReturnMoonIndex { get; set; } = -1;        // which moon within that planet

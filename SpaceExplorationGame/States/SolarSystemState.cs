@@ -46,7 +46,7 @@ public class SolarSystemState : GameState
     private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
 
     // ── Overlays ────────────────────────────────────────────────────
-    private readonly SpaceStationOverlay _stationOverlay = new();
+    private readonly SpaceStationOverlay _spaceStationOverlay = new();
     private readonly SpaceStationData? _autoOpenStation;
     private readonly GalaxyMapOverlay _galaxyMapOverlay = new();
     private readonly bool _autoOpenGalaxyMap;
@@ -102,10 +102,10 @@ public class SolarSystemState : GameState
         // Auto-open overlays
         if (_autoOpenStation != null)
         {
-            int stIdx = _sim.Stations.FindIndex(s => s.Index == _autoOpenStation.Index);
-            if (stIdx >= 0 && stIdx < _sim.StationEntities.Count)
-                SetAnchor(_sim.StationEntities[stIdx]);
-            _stationOverlay.Open(_starSystem, _autoOpenStation, game);
+            int stIdx = _sim.SpaceStations.FindIndex(s => s.Index == _autoOpenStation.Index);
+            if (stIdx >= 0 && stIdx < _sim.SpaceStationEntities.Count)
+                SetAnchor(_sim.SpaceStationEntities[stIdx]);
+            _spaceStationOverlay.Open(_starSystem, _autoOpenStation, game);
         }
 
         if (_autoOpenGalaxyMap)
@@ -142,7 +142,7 @@ public class SolarSystemState : GameState
         // Overlays take priority
         if (_planetLandingOverlay.UpdateInput(game)) return;
         if (_galaxyMapOverlay.UpdateInput(game)) return;
-        if (_stationOverlay.UpdateInput(game)) return;
+        if (_spaceStationOverlay.UpdateInput(game)) return;
 
         if (_inGameMenuOverlay.UpdateInput(game)) return;
         if (input.IsActionPressed(InputAction.MenuBack))
@@ -160,10 +160,10 @@ public class SolarSystemState : GameState
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {
-            if (_sim.NearbyStationIndex >= 0)
+            if (_sim.NearbySpaceStationIndex >= 0)
             {
-                SetAnchor(_sim.StationEntities[_sim.NearbyStationIndex]);
-                _stationOverlay.Open(_starSystem, _sim.Stations[_sim.NearbyStationIndex], game);
+                SetAnchor(_sim.SpaceStationEntities[_sim.NearbySpaceStationIndex]);
+                _spaceStationOverlay.Open(_starSystem, _sim.SpaceStations[_sim.NearbySpaceStationIndex], game);
             }
             else if (_sim.NearbyPlanetIndex >= 0)
             {
@@ -213,17 +213,17 @@ public class SolarSystemState : GameState
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
 
         // Handle respawn station auto-dock
-        if (_sim.RespawnStationIndex >= 0)
+        if (_sim.RespawnSpaceStationIndex >= 0)
         {
-            int idx = _sim.RespawnStationIndex;
-            _sim.RespawnStationIndex = -1;
+            int idx = _sim.RespawnSpaceStationIndex;
+            _sim.RespawnSpaceStationIndex = -1;
             _simPlayer.Entity = _sim.Players.Count > 0 ? _sim.Players[0].Entity : default;
             _camera.Position = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
 
-            if (idx < _sim.Stations.Count)
+            if (idx < _sim.SpaceStations.Count)
             {
-                SetAnchor(_sim.StationEntities[idx]);
-                _stationOverlay.Open(_starSystem, _sim.Stations[idx], game);
+                SetAnchor(_sim.SpaceStationEntities[idx]);
+                _spaceStationOverlay.Open(_starSystem, _sim.SpaceStations[idx], game);
             }
         }
 
@@ -235,7 +235,7 @@ public class SolarSystemState : GameState
         }
         if (_planetLandingOverlay.IsOpen) { _planetLandingOverlay.Update(game); return; }
         if (_galaxyMapOverlay.IsOpen) { _galaxyMapOverlay.Update(game); return; }
-        if (_stationOverlay.IsOpen) { _stationOverlay.Update(game); return; }
+        if (_spaceStationOverlay.IsOpen) { _spaceStationOverlay.Update(game); return; }
 
         // Clear anchor when returning to normal gameplay
         ClearAnchor();
@@ -390,7 +390,7 @@ public class SolarSystemState : GameState
 
         // Stations
         game.StationRenderer.RenderStations(renderer, camera, world,
-            _sim.StationEntities, game.GlobalTime);
+            _sim.SpaceStationEntities, game.GlobalTime);
 
         // Labels
         _labelRenderer.Render();
@@ -398,7 +398,7 @@ public class SolarSystemState : GameState
         // Mission markers
         HudIndicatorsRenderer.RenderSolarSystemMissionMarkers(renderer, camera,
             game.Player, (float)game.GlobalTime, _starSystem.Index,
-            _sim.StationEntities, _sim.PlanetEntities, _sim.Planets, world);
+            _sim.SpaceStationEntities, _sim.PlanetEntities, _sim.Planets, world);
 
         // Thruster particles
         ParticleRenderer.RenderParticles(renderer, camera, world);
@@ -437,7 +437,7 @@ public class SolarSystemState : GameState
 
         // Minimap
         HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _sim.Planets, _sim.PlanetEntities,
-            _sim.MoonEntities, _sim.StationEntities, _sim.AsteroidEntities, _sim.EnemyEntities,
+            _sim.MoonEntities, _sim.SpaceStationEntities, _sim.AsteroidEntities, _sim.EnemyEntities,
             _simPlayer.Entity, _sim.StarEntity, world);
 
         // Off-screen indicators
@@ -449,9 +449,9 @@ public class SolarSystemState : GameState
                 HudIndicatorsRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
             HudIndicatorsRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
-                _sim.StationEntities, _sim.Stations, 5000f, game.Player);
+                _sim.SpaceStationEntities, _sim.SpaceStations, 5000f, game.Player);
             HudIndicatorsRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
-                game.Player, _starSystem.Index, _sim.StationEntities, _sim.PlanetEntities, world);
+                game.Player, _starSystem.Index, _sim.SpaceStationEntities, _sim.PlanetEntities, world);
 
             if (game.Player.Navigation.HasTarget)
             {
@@ -486,11 +486,11 @@ public class SolarSystemState : GameState
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,
             _sim.NearbyPlanetIndex, _sim.NearbyMoonIndex, _sim.NearbyMoonPlanetIndex,
-            _sim.NearbyStationIndex, _sim.Planets, _sim.Stations,
+            _sim.NearbySpaceStationIndex, _sim.Planets, _sim.SpaceStations,
             game.Input.GetActionHelpText(InputAction.Interact));
 
         // Overlays
-        _stationOverlay.Render(game);
+        _spaceStationOverlay.Render(game);
         _planetLandingOverlay.Render(game);
         _galaxyMapOverlay.Render(game);
         _inGameMenuOverlay.Render(game);
@@ -517,10 +517,10 @@ public class SolarSystemState : GameState
                     && world.IsAlive(_sim.MoonEntities[player.Navigation.PlanetIndex][player.Navigation.MoonIndex]))
                     return world.Get<Transform>(_sim.MoonEntities[player.Navigation.PlanetIndex][player.Navigation.MoonIndex]).Position;
                 break;
-            case NavigationTargetType.Station:
-                if (player.Navigation.StationIndex >= 0 && player.Navigation.StationIndex < _sim.StationEntities.Count
-                    && world.IsAlive(_sim.StationEntities[player.Navigation.StationIndex]))
-                    return world.Get<Transform>(_sim.StationEntities[player.Navigation.StationIndex]).Position;
+            case NavigationTargetType.SpaceStation:
+                if (player.Navigation.SpaceStationIndex >= 0 && player.Navigation.SpaceStationIndex < _sim.SpaceStationEntities.Count
+                    && world.IsAlive(_sim.SpaceStationEntities[player.Navigation.SpaceStationIndex]))
+                    return world.Get<Transform>(_sim.SpaceStationEntities[player.Navigation.SpaceStationIndex]).Position;
                 break;
         }
         return null;

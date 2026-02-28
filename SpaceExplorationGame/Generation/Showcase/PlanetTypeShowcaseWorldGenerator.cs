@@ -22,7 +22,7 @@ public class PlanetTypeShowcaseWorldGenerator : ProceduralWorldGenerator
         return new SolarSystemContent(
             Planets: ShowcaseWorldGeneratorHelpers.BuildPlanetTypeShowcasePlanets(),
             AsteroidBelts: [],
-            Stations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            SpaceStations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
             NpcShipSpawns: [],
             StartingPosition: new Vector2(
                 GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),

@@ -25,7 +25,7 @@ public class ProceduralWorldGenerator : IWorldGenerator
     {
         var rng = new SeededRandom(
             seeds.GetStarSystemRandom(starSystem.Index).DeriveChildSeed(2000 + (station?.Index ?? 0)));
-        return InteriorGenerator.GenerateStation(rng, station?.Name ?? "STATION");
+        return InteriorGenerator.GenerateStation(rng, station?.Name ?? "SPACE STATION");
     }
 
     public virtual InteriorData GenerateSettlementInterior(SeedManager seeds, StarSystemData starSystem, PlanetData? planet, SettlementData? settlement)

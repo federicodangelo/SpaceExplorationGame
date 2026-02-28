@@ -84,7 +84,7 @@ public static class HudIndicatorsRenderer
         for (int i = 0; i < stationEntities.Count; i++)
         {
             // Skip if this station is the current nav target (target indicator takes priority)
-            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.Station, StationIndex: var si } } && si == i)
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.SpaceStation, SpaceStationIndex: var si } } && si == i)
                 continue;
             if (!ecsWorld.IsAlive(stationEntities[i])) continue;
             var pos = ecsWorld.Get<Transform>(stationEntities[i]).Position;
@@ -92,7 +92,7 @@ public static class HudIndicatorsRenderer
             if (dist > maxDistance) continue;
             float distFraction = dist / maxDistance;
             byte alpha = (byte)(255 * (1f - distFraction * distFraction));
-            string name = i < stations.Count ? stations[i].Name.ToUpper() : "STATION";
+            string name = i < stations.Count ? stations[i].Name.ToUpper() : "SPACE STATION";
             RenderOffscreenIndicator(renderer, camera, pos, new Color4(100, 200, 255, alpha),
                 prefix: name + " ", arrowSize: 9f);
         }

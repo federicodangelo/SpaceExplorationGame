@@ -56,10 +56,10 @@ public static class MissionGenerator
     }
 
     /// <summary>Compute a deterministic board seed for a station.</summary>
-    public static ulong GetStationBoardSeed(SeedManager seeds, int systemIndex, int stationIndex)
+    public static ulong GetSpaceStationBoardSeed(SeedManager seeds, int systemIndex, int spaceStationIndex)
     {
         var systemRng = seeds.GetStarSystemRandom(systemIndex);
-        return systemRng.DeriveChildSeed(4000 + stationIndex);
+        return systemRng.DeriveChildSeed(4000 + spaceStationIndex);
     }
 
     /// <summary>Compute a deterministic board seed for a settlement.</summary>

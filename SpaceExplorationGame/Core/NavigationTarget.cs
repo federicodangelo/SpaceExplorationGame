@@ -7,7 +7,7 @@ public enum NavigationTargetType
     Star,
     Planet,
     Moon,
-    Station,
+    SpaceStation,
     SurfaceTarget
 }
 
@@ -26,8 +26,8 @@ public class NavigationTarget
     /// <summary>Index of the target moon within its parent planet (if targeting a moon).</summary>
     public int MoonIndex { get; set; } = -1;
 
-    /// <summary>Index of the target station (if targeting a station).</summary>
-    public int StationIndex { get; set; } = -1;
+    /// <summary>Index of the target space station (if targeting a space station).</summary>
+    public int SpaceStationIndex { get; set; } = -1;
 
     /// <summary>Name of the navigation target (for display).</summary>
     public string Name { get; set; } = "";
@@ -52,7 +52,7 @@ public class NavigationTarget
         Type = NavigationTargetType.Star;
         PlanetIndex = -1;
         MoonIndex = -1;
-        StationIndex = -1;
+        SpaceStationIndex = -1;
         Name = name;
         Color = color;
     }
@@ -63,7 +63,7 @@ public class NavigationTarget
         Type = NavigationTargetType.Planet;
         PlanetIndex = planetIndex;
         MoonIndex = -1;
-        StationIndex = -1;
+        SpaceStationIndex = -1;
         Name = name;
         Color = color;
     }
@@ -74,18 +74,18 @@ public class NavigationTarget
         Type = NavigationTargetType.Moon;
         PlanetIndex = planetIndex;
         MoonIndex = moonIndex;
-        StationIndex = -1;
+        SpaceStationIndex = -1;
         Name = name;
         Color = color;
     }
 
-    /// <summary>Set a station as the nav target.</summary>
-    public void SetStation(int stationIndex, string name, Color3 color)
+    /// <summary>Set a space station as the nav target.</summary>
+    public void SetStation(int spaceStationIndex, string name, Color3 color)
     {
-        Type = NavigationTargetType.Station;
+        Type = NavigationTargetType.SpaceStation;
         PlanetIndex = -1;
         MoonIndex = -1;
-        StationIndex = stationIndex;
+        SpaceStationIndex = spaceStationIndex;
         Name = name;
         Color = color;
     }
@@ -96,7 +96,7 @@ public class NavigationTarget
         Type = NavigationTargetType.SurfaceTarget;
         PlanetIndex = -1;
         MoonIndex = -1;
-        StationIndex = -1;
+        SpaceStationIndex = -1;
         Name = name;
         Color = color;
         WorldX = worldX;
@@ -109,7 +109,7 @@ public class NavigationTarget
         Type = NavigationTargetType.None;
         PlanetIndex = -1;
         MoonIndex = -1;
-        StationIndex = -1;
+        SpaceStationIndex = -1;
         Name = "";
         Color = new Color3(255, 200, 100);
         WorldX = 0;
