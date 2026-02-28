@@ -103,7 +103,8 @@ public enum InteractableType
     VehicleCustomization,
     ShipDealer,
     CargoTerminal,
-    HealthStation
+    HealthStation,
+    NoticeBoard
 }
 
 /// <summary>
@@ -334,6 +335,10 @@ public static class InteriorGenerator
         PlaceInteractable(data, "SHIP DEALER", InteractableType.ShipDealer,
             docking.TileRect.X + docking.TileRect.Width / 2 - 2, docking.TileRect.Y + docking.TileRect.Height - 2);
 
+        // Notice board in crew quarters
+        PlaceInteractable(data, "NOTICE BOARD", InteractableType.NoticeBoard,
+            quarters.CenterX, quarters.TileRect.Y + 1);
+
         // Place NPCs
         PlaceStationNpcs(data, rng);
 
@@ -479,6 +484,10 @@ public static class InteriorGenerator
         // Ship dealer terminal (left side of landing pad)
         PlaceInteractable(data, "SHIP DEALER", InteractableType.ShipDealer,
             landing.CenterX - 2, landing.TileRect.Y + landing.TileRect.Height - 2);
+
+        // Notice board in cantina
+        PlaceInteractable(data, "NOTICE BOARD", InteractableType.NoticeBoard,
+            cantina.CenterX, cantina.TileRect.Y + 1);
 
         // Place NPCs
         PlaceSettlementNpcs(data, rng);

@@ -619,6 +619,45 @@ public static class InteriorRenderer
                     renderer.DrawRect(camera, worldPos + new Vector2(0, -(ts / 2 - 4)), 4, 4,
                         new Color3((byte)(255 * blink), (byte)(50 * blink), (byte)(50 * blink)));
                 }
+
+                // Door: animated frame that slides open
+                if (tile == InteriorTileType.DoorOpen)
+                {
+                    // Door frame sides
+                    renderer.DrawRect(camera,
+                        worldPos + new Vector2(-(ts / 2 - 2), 0), 3, ts,
+                        new Color3(60, 60, 50));
+                    renderer.DrawRect(camera,
+                        worldPos + new Vector2(ts / 2 - 2, 0), 3, ts,
+                        new Color3(60, 60, 50));
+                    // Animated sliding panels (retracted into frame)
+                    float doorPhase = MathF.Sin((float)globalTime * 0.5f + x * 11 + y * 7);
+                    float retract = (doorPhase + 1f) * 0.5f; // 0-1
+                    int panelH = (int)(ts * 0.35f * (1f - retract));
+                    if (panelH > 1)
+                    {
+                        renderer.DrawRect(camera,
+                            worldPos + new Vector2(0, -(ts / 2 - panelH / 2)), ts - 6, panelH,
+                            new Color3(70, 70, 55));
+                        renderer.DrawRect(camera,
+                            worldPos + new Vector2(0, ts / 2 - panelH / 2), ts - 6, panelH,
+                            new Color3(70, 70, 55));
+                    }
+                    // Small indicator light
+                    renderer.DrawRect(camera,
+                        worldPos + new Vector2(ts / 2 - 3, -(ts / 2 - 3)), 2, 2,
+                        new Color3(80, 200, 80));
+                }
+
+                // CargoBay conveyor belt animation on FloorAccent tiles
+                if (tile == InteriorTileType.FloorAccent && roomFunc == RoomFunction.CargoBay)
+                {
+                    float belt = (float)((globalTime * 30 + x * 7) % ts);
+                    int beltY = (int)(belt - ts / 2);
+                    renderer.DrawRect(camera,
+                        worldPos + new Vector2(0, beltY), ts - 8, 2,
+                        new Color3(90, 85, 75));
+                }
             });
     }
 
@@ -681,9 +720,14 @@ public static class InteriorRenderer
         foreach (var npc in interior.Npcs)
         {
             // Each NPC gets a unique phase offset based on name hash
-            float phaseOffset = (npc.Name.GetHashCode() & 0xFFFF) * 0.01f;
+            int nameHash = npc.Name.GetHashCode() & 0xFFFF;
+            float phaseOffset = nameHash * 0.01f;
             float time = (float)globalTime;
             float scale = npc.BodyScale;
+
+            // NPC wander: slow figure-eight patrol within a small radius
+            float wanderX = MathF.Sin(time * 0.15f + phaseOffset) * 12f;
+            float wanderY = MathF.Sin(time * 0.22f + phaseOffset * 1.7f) * 8f;
 
             // Idle breathing: body scale pulsing
             float breathe = MathF.Sin(time * 1.5f + phaseOffset) * 1.5f;
@@ -691,20 +735,33 @@ public static class InteriorRenderer
             // Weight shift: subtle horizontal sway
             float sway = MathF.Sin(time * 0.8f + phaseOffset * 2f) * 1f;
 
+            // Walking leg animation when wandering
+            float wanderSpeed = MathF.Abs(MathF.Cos(time * 0.15f + phaseOffset)) +
+                                MathF.Abs(MathF.Cos(time * 0.22f + phaseOffset * 1.7f));
+            float legAnim = wanderSpeed > 0.3f
+                ? MathF.Sin(time * 4f + phaseOffset) * 2f
+                : 0f;
+
             var npcPos = new Vector2(
-                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f + sway,
-                npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
+                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f + sway + wanderX,
+                npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f + wanderY
             );
 
             // Shadow beneath feet (scaled)
             var shadowPos = npcPos + new Vector2(0, 8);
             renderer.DrawRect(camera, shadowPos, (int)(12 * scale), 3, RenderColors.EntityShadow);
 
-            // Legs
-            renderer.DrawRect(camera, npcPos + new Vector2(-3 * scale, 6), (int)(3 * scale), 4,
-                new Color3((byte)(npc.Color.R * 0.6f), (byte)(npc.Color.G * 0.6f), (byte)(npc.Color.B * 0.6f)));
-            renderer.DrawRect(camera, npcPos + new Vector2(3 * scale, 6), (int)(3 * scale), 4,
-                new Color3((byte)(npc.Color.R * 0.6f), (byte)(npc.Color.G * 0.6f), (byte)(npc.Color.B * 0.6f)));
+            // Legs (animate when wandering)
+            var legColor = new Color3(
+                (byte)(npc.Color.R * 0.6f),
+                (byte)(npc.Color.G * 0.6f),
+                (byte)(npc.Color.B * 0.6f));
+            renderer.DrawRect(camera,
+                npcPos + new Vector2(-3 * scale, 6 + legAnim), (int)(3 * scale), 4,
+                legColor);
+            renderer.DrawRect(camera,
+                npcPos + new Vector2(3 * scale, 6 - legAnim), (int)(3 * scale), 4,
+                legColor);
 
             // Body (breathing + scale)
             int bodyW = (int)(10 * scale);
@@ -894,6 +951,19 @@ public static class InteriorRenderer
                 renderer.DrawRect(camera, pos + new Vector2(0, 2), 6, 3,
                     new Color3((byte)(255 * exitPulse), (byte)(80 * exitPulse), (byte)(80 * exitPulse)));
                 break;
+
+            case InteractableType.NoticeBoard:
+                // Bulletin board with pinned notes
+                renderer.DrawRect(camera, pos, 18, 14, new Color3(90, 70, 45));
+                renderer.DrawRect(camera, pos, 16, 12, new Color3(110, 90, 55));
+                // Pinned notes
+                renderer.DrawRect(camera, pos + new Vector2(-4, -2), 5, 4, new Color3(200, 200, 180));
+                renderer.DrawRect(camera, pos + new Vector2(3, -3), 5, 5, new Color3(180, 200, 180));
+                renderer.DrawRect(camera, pos + new Vector2(-2, 3), 6, 3, new Color3(200, 180, 180));
+                // Pin dots
+                renderer.DrawRect(camera, pos + new Vector2(-4, -3), 2, 2, new Color3(200, 50, 50));
+                renderer.DrawRect(camera, pos + new Vector2(3, -4), 2, 2, new Color3(50, 50, 200));
+                break;
         }
     }
 
@@ -964,6 +1034,7 @@ public static class InteriorRenderer
         InteractableType.ShipDealer => new Color3(255, 200, 80),
         InteractableType.CargoTerminal => new Color3(255, 180, 50),
         InteractableType.ExitDoor => new Color3(255, 100, 100),
+        InteractableType.NoticeBoard => new Color3(220, 200, 140),
         _ => new Color3(200, 200, 200)
     };
 }

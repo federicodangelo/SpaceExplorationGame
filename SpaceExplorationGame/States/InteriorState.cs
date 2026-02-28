@@ -241,7 +241,56 @@ public class InteriorState : GameState
             case InteractableType.HealthStation:
                 _healthStationOverlay.Open();
                 break;
+            case InteractableType.NoticeBoard:
+                ShowNoticeBoardText(game);
+                break;
         }
+    }
+
+    private static readonly string[] NoticeBoardMessages =
+    [
+        "WANTED: Experienced pilot for cargo runs. Inquire at docking bay.",
+        "SECTOR ADVISORY: Pirate activity reported near outer rim. Travel with caution.",
+        "FOR SALE: Slightly used shield generator. Only failed twice.",
+        "MISSING: Grey cat. Answers to 'Commander'. Reward offered.",
+        "LOCAL NEWS: Mining yields up 12% this cycle. Prospectors rejoice.",
+        "HELP WANTED: Medic needed. No questions asked. Ask at cantina.",
+        "ATTENTION: Gravity generators will be offline for maintenance 0300-0500.",
+        "FOUND: Unidentified alloy sample. Claim at trading post.",
+        "COMMUNITY NOTICE: Annual star-gazing event this cycle. All welcome.",
+        "WARNING: Do not feed the station wildlife. Seriously.",
+        "CREW BULLETIN: Karaoke night canceled due to hull breach. Again.",
+        "TRADE ALERT: Fuel prices expected to rise. Stock up now."
+    ];
+
+    private void ShowNoticeBoardText(Game game)
+    {
+        // Generate deterministic notice based on location
+        int seed = _starSystem.Index * 997 +
+            (_spaceStation?.Index ?? 0) * 37 +
+            (_settlement?.TileRect.X ?? 0) * 7;
+        int idx1 = ((seed & 0xFFFF) % NoticeBoardMessages.Length);
+        int idx2 = (((seed >> 8) + 3) % NoticeBoardMessages.Length);
+        if (idx2 == idx1) idx2 = (idx2 + 1) % NoticeBoardMessages.Length;
+        int idx3 = (((seed >> 16) + 7) % NoticeBoardMessages.Length);
+        if (idx3 == idx1 || idx3 == idx2)
+            idx3 = (idx3 + 2) % NoticeBoardMessages.Length;
+
+        // Reuse dialogue system with a fake "Notice Board" NPC
+        _dialogueNpc = new InteriorNpc
+        {
+            Name = "NOTICE BOARD",
+            Role = "",
+            DialogueLines =
+            [
+                NoticeBoardMessages[idx1],
+                NoticeBoardMessages[idx2],
+                NoticeBoardMessages[idx3]
+            ],
+            Color = new Color3(220, 200, 140)
+        };
+        _dialogueLine = 0;
+        _showingDialogue = true;
     }
 
     private void ExitInterior(Game game)
