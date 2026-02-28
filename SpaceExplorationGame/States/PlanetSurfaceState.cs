@@ -649,11 +649,11 @@ public class PlanetSurfaceState : GameState
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        var info = new List<string>();
-        info.Add($"Planet: {_planet.Name}  Type: {_planet.Type}");
-        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
-        info.Add($"InShip: {_playerInsideShip}  InVehicle: {_inVehicle}");
-        info.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
-        return info;
+        _debugInfo.Begin();
+        _debugInfo.Add($"Planet: {_planet.Name}  Type: {_planet.Type}");
+        _debugInfo.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        _debugInfo.Add($"InShip: {_playerInsideShip}  InVehicle: {_inVehicle}");
+        _debugInfo.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
+        return _debugInfo.Entries;
     }
 }

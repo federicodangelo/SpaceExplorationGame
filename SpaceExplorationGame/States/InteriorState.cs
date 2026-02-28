@@ -320,11 +320,11 @@ public class InteriorState : GameState
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        var info = new List<string>();
-        info.Add($"Origin: {_origin}  NPCs: {_sim.Interior.Npcs.Count}");
-        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
-        info.Add($"Dialogue: {_showingDialogue}  NearNpc: {_sim.NearestNpc?.Name ?? "none"}");
-        return info;
+        _debugInfo.Begin();
+        _debugInfo.Add($"Origin: {_origin}  NPCs: {_sim.Interior.Npcs.Count}");
+        _debugInfo.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        _debugInfo.Add($"Dialogue: {_showingDialogue}  NearNpc: {_sim.NearestNpc?.Name ?? "none"}");
+        return _debugInfo.Entries;
     }
 }
 

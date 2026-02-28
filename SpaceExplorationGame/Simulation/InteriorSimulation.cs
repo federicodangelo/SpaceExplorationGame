@@ -34,7 +34,7 @@ public class InteriorSimulation : SimulationBase
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
 
-    private readonly List<string> _dbgInfo = [];
+
 
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
@@ -78,10 +78,10 @@ public class InteriorSimulation : SimulationBase
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        _dbgInfo.Clear();
-        _dbgInfo.Add($"Origin: {Origin}  NPCs: {Interior.Npcs.Count}");
-        _dbgInfo.Add($"Players: {Players.Count}");
-        return _dbgInfo;
+        _debugInfo.Begin();
+        _debugInfo.Add($"Origin: {Origin}  NPCs: {Interior.Npcs.Count}");
+        _debugInfo.Add($"Players: {Players.Count}");
+        return _debugInfo.Entries;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)

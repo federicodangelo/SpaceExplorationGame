@@ -69,7 +69,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private const float InteractionRadius = 20f;
 
-    private readonly List<string> _dbgInfo = [];
+
 
     public SolarSystemSimulation(Game game, StarSystemData starSystem, ISimulation? parent = null)
         : base(game, parent)
@@ -168,11 +168,11 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        _dbgInfo.Clear();
-        _dbgInfo.Add($"Planets: {Planets.Count}  Stations: {Stations.Count}");
-        _dbgInfo.Add($"Asteroids: {AsteroidEntities.Count}  Enemies: {EnemyEntities.Count}");
-        _dbgInfo.Add($"Players: {Players.Count}");
-        return _dbgInfo;
+        _debugInfo.Begin();
+        _debugInfo.Add($"Planets: {Planets.Count}  Stations: {Stations.Count}");
+        _debugInfo.Add($"Asteroids: {AsteroidEntities.Count}  Enemies: {EnemyEntities.Count}");
+        _debugInfo.Add($"Players: {Players.Count}");
+        return _debugInfo.Entries;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)

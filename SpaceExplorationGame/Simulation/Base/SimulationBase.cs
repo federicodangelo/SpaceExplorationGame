@@ -24,6 +24,7 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
 
     // ── Debug ───────────────────────────────────────────────────────
     protected readonly DebugTimer _debugTimer = new();
+    protected readonly DebugInfo _debugInfo = new();
 
     protected SimulationBase(Game game, ISimulation? parent = null)
     {
@@ -116,5 +117,5 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     public virtual IReadOnlyList<DebugTimingEntry>? GetDebugTimings() => _debugTimer.Entries;
 
     /// <inheritdoc />
-    public virtual IReadOnlyList<string>? GetDebugInfo() => null;
+    public virtual IReadOnlyList<string>? GetDebugInfo() => _debugInfo.Entries;
 }

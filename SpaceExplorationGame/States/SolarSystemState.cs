@@ -528,10 +528,10 @@ public class SolarSystemState : GameState
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        var info = new List<string>();
-        info.Add($"System: {_starSystem.Name}");
-        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
-        info.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
-        return info;
+        _debugInfo.Begin();
+        _debugInfo.Add($"System: {_starSystem.Name}");
+        _debugInfo.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        _debugInfo.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
+        return _debugInfo.Entries;
     }
 }

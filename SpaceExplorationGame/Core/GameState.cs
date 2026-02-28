@@ -20,6 +20,7 @@ public abstract class GameState : IDebugInfoProvider
 
     // ── Debug ───────────────────────────────────────────────────────
     protected readonly DebugTimer _debugTimer = new();
+    protected readonly DebugInfo _debugInfo = new();
 
     /// <summary>Called when this state becomes active.</summary>
     public abstract void Enter(Game game);
@@ -43,5 +44,5 @@ public abstract class GameState : IDebugInfoProvider
     public virtual IReadOnlyList<DebugTimingEntry>? GetDebugTimings() => _debugTimer.Entries;
 
     /// <inheritdoc />
-    public virtual IReadOnlyList<string>? GetDebugInfo() => null;
+    public virtual IReadOnlyList<string>? GetDebugInfo() => _debugInfo.Entries;
 }

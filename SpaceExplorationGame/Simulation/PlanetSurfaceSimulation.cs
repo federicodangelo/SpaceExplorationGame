@@ -43,7 +43,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     // ── ECS Systems (planet-surface-specific) ──────────────────────
     private AvatarEnemyAISystem _enemyAISystem = null!;
 
-    private readonly List<string> _dbgInfo = [];
+
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         PlanetSurfaceData? preGeneratedSurfaceData = null, ISimulation? parent = null)
@@ -110,11 +110,11 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
-        _dbgInfo.Clear();
-        _dbgInfo.Add($"Planet: {Planet.Name}  Type: {Planet.Type}");
-        _dbgInfo.Add($"Players: {Players.Count}");
-        _dbgInfo.Add($"NearShip: {NearShip}  NearVehicle: {NearVehicle}");
-        return _dbgInfo;
+        _debugInfo.Begin();
+        _debugInfo.Add($"Planet: {Planet.Name}  Type: {Planet.Type}");
+        _debugInfo.Add($"Players: {Players.Count}");
+        _debugInfo.Add($"NearShip: {NearShip}  NearVehicle: {NearVehicle}");
+        return _debugInfo.Entries;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
