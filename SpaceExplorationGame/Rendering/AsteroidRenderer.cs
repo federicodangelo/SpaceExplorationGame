@@ -43,7 +43,7 @@ public class AsteroidRenderer
 
             // Spinning rotation based on time + unique per-asteroid speed
             float posHash = transform.Position.X * 7.3f + transform.Position.Y * 13.1f;
-            float spinSpeed = 8f + MathF.Abs(posHash % 15f); // 8-23 deg/sec
+            float spinSpeed = 1.5f + MathF.Abs(posHash % 3f); // 1.5-4.5 deg/sec
             float rot = posHash + globalTime * spinSpeed;
 
             // Scale down visual size as HP drops
