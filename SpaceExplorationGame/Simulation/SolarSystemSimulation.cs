@@ -85,8 +85,10 @@ public class SolarSystemSimulation : CombatSimulationBase
         AsteroidBelts = Content.AsteroidBelts;
         Stations = Content.Stations;
 
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
+        float totalH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        float centerX = totalW / 2f;
+        float centerY = totalH / 2f;
         Vector2 center = new(centerX, centerY);
         float time = (float)_game.GlobalTime;
 
@@ -98,16 +100,11 @@ public class SolarSystemSimulation : CombatSimulationBase
         SpawnBackground();
 
         // Initialize ECS systems
-        float sysW = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float sysH = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        _orbitSystem = new OrbitSystem(
-            EcsWorld,
-            () => (float)_game.GlobalTime,
-            () => new Vector2(sysW, sysH));
-        _orbitSystem.Initialize();
-
         // Shared systems (velocity, projectiles, cleanup)
         InitCoreSystems();
+
+        _orbitSystem = new OrbitSystem(EcsWorld, center);
+        _orbitSystem.Initialize();
 
         _proximitySystem = new InteractionProximitySystem(EcsWorld, InteractionRadius);
         _proximitySystem.Initialize();
@@ -118,9 +115,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         _shieldRegenSystem = new ShieldRegenSystem(EcsWorld);
         _shieldRegenSystem.Initialize();
 
-        float totalMapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float totalMapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
-        _enemyAISystem = new ShipEnemyAISystem(EcsWorld, totalMapW, totalMapH);
+        _enemyAISystem = new ShipEnemyAISystem(EcsWorld, totalW, totalH);
         _enemyAISystem.Initialize();
 
         _particleSystem = new ParticleSystem(EcsWorld);
@@ -142,11 +137,12 @@ public class SolarSystemSimulation : CombatSimulationBase
     public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
+        float globalTime = (float)_game.GlobalTime;
         var t = _debugTimer;
         t.Begin();
 
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
-        t.Time("Orbits", () => _orbitSystem.Update(in dt));
+        t.Time("Orbits", () => _orbitSystem.Update(in globalTime)); // Orbits depend on global time, not dt
         t.Time("Particles", () => _particleSystem.Update(in dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Ships", () => _shipSystem.Update(in dt));

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace SpaceExplorationGame.Core;
 
@@ -36,6 +37,7 @@ public sealed class DebugTimer
     }
 
     /// <summary>Execute <paramref name="action"/> and record its elapsed time under <paramref name="name"/>.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Time(string name, Action action)
     {
         _sw.Restart();
@@ -46,6 +48,7 @@ public sealed class DebugTimer
 
     /// <summary>Execute <paramref name="action"/> and accumulate its elapsed time into an existing entry
     /// with the same <paramref name="name"/>, or create a new one. Useful inside fixed-step loops.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void TimeAndAccumulate(string name, Action action)
     {
         _sw.Restart();

@@ -63,29 +63,15 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         SurfaceData = _preGeneratedSurfaceData
             ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
 
+        SpawnFauna();
+        SpawnBandits();
+        SpawnRocks();
+
         // Initialize shared ECS systems (velocity, projectiles, cleanup)
         InitCoreSystems();
 
         _enemyAISystem = new AvatarEnemyAISystem(EcsWorld);
         _enemyAISystem.Initialize();
-
-        // Spawn fauna
-        foreach (var (fx, fy, angle) in SurfaceData.FaunaSpawns)
-        {
-            EntityFactory.CreateFauna(EcsWorld, new Vector2(fx, fy), angle, canMoveTo: CanMoveToTerrain);
-        }
-
-        // Spawn bandits
-        foreach (var (bx, by, angle) in SurfaceData.BanditSpawns)
-        {
-            EntityFactory.CreateBandit(EcsWorld, new Vector2(bx, by), angle, canMoveTo: CanMoveToTerrain);
-        }
-
-        // Spawn mineable rocks
-        foreach (var (rx, ry, resource, amount, size, hp) in SurfaceData.RockSpawns)
-        {
-            EntityFactory.CreateSurfaceRock(EcsWorld, new Vector2(rx, ry), size, hp, resource, amount);
-        }
     }
 
     public override void Destroy()
@@ -214,9 +200,29 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         LocalVehicleDeployed = false;
     }
 
+    // ── Private spawn helpers ────────────────────────────────────────
+
+    private void SpawnFauna()
+    {
+        foreach (var spawn in SurfaceData.FaunaSpawns)
+            EntityFactory.CreateFauna(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.WanderAngle, canMoveTo: CanMoveToTerrain);
+    }
+
+    private void SpawnBandits()
+    {
+        foreach (var spawn in SurfaceData.BanditSpawns)
+            EntityFactory.CreateBandit(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.WanderAngle, canMoveTo: CanMoveToTerrain);
+    }
+
+    private void SpawnRocks()
+    {
+        foreach (var spawn in SurfaceData.RockSpawns)
+            EntityFactory.CreateSurfaceRock(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.Size, spawn.Hp, spawn.Resource, spawn.Amount);
+    }
+
     // ── Terrain collision ───────────────────────────────────────────
 
-    public bool CanMoveToTerrain(Vector2 newPos)
+    private bool CanMoveToTerrain(Vector2 newPos)
     {
         int tileX = (int)(newPos.X / GameConfig.TileSize);
         int tileY = (int)(newPos.Y / GameConfig.TileSize);

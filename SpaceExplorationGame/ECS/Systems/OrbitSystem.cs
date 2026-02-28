@@ -12,25 +12,21 @@ namespace SpaceExplorationGame.ECS.Systems;
 /// </summary>
 public partial class OrbitSystem : BaseSystem<World, float>
 {
-    private readonly Func<float> _getGlobalTime;
-    private readonly Func<Vector2> _getFallbackCenter;
+    private readonly Vector2 _fallbackCenter;
 
     /// <param name="world">ECS world.</param>
-    /// <param name="getGlobalTime">Returns the current global simulation time.</param>
-    /// <param name="getFallbackCenter">Returns a fallback position when the orbit parent is dead.</param>
-    public OrbitSystem(World world, Func<float> getGlobalTime, Func<Vector2> getFallbackCenter)
+    /// <param name="fallbackCenter">Position to orbit around if parent entity is missing.</param>
+    public OrbitSystem(World world, Vector2 fallbackCenter)
         : base(world)
     {
-        _getGlobalTime = getGlobalTime;
-        _getFallbackCenter = getFallbackCenter;
+        _fallbackCenter = fallbackCenter;
     }
 
     [Query]
     [All(typeof(Transform), typeof(Orbit))]
-    public void UpdateOrbit(ref Transform transform, ref Orbit orbit)
+    public void UpdateOrbit(in float globalTime, ref Transform transform, ref Orbit orbit)
     {
-        float time = _getGlobalTime();
-        orbit.CurrentAngle = orbit.BaseAngle + orbit.OrbitSpeed * time;
+        orbit.CurrentAngle = orbit.BaseAngle + orbit.OrbitSpeed * globalTime;
 
         Vector2 parentPos;
         if (World.IsAlive(orbit.Parent))
@@ -39,7 +35,7 @@ public partial class OrbitSystem : BaseSystem<World, float>
         }
         else
         {
-            parentPos = _getFallbackCenter();
+            parentPos = _fallbackCenter;
         }
 
         transform.Position = parentPos + new Vector2(
