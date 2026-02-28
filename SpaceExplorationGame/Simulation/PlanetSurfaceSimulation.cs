@@ -45,6 +45,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
 
+    private readonly List<string> _dbgInfo = [];
+
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         PlanetSurfaceData? preGeneratedSurfaceData = null,
         ISimulation? parent = null)
@@ -94,14 +96,12 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
+        var t = _debugTimer;
+        t.Begin();
 
-        _dependentEntityCleanupSystem.Update(in dt);
-
-        // AI (enemy movement + shooting)
-        _enemyAISystem.Update(in dt);
-
-        // Physics (moves all entities with velocity: projectiles, player, enemies)
-        _velocitySystem.Update(in dt);
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
+        t.Time("Physics", () => _velocitySystem.Update(in dt));
 
         // Sync vehicle position/rotation when driving
         if (LocalPlayer is { } vehicleDriver && LocalVehicleDeployed)
@@ -115,11 +115,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             }
         }
 
-        // Update proximity
-        UpdateProximity();
-
-        // Combat
-        ProcessCombatResults(dt);
+        t.Time("Proximity", UpdateProximity);
+        t.Time("Combat", () => ProcessCombatResults(dt));
 
         // Death / respawn timer
         UpdateDeathTimer(dt);
@@ -129,6 +126,15 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         // Tick message timers
         UpdateCombatTimers(dt);
+    }
+
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        _dbgInfo.Clear();
+        _dbgInfo.Add($"Planet: {Planet.Name}  Type: {Planet.Type}");
+        _dbgInfo.Add($"Players: {Players.Count}");
+        _dbgInfo.Add($"NearShip: {NearShip}  NearVehicle: {NearVehicle}");
+        return _dbgInfo;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)

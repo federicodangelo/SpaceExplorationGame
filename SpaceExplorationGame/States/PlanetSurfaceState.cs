@@ -255,8 +255,10 @@ public class PlanetSurfaceState : GameState
     public override void Update(Game game)
     {
         float dt = game.DeltaTime;
+        var t = _debugTimer;
+        t.Begin();
 
-        _inGameMenuOverlay.Update(game);
+        t.Time("MenuOverlay", () => _inGameMenuOverlay.Update(game));
 
         // Delay before starship menu
         if (_waitingToOpenStarshipMenuAfterLanding)
@@ -280,13 +282,13 @@ public class PlanetSurfaceState : GameState
         }
 
         // Camera follows player
-        _cameraFollowSystem.Update(in dt);
+        t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
 
         // Process simulation events
-        ProcessSimulationEvents(game);
+        t.Time("SimEvents", () => ProcessSimulationEvents(game));
 
         // Visual effects
-        CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
+        t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
 
         // Combat music
         if (_sim.CombatMusicTimer > 0)
@@ -643,5 +645,15 @@ public class PlanetSurfaceState : GameState
         _inGameMenuOverlay.Render(game);
         _surfaceMapOverlay.Render(game);
         _starshipMenuOverlay.Render(game);
+    }
+
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        var info = new List<string>();
+        info.Add($"Planet: {_planet.Name}  Type: {_planet.Type}");
+        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        info.Add($"InShip: {_playerInsideShip}  InVehicle: {_inVehicle}");
+        info.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
+        return info;
     }
 }

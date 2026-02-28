@@ -69,6 +69,8 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private const float InteractionRadius = 20f;
 
+    private readonly List<string> _dbgInfo = [];
+
     public SolarSystemSimulation(Game game, StarSystemData starSystem, ISimulation? parent = null)
         : base(game, parent)
     {
@@ -243,27 +245,17 @@ public class SolarSystemSimulation : CombatSimulationBase
     public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
+        var t = _debugTimer;
+        t.Begin();
 
-        _dependentEntityCleanupSystem.Update(in dt);
-        _orbitSystem.Update(in dt);
-
-        // Particle system (thrust particles)
-        _particleSystem.Update(in dt);
-
-        // AI writes ShipInputComponent
-        _enemyAISystem.Update(in dt);
-
-        // ShipSystem reads all ShipInputComponent (player + AI), updates velocity, fires weapons
-        _shipSystem.Update(in dt);
-
-        // Physics
-        _velocitySystem.Update(in dt);
-
-        // Proximity detection for first player
-        UpdateProximity();
-
-        // Combat
-        ProcessCombatResults(dt);
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Orbits", () => _orbitSystem.Update(in dt));
+        t.Time("Particles", () => _particleSystem.Update(in dt));
+        t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
+        t.Time("Ships", () => _shipSystem.Update(in dt));
+        t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("Proximity", UpdateProximity);
+        t.Time("Combat", () => ProcessCombatResults(dt));
 
         // Death / respawn timer
         UpdateDeathTimer(dt);
@@ -279,6 +271,15 @@ public class SolarSystemSimulation : CombatSimulationBase
             if (MiningMessageTimer <= 0) MiningMessage = null;
         }
         UpdateCombatTimers(dt);
+    }
+
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        _dbgInfo.Clear();
+        _dbgInfo.Add($"Planets: {Planets.Count}  Stations: {Stations.Count}");
+        _dbgInfo.Add($"Asteroids: {AsteroidEntities.Count}  Enemies: {EnemyEntities.Count}");
+        _dbgInfo.Add($"Players: {Players.Count}");
+        return _dbgInfo;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
@@ -364,7 +365,6 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private void SpawnNPCShips(List<NpcShipSpawnData> npcShipSpawns)
     {
-        EnemyEntities.Clear();
         foreach (var spawn in npcShipSpawns)
         {
             if (spawn.Faction is not (Faction.Pirate or Faction.Trader or Faction.Patrol))

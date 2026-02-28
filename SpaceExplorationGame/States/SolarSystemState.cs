@@ -202,14 +202,15 @@ public class SolarSystemState : GameState
     public override void Update(Game game)
     {
         float dt = game.DeltaTime;
+        var t = _debugTimer;
+        t.Begin();
 
-        _inGameMenuOverlay.Update(game);
+        t.Time("MenuOverlay", () => _inGameMenuOverlay.Update(game));
 
         // Apply anchor (keep ship at station/planet while overlay open)
         ApplyAnchor();
 
-        // Camera follows player
-        _cameraFollowSystem.Update(in dt);
+        t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
 
         // Handle respawn station auto-dock
         if (_sim.RespawnStationIndex >= 0)
@@ -240,10 +241,10 @@ public class SolarSystemState : GameState
         ClearAnchor();
 
         // Process simulation events for audio/visual effects
-        ProcessSimulationEvents(game);
+        t.Time("SimEvents", () => ProcessSimulationEvents(game));
 
         // Update visual effects
-        CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt);
+        t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
 
         // Combat music tracking
         if (_sim.CombatMusicTimer > 0)
@@ -523,5 +524,14 @@ public class SolarSystemState : GameState
                 break;
         }
         return null;
+    }
+
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        var info = new List<string>();
+        info.Add($"System: {_starSystem.Name}");
+        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        info.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");
+        return info;
     }
 }

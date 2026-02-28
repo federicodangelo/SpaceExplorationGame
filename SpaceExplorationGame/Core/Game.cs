@@ -6,6 +6,7 @@ using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.Simulation.Base;
+using SpaceExplorationGame.UI;
 
 namespace SpaceExplorationGame.Core;
 
@@ -67,6 +68,11 @@ public class Game : IDisposable
     private double _fpsTitleAccumTime;
     private int _fpsTitleFrameCount;
     private const double FpsTitleUpdateInterval = 1;
+
+    // Debug overlay
+    private readonly DebugOverlay _debugOverlay = new();
+    private bool _debugOverlayVisible;
+    private readonly DebugTimer _debugTimer = new();
 
     public void Initialize(ulong? galaxySeed = null)
     {
@@ -212,6 +218,10 @@ public class Game : IDisposable
                 break;
             }
 
+            // Toggle debug overlay
+            if (Input.IsKeyPressed(SDL.Scancode.Alpha1))
+                _debugOverlayVisible = !_debugOverlayVisible;
+
             // Apply pending state changes
             ApplyPendingState();
 
@@ -219,6 +229,8 @@ public class Game : IDisposable
             _currentState?.UpdateInput(this);
 
             // Fixed timestep updates (may run multiple times per frame)
+            _debugTimer.Begin();
+            _debugTimer.PresetAccumulators("Simulation Update", "State Update");
             int steps = 0;
             while (accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
             {
@@ -226,10 +238,11 @@ public class Game : IDisposable
                 DeltaTime = GameConfig.FixedTimeStep;
 
                 // Always tick all simulations first (physics, AI, combat)
-                Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime));
+                _debugTimer.TimeAndAccumulate("Simulation Update", () =>
+                    Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime)));
 
                 // Then let the current state do per-tick post-processing (camera, effects)
-                _currentState?.Update(this);
+                _debugTimer.TimeAndAccumulate("State Update", () => _currentState?.Update(this));
 
                 accumulator -= GameConfig.FixedTimeStep;
                 steps++;
@@ -245,7 +258,12 @@ public class Game : IDisposable
             SDL.SetRenderDrawColor(Renderer, 0, 0, 0, 255);
             SDL.RenderClear(Renderer);
 
-            _currentState?.Render(this);
+            _debugTimer.Time("State Render", () => _currentState?.Render(this));
+
+            if (_debugOverlayVisible)
+            {
+                _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
+            }
 
             SDL.RenderPresent(Renderer);
 

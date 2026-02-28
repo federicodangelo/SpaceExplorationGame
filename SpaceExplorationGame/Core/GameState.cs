@@ -14,9 +14,12 @@ public enum GameStateType
 /// <summary>
 /// Base class for all game states. Each state manages its own ECS entities and systems.
 /// </summary>
-public abstract class GameState
+public abstract class GameState : IDebugInfoProvider
 {
     public abstract GameStateType Type { get; }
+
+    // ── Debug ───────────────────────────────────────────────────────
+    protected readonly DebugTimer _debugTimer = new();
 
     /// <summary>Called when this state becomes active.</summary>
     public abstract void Enter(Game game);
@@ -35,4 +38,10 @@ public abstract class GameState
 
     /// <summary>Handle SDL events (input, etc).</summary>
     public abstract void HandleEvent(Game game, SDL3.SDL.Event e);
+
+    /// <inheritdoc />
+    public virtual IReadOnlyList<DebugTimingEntry>? GetDebugTimings() => _debugTimer.Entries;
+
+    /// <inheritdoc />
+    public virtual IReadOnlyList<string>? GetDebugInfo() => null;
 }

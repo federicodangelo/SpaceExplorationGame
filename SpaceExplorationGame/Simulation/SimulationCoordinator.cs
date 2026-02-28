@@ -133,4 +133,18 @@ public class SimulationCoordinator
         _simulations.Clear();
         InvalidateCache();
     }
+
+    /// <summary>
+    /// Returns the remaining seconds before the given simulation is destroyed due to having
+    /// no players, or <c>null</c> if the simulation has players (infinite lifetime).
+    /// </summary>
+    public float? GetRemainingAliveTime(ISimulation simulation)
+    {
+        foreach (var entry in _simulations)
+        {
+            if (entry.Simulation == simulation)
+                return entry.Simulation.HasPlayers ? null : DestroyDelaySeconds - entry.EmptyTimer;
+        }
+        return null;
+    }
 }

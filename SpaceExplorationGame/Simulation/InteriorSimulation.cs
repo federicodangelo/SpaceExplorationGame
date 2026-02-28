@@ -34,6 +34,8 @@ public class InteriorSimulation : SimulationBase
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
 
+    private readonly List<string> _dbgInfo = [];
+
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? station = null, PlanetData? planet = null, SettlementData? settlement = null,
         ISimulation? parent = null)
@@ -66,12 +68,20 @@ public class InteriorSimulation : SimulationBase
     public override void Update(UpdateContext ctx)
     {
         float dt = ctx.Dt;
+        var t = _debugTimer;
+        t.Begin();
 
-        _dependentEntityCleanupSystem.Update(in dt);
-        _velocitySystem.Update(in dt);
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("Proximity", UpdateProximity);
+    }
 
-        // Update proximity for first player
-        UpdateProximity();
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        _dbgInfo.Clear();
+        _dbgInfo.Add($"Origin: {Origin}  NPCs: {Interior.Npcs.Count}");
+        _dbgInfo.Add($"Players: {Players.Count}");
+        return _dbgInfo;
     }
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)

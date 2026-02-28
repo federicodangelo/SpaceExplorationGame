@@ -7,7 +7,7 @@ namespace SpaceExplorationGame.Simulation.Base;
 /// Abstract base class for all simulations. Provides player management, ECS world lifecycle,
 /// and common plumbing so that concrete simulations only implement domain-specific logic.
 /// </summary>
-public abstract class SimulationBase : ISimulation
+public abstract class SimulationBase : ISimulation, IDebugInfoProvider
 {
     // ── ECS ─────────────────────────────────────────────────────────
     public World EcsWorld { get; }
@@ -21,6 +21,9 @@ public abstract class SimulationBase : ISimulation
 
     // ── Game reference ──────────────────────────────────────────────
     protected readonly Game _game;
+
+    // ── Debug ───────────────────────────────────────────────────────
+    protected readonly DebugTimer _debugTimer = new();
 
     protected SimulationBase(Game game, ISimulation? parent = null)
     {
@@ -106,4 +109,12 @@ public abstract class SimulationBase : ISimulation
     {
         return LocalPlayer != null && LocalPlayer.Entity == entity ? LocalPlayer : null;
     }
+
+    // ── IDebugInfoProvider ──────────────────────────────────────────
+
+    /// <inheritdoc />
+    public virtual IReadOnlyList<DebugTimingEntry>? GetDebugTimings() => _debugTimer.Entries;
+
+    /// <inheritdoc />
+    public virtual IReadOnlyList<string>? GetDebugInfo() => null;
 }

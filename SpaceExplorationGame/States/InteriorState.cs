@@ -181,13 +181,18 @@ public class InteriorState : GameState
     public override void Update(Game game)
     {
         float dt = game.DeltaTime;
+        var t = _debugTimer;
+        t.Begin();
 
-        _shipCustomization.Update(game);
-        _avatarCustomization.Update(game);
-        _vehicleCustomization.Update(game);
-        _shipDealer.Update(game);
-        _sellCargo.Update(game);
-        _inGameMenuOverlay.Update(game);
+        t.Time("Overlays", () =>
+        {
+            _shipCustomization.Update(game);
+            _avatarCustomization.Update(game);
+            _vehicleCustomization.Update(game);
+            _shipDealer.Update(game);
+            _sellCargo.Update(game);
+            _inGameMenuOverlay.Update(game);
+        });
 
         // Skip post-processing when overlays are active
         if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
@@ -196,7 +201,7 @@ public class InteriorState : GameState
             return;
 
         // Camera
-        _cameraFollowSystem.Update(in dt);
+        t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
     }
 
     private void HandleInteraction(Game game, InteriorInteractable interactable)
@@ -311,6 +316,15 @@ public class InteriorState : GameState
 
         // Minimap
         HudMinimapRenderer.RenderInteriorMinimap(renderer, _sim.Interior, avatarTf.Position);
+    }
+
+    public override IReadOnlyList<string>? GetDebugInfo()
+    {
+        var info = new List<string>();
+        info.Add($"Origin: {_origin}  NPCs: {_sim.Interior.Npcs.Count}");
+        info.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
+        info.Add($"Dialogue: {_showingDialogue}  NearNpc: {_sim.NearestNpc?.Name ?? "none"}");
+        return info;
     }
 }
 
