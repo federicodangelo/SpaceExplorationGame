@@ -20,7 +20,7 @@ public static class InteriorRenderer
         RenderExteriorBackground(renderer, camera, interior, planet);
         RenderTiles(renderer, camera, interior, globalTime);
         RenderRoomLabels(renderer, camera, interior);
-        RenderNpcs(renderer, camera, interior);
+        RenderNpcs(renderer, camera, interior, globalTime);
         RenderInteractableMarkers(renderer, camera, interior, globalTime);
         RenderPlayerAvatar(renderer, camera, playerPos, avatarRenderer);
     }
@@ -294,18 +294,36 @@ public static class InteriorRenderer
                     // Rivets
                     renderer.DrawRect(camera, worldPos + new Vector2(-6, 0), 3, 3, new Color3(100, 100, 110));
                     renderer.DrawRect(camera, worldPos + new Vector2(6, 0), 3, 3, new Color3(100, 100, 110));
+                    // Steam wisps from pipe joints
+                    float steamPhase = (float)globalTime * 1.5f + x * 13 + y * 7;
+                    float steamY = MathF.Sin(steamPhase) * 4f - 6f;
+                    float steamAlpha = (MathF.Sin(steamPhase * 0.7f) + 1f) * 0.3f;
+                    if (steamAlpha > 0.1f)
+                    {
+                        byte sa = (byte)(60 * steamAlpha);
+                        renderer.DrawRect(camera, worldPos + new Vector2(0, steamY), 6, 4,
+                            new Color3((byte)(150 + sa / 2), (byte)(150 + sa / 2), (byte)(160 + sa / 2)));
+                    }
                 }
 
-                // Light: glowing circle
+                // Light: glowing circle with occasional flicker
                 if (tile == InteriorTileType.Light)
                 {
-                    float glow = MathF.Sin((float)globalTime * 2f + x * 7) * 0.1f + 0.9f;
+                    // Flicker: occasional dip based on hash + time
+                    float flickerSeed = x * 37 + y * 53;
+                    float flickerVal = MathF.Sin((float)globalTime * 8f + flickerSeed) *
+                                       MathF.Sin((float)globalTime * 13f + flickerSeed * 0.7f);
+                    float flicker = flickerVal > 0.85f ? 0.5f : 1f; // occasional dim
+
+                    float glow = (MathF.Sin((float)globalTime * 2f + x * 7) * 0.1f + 0.9f) * flicker;
                     byte lr = (byte)(200 * glow);
                     byte lg = (byte)(195 * glow);
                     byte lb = (byte)(140 * glow);
                     renderer.DrawRect(camera, worldPos, 6, 6, new Color3(lr, lg, lb));
                     // Outer glow
-                    renderer.DrawRect(camera, worldPos, 12, 12, new Color3((byte)(lr / 3), (byte)(lg / 3), (byte)(lb / 3)));
+                    renderer.DrawRect(camera, worldPos, 14, 14, new Color3((byte)(lr / 4), (byte)(lg / 4), (byte)(lb / 4)));
+                    // Floor glow circle
+                    renderer.DrawRect(camera, worldPos, 20, 20, new Color3((byte)(lr / 8), (byte)(lg / 8), (byte)(lb / 8)));
                 }
 
                 // Shelf: stacked horizontal bars
@@ -376,27 +394,44 @@ public static class InteriorRenderer
         }
     }
 
-    /// <summary>Renders all NPCs with body, head, nametag, and role tag.</summary>
-    private static void RenderNpcs(ISpriteRenderer renderer, Camera camera, InteriorData interior)
+    /// <summary>Renders all NPCs with body, head, nametag, role tag, and idle animation.</summary>
+    private static void RenderNpcs(ISpriteRenderer renderer, Camera camera, InteriorData interior,
+        double globalTime)
     {
         foreach (var npc in interior.Npcs)
         {
+            // Each NPC gets a unique phase offset based on name hash
+            float phaseOffset = (npc.Name.GetHashCode() & 0xFFFF) * 0.01f;
+            float time = (float)globalTime;
+
+            // Idle breathing: body scale pulsing
+            float breathe = MathF.Sin(time * 1.5f + phaseOffset) * 1.5f;
+
+            // Weight shift: subtle horizontal sway
+            float sway = MathF.Sin(time * 0.8f + phaseOffset * 2f) * 1f;
+
             var npcPos = new Vector2(
-                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f + sway,
                 npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
-            // Shadow beneath feet
+            // Shadow beneath feet (sways with body)
             var shadowPos = npcPos + new Vector2(0, 8);
             renderer.DrawRect(camera, shadowPos, 12, 3, RenderColors.EntityShadow);
 
-            // Body
-            renderer.DrawRect(camera, npcPos, 10, 14, npc.Color);
+            // Body (breathing affect height)
+            renderer.DrawRect(camera, npcPos + new Vector2(0, -breathe * 0.3f), 10, (int)(14 + breathe * 0.4f), npc.Color);
 
-            // Head circle approximation
-            var headPos = npcPos - new Vector2(0, 8);
+            // Head: look direction changes over time
+            float headTurn = MathF.Sin(time * 0.5f + phaseOffset * 3f) * 2f;
+            var headPos = npcPos - new Vector2(-headTurn, 8 + breathe * 0.5f);
             renderer.DrawRect(camera, headPos, 8, 8, new Color3((byte)Math.Min(npc.Color.R + 30, 255),
                 (byte)Math.Min(npc.Color.G + 30, 255), (byte)Math.Min(npc.Color.B + 30, 255)));
+
+            // Eyes (two small dots that follow head turn direction)
+            float eyeDir = MathF.Sign(headTurn);
+            renderer.DrawRect(camera, headPos + new Vector2(-2 + eyeDir, -1), 2, 2, new Color3(30, 30, 40));
+            renderer.DrawRect(camera, headPos + new Vector2(2 + eyeDir, -1), 2, 2, new Color3(30, 30, 40));
 
             // Nametag (centered)
             float nameW = renderer.MeasureText(npc.Name, 1.5f) / 2f / camera.Zoom;
