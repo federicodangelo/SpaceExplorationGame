@@ -215,7 +215,7 @@ public class Game : IDisposable
             }
 
             // Toggle debug overlay
-            if (Input.IsKeyPressed(SDL.Scancode.Alpha1))
+            if (Input.IsActionPressed(InputAction.DebugToggle))
                 _debugOverlayVisible = !_debugOverlayVisible;
 
             // Apply pending state changes

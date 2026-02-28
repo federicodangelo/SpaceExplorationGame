@@ -1,10 +1,12 @@
 using System.Numerics;
+using System.Text;
 using SDL3;
 
 namespace SpaceExplorationGame.Core;
 
 public enum InputAction
 {
+    DebugToggle,
     MenuConfirm,
     MenuUp,
     MenuDown,
@@ -61,6 +63,10 @@ public class InputManager
     private readonly HashSet<SDL.Scancode> _keysPressed = [];  // just pressed this frame
     private readonly HashSet<SDL.Scancode> _keysReleased = []; // just released this frame
 
+    private readonly StringBuilder _textInputBuffer = new();
+    private int _textInputBackspaceCount; // counts backspaces in the current frame that were not yet applied to the TextInput buffer, so we can report it separately if needed
+    private int _textInputReturnCount; // counts how many times Return was pressed in the current frame, so we can report it separately if needed (e.g. for confirming text input even if the Return key event was consumed by the UI)
+
     private readonly HashSet<int> _mouseDown = [];
     private readonly HashSet<int> _mousePressed = [];
     private readonly HashSet<int> _mouseReleased = [];
@@ -84,12 +90,13 @@ public class InputManager
 
     private readonly Dictionary<InputAction, List<InputBinding>> _bindings = new()
     {
+        [InputAction.DebugToggle] = [InputBinding.Key(SDL.Scancode.Alpha1)],
         [InputAction.MenuConfirm] = [InputBinding.Key(SDL.Scancode.Return), InputBinding.Key(SDL.Scancode.Space), InputBinding.Gamepad(SDL.GamepadButton.South)],
         [InputAction.MenuUp] = [InputBinding.Key(SDL.Scancode.Up), InputBinding.Key(SDL.Scancode.W), InputBinding.Gamepad(SDL.GamepadButton.DPadUp)],
         [InputAction.MenuDown] = [InputBinding.Key(SDL.Scancode.Down), InputBinding.Key(SDL.Scancode.S), InputBinding.Gamepad(SDL.GamepadButton.DPadDown)],
         [InputAction.MenuLeft] = [InputBinding.Key(SDL.Scancode.Left), InputBinding.Key(SDL.Scancode.A), InputBinding.Gamepad(SDL.GamepadButton.DPadLeft)],
         [InputAction.MenuRight] = [InputBinding.Key(SDL.Scancode.Right), InputBinding.Key(SDL.Scancode.D), InputBinding.Gamepad(SDL.GamepadButton.DPadRight)],
-        [InputAction.MenuBack] = [InputBinding.Key(SDL.Scancode.Escape), InputBinding.Key(SDL.Scancode.Backspace), InputBinding.Gamepad(SDL.GamepadButton.East), InputBinding.Gamepad(SDL.GamepadButton.Start)],
+        [InputAction.MenuBack] = [InputBinding.Key(SDL.Scancode.Escape), InputBinding.Gamepad(SDL.GamepadButton.East), InputBinding.Gamepad(SDL.GamepadButton.Start)],
         [InputAction.MenuSecondaryAction] = [InputBinding.Key(SDL.Scancode.X), InputBinding.Key(SDL.Scancode.Delete)],
 
         [InputAction.MoveUp] = [InputBinding.Key(SDL.Scancode.W), InputBinding.Key(SDL.Scancode.Up)],
@@ -115,6 +122,11 @@ public class InputManager
     public float MouseY { get; private set; }
     public float MouseWheelY { get; private set; }
     public bool QuitRequested { get; private set; }
+
+    /// <summary>Text typed this frame, accumulated from SDL TextInput events. Reset each BeginFrame.</summary>
+    public string TextInput => _textInputBuffer.ToString();
+    public int TextInputBackspacesCount => _textInputBackspaceCount;
+    public int TextInputReturnsCount => _textInputReturnCount;
     public InputMethod ActiveInputMethod { get; private set; } = InputMethod.MouseKeyboard;
     public MovementInputMode MovementMode =>
         ActiveInputMethod == InputMethod.Gamepad ? MovementInputMode.Absolute : MovementInputMode.HeadingRelative;
@@ -128,6 +140,9 @@ public class InputManager
         SDL.GetMouseState(out float mx, out float my);
         MouseX = mx;
         MouseY = my;
+        _textInputBuffer.Clear();
+        _textInputBackspaceCount = 0;
+        _textInputReturnCount = 0;
     }
 
     /// <summary>
@@ -171,6 +186,7 @@ public class InputManager
         _rightStickX = 0;
         _rightStickY = 0;
         MouseWheelY = 0;
+        _textInputBuffer.Clear();
         ActiveInputMethod = InputMethod.MouseKeyboard;
     }
 
@@ -197,6 +213,11 @@ public class InputManager
                 {
                     _keysDown.Add(e.Key.Scancode);
                     _keysPressed.Add(e.Key.Scancode);
+                    AppendScancodeToTextBuffer(e.Key.Scancode, e.Key.Mod);
+                }
+                else
+                {
+                    AppendScancodeToTextBuffer(e.Key.Scancode, e.Key.Mod);
                 }
                 break;
 
@@ -306,11 +327,6 @@ public class InputManager
                 break;
         }
     }
-
-    // Key queries
-    public bool IsKeyDown(SDL.Scancode key) => _keysDown.Contains(key);
-    public bool IsKeyPressed(SDL.Scancode key) => _keysPressed.Contains(key);
-    public bool IsKeyReleased(SDL.Scancode key) => _keysReleased.Contains(key);
 
     public bool IsActionDown(InputAction action) => IsAnyBindingActive(action, _keysDown, _mouseDown, _gamepadDown, _gamepadAxesDown);
     public bool IsActionPressed(InputAction action) => IsAnyBindingActive(action, _keysPressed, _mousePressed, _gamepadPressed, _gamepadAxesPressed);
@@ -468,6 +484,113 @@ public class InputManager
     private bool IsFromActiveGamepad(uint gamepadId)
     {
         return _activeGamepadId != 0 && _activeGamepadId == gamepadId;
+    }
+
+    private void AppendScancodeToTextBuffer(SDL.Scancode scancode, SDL.Keymod mod)
+    {
+        bool shift = (mod & (SDL.Keymod.LShift | SDL.Keymod.RShift)) != 0;
+        bool caps = (mod & SDL.Keymod.Caps) != 0;
+        bool upper = shift ^ caps; // caps-lock inverts shift for letters
+
+        char ch = scancode switch
+        {
+            // Letters
+            SDL.Scancode.A => upper ? 'A' : 'a',
+            SDL.Scancode.B => upper ? 'B' : 'b',
+            SDL.Scancode.C => upper ? 'C' : 'c',
+            SDL.Scancode.D => upper ? 'D' : 'd',
+            SDL.Scancode.E => upper ? 'E' : 'e',
+            SDL.Scancode.F => upper ? 'F' : 'f',
+            SDL.Scancode.G => upper ? 'G' : 'g',
+            SDL.Scancode.H => upper ? 'H' : 'h',
+            SDL.Scancode.I => upper ? 'I' : 'i',
+            SDL.Scancode.J => upper ? 'J' : 'j',
+            SDL.Scancode.K => upper ? 'K' : 'k',
+            SDL.Scancode.L => upper ? 'L' : 'l',
+            SDL.Scancode.M => upper ? 'M' : 'm',
+            SDL.Scancode.N => upper ? 'N' : 'n',
+            SDL.Scancode.O => upper ? 'O' : 'o',
+            SDL.Scancode.P => upper ? 'P' : 'p',
+            SDL.Scancode.Q => upper ? 'Q' : 'q',
+            SDL.Scancode.R => upper ? 'R' : 'r',
+            SDL.Scancode.S => upper ? 'S' : 's',
+            SDL.Scancode.T => upper ? 'T' : 't',
+            SDL.Scancode.U => upper ? 'U' : 'u',
+            SDL.Scancode.V => upper ? 'V' : 'v',
+            SDL.Scancode.W => upper ? 'W' : 'w',
+            SDL.Scancode.X => upper ? 'X' : 'x',
+            SDL.Scancode.Y => upper ? 'Y' : 'y',
+            SDL.Scancode.Z => upper ? 'Z' : 'z',
+
+            // Digits row (US layout)
+            SDL.Scancode.Alpha1 => shift ? '!' : '1',
+            SDL.Scancode.Alpha2 => shift ? '@' : '2',
+            SDL.Scancode.Alpha3 => shift ? '#' : '3',
+            SDL.Scancode.Alpha4 => shift ? '$' : '4',
+            SDL.Scancode.Alpha5 => shift ? '%' : '5',
+            SDL.Scancode.Alpha6 => shift ? '^' : '6',
+            SDL.Scancode.Alpha7 => shift ? '&' : '7',
+            SDL.Scancode.Alpha8 => shift ? '*' : '8',
+            SDL.Scancode.Alpha9 => shift ? '(' : '9',
+            SDL.Scancode.Alpha0 => shift ? ')' : '0',
+
+            // Punctuation (US layout)
+            SDL.Scancode.Space => ' ',
+            SDL.Scancode.Minus => shift ? '_' : '-',
+            SDL.Scancode.Equals => shift ? '+' : '=',
+            SDL.Scancode.Leftbracket => shift ? '{' : '[',
+            SDL.Scancode.Rightbracket => shift ? '}' : ']',
+            SDL.Scancode.Backslash => shift ? '|' : '\\',
+            SDL.Scancode.Semicolon => shift ? ':' : ';',
+            SDL.Scancode.Apostrophe => shift ? '"' : '\'',
+            SDL.Scancode.Grave => shift ? '~' : '`',
+            SDL.Scancode.Comma => shift ? '<' : ',',
+            SDL.Scancode.Period => shift ? '>' : '.',
+            SDL.Scancode.Slash => shift ? '?' : '/',
+
+            // Numpad digits
+            SDL.Scancode.Kp1 => '1',
+            SDL.Scancode.Kp2 => '2',
+            SDL.Scancode.Kp3 => '3',
+            SDL.Scancode.Kp4 => '4',
+            SDL.Scancode.Kp5 => '5',
+            SDL.Scancode.Kp6 => '6',
+            SDL.Scancode.Kp7 => '7',
+            SDL.Scancode.Kp8 => '8',
+            SDL.Scancode.Kp9 => '9',
+            SDL.Scancode.Kp0 => '0',
+            SDL.Scancode.KpPeriod => '.',
+            SDL.Scancode.KpPlus => '+',
+            SDL.Scancode.KpMinus => '-',
+            SDL.Scancode.KpMultiply => '*',
+            SDL.Scancode.KpDivide => '/',
+
+            // Backspace
+            SDL.Scancode.Backspace => '\b',
+            SDL.Scancode.KpBackspace => '\b',
+
+            // Return
+            SDL.Scancode.Return => '\n',
+            SDL.Scancode.KpEnter => '\n',
+
+            _ => '\0',
+        };
+
+        if (ch == '\b')
+        {
+            if (_textInputBuffer.Length > 0)
+                _textInputBuffer.Length -= 1; // remove last char
+            else
+                _textInputBackspaceCount += 1; // count backspace even if buffer is empty, so we can report it separately if needed
+        }
+        else if (ch == '\n')
+        {
+            _textInputReturnCount += 1; // count Return key presses, so we can report it separately if needed (e.g. for confirming text input even if the Return key event was consumed by the UI)
+        }
+        else if (ch != '\0')
+        {
+            _textInputBuffer.Append(ch);
+        }
     }
 
     private Vector2 GetDirectionFromScreenCenterToMouse()

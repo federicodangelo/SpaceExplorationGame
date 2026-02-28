@@ -66,13 +66,14 @@ public class TextInputOverlay : PanelOverlayBase
     protected override void ProcessInput(Game game, InputManager input)
     {
         // Backspace
-        if (input.IsKeyPressed(SDL.Scancode.Backspace) && _currentInput.Length > 0)
+        for (var i = 0; i < input.TextInputBackspacesCount; i++)
         {
-            _currentInput = _currentInput[..^1];
+            if (_currentInput.Length > 0)
+                _currentInput = _currentInput[..^1];
         }
 
         // Enter - confirm
-        if (input.IsKeyPressed(SDL.Scancode.Return))
+        if (input.TextInputReturnsCount > 0)
         {
             // If user typed something, use that; otherwise fall back to default
             if (_currentInput.Length > 0)
@@ -88,64 +89,11 @@ public class TextInputOverlay : PanelOverlayBase
         }
 
         // Handle character input
-        HandleCharacterInput(input);
-    }
-
-    private void HandleCharacterInput(InputManager input)
-    {
-        if (_currentInput.Length >= _maxLength) return;
-
-        // Number row keys
-        if (input.IsKeyPressed(SDL.Scancode.Alpha0)) { _currentInput += "0"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha1)) { _currentInput += "1"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha2)) { _currentInput += "2"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha3)) { _currentInput += "3"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha4)) { _currentInput += "4"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha5)) { _currentInput += "5"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha6)) { _currentInput += "6"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha7)) { _currentInput += "7"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha8)) { _currentInput += "8"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Alpha9)) { _currentInput += "9"; return; }
-
-        // Keypad number keys
-        if (input.IsKeyPressed(SDL.Scancode.Kp0)) { _currentInput += "0"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp1)) { _currentInput += "1"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp2)) { _currentInput += "2"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp3)) { _currentInput += "3"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp4)) { _currentInput += "4"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp5)) { _currentInput += "5"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp6)) { _currentInput += "6"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp7)) { _currentInput += "7"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp8)) { _currentInput += "8"; return; }
-        if (input.IsKeyPressed(SDL.Scancode.Kp9)) { _currentInput += "9"; return; }
-
-        if (!_numericOnly)
+        foreach (char c in input.TextInput)
         {
-            // Letters A-Z
-            for (SDL.Scancode key = SDL.Scancode.A; key <= SDL.Scancode.Z; key++)
-            {
-                if (input.IsKeyPressed(key))
-                {
-                    char c = (char)('A' + ((int)key - (int)SDL.Scancode.A));
-                    bool shift = input.IsKeyDown(SDL.Scancode.LShift) || input.IsKeyDown(SDL.Scancode.RShift);
-                    _currentInput += shift ? c : char.ToLower(c);
-                    return;
-                }
-            }
-
-            // Space
-            if (input.IsKeyPressed(SDL.Scancode.Space))
-            {
-                _currentInput += " ";
-                return;
-            }
-
-            // Hyphen
-            if (input.IsKeyPressed(SDL.Scancode.Minus))
-            {
-                _currentInput += "-";
-                return;
-            }
+            if (_currentInput.Length >= _maxLength) break;
+            if (_numericOnly && !char.IsDigit(c)) continue;
+            _currentInput += c;
         }
     }
 
