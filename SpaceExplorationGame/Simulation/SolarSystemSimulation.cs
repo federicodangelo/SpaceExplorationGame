@@ -23,7 +23,6 @@ public class SolarSystemSimulation : CombatSimulationBase
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
     public List<PlanetData> Planets { get; private set; } = [];
-    public List<AsteroidBeltData> AsteroidBelts { get; private set; } = [];
     public List<SpaceStationData> Stations { get; private set; } = [];
     public SolarSystemContent Content { get; private set; }
 
@@ -82,7 +81,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
         Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
         Planets = Content.Planets;
-        AsteroidBelts = Content.AsteroidBelts;
         Stations = Content.Stations;
 
         float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
@@ -90,14 +88,14 @@ public class SolarSystemSimulation : CombatSimulationBase
         float centerX = totalW / 2f;
         float centerY = totalH / 2f;
         Vector2 center = new(centerX, centerY);
-        float time = (float)_game.GlobalTime;
+        float globalTime = (float)_game.GlobalTime;
 
-        SpawnStar(center);
-        SpawnPlanets(center, time);
-        SpawnStations(time);
-        SpawnAsteroids(new SeededRandom(rng.DeriveChildSeed(999)));
+        SpawnStar(StarSystem, center);
+        SpawnPlanets(Content.Planets, center, globalTime);
+        SpawnStations(Content.Stations, globalTime);
+        SpawnAsteroids(Content.AsteroidBelts, new SeededRandom(rng.DeriveChildSeed(999)));
         SpawnNPCShips(Content.NpcShipSpawns);
-        SpawnBackground();
+        SpawnBackground(totalW, totalH);
 
         // Initialize ECS systems
         // Shared systems (velocity, projectiles, cleanup)
@@ -256,19 +254,18 @@ public class SolarSystemSimulation : CombatSimulationBase
             GameConfig.ShipBrakeMultiplier, playerWeapons);
     }
 
-    private void SpawnStar(Vector2 center)
+    private void SpawnStar(StarSystemData starSystem, Vector2 center)
     {
-        float starDisplayRadius = StarSystem.StarRadius * 2f;
+        float starDisplayRadius = starSystem.StarRadius * 2f;
         StarEntity = EntityFactory.CreateStar(EcsWorld, center, starDisplayRadius,
-            StarSystem.Name, StarSystem.StarColor, StarSystem.Index);
+            starSystem.Name, starSystem.StarColor, starSystem.Index);
     }
 
-    private void SpawnPlanets(Vector2 center, float time)
+    private void SpawnPlanets(List<PlanetData> planets, Vector2 center, float globalTime)
     {
-        for (int i = 0; i < Planets.Count; i++)
+        foreach (var planet in planets)
         {
-            var planet = Planets[i];
-            float angle = planet.StartAngle + planet.OrbitSpeed * time;
+            float angle = planet.StartAngle + planet.OrbitSpeed * globalTime;
             var pos = center + new Vector2(
                 MathF.Cos(angle) * planet.OrbitRadius,
                 MathF.Sin(angle) * planet.OrbitRadius);
@@ -276,36 +273,42 @@ public class SolarSystemSimulation : CombatSimulationBase
             var planetEntity = EntityFactory.CreatePlanet(EcsWorld, pos, StarEntity,
                 planet.Name, planet.Radius, planet.Color,
                 planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle,
-                i, planet.HasSolidSurface);
+                planet.Index, planet.HasSolidSurface);
             PlanetEntities.Add(planetEntity);
 
-            var moons = new List<Entity>();
-            foreach (var moon in planet.Moons)
-            {
-                float moonAngle = moon.StartAngle + moon.OrbitSpeed * time;
-                var moonPos = pos + new Vector2(
-                    MathF.Cos(moonAngle) * moon.OrbitRadius,
-                    MathF.Sin(moonAngle) * moon.OrbitRadius);
-
-                var moonEntity = EntityFactory.CreateMoon(EcsWorld, moonPos, planetEntity,
-                    moon.Name, moon.Radius, moon.Color,
-                    moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
-                moons.Add(moonEntity);
-            }
-            MoonEntities.Add(moons);
+            var planetMoons = SpawnPlanetMoons(planet, planetEntity, pos, globalTime);
+            MoonEntities.Add(planetMoons);
         }
     }
 
-    private void SpawnStations(float time)
+    private List<Entity> SpawnPlanetMoons(PlanetData planet, Entity planetEntity, Vector2 planetPos, float globalTime)
     {
-        foreach (var station in Stations)
+        var planetMoons = new List<Entity>();
+        foreach (var moon in planet.Moons)
+        {
+            float moonAngle = moon.StartAngle + moon.OrbitSpeed * globalTime;
+            var moonPos = planetPos + new Vector2(
+                MathF.Cos(moonAngle) * moon.OrbitRadius,
+                MathF.Sin(moonAngle) * moon.OrbitRadius);
+
+            var moonEntity = EntityFactory.CreateMoon(EcsWorld, moonPos, planetEntity,
+                moon.Name, moon.Radius, moon.Color,
+                moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle, moon.Index);
+            planetMoons.Add(moonEntity);
+        }
+        return planetMoons;
+    }
+
+    private void SpawnStations(List<SpaceStationData> stations, float globalTime)
+    {
+        foreach (var station in stations)
         {
             Entity parent = station.OrbitParentPlanetIndex >= 0 && station.OrbitParentPlanetIndex < PlanetEntities.Count
                 ? PlanetEntities[station.OrbitParentPlanetIndex]
                 : StarEntity;
 
             var parentTransform = EcsWorld.Get<Transform>(parent);
-            float stAngle = station.StartAngle + station.OrbitSpeed * time;
+            float stAngle = station.StartAngle + station.OrbitSpeed * globalTime;
             var stPos = parentTransform.Position + new Vector2(
                 MathF.Cos(stAngle) * station.OrbitRadius,
                 MathF.Sin(stAngle) * station.OrbitRadius);
@@ -316,9 +319,9 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    private void SpawnAsteroids(SeededRandom asteroidRng)
+    private void SpawnAsteroids(List<AsteroidBeltData> asteroidBelts, SeededRandom asteroidRng)
     {
-        foreach (var belt in AsteroidBelts)
+        foreach (var belt in asteroidBelts)
         {
             for (int i = 0; i < belt.AsteroidCount; i++)
             {
@@ -357,12 +360,10 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    private void SpawnBackground()
+    private void SpawnBackground(float mapW, float mapH)
     {
         var bgRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xCAFEBABE);
         var nebRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xFACEFEED);
-        float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
 
         for (int i = 0; i < 4000; i++)
         {
