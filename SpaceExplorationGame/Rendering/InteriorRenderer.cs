@@ -394,7 +394,7 @@ public static class InteriorRenderer
         }
     }
 
-    /// <summary>Renders all NPCs with body, head, nametag, role tag, and idle animation.</summary>
+    /// <summary>Renders all NPCs with body, head, accessories, nametag, role tag, and idle animation.</summary>
     private static void RenderNpcs(ISpriteRenderer renderer, Camera camera, InteriorData interior,
         double globalTime)
     {
@@ -403,6 +403,7 @@ public static class InteriorRenderer
             // Each NPC gets a unique phase offset based on name hash
             float phaseOffset = (npc.Name.GetHashCode() & 0xFFFF) * 0.01f;
             float time = (float)globalTime;
+            float scale = npc.BodyScale;
 
             // Idle breathing: body scale pulsing
             float breathe = MathF.Sin(time * 1.5f + phaseOffset) * 1.5f;
@@ -415,27 +416,66 @@ public static class InteriorRenderer
                 npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
-            // Shadow beneath feet (sways with body)
+            // Shadow beneath feet (scaled)
             var shadowPos = npcPos + new Vector2(0, 8);
-            renderer.DrawRect(camera, shadowPos, 12, 3, RenderColors.EntityShadow);
+            renderer.DrawRect(camera, shadowPos, (int)(12 * scale), 3, RenderColors.EntityShadow);
 
-            // Body (breathing affect height)
-            renderer.DrawRect(camera, npcPos + new Vector2(0, -breathe * 0.3f), 10, (int)(14 + breathe * 0.4f), npc.Color);
+            // Legs
+            renderer.DrawRect(camera, npcPos + new Vector2(-3 * scale, 6), (int)(3 * scale), 4,
+                new Color3((byte)(npc.Color.R * 0.6f), (byte)(npc.Color.G * 0.6f), (byte)(npc.Color.B * 0.6f)));
+            renderer.DrawRect(camera, npcPos + new Vector2(3 * scale, 6), (int)(3 * scale), 4,
+                new Color3((byte)(npc.Color.R * 0.6f), (byte)(npc.Color.G * 0.6f), (byte)(npc.Color.B * 0.6f)));
 
-            // Head: look direction changes over time
+            // Body (breathing + scale)
+            int bodyW = (int)(10 * scale);
+            int bodyH = (int)(14 + breathe * 0.4f);
+            renderer.DrawRect(camera, npcPos + new Vector2(0, -breathe * 0.3f),
+                bodyW, bodyH, npc.Color);
+
+            // Head
             float headTurn = MathF.Sin(time * 0.5f + phaseOffset * 3f) * 2f;
             var headPos = npcPos - new Vector2(-headTurn, 8 + breathe * 0.5f);
-            renderer.DrawRect(camera, headPos, 8, 8, new Color3((byte)Math.Min(npc.Color.R + 30, 255),
-                (byte)Math.Min(npc.Color.G + 30, 255), (byte)Math.Min(npc.Color.B + 30, 255)));
+            var headColor = new Color3(
+                (byte)Math.Min(npc.Color.R + 30, 255),
+                (byte)Math.Min(npc.Color.G + 30, 255),
+                (byte)Math.Min(npc.Color.B + 30, 255));
+            renderer.DrawRect(camera, headPos, 8, 8, headColor);
 
-            // Eyes (two small dots that follow head turn direction)
+            // Eyes
             float eyeDir = MathF.Sign(headTurn);
-            renderer.DrawRect(camera, headPos + new Vector2(-2 + eyeDir, -1), 2, 2, new Color3(30, 30, 40));
-            renderer.DrawRect(camera, headPos + new Vector2(2 + eyeDir, -1), 2, 2, new Color3(30, 30, 40));
+            renderer.DrawRect(camera, headPos + new Vector2(-2 + eyeDir, -1), 2, 2,
+                new Color3(30, 30, 40));
+            renderer.DrawRect(camera, headPos + new Vector2(2 + eyeDir, -1), 2, 2,
+                new Color3(30, 30, 40));
+
+            // Accessory rendering
+            switch (npc.Accessory)
+            {
+                case 1: // Hat — rectangle above head
+                    renderer.DrawRect(camera, headPos - new Vector2(0, 5), 10, 4,
+                        new Color3((byte)(npc.Color.R * 0.7f), (byte)(npc.Color.G * 0.7f), (byte)(npc.Color.B * 0.7f)));
+                    renderer.DrawRect(camera, headPos - new Vector2(0, 7), 6, 3,
+                        new Color3(npc.Color.R, npc.Color.G, npc.Color.B));
+                    break;
+                case 2: // Helmet — wider head cover
+                    renderer.DrawRect(camera, headPos - new Vector2(0, 2), 10, 10,
+                        new Color3(80, 85, 95));
+                    renderer.DrawRect(camera, headPos - new Vector2(0, 0), 8, 3,
+                        new Color3(60, 120, 160));
+                    break;
+                case 3: // Hood — triangular drape
+                    renderer.DrawRect(camera, headPos - new Vector2(0, 4), 10, 6,
+                        new Color3((byte)(npc.Color.R * 0.5f), (byte)(npc.Color.G * 0.5f), (byte)(npc.Color.B * 0.5f)));
+                    renderer.DrawRect(camera, headPos + new Vector2(-5, 0), 2, 4,
+                        new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
+                    renderer.DrawRect(camera, headPos + new Vector2(5, 0), 2, 4,
+                        new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
+                    break;
+            }
 
             // Nametag (centered)
             float nameW = renderer.MeasureText(npc.Name, 1.5f) / 2f / camera.Zoom;
-            var namePos = npcPos - new Vector2(nameW, 18);
+            var namePos = npcPos - new Vector2(nameW, 20 + (npc.Accessory > 0 ? 4 : 0));
             renderer.DrawText(camera, namePos, npc.Name, new Color3(200, 200, 200), 1.5f);
 
             // Role tag (centered)

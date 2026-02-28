@@ -77,6 +77,10 @@ public class InteriorNpc
     public TilePos TilePos { get; init; }
     public string[] DialogueLines { get; init; } = [];
     public Color3 Color { get; init; } = new(100, 200, 255);
+    /// <summary>Body width scale (0.7 = thin, 1.0 = normal, 1.3 = stocky).</summary>
+    public float BodyScale { get; init; } = 1f;
+    /// <summary>Head accessory type (0=none, 1=hat, 2=helmet, 3=hood).</summary>
+    public int Accessory { get; init; }
 }
 
 /// <summary>
@@ -988,8 +992,8 @@ public static class InteriorGenerator
                 CommanderDialogue, new Color3(100, 200, 255)));
         }
 
-        // 2-4 random civilians in various rooms
-        PlaceRandomCivilians(data, rng, 2, 5, "CIVILIAN");
+        // 4-8 random civilians in various rooms
+        PlaceRandomCivilians(data, rng, 4, 9, "CIVILIAN");
     }
 
     private static void PlaceSettlementNpcs(InteriorData data, SeededRandom rng)
@@ -1028,7 +1032,7 @@ public static class InteriorGenerator
         }
 
         // Random civilians
-        PlaceRandomCivilians(data, rng, 2, 4, "SETTLER");
+        PlaceRandomCivilians(data, rng, 3, 7, "SETTLER");
     }
 
     private static void PlaceRandomCivilians(InteriorData data, SeededRandom rng, int min, int max, string role)
@@ -1048,22 +1052,39 @@ public static class InteriorGenerator
         }
     }
 
-    private static InteriorNpc CreateNpc(SeededRandom rng, string role, int x, int y,
+    private static InteriorNpc CreateNpc(
+        SeededRandom rng, string role, int x, int y,
         string[] dialoguePool, Color3 color)
     {
         string firstName = rng.Pick(FirstNames);
         string lastName = rng.Pick(LastNames);
 
-        // Pick 1 random dialogue line
-        var lines = new string[] { rng.Pick(dialoguePool) };
+        // Pick 2-3 random dialogue lines (no duplicates)
+        int lineCount = Math.Min(rng.NextInt(2, 4), dialoguePool.Length);
+        var lines = new List<string>(lineCount);
+        var used = new HashSet<int>();
+        while (lines.Count < lineCount)
+        {
+            int idx = rng.NextInt(dialoguePool.Length);
+            if (used.Add(idx))
+                lines.Add(dialoguePool[idx]);
+        }
+
+        // Randomize body scale
+        float bodyScale = rng.NextFloat(0.7f, 1.3f);
+
+        // Random accessory (0=none ~40%, 1=hat ~20%, 2=helmet ~20%, 3=hood ~20%)
+        int accessory = rng.NextFloat() < 0.4f ? 0 : rng.NextInt(1, 4);
 
         return new InteriorNpc
         {
             Name = $"{firstName} {lastName}",
             Role = role,
             TilePos = new(x, y),
-            DialogueLines = lines,
-            Color = color
+            DialogueLines = lines.ToArray(),
+            Color = color,
+            BodyScale = bodyScale,
+            Accessory = accessory
         };
     }
 
