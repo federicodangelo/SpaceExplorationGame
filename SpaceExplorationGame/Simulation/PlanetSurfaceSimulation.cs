@@ -52,7 +52,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         StarSystem = starSystem;
         Planet = planet;
         SurfaceData = preGeneratedSurfaceData
-            ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
+            ?? _game.UniverseGenerator.GeneratePlanetSurface(StarSystem, Planet);
     }
 
     public override void Create()

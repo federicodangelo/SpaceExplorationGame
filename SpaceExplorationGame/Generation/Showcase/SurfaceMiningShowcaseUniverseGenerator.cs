@@ -4,22 +4,26 @@ using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
 
-public class SurfaceMiningShowcaseWorldGenerator : ProceduralWorldGenerator
+public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerator
 {
     private const int TargetRockCount = 420;
 
-    public override List<StarSystemData> GenerateGalaxy(SeedManager seeds)
+    public SurfaceMiningShowcaseUniverseGenerator(SeedManager seeds) : base(seeds)
+    {
+    }
+
+    public override List<StarSystemData> GenerateGalaxy()
     {
         return
         [
-            ShowcaseWorldGeneratorHelpers.BuildSingleSystem(
+            ShowcaseUniverseGeneratorHelpers.BuildSingleSystem(
                 name: "Surface Mining Debug",
                 starClass: StarClass.G,
                 planetCount: 1)
         ];
     }
 
-    public override SolarSystemContent GenerateSolarSystem(SeedManager seeds, StarSystemData starSystem)
+    public override SolarSystemContent GenerateSolarSystem(StarSystemData starSystem)
     {
         return new SolarSystemContent(
             Planets:
@@ -42,16 +46,16 @@ public class SurfaceMiningShowcaseWorldGenerator : ProceduralWorldGenerator
                 }
             ],
             AsteroidBelts: [],
-            SpaceStations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
             NpcShipSpawns: [],
             StartingPosition: new Vector2(
                 GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
                 GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
     }
 
-    public override PlanetSurfaceData GeneratePlanetSurface(SeedManager seeds, StarSystemData starSystem, PlanetData planet)
+    public override PlanetSurfaceData GeneratePlanetSurface(StarSystemData starSystem, PlanetData planet)
     {
-        var surfaceData = base.GeneratePlanetSurface(seeds, starSystem, planet);
+        var surfaceData = base.GeneratePlanetSurface(starSystem, planet);
 
         if (planet.Index != 0)
             return surfaceData;
@@ -59,7 +63,7 @@ public class SurfaceMiningShowcaseWorldGenerator : ProceduralWorldGenerator
         surfaceData.BanditSpawns.Clear(); // No bandits, just rocks
         surfaceData.FaunaSpawns.Clear(); // No fauna, just rocks
 
-        var rng = new SeededRandom(seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index).DeriveChildSeed(8100));
+        var rng = new SeededRandom(Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index).DeriveChildSeed(8100));
         var resources = new[] { ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Platinum };
 
         float tileSize = GameConfig.TileSize;

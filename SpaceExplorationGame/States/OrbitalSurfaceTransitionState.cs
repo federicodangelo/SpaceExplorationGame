@@ -128,7 +128,7 @@ public class OrbitalSurfaceTransitionState : GameState
 
         if (_mode == TransitionMode.Landing)
         {
-            _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, _starSystem, _planet);
+            _surfaceData = game.UniverseGenerator.GeneratePlanetSurface(_starSystem, _planet);
 
             _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
             _planetScreenStart = WorldToScreenFromSolarSnapshot(_targetBodyWorldStart);

@@ -4,25 +4,29 @@ using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
 
-public class AsteroidMiningShowcaseWorldGenerator : ProceduralWorldGenerator
+public class AsteroidMiningShowcaseUniverseGenerator : ProceduralUniverseGenerator
 {
-    public override List<StarSystemData> GenerateGalaxy(SeedManager seeds)
+    public AsteroidMiningShowcaseUniverseGenerator(SeedManager seeds) : base(seeds)
+    {
+    }
+
+    public override List<StarSystemData> GenerateGalaxy()
     {
         return
         [
-            ShowcaseWorldGeneratorHelpers.BuildSingleSystem(
+            ShowcaseUniverseGeneratorHelpers.BuildSingleSystem(
                 name: "Asteroid Mining Debug",
                 starClass: StarClass.G,
                 planetCount: 2)
         ];
     }
 
-    public override SolarSystemContent GenerateSolarSystem(SeedManager seeds, StarSystemData starSystem)
+    public override SolarSystemContent GenerateSolarSystem(StarSystemData starSystem)
     {
         return new SolarSystemContent(
             Planets: BuildPlanets(),
             AsteroidBelts: BuildBelts(),
-            SpaceStations: ShowcaseWorldGeneratorHelpers.BuildDebugStations(),
+            SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
             NpcShipSpawns: [],
             StartingPosition: new Vector2(
                 GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),

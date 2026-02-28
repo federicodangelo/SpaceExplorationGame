@@ -100,7 +100,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _invalidSelectionHintTimer = 0f;
 
         // Generate surface
-        _surfaceData = game.WorldGenerator.GeneratePlanetSurface(game.Seeds, starSystem, planet);
+        _surfaceData = game.UniverseGenerator.GeneratePlanetSurface(starSystem, planet);
 
         // Create terrain overview texture
         CreateTerrainTexture(game);

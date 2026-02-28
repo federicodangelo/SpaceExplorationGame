@@ -79,7 +79,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     public override void Create()
     {
         var rng = _game.Seeds.GetStarSystemRandom(StarSystem.Index);
-        Content = _game.WorldGenerator.GenerateSolarSystem(_game.Seeds, StarSystem);
+        Content = _game.UniverseGenerator.GenerateSolarSystem(StarSystem);
         Planets = Content.Planets;
         SpaceStations = Content.SpaceStations;
 
@@ -335,6 +335,7 @@ public class SolarSystemSimulation : CombatSimulationBase
                     asteroidRng.NextFloat(belt.InnerRadius, belt.OuterRadius),
                     asteroidRng.NextFloat(0.002f, 0.008f),
                     asteroidRng.NextFloat(0, MathF.PI * 2));
+
                 AsteroidEntities.Add(entity);
             }
         }

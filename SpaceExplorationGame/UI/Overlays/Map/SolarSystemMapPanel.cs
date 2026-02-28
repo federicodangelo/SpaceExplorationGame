@@ -42,7 +42,7 @@ public class SolarSystemMapPanel : MapPanelBase
         if (game.Player.CurrentStarSystemIndex >= 0 && game.Player.CurrentStarSystemIndex < starSystems.Count)
         {
             _currentStarSystem = starSystems[game.Player.CurrentStarSystemIndex];
-            var content = game.WorldGenerator.GenerateSolarSystem(game.Seeds, _currentStarSystem);
+            var content = game.UniverseGenerator.GenerateSolarSystem(_currentStarSystem);
             _planets = content.Planets;
             _spaceStations = content.SpaceStations;
         }

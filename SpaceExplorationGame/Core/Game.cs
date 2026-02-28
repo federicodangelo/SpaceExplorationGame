@@ -41,8 +41,8 @@ public class Game : IDisposable
     public AudioManager Audio { get; private set; } = null!;
 
     // Procedural generation
-    public SeedManager Seeds { get; private set; } = null!;
-    public IWorldGenerator WorldGenerator { get; private set; } = null!;
+    public IUniverseGenerator UniverseGenerator { get; private set; } = null!;
+    public SeedManager Seeds => UniverseGenerator.Seeds;
 
     /// <summary>Cached galaxy data — generated once from the galaxy seed, reused everywhere.</summary>
     public List<StarSystemData> GalaxyData { get; private set; } = [];
@@ -93,12 +93,9 @@ public class Game : IDisposable
         StarRenderer = new StarRenderer();
         EnemyShipRenderer = new EnemyShipRenderer();
 
-        // Seed manager
-        Seeds = new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64());
-
         // Generation service + cached galaxy data
-        WorldGenerator = new ProceduralWorldGenerator();
-        GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
+        UniverseGenerator = new ProceduralUniverseGenerator(new SeedManager(galaxySeed ?? (ulong)Random.Shared.NextInt64()));
+        GalaxyData = UniverseGenerator.GenerateGalaxy();
 
         IsRunning = true;
     }
@@ -108,21 +105,21 @@ public class Game : IDisposable
     /// </summary>
     public void RegenerateGalaxy(ulong newSeed)
     {
-        Seeds = new SeedManager(newSeed);
-        GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
+        UniverseGenerator = new ProceduralUniverseGenerator(new SeedManager(newSeed));
+        GalaxyData = UniverseGenerator.GenerateGalaxy();
         Player.Reset();
     }
 
-    public void SetWorldGenerator(IWorldGenerator generator, bool regenerateGalaxy = true)
+    public void SetUniverseGenerator(IUniverseGenerator generator, bool regenerateGalaxy = true)
     {
-        WorldGenerator = generator;
+        UniverseGenerator = generator;
         if (regenerateGalaxy)
-            GalaxyData = WorldGenerator.GenerateGalaxy(Seeds);
+            GalaxyData = UniverseGenerator.GenerateGalaxy();
     }
 
-    public void UseProceduralWorldGenerator(bool regenerateGalaxy = true)
+    public void UseProceduralUniverseGenerator(bool regenerateGalaxy = true)
     {
-        SetWorldGenerator(new ProceduralWorldGenerator(), regenerateGalaxy);
+        SetUniverseGenerator(new ProceduralUniverseGenerator(UniverseGenerator.Seeds), regenerateGalaxy);
     }
 
     public void ChangeState(GameState newState)

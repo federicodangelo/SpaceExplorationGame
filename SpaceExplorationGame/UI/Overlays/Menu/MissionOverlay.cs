@@ -62,8 +62,8 @@ public class MissionOverlay : ListPanelOverlay
         _boardSeed = boardSeed;
 
         // Generate available missions for this board
-        var allMissions = game.WorldGenerator.GenerateBoardMissions(
-            game.Seeds, boardSeed, currentSystem, game.GalaxyData);
+        var allMissions = game.UniverseGenerator.GenerateBoardMissions(
+            boardSeed, currentSystem, game.GalaxyData);
 
         // Filter out missions already claimed by the player
         _availableMissions = allMissions

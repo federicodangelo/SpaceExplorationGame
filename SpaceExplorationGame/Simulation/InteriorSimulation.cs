@@ -52,9 +52,9 @@ public class InteriorSimulation : SimulationBase
     {
         Interior = Origin switch
         {
-            InteriorOrigin.SpaceStation => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, SpaceStation),
-            InteriorOrigin.Settlement => _game.WorldGenerator.GenerateSettlementInterior(_game.Seeds, StarSystem, Planet, Settlement),
-            _ => _game.WorldGenerator.GenerateStationInterior(_game.Seeds, StarSystem, SpaceStation)
+            InteriorOrigin.SpaceStation => _game.UniverseGenerator.GenerateStationInterior(StarSystem, SpaceStation),
+            InteriorOrigin.Settlement => _game.UniverseGenerator.GenerateSettlementInterior(StarSystem, Planet, Settlement),
+            _ => _game.UniverseGenerator.GenerateStationInterior(StarSystem, SpaceStation)
         };
 
         // Initialize ECS systems

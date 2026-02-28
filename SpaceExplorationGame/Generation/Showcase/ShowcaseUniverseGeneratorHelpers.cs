@@ -4,7 +4,7 @@ using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
 
-internal static class ShowcaseWorldGeneratorHelpers
+internal static class ShowcaseUniverseGeneratorHelpers
 {
     public static StarSystemData BuildSingleSystem(string name, StarClass starClass, int planetCount)
     {
