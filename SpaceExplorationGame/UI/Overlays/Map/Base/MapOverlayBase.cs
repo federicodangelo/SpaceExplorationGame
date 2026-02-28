@@ -77,10 +77,10 @@ public abstract class MapOverlayBase : OverlayBase
     protected abstract MapPanelBase GetActivePanel();
 
     /// <summary>Render the header area at the top of the frame.</summary>
-    protected abstract void RenderHeader(SpriteRenderer renderer);
+    protected abstract void RenderHeader(ISpriteRenderer renderer);
 
     /// <summary>Render additional HUD elements outside the frame (e.g., title bar, prompts).</summary>
-    protected virtual void RenderHud(Game game, SpriteRenderer renderer) { }
+    protected virtual void RenderHud(Game game, ISpriteRenderer renderer) { }
 
     // ─────────────────────────────────────────────────────────────
     //  UPDATE

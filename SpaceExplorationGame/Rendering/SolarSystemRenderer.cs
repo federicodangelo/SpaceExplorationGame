@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.Rendering;
 public static class SolarSystemRenderer
 {
     /// <summary>Renders background stars.</summary>
-    public static void RenderBackgroundStars(SpriteRenderer renderer, Camera camera, List<BackgroundStar> bgStars)
+    public static void RenderBackgroundStars(ISpriteRenderer renderer, Camera camera, List<BackgroundStar> bgStars)
     {
         foreach (var (x, y, brightness) in bgStars)
         {
@@ -29,7 +29,7 @@ public static class SolarSystemRenderer
     }
 
     /// <summary>Renders background nebulae.</summary>
-    public static void RenderBackgroundNebulae(SpriteRenderer renderer, Camera camera, List<NebulaCloud> nebulae)
+    public static void RenderBackgroundNebulae(ISpriteRenderer renderer, Camera camera, List<NebulaCloud> nebulae)
     {
         foreach (var (nx, ny, nr, nColor) in nebulae)
         {
@@ -40,7 +40,7 @@ public static class SolarSystemRenderer
     }
 
     /// <summary>Renders orbit lines for all planets.</summary>
-    public static void RenderOrbitLines(SpriteRenderer renderer, Camera camera,
+    public static void RenderOrbitLines(ISpriteRenderer renderer, Camera camera,
         List<PlanetData> planets, Vector2 starCenter)
     {
         foreach (var planet in planets)
@@ -50,7 +50,7 @@ public static class SolarSystemRenderer
     }
 
     /// <summary>Render all NPC ships with their textures, health bars, and faction labels.</summary>
-    public static void RenderNPCShips(SpriteRenderer renderer, Camera camera, World ecsWorld,
+    public static void RenderNPCShips(ISpriteRenderer renderer, Camera camera, World ecsWorld,
         List<Entity> enemyEntities, EnemyShipRenderer enemyShipRenderer)
     {
         foreach (var entity in enemyEntities)

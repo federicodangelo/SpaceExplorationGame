@@ -72,7 +72,7 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
 
     // ── Input ──
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         var confirmed = Menu.Update(input, MenuX, MenuY, MenuWidth);
         if (confirmed.HasValue)
@@ -85,7 +85,7 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     // ── Default content rendering ──
 
     /// <summary>Renders the menu widget. Override for additional content beyond the menu.</summary>
-    protected sealed override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected sealed override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         Menu.Render(renderer, MenuX, MenuY, MenuWidth, PanelBottom);
@@ -94,7 +94,7 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     }
 
     // ── Custom rendering (for unique layouts) ──
-    protected virtual void RenderAdditionalContent(Game game, SpriteRenderer renderer,
+    protected virtual void RenderAdditionalContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     { }
 }

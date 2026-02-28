@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.Rendering;
 public static class ProjectileRenderer
 {
     /// <summary>Render all projectile entities in the world.</summary>
-    public static void RenderProjectiles(SpriteRenderer renderer, Camera camera, World world)
+    public static void RenderProjectiles(ISpriteRenderer renderer, Camera camera, World world)
     {
         var query = new QueryDescription().WithAll<Transform, Velocity, Projectile>();
         world.Query(in query, (ref Transform transform, ref Velocity velocity, ref Projectile proj) =>
@@ -62,7 +62,7 @@ public static class ProjectileRenderer
     }
 
     /// <summary>Render damage number popups (no mutation).</summary>
-    public static void RenderDamageEffects(SpriteRenderer renderer, Camera camera,
+    public static void RenderDamageEffects(ISpriteRenderer renderer, Camera camera,
         List<DamagePopup> popups)
     {
         foreach (var popup in popups)
@@ -96,7 +96,7 @@ public static class ProjectileRenderer
     }
 
     /// <summary>Render explosion effects (no mutation).</summary>
-    public static void RenderExplosions(SpriteRenderer renderer, Camera camera,
+    public static void RenderExplosions(ISpriteRenderer renderer, Camera camera,
         List<Explosion> explosions)
     {
         foreach (var explosion in explosions)

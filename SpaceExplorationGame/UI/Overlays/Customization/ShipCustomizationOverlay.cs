@@ -69,7 +69,7 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
         player.OwnedParts.Remove(inv);
     }
 
-    protected override void RenderStatComparison(SpriteRenderer renderer, float x, float y,
+    protected override void RenderStatComparison(ISpriteRenderer renderer, float x, float y,
         ICustomizablePart newPart, ICustomizablePart currentPart)
     {
         var n = ((ShipPart)newPart).Stats;

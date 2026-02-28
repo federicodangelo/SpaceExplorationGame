@@ -15,7 +15,7 @@ public class SpaceshipRenderer
     }
 
     /// <summary>Renders the ship in flight with optional engine flame effect.</summary>
-    public void RenderFlying(SpriteRenderer renderer, Camera camera,
+    public void RenderFlying(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float rotation, string shipTypeId, int spriteSize)
     {
         var screen = camera.WorldToScreen(position);
@@ -23,14 +23,14 @@ public class SpaceshipRenderer
     }
 
     /// <summary>Renders the ship in flight directly in screen space.</summary>
-    public void RenderFlyingScreen(SpriteRenderer renderer,
+    public void RenderFlyingScreen(ISpriteRenderer renderer,
         float screenX, float screenY, float rotation, string shipTypeId, int spriteSize)
     {
         DrawShipPrimitivesScreen(renderer, screenX, screenY, 1f, rotation, shipTypeId, spriteSize);
     }
 
     /// <summary>Renders the landed ship on a planet surface with a label.</summary>
-    public void RenderLanded(SpriteRenderer renderer, Camera camera,
+    public void RenderLanded(ISpriteRenderer renderer, Camera camera,
         Vector2 position, string shipTypeId, int spriteSize)
     {
         int landedSize = (int)(spriteSize * 1.5f);
@@ -39,7 +39,7 @@ public class SpaceshipRenderer
         renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", new Color3(180, 180, 200));
     }
 
-    private static void DrawShipPrimitivesScreen(SpriteRenderer renderer, float screenX, float screenY,
+    private static void DrawShipPrimitivesScreen(ISpriteRenderer renderer, float screenX, float screenY,
         float zoom, float rotationDeg, string shipTypeId, int spriteSize)
     {
         float scale = (spriteSize / 32f) * zoom;
@@ -61,7 +61,7 @@ public class SpaceshipRenderer
         }
     }
 
-    private static void DrawScout(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    private static void DrawScout(ISpriteRenderer renderer, float cx, float cy, float rot, float s)
     {
         var hull = new Color4(90, 200, 90, 255);
         var accent = new Color4(150, 220, 255, 255);
@@ -81,7 +81,7 @@ public class SpaceshipRenderer
         renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 1.9f * s, accent.WithAlpha(220));
     }
 
-    private static void DrawFighter(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    private static void DrawFighter(ISpriteRenderer renderer, float cx, float cy, float rot, float s)
     {
         var hull = new Color4(190, 70, 70, 255);
         var accent = new Color4(255, 220, 120, 255);
@@ -100,7 +100,7 @@ public class SpaceshipRenderer
         renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 1.7f * s, accent.WithAlpha(220));
     }
 
-    private static void DrawFreighter(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    private static void DrawFreighter(ISpriteRenderer renderer, float cx, float cy, float rot, float s)
     {
         var hull = new Color4(170, 150, 90, 255);
         var trim = new Color4(130, 120, 80, 255);
@@ -123,7 +123,7 @@ public class SpaceshipRenderer
         renderer.DrawFilledCircleScreen(cx + cockpitOffset.X, cy + cockpitOffset.Y, 2.1f * s, accent);
     }
 
-    private static void DrawExplorer(SpriteRenderer renderer, float cx, float cy, float rot, float s)
+    private static void DrawExplorer(ISpriteRenderer renderer, float cx, float cy, float rot, float s)
     {
         var hull = new Color4(90, 150, 220, 255);
         var wing = new Color4(70, 120, 190, 255);
@@ -155,7 +155,7 @@ public class SpaceshipRenderer
         return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
-    private static void DrawRotatedTriangleScreen(SpriteRenderer renderer, float cx, float cy,
+    private static void DrawRotatedTriangleScreen(ISpriteRenderer renderer, float cx, float cy,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
     {
         var r1 = Rotate(p1, rotationDeg);
@@ -164,7 +164,7 @@ public class SpaceshipRenderer
         renderer.DrawFilledTriangleScreen(cx + r1.X, cy + r1.Y, cx + r2.X, cy + r2.Y, cx + r3.X, cy + r3.Y, color);
     }
 
-    private static void DrawRotatedQuadScreen(SpriteRenderer renderer, float cx, float cy,
+    private static void DrawRotatedQuadScreen(ISpriteRenderer renderer, float cx, float cy,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
     {
         DrawRotatedTriangleScreen(renderer, cx, cy, rotationDeg, p1, p2, p3, color);

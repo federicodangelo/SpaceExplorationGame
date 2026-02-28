@@ -77,7 +77,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     protected abstract void RemoveFromInventory(PlayerData player, ICustomizablePart part);
 
     /// <summary>Render stat comparison between new and current part.</summary>
-    protected abstract void RenderStatComparison(SpriteRenderer renderer, float x, float y,
+    protected abstract void RenderStatComparison(ISpriteRenderer renderer, float x, float y,
         ICustomizablePart newPart, ICustomizablePart currentPart);
 
     // ── Open ──
@@ -105,7 +105,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
 
     // ── Input (two-column keyboard + mouse navigation) ──
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         if (_activeColumn == Column.Slots)
             ProcessSlotsInput(input);
@@ -113,7 +113,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
             ProcessPartsInput(game, input);
     }
 
-    private void ProcessSlotsInput(InputManager input)
+    private void ProcessSlotsInput(IInputManager input)
     {
         // Keyboard navigation
         if (input.IsActionPressed(InputAction.MenuUp))
@@ -159,7 +159,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
         }
     }
 
-    private void ProcessPartsInput(Game game, InputManager input)
+    private void ProcessPartsInput(Game game, IInputManager input)
     {
         // Back to slots
         if (input.IsActionPressed(InputAction.MenuLeft))
@@ -207,7 +207,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
 
     // ── Content rendering ──
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         float leftW = 300;
@@ -383,7 +383,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
     }
 
     /// <summary>Helper for subclass stat comparison rendering.</summary>
-    protected static void RenderStatDiffs(SpriteRenderer renderer, float x, float y,
+    protected static void RenderStatDiffs(ISpriteRenderer renderer, float x, float y,
         List<StatDiff> diffs)
     {
         float cx = x;

@@ -16,7 +16,7 @@ public class EnemyShipRenderer
     }
 
     /// <summary>Render an NPC ship at a world position with rotation.</summary>
-    public void Render(SpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
+    public void Render(ISpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
         Faction faction, int size)
     {
         float scale = size / 30f;
@@ -36,7 +36,7 @@ public class EnemyShipRenderer
         }
     }
 
-    private static void DrawPirate(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    private static void DrawPirate(ISpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
     {
         var hull = new Color4(170, 55, 55, 255);
         var accent = new Color4(255, 110, 60, 255);
@@ -58,7 +58,7 @@ public class EnemyShipRenderer
         renderer.DrawFilledCircle(camera, pos + engine, 1.9f * s, new Color4(255, 150, 60, 180));
     }
 
-    private static void DrawTrader(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    private static void DrawTrader(ISpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
     {
         var hull = new Color4(175, 140, 80, 255);
         var trim = new Color4(145, 115, 65, 255);
@@ -86,7 +86,7 @@ public class EnemyShipRenderer
         renderer.DrawFilledCircle(camera, pos + engineR, 1.3f * s, new Color4(255, 180, 80, 160));
     }
 
-    private static void DrawPatrol(SpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
+    private static void DrawPatrol(ISpriteRenderer renderer, Camera camera, Vector2 pos, float rot, float s)
     {
         var hull = new Color4(80, 140, 220, 255);
         var wing = new Color4(60, 100, 190, 255);
@@ -110,7 +110,7 @@ public class EnemyShipRenderer
     }
 
     /// <summary>Render a health bar above an NPC ship.</summary>
-    public void RenderHealthBar(SpriteRenderer renderer, Camera camera, Vector2 position,
+    public void RenderHealthBar(ISpriteRenderer renderer, Camera camera, Vector2 position,
         float hullPercent, float shieldPercent, float maxShield, int shipSize)
     {
         float barWidth = shipSize * 1.2f;
@@ -145,7 +145,7 @@ public class EnemyShipRenderer
         return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
-    private static void DrawRotatedTriangle(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedTriangle(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
     {
         var w1 = center + Rotate(p1, rotationDeg);
@@ -158,7 +158,7 @@ public class EnemyShipRenderer
         renderer.DrawFilledTriangleScreen(s1.X, s1.Y, s2.X, s2.Y, s3.X, s3.Y, color);
     }
 
-    private static void DrawRotatedQuad(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedQuad(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
     {
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);

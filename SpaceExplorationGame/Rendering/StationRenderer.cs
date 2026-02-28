@@ -68,13 +68,13 @@ public class StationRenderer
     private static readonly Color4 DockingMarkerCoolBase = new(120, 190, 255, 170);
     private static readonly Color4 DockingMarkerNotchColor = new(40, 45, 70, 180);
 
-    public StationRenderer(TextureManager textures)
+    public StationRenderer(ITextureManager textures)
     {
         _ = textures;
     }
 
     /// <summary>Renders all stations with a slowly rotating texture.</summary>
-    public void RenderStations(SpriteRenderer renderer, Camera camera,
+    public void RenderStations(ISpriteRenderer renderer, Camera camera,
         World ecsWorld, List<Entity> stationEntities, double globalTime)
     {
         for (int i = 0; i < stationEntities.Count; i++)
@@ -85,7 +85,7 @@ public class StationRenderer
         }
     }
 
-    public void RenderStation(SpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
+    public void RenderStation(ISpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
     {
         float stRotation = (float)(globalTime * 10) % 360f;
 
@@ -119,7 +119,7 @@ public class StationRenderer
         }
     }
 
-    private static void DrawStationBody(SpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime)
+    private static void DrawStationBody(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime)
     {
         // Struts (cross)
         DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, -StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, -StrutOuterRadius), rotationDeg), StrutThickness, StrutColor);
@@ -167,14 +167,14 @@ public class StationRenderer
     }
 
     // Draw a soft glow using a single radial gradient circle
-    private void DrawLightGlow(SpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color3 color)
+    private void DrawLightGlow(ISpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color3 color)
     {
         var inner = new Color4(color.R, color.G, color.B, LightGlowInnerAlpha);
         var outer = new Color4(color.R, color.G, color.B, 0);
         renderer.DrawFilledCircle(camera, position, radius, inner, outer, radius * LightGlowTransitionRatio, LightGlowSegments);
     }
 
-    private void DrawLight(SpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color4 color)
+    private void DrawLight(ISpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color4 color)
     {
         renderer.DrawFilledCircle(camera, position, radius, color);
     }
@@ -187,7 +187,7 @@ public class StationRenderer
         return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
-    private static void DrawRotatedTriangle(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedTriangle(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
     {
         var w1 = center + Rotate(p1, rotationDeg);
@@ -199,14 +199,14 @@ public class StationRenderer
         renderer.DrawFilledTriangleScreen(s1.X, s1.Y, s2.X, s2.Y, s3.X, s3.Y, color);
     }
 
-    private static void DrawRotatedQuad(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedQuad(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
     {
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
     }
 
-    private static void DrawDockingMarker(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawDockingMarker(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float angleDeg, Color4 color)
     {
         Vector2 dir = Rotate(new Vector2(1f, 0f), angleDeg);
@@ -235,7 +235,7 @@ public class StationRenderer
         renderer.DrawFilledTriangleScreen(b1.X, b1.Y, b2.X, b2.Y, b3.X, b3.Y, DockingMarkerNotchColor);
     }
 
-    private static void DrawThickLine(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawThickLine(ISpriteRenderer renderer, Camera camera, Vector2 center,
         Vector2 localStart, Vector2 localEnd, int thickness, Color4 color)
     {
         Vector2 start = center + localStart;

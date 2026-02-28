@@ -1,19 +1,22 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Platform;
+namespace SpaceExplorationGame.Platform.Sdl;
 
-public class Platform
+/// <summary>
+/// SDL3 implementation of the platform layer.
+/// </summary>
+public class SdlPlatform : IPlatform
 {
     private nint _window;
     private nint _renderer;
 
-    public SpriteRenderer SpriteRenderer { get; private set; }
-    public TextureManager Textures { get; private set; }
-    public InputManager InputManager { get; private set; }
-    public AudioManager AudioManager { get; private set; }
+    public ISpriteRenderer SpriteRenderer { get; private set; }
+    public ITextureManager Textures { get; private set; }
+    public IInputManager InputManager { get; private set; }
+    public IAudioManager AudioManager { get; private set; }
 
-    public Platform()
+    public SdlPlatform()
     {
         // Init SDL
         if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
@@ -38,10 +41,10 @@ public class Platform
         // Enable VSync to cap framerate and avoid screen tearing
         SDL.SetRenderVSync(renderer, 1);
 
-        Textures = new TextureManager(renderer);
-        SpriteRenderer = new SpriteRenderer(window, renderer, Textures);
-        InputManager = new InputManager();
-        AudioManager = new AudioManager(
+        Textures = new SdlTextureManager(renderer);
+        SpriteRenderer = new SdlSpriteRenderer(window, renderer, (SdlTextureManager)Textures);
+        InputManager = new SdlInputManager();
+        AudioManager = new SdlAudioManager(
             masterVolume: GameConfig.AudioMasterVolume,
             musicVolume: GameConfig.AudioMusicVolume,
             sfxVolume: GameConfig.AudioSfxVolume
@@ -51,8 +54,8 @@ public class Platform
 
     public void Dispose()
     {
-        //Textures.Dispose();
         SpriteRenderer.Dispose();
+        AudioManager.Dispose();
         SDL.DestroyRenderer(_renderer);
         SDL.DestroyWindow(_window);
         SDL.Quit();

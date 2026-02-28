@@ -2,14 +2,14 @@ using System.Numerics;
 using SDL3;
 using SpaceExplorationGame.Audio;
 
-namespace SpaceExplorationGame.Platform;
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
 /// Central audio manager — procedurally generated music and sound effects via SDL3.
 /// Uses a push-based model: the game loop calls <see cref="Update"/> each frame to keep
 /// the audio stream fed with mixed music + SFX samples.
 /// </summary>
-public sealed class AudioManager : IDisposable
+public sealed class SdlAudioManager : IAudioManager
 {
     public const int SampleRate = 44100;
     public const int ChannelCount = 2; // stereo, interleaved L/R
@@ -52,7 +52,7 @@ public sealed class AudioManager : IDisposable
         public float Pan;        // –1 = left, 0 = center, +1 = right
     }
 
-    public AudioManager(float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
+    public SdlAudioManager(float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
     {
         MasterVolume = masterVolume;
         MusicVolume = musicVolume;

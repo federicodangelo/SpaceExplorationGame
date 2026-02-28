@@ -78,7 +78,7 @@ public class MissionsListOverlay : ListPanelOverlay
         SetStatus("MISSION ABANDONED", 2f);
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         var active = game.Player.Missions.Active;

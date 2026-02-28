@@ -14,9 +14,9 @@ public abstract class PanelOverlayBase : OverlayBase
     private string? _statusMessage;
     private float _statusTimer;
     private bool _statusIsPositive;
-    private InputManager? _currentInput;
+    private IInputManager? _currentInput;
 
-    protected InputManager? CurrentInput => _currentInput;
+    protected IInputManager? CurrentInput => _currentInput;
 
     // ── Configuration (override in subclasses) ──
 
@@ -128,7 +128,7 @@ public abstract class PanelOverlayBase : OverlayBase
     /// Default: Enter/E triggers OnConfirmAction (for simple action-based panels).
     /// ListPanelOverlay and MenuPanelOverlay override this entirely.
     /// </summary>
-    protected virtual void ProcessInput(Game game, InputManager input)
+    protected virtual void ProcessInput(Game game, IInputManager input)
     {
         if (input.IsActionPressed(InputAction.MenuConfirm))
             OnConfirmAction(game);
@@ -223,7 +223,7 @@ public abstract class PanelOverlayBase : OverlayBase
     }
 
     /// <summary>Render the panel content. Called between the title/separator and the controls hint.</summary>
-    protected abstract void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected abstract void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH);
 
     /// <summary>Override to render sub-overlays on top of the main panel.</summary>

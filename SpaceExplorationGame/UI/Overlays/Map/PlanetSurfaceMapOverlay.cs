@@ -19,7 +19,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
     protected override float MapContentHeight => 700f;
     protected override float InfoPanelWidthValue => 260f;
 
-    public PlanetSurfaceMapOverlay(TextureManager textures)
+    public PlanetSurfaceMapOverlay(ITextureManager textures)
     {
         _panel = new PlanetSurfaceMapPanel(textures);
         _panel.OnRequestClose = game => Close();
@@ -72,7 +72,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
     //  HEADER & HUD
     // ─────────────────────────────────────────────────────────────
 
-    protected override void RenderHeader(SpriteRenderer renderer)
+    protected override void RenderHeader(ISpriteRenderer renderer)
     {
         string title = $"SURFACE MAP - {_panel.PlanetName.ToUpper()}";
         renderer.DrawRectScreen(FrameX, FrameY, FrameW, HeaderHeight, new Color4(30, 40, 70, 240));
@@ -81,7 +81,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
         renderer.DrawTextScreen(FrameX + FrameW / 2f - labelW / 2f, FrameY + 6, title, new Color3(140, 170, 220), 1.8f);
     }
 
-    protected override void RenderHud(Game game, SpriteRenderer renderer)
+    protected override void RenderHud(Game game, ISpriteRenderer renderer)
     {
         const float hudMargin = 5f;
 

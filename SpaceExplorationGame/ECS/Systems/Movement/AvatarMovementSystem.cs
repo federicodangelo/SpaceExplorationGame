@@ -12,10 +12,10 @@ namespace SpaceExplorationGame.ECS.Systems.Movement;
 /// </summary>
 public partial class AvatarMovementSystem : BaseSystem<World, float>
 {
-    private readonly InputManager _input;
+    private readonly IInputManager _input;
     private readonly float _speed;
 
-    public AvatarMovementSystem(World world, InputManager input, float speed) : base(world)
+    public AvatarMovementSystem(World world, IInputManager input, float speed) : base(world)
     {
         _input = input;
         _speed = speed;

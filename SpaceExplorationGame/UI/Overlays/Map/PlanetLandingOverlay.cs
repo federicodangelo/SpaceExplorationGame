@@ -25,7 +25,7 @@ public class PlanetLandingOverlay : MapOverlayBase
     protected override float MapContentHeight => 700f;
     protected override float InfoPanelWidthValue => 260f;
 
-    public PlanetLandingOverlay(TextureManager textures)
+    public PlanetLandingOverlay(ITextureManager textures)
     {
         _panel = new PlanetLandingPanel(textures);
         _panel.OnRequestClose = game => Close();
@@ -75,7 +75,7 @@ public class PlanetLandingOverlay : MapOverlayBase
     //  HEADER & HUD
     // ─────────────────────────────────────────────────────────────
 
-    protected override void RenderHeader(SpriteRenderer renderer)
+    protected override void RenderHeader(ISpriteRenderer renderer)
     {
         // Simple title header strip
         string title = $"SURFACE SCAN - {_panel.PlanetName.ToUpper()}";
@@ -85,7 +85,7 @@ public class PlanetLandingOverlay : MapOverlayBase
         renderer.DrawTextScreen(FrameX + FrameW / 2f - labelW / 2f, FrameY + 6, title, new Color3(140, 170, 220), 1.8f);
     }
 
-    protected override void RenderHud(Game game, SpriteRenderer renderer)
+    protected override void RenderHud(Game game, ISpriteRenderer renderer)
     {
         const float hudMargin = 5f;
 

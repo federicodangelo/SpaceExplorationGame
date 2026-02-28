@@ -17,7 +17,7 @@ public class AvatarRenderer
     }
 
     /// <summary>Renders the avatar at its world position (planet surface or interior).</summary>
-    public void Render(SpriteRenderer renderer, Camera camera, Vector2 position)
+    public void Render(ISpriteRenderer renderer, Camera camera, Vector2 position)
     {
         // Shadow beneath feet
         var shadowPos = position + new Vector2(0, AvatarSize / 2f - 1f);

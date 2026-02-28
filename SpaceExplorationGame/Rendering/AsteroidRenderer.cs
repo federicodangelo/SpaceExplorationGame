@@ -28,7 +28,7 @@ public class AsteroidRenderer
     }
 
     /// <summary>Renders asteroids from ECS entities (with Transform, Health, AsteroidField).</summary>
-    public void RenderAsteroids(SpriteRenderer renderer, Camera camera,
+    public void RenderAsteroids(ISpriteRenderer renderer, Camera camera,
         World ecsWorld, List<Entity> asteroidEntities)
     {
         foreach (var entity in asteroidEntities)
@@ -52,7 +52,7 @@ public class AsteroidRenderer
         }
     }
 
-    private static void DrawAsteroidPrimitives(SpriteRenderer renderer, Camera camera,
+    private static void DrawAsteroidPrimitives(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float rotationDeg, float size, float hpRatio, Color3 resourceColor)
     {
         float radius = size * 0.5f;

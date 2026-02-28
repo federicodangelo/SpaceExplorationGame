@@ -30,7 +30,7 @@ public static class HudRenderer
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Render the unified top-left HUD for the solar system state.</summary>
-    public static void RenderSolarSystemHud(SpriteRenderer renderer, PlayerData player,
+    public static void RenderSolarSystemHud(ISpriteRenderer renderer, PlayerData player,
         StarSystemData starSystem, World ecsWorld, Entity playerShip, float speed)
     {
         string dangerStr = FormatDanger(starSystem.DangerLevel);
@@ -93,7 +93,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render the unified top-left HUD for the planet surface state.</summary>
-    public static void RenderPlanetSurfaceHud(SpriteRenderer renderer, PlayerData player,
+    public static void RenderPlanetSurfaceHud(ISpriteRenderer renderer, PlayerData player,
         PlanetData planet, int dangerLevel, bool inVehicle,
         World ecsWorld, Entity playerAvatar)
     {
@@ -154,7 +154,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render the unified top-left HUD for the interior state.</summary>
-    public static void RenderInteriorHud(SpriteRenderer renderer, PlayerData player,
+    public static void RenderInteriorHud(ISpriteRenderer renderer, PlayerData player,
         InteriorData interior, StarSystemData starSystem)
     {
         string typeLabel = interior.Type == InteriorType.SpaceStation ? "SPACE STATION" : "SETTLEMENT";
@@ -216,7 +216,7 @@ public static class HudRenderer
         $"CREDITS: {player.Credits}  |  CARGO: {player.CargoUsed}/{player.MaxCargo}  |  FUEL: {player.ShipFuel:F0}/{player.ShipMaxFuel:F0}";
 
     /// <summary>Measure the required panel width for the HUD based on content.</summary>
-    private static float MeasureHudPanelWidth(SpriteRenderer renderer, string locationLine, string infoLine)
+    private static float MeasureHudPanelWidth(ISpriteRenderer renderer, string locationLine, string infoLine)
     {
         float maxW = Math.Max(renderer.MeasureText(locationLine, TextScale),
                               renderer.MeasureText(infoLine, TextScale));
@@ -226,13 +226,13 @@ public static class HudRenderer
     }
 
     /// <summary>Draw a thin separator line inside a HUD panel.</summary>
-    private static void DrawHudSeparator(SpriteRenderer renderer, float x, float y, float w)
+    private static void DrawHudSeparator(ISpriteRenderer renderer, float x, float y, float w)
     {
         renderer.DrawRectScreen(x, y, w, 1, new Color4(60, 80, 140, 150));
     }
 
     /// <summary>Render a health/shield bar content (label + bar + numeric, no background).</summary>
-    private static void RenderBarContent(SpriteRenderer renderer, float x, float y,
+    private static void RenderBarContent(ISpriteRenderer renderer, float x, float y,
         string label, float current, float max, Color3 fillColor)
     {
         var lc = new Color3(200, 200, 200);
@@ -248,7 +248,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render mission tracker content (no background).</summary>
-    private static void RenderMissionContent(SpriteRenderer renderer, float x, float y, PlayerData player)
+    private static void RenderMissionContent(ISpriteRenderer renderer, float x, float y, PlayerData player)
     {
         var tracked = player.Missions.GetTracked();
         if (tracked == null) return;
@@ -290,7 +290,7 @@ public static class HudRenderer
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Render a single interaction prompt centered at the bottom of the screen.</summary>
-    public static void RenderPrompt(SpriteRenderer renderer, string text,
+    public static void RenderPrompt(ISpriteRenderer renderer, string text,
         byte r = 100, byte g = 255, byte b = 200)
     {
         float tw = renderer.MeasureText(text, TitleScale);
@@ -305,7 +305,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render a multi-line interaction panel centered at the bottom of the screen.</summary>
-    public static void RenderPromptPanel(SpriteRenderer renderer, string[] lines,
+    public static void RenderPromptPanel(ISpriteRenderer renderer, string[] lines,
         Color3[] colors)
     {
         float w = GameConfig.WindowWidth;
@@ -341,7 +341,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render solar system interaction prompts (planet, moon, station panels).</summary>
-    public static void RenderSolarSystemPrompt(SpriteRenderer renderer,
+    public static void RenderSolarSystemPrompt(ISpriteRenderer renderer,
         int nearbyPlanetIndex, int nearbyMoonIndex, int nearbyMoonPlanetIndex, int nearbySpaceStationIndex,
         List<PlanetData> planets, List<SpaceStationData> stations,
         string interactHelpText)
@@ -385,7 +385,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render planet surface interaction prompts (board ship, mount vehicle, enter settlement).</summary>
-    public static void RenderPlanetSurfacePrompt(SpriteRenderer renderer,
+    public static void RenderPlanetSurfacePrompt(ISpriteRenderer renderer,
         bool inVehicle, bool nearShip, bool nearVehicle, bool vehicleDeployed,
         SettlementData? nearSettlement, string interactHelpText)
     {
@@ -402,7 +402,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render interior interaction prompts (interactables and NPCs).</summary>
-    public static void RenderInteriorPrompt(SpriteRenderer renderer,
+    public static void RenderInteriorPrompt(ISpriteRenderer renderer,
         InteriorInteractable? nearestInteractable, InteriorNpc? nearestNpc,
         string interactHelpText)
     {
@@ -434,7 +434,7 @@ public static class HudRenderer
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Renders the mining target info panel for an asteroid entity.</summary>
-    public static void RenderMiningPanel(SpriteRenderer renderer, ResourceType resource,
+    public static void RenderMiningPanel(ISpriteRenderer renderer, ResourceType resource,
         float hp, float maxHp, int resourceAmount)
     {
         var resInfo = ResourceCatalog.Get(resource);
@@ -458,7 +458,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render the death overlay with respawn countdown.</summary>
-    public static void RenderDeathScreen(SpriteRenderer renderer, float respawnTimer)
+    public static void RenderDeathScreen(ISpriteRenderer renderer, float respawnTimer)
     {
         string deathText = $"SHIP DESTROYED - RESPAWNING IN {respawnTimer:F1}s";
         float textW = renderer.MeasureText(deathText, 3f);
@@ -471,7 +471,7 @@ public static class HudRenderer
     }
 
     /// <summary>Render a centered feedback message at the given vertical offset.</summary>
-    public static void RenderCenteredMessage(SpriteRenderer renderer, string message,
+    public static void RenderCenteredMessage(ISpriteRenderer renderer, string message,
         float yOffset, Color4 color, float scale)
     {
         float msgW = renderer.MeasureText(message, scale);

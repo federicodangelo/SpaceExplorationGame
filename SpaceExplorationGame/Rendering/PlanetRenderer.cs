@@ -27,7 +27,7 @@ public class PlanetRenderer
     /// Renders a single planet/moon body directly in screen space, reusing the same procedural visuals
     /// used in solar-system rendering.
     /// </summary>
-    public void RenderBodyScreen(SpriteRenderer renderer,
+    public void RenderBodyScreen(ISpriteRenderer renderer,
         float screenX, float screenY, float radius,
         Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
     {
@@ -43,7 +43,7 @@ public class PlanetRenderer
     }
 
     /// <summary>Renders planets with layered circles, settlement indicators, rings, moon orbits, and moons.</summary>
-    public void RenderPlanetsAndMoons(SpriteRenderer renderer, Camera camera,
+    public void RenderPlanetsAndMoons(ISpriteRenderer renderer, Camera camera,
         World ecsWorld, List<PlanetData> planets,
         List<Entity> planetEntities, List<List<Entity>> moonEntities,
         float globalTime)
@@ -107,7 +107,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void RenderBody(SpriteRenderer renderer, Camera camera,
+    private static void RenderBody(ISpriteRenderer renderer, Camera camera,
         Vector2 center, float radius, Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
     {
         var baseColor = isMoon ? Mul(color, 0.82f) : color;
@@ -204,7 +204,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void DrawAtmosphereShell(SpriteRenderer renderer, Camera camera,
+    private static void DrawAtmosphereShell(ISpriteRenderer renderer, Camera camera,
         Vector2 center, float radius, PlanetType type, float globalTime, int seed)
     {
         Color4 inner;
@@ -248,7 +248,7 @@ public class PlanetRenderer
         renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, outer.WithAlpha((byte)(outer.A * pulse)), 40);
     }
 
-    private static void DrawCloudLayer(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+    private static void DrawCloudLayer(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
         int seed, float globalTime, float speed, byte alpha)
     {
         int cloudCount = 4;
@@ -268,7 +268,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void DrawBands(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+    private static void DrawBands(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
         Color3 bandColor, int seed, int count, byte alpha, float globalTime, float speed)
     {
         for (int i = 0; i < count; i++)
@@ -288,7 +288,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void DrawPatches(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+    private static void DrawPatches(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
         Color3 patchColor, int seed, int count, float sizeFactor, byte alpha, float globalTime, float speed)
     {
         for (int i = 0; i < count; i++)
@@ -306,7 +306,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void DrawCraters(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+    private static void DrawCraters(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
         int seed, int count, float globalTime)
     {
         for (int i = 0; i < count; i++)
@@ -328,7 +328,7 @@ public class PlanetRenderer
         }
     }
 
-    private static void DrawCracks(SpriteRenderer renderer, Camera camera, Vector2 center, float radius,
+    private static void DrawCracks(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
         Color4 color, int seed, int count, float globalTime)
     {
         for (int i = 0; i < count; i++)

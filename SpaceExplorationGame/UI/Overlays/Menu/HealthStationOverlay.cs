@@ -38,7 +38,7 @@ public class HealthStationOverlay : PanelOverlayBase
         }
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         float damage = game.Player.AvatarMaxHealth - game.Player.AvatarHealth;

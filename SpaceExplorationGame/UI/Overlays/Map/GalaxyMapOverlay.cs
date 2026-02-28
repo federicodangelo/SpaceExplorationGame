@@ -160,7 +160,7 @@ public class GalaxyMapOverlay : MapOverlayBase
     //  HEADER (tab bar)
     // ─────────────────────────────────────────────────────────────
 
-    protected override void RenderHeader(SpriteRenderer renderer)
+    protected override void RenderHeader(ISpriteRenderer renderer)
     {
         float halfW = FrameW / 2f;
 

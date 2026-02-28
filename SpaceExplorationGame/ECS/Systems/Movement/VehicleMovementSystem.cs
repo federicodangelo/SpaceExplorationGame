@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.ECS.Systems.Movement;
 /// </summary>
 public partial class VehicleMovementSystem : BaseSystem<World, float>
 {
-    private readonly InputManager _input;
+    private readonly IInputManager _input;
     private readonly float _acceleration;
     private readonly float _maxSpeed;
     private readonly float _rotationSpeed;
@@ -23,7 +23,7 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
     /// <summary>The entity being controlled.</summary>
     private readonly Entity _entity;
 
-    public VehicleMovementSystem(World world, InputManager input, Entity entity,
+    public VehicleMovementSystem(World world, IInputManager input, Entity entity,
         float acceleration = GameConfig.VehicleAcceleration,
         float maxSpeed = GameConfig.VehicleMaxSpeed,
         float rotationSpeed = GameConfig.VehicleRotationSpeed,

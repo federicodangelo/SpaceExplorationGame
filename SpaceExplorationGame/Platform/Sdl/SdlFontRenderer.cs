@@ -3,17 +3,17 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Rendering.Base;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform;
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
 /// Renders text using pre-built multi-scale font atlas textures.
 /// Each atlas contains every glyph rasterized at a specific scale for crisp pixel-perfect rendering.
 /// Text is drawn in a single batched SDL.RenderGeometry call per string.
 /// </summary>
-public class FontRenderer : IDisposable
+public class SdlFontRenderer : IFontRenderer
 {
     private readonly nint _renderer;
-    private readonly TextureManager _textures;
+    private readonly SdlTextureManager _textures;
 
     // ── Multi-scale font atlases ──────────────────────────────────────
     private const float AtlasScaleMin = 0.5f;
@@ -36,7 +36,7 @@ public class FontRenderer : IDisposable
     private SDL.Vertex[] _vertexBuf = new SDL.Vertex[256]; // grows as needed
     private int[] _indexBuf = new int[384];                  // grows as needed
 
-    public FontRenderer(nint renderer, TextureManager textures)
+    public SdlFontRenderer(nint renderer, SdlTextureManager textures)
     {
         _renderer = renderer;
         _textures = textures;

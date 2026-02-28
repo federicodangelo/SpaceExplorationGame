@@ -207,7 +207,7 @@ public class GalaxyMapPanel : MapPanelBase
     //  RENDERING
     // ─────────────────────────────────────────────────────────────
 
-    public override void RenderContent(Game game, SpriteRenderer renderer)
+    public override void RenderContent(Game game, ISpriteRenderer renderer)
     {
         var camera = Camera;
         int currentSys = game.Player.CurrentStarSystemIndex;
@@ -327,7 +327,7 @@ public class GalaxyMapPanel : MapPanelBase
     //  INFO PANEL
     // ─────────────────────────────────────────────────────────────
 
-    public override void RenderInfoPanel(Game game, SpriteRenderer renderer)
+    public override void RenderInfoPanel(Game game, ISpriteRenderer renderer)
     {
         RenderInfoPanelHeader(renderer, "NAVIGATION DATA");
 

@@ -14,7 +14,7 @@ namespace SpaceExplorationGame.Rendering;
 public static class SurfaceEnemyRenderer
 {
     /// <summary>Render all surface enemies and their health bars.</summary>
-    public static void RenderEnemies(SpriteRenderer renderer, Camera camera, World world)
+    public static void RenderEnemies(ISpriteRenderer renderer, Camera camera, World world)
     {
         var query = new QueryDescription().WithAll<Transform, SurfaceAI, Health, Sprite>();
         world.Query(in query, (ref Transform transform, ref SurfaceAI ai, ref Health health, ref Sprite sprite) =>
@@ -50,7 +50,7 @@ public static class SurfaceEnemyRenderer
     }
 
     /// <summary>Render a fauna creature — simple 4-legged creature shape.</summary>
-    private static void RenderFauna(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
+    private static void RenderFauna(ISpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
         // Shadow beneath feet
         renderer.DrawRect(camera, pos + new Vector2(0, 8), 14, 4, RenderColors.EntityShadow);
@@ -73,7 +73,7 @@ public static class SurfaceEnemyRenderer
     }
 
     /// <summary>Render a bandit NPC — hostile humanoid shape.</summary>
-    private static void RenderBandit(SpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
+    private static void RenderBandit(ISpriteRenderer renderer, Camera camera, Vector2 pos, AIState state)
     {
         // Shadow beneath feet
         renderer.DrawRect(camera, pos + new Vector2(0, 9), 10, 3, RenderColors.EntityShadow);

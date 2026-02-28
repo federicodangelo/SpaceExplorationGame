@@ -27,7 +27,7 @@ public sealed class DebugOverlay
     private static readonly Color4 SeparatorColor = new(100, 100, 120, 255);
 
     /// <summary>Render the debug overlay on top of everything.</summary>
-    public void Render(SpriteRenderer renderer, GameState? state, SimulationCoordinator coordinator,
+    public void Render(ISpriteRenderer renderer, GameState? state, SimulationCoordinator coordinator,
         DebugTimer gameTimer, double frameTotalMs)
     {
         // First pass: compute all lines to determine panel height

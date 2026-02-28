@@ -39,7 +39,7 @@ public static class HudMinimapRenderer
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Render the solar system minimap (top-right, centered on the player).</summary>
-    public static void RenderSolarSystemMinimap(SpriteRenderer renderer,
+    public static void RenderSolarSystemMinimap(ISpriteRenderer renderer,
         List<PlanetData> planets, List<Entity> planetEntities,
         List<List<Entity>> moonEntities, List<Entity> stationEntities,
         List<Entity> asteroidEntities, List<Entity> enemyEntities,
@@ -131,7 +131,7 @@ public static class HudMinimapRenderer
     }
 
     /// <summary>Render the planet surface minimap (top-right, centered on the player).</summary>
-    public static void RenderPlanetSurfaceMinimap(SpriteRenderer renderer,
+    public static void RenderPlanetSurfaceMinimap(ISpriteRenderer renderer,
         PlanetSurfaceData surfaceData, Vector2 playerPos, Vector2 shipPos,
         Vector2? vehiclePos, World ecsWorld)
     {
@@ -170,7 +170,7 @@ public static class HudMinimapRenderer
     }
 
     /// <summary>Render the interior minimap (top-right, shows entire interior).</summary>
-    public static void RenderInteriorMinimap(SpriteRenderer renderer, InteriorData interior,
+    public static void RenderInteriorMinimap(ISpriteRenderer renderer, InteriorData interior,
         Vector2 playerPos)
     {
         float mapW = interior.Width * GameConfig.TileSize;
@@ -218,7 +218,7 @@ public static class HudMinimapRenderer
     /// and the player dot. All coordinates are in world space and mapped to the
     /// minimap via the supplied view origin and view size.
     /// </summary>
-    private static void RenderMinimap(SpriteRenderer renderer,
+    private static void RenderMinimap(ISpriteRenderer renderer,
         Vector2 viewOrigin, Vector2 viewSize,
         ReadOnlySpan<MinimapArea> areas, ReadOnlySpan<MinimapMarker> markers,
         Vector2 playerWorldPos, bool centerOnPlayer)

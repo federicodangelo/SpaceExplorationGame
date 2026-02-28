@@ -47,7 +47,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     /// </summary>
     public Action<Game, LandingSelectionRequest>? OnLandingConfirmed { get; set; }
 
-    public PlanetLandingPanel(TextureManager textures) : base(textures)
+    public PlanetLandingPanel(ITextureManager textures) : base(textures)
     {
     }
 
@@ -270,7 +270,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     //  RENDERING
     // -----------------------------------------------------------------
 
-    public override void RenderContent(Game game, SpriteRenderer renderer)
+    public override void RenderContent(Game game, ISpriteRenderer renderer)
     {
         if (_surfaceData == null || _terrainTexture == nint.Zero) return;
 
@@ -298,7 +298,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     //  INFO PANEL
     // -----------------------------------------------------------------
 
-    public override void RenderInfoPanel(Game game, SpriteRenderer renderer)
+    public override void RenderInfoPanel(Game game, ISpriteRenderer renderer)
     {
         RenderInfoPanelHeader(renderer, "PLANET DATA");
 

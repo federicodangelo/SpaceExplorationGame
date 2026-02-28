@@ -1,23 +1,17 @@
 using SDL3;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Platform;
-
-public enum TextureScaleMode
-{
-    Nearest,
-    Linear
-}
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
-/// Provides low-level texture creation utilities used by entity renderers.
+/// SDL3 implementation of texture creation utilities.
 /// Each renderer owns its own textures; this class only wraps the SDL renderer handle.
 /// </summary>
-public class TextureManager
+public class SdlTextureManager : ITextureManager
 {
     private readonly nint _renderer;
 
-    public TextureManager(nint renderer)
+    public SdlTextureManager(nint renderer)
     {
         _renderer = renderer;
     }

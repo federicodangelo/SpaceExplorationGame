@@ -14,7 +14,7 @@ public static class InteriorRenderer
     /// <summary>
     /// Renders the full interior world (background, tiles, NPCs, interactables, player avatar).
     /// </summary>
-    public static void RenderWorld(SpriteRenderer renderer, Camera camera, InteriorData interior,
+    public static void RenderWorld(ISpriteRenderer renderer, Camera camera, InteriorData interior,
         Vector2 playerPos, AvatarRenderer avatarRenderer, double globalTime, PlanetData? planet)
     {
         RenderExteriorBackground(renderer, camera, interior, planet);
@@ -29,7 +29,7 @@ public static class InteriorRenderer
     /// Draws the exterior background visible through Void tiles.
     /// Stations show space with stars; settlements show planet terrain.
     /// </summary>
-    private static void RenderExteriorBackground(SpriteRenderer renderer, Camera camera,
+    private static void RenderExteriorBackground(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, PlanetData? planet)
     {
         var (topLeft, bottomRight) = camera.GetVisibleBounds();
@@ -57,7 +57,7 @@ public static class InteriorRenderer
         RenderBoundaryOutline(renderer, camera, interior);
     }
 
-    private static void RenderSpaceBackground(SpriteRenderer renderer, Camera camera,
+    private static void RenderSpaceBackground(ISpriteRenderer renderer, Camera camera,
         Vector2 bgCenter, float bgW, float bgH, float bgLeft, float bgTop, float bgRight, float bgBottom)
     {
         // Space background: dark blue-black
@@ -91,7 +91,7 @@ public static class InteriorRenderer
         }
     }
 
-    private static void RenderTerrainBackground(SpriteRenderer renderer, Camera camera,
+    private static void RenderTerrainBackground(ISpriteRenderer renderer, Camera camera,
         Vector2 bgCenter, float bgW, float bgH, float bgLeft, float bgTop, float bgRight, float bgBottom,
         PlanetData? planet)
     {
@@ -128,7 +128,7 @@ public static class InteriorRenderer
         }
     }
 
-    private static void RenderBoundaryOutline(SpriteRenderer renderer, Camera camera, InteriorData interior)
+    private static void RenderBoundaryOutline(ISpriteRenderer renderer, Camera camera, InteriorData interior)
     {
         float interiorPixelW = interior.Width * GameConfig.TileSize;
         float interiorPixelH = interior.Height * GameConfig.TileSize;
@@ -149,7 +149,7 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders tiles using TileMapRenderer with interior-specific detail overlays.</summary>
-    private static void RenderTiles(SpriteRenderer renderer, Camera camera,
+    private static void RenderTiles(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
         renderer.RenderTiles(camera, interior.Width, interior.Height,
@@ -201,7 +201,7 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders room name labels above each room.</summary>
-    private static void RenderRoomLabels(SpriteRenderer renderer, Camera camera, InteriorData interior)
+    private static void RenderRoomLabels(ISpriteRenderer renderer, Camera camera, InteriorData interior)
     {
         foreach (var room in interior.Rooms)
         {
@@ -215,7 +215,7 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders all NPCs with body, head, nametag, and role tag.</summary>
-    private static void RenderNpcs(SpriteRenderer renderer, Camera camera, InteriorData interior)
+    private static void RenderNpcs(ISpriteRenderer renderer, Camera camera, InteriorData interior)
     {
         foreach (var npc in interior.Npcs)
         {
@@ -249,7 +249,7 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders floating indicator markers above each interactable.</summary>
-    private static void RenderInteractableMarkers(SpriteRenderer renderer, Camera camera,
+    private static void RenderInteractableMarkers(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
         foreach (var interactable in interior.Interactables)
@@ -271,14 +271,14 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders the player avatar texture at the given position.</summary>
-    private static void RenderPlayerAvatar(SpriteRenderer renderer, Camera camera,
+    private static void RenderPlayerAvatar(ISpriteRenderer renderer, Camera camera,
         Vector2 playerPos, AvatarRenderer avatarRenderer)
     {
         avatarRenderer.Render(renderer, camera, playerPos);
     }
 
     /// <summary>Renders the dialogue box with NPC info, text, and continue prompt.</summary>
-    public static void RenderDialogue(SpriteRenderer renderer, int w, int h,
+    public static void RenderDialogue(ISpriteRenderer renderer, int w, int h,
         InteriorNpc npc, int dialogueLine)
     {
         float boxW = 600;

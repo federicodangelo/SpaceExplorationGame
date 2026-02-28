@@ -16,7 +16,7 @@ public class VehicleRenderer
     }
 
     /// <summary>Renders the vehicle with texture and optional label when not mounted.</summary>
-    public void Render(SpriteRenderer renderer, Camera camera,
+    public void Render(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float rotation, bool isMounted)
     {
         DrawVehiclePrimitives(renderer, camera, position, rotation + 90f);
@@ -26,7 +26,7 @@ public class VehicleRenderer
         }
     }
 
-    private static void DrawVehiclePrimitives(SpriteRenderer renderer, Camera camera, Vector2 position, float rotationDeg)
+    private static void DrawVehiclePrimitives(ISpriteRenderer renderer, Camera camera, Vector2 position, float rotationDeg)
     {
         float scale = VehicleSize / 20f;
 
@@ -67,7 +67,7 @@ public class VehicleRenderer
         renderer.DrawFilledCircle(camera, position + tailR, 1f * scale, new Color4(255, 80, 80, 255));
     }
 
-    private static void DrawWheel(SpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, Vector2 offset, float radius)
+    private static void DrawWheel(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, Vector2 offset, float radius)
     {
         Vector2 w = center + Rotate(offset, rotationDeg);
         renderer.DrawFilledCircle(camera, w, radius, new Color4(50, 50, 50, 255));
@@ -82,7 +82,7 @@ public class VehicleRenderer
         return new Vector2(v.X * c - v.Y * s, v.X * s + v.Y * c);
     }
 
-    private static void DrawRotatedTriangle(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedTriangle(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
     {
         var w1 = center + Rotate(p1, rotationDeg);
@@ -95,7 +95,7 @@ public class VehicleRenderer
         renderer.DrawFilledTriangleScreen(s1.X, s1.Y, s2.X, s2.Y, s3.X, s3.Y, color);
     }
 
-    private static void DrawRotatedQuad(SpriteRenderer renderer, Camera camera, Vector2 center,
+    private static void DrawRotatedQuad(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
     {
         DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);

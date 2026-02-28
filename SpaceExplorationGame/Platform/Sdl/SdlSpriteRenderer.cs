@@ -2,32 +2,32 @@ using SDL3;
 using SpaceExplorationGame.Core;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform;
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
 /// Handles rendering sprites, colored rectangles, and basic shapes using SDL3.
 /// </summary>
-public class SpriteRenderer : IDisposable
+public class SdlSpriteRenderer : ISpriteRenderer
 {
     private readonly nint _renderer;
     private readonly nint _window;
-    private readonly FontRenderer _fontRenderer;
-    private readonly TextureManager _textures;
-    private readonly TileMapRenderer _tileMapRenderer;
+    private readonly SdlFontRenderer _fontRenderer;
+    private readonly SdlTextureManager _textures;
+    private readonly SdlTileMapRenderer _tileMapRenderer;
 
     // Cached circle texture (RGBA) used for drawing filled circles up to 256x256
     private nint _cachedCircleTexture = nint.Zero;
     private const int CachedCircleSize = 64; // max texture size (pixels)
 
-    public SpriteRenderer(nint window, nint renderer, TextureManager textures)
+    public SdlSpriteRenderer(nint window, nint renderer, SdlTextureManager textures)
     {
         _window = window;
         _renderer = renderer;
         _textures = textures;
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-        _fontRenderer = new FontRenderer(renderer, textures);
-        _tileMapRenderer = new TileMapRenderer(renderer);
+        _fontRenderer = new SdlFontRenderer(renderer, textures);
+        _tileMapRenderer = new SdlTileMapRenderer(renderer);
         _cachedCircleTexture = CreateCachedCircleTexture();
     }
 

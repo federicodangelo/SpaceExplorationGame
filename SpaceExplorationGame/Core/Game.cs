@@ -4,6 +4,7 @@ using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI;
 using SpaceExplorationGame.Platform;
+using SpaceExplorationGame.Platform.Sdl;
 using System.Diagnostics;
 
 namespace SpaceExplorationGame.Core;
@@ -14,15 +15,15 @@ namespace SpaceExplorationGame.Core;
 public class Game : IDisposable
 {
     // Platform specific bindings
-    public Platform.Platform Platform { get; private set; } = null!;
+    public IPlatform Platform { get; private set; } = null!;
 
     // ECS
     public World EcsWorld { get; private set; } = null!;
 
     // Core systems
-    public InputManager Input { get; private set; } = null!;
-    public SpriteRenderer SpriteRenderer { get; private set; } = null!;
-    public TextureManager Textures { get; private set; } = null!;
+    public IInputManager Input { get; private set; } = null!;
+    public ISpriteRenderer SpriteRenderer { get; private set; } = null!;
+    public ITextureManager Textures { get; private set; } = null!;
 
     // Simulation coordinator — always ticked, manages all active simulations
     public SimulationCoordinator Coordinator { get; } = new();
@@ -38,7 +39,7 @@ public class Game : IDisposable
     public EnemyShipRenderer EnemyShipRenderer { get; private set; } = null!;
 
     // Audio
-    public AudioManager Audio { get; private set; } = null!;
+    public IAudioManager Audio { get; private set; } = null!;
 
     // Procedural generation
     public IUniverseGenerator UniverseGenerator { get; private set; } = null!;
@@ -74,7 +75,7 @@ public class Game : IDisposable
     public void Initialize(ulong? galaxySeed = null)
     {
         // Platform and rendering setup
-        Platform = new Platform.Platform();
+        Platform = new SdlPlatform();
         Textures = Platform.Textures;
         SpriteRenderer = Platform.SpriteRenderer;
         Input = Platform.InputManager;

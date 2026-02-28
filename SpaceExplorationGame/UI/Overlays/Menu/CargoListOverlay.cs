@@ -92,7 +92,7 @@ public class CargoListOverlay : ListPanelOverlay
             _confirmDiscardAllArmed = false;
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         RefreshCargoKeys(game);

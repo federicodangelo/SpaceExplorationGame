@@ -51,7 +51,7 @@ public class ShipDealerOverlay : ListPanelOverlay
         TryBuyShip(game);
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         var player = game.Player;
@@ -236,7 +236,7 @@ public class ShipDealerOverlay : ListPanelOverlay
         SetStatus($"PURCHASED {target.Name.ToUpper()}! NET -{netCost} CR");
     }
 
-    private static void RenderStatRow(SpriteRenderer renderer, float x, ref float y,
+    private static void RenderStatRow(ISpriteRenderer renderer, float x, ref float y,
         string label, float newVal, float curVal, bool isCurrent, bool lowerIsBetter = false)
     {
         renderer.DrawTextScreen(x, y, $"{label}:", new Color3(140, 140, 160), 1.4f);

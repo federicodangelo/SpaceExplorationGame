@@ -11,7 +11,7 @@ namespace SpaceExplorationGame.Rendering;
 public static class PlanetSurfaceRenderer
 {
     /// <summary>Renders the terrain tiles with per-tile detail overlays.</summary>
-    public static void RenderTerrain(SpriteRenderer renderer, Camera camera, PlanetSurfaceData surfaceData)
+    public static void RenderTerrain(ISpriteRenderer renderer, Camera camera, PlanetSurfaceData surfaceData)
     {
         renderer.RenderTiles(camera, surfaceData.Width, surfaceData.Height,
             (x, y) => PlanetSurfaceGenerator.GetTerrainColor(surfaceData.Tiles[x, y]),

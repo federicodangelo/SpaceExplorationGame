@@ -256,7 +256,7 @@ public class SolarSystemMapPanel : MapPanelBase
     //  RENDERING
     // ─────────────────────────────────────────────────────────────
 
-    public override void RenderContent(Game game, SpriteRenderer renderer)
+    public override void RenderContent(Game game, ISpriteRenderer renderer)
     {
         var camera = Camera;
         float time = (float)game.GlobalTime;
@@ -419,7 +419,7 @@ public class SolarSystemMapPanel : MapPanelBase
     //  INFO PANEL
     // ─────────────────────────────────────────────────────────────
 
-    public override void RenderInfoPanel(Game game, SpriteRenderer renderer)
+    public override void RenderInfoPanel(Game game, ISpriteRenderer renderer)
     {
         RenderInfoPanelHeader(renderer, "SYSTEM DATA");
 
@@ -502,7 +502,7 @@ public class SolarSystemMapPanel : MapPanelBase
         }
     }
 
-    private void RenderSelectedObjectInfo(Game game, SpriteRenderer renderer, float px, float py)
+    private void RenderSelectedObjectInfo(Game game, ISpriteRenderer renderer, float px, float py)
     {
         var sel = _selectedObject;
         bool isTarget = IsCurrentNavTarget(game.Player, sel);
@@ -601,7 +601,7 @@ public class SolarSystemMapPanel : MapPanelBase
         }
     }
 
-    private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
+    private void RenderTargetButton(Game game, ISpriteRenderer renderer, float px, float py, bool isTarget)
     {
         string confirmText = game.Input.ActiveInputMethod == InputMethod.Gamepad
             ? game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()

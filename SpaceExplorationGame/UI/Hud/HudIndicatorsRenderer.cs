@@ -17,7 +17,7 @@ public static class HudIndicatorsRenderer
     // ── Off-screen indicators ──────────────────────────────────────────
 
     /// <summary>Render arrow indicators at screen edges for off-screen hostile NPC ships within range.</summary>
-    public static void RenderOffscreenIndicators(SpriteRenderer renderer, Camera camera, World ecsWorld,
+    public static void RenderOffscreenIndicators(ISpriteRenderer renderer, Camera camera, World ecsWorld,
         List<Entity> enemyEntities, Entity playerShip, float maxDistance = float.MaxValue)
     {
         Vector2 playerPos = ecsWorld.IsAlive(playerShip)
@@ -51,7 +51,7 @@ public static class HudIndicatorsRenderer
     }
 
     /// <summary>Render off-screen indicators for planets and stations in the solar system, fading by distance.</summary>
-    public static void RenderSolarSystemObjectOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+    public static void RenderSolarSystemObjectOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
         Entity playerShip, World ecsWorld,
         List<Entity> planetEntities, List<PlanetData> planets,
         List<Entity> stationEntities, List<SpaceStationData> stations,
@@ -100,21 +100,21 @@ public static class HudIndicatorsRenderer
     }
 
     /// <summary>Render an off-screen indicator pointing toward the system's main star.</summary>
-    public static void RenderStarOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+    public static void RenderStarOffscreenIndicator(ISpriteRenderer renderer, Camera camera,
         Vector2 starCenter)
     {
         RenderOffscreenIndicator(renderer, camera, starCenter, new Color3(255, 220, 80), prefix: "SUN ", arrowSize: 10f);
     }
 
     /// <summary>Render an off-screen indicator pointing toward the player's landed spaceship.</summary>
-    public static void RenderShipOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+    public static void RenderShipOffscreenIndicator(ISpriteRenderer renderer, Camera camera,
         Vector2 shipWorldPos)
     {
         RenderOffscreenIndicator(renderer, camera, shipWorldPos, new Color3(120, 200, 255), prefix: "SHIP ", arrowSize: 10f);
     }
 
     /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
-    public static void RenderSettlementOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+    public static void RenderSettlementOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
         List<SettlementData> settlements, PlayerData? player = null)
     {
         foreach (var s in settlements)
@@ -133,7 +133,7 @@ public static class HudIndicatorsRenderer
     }
 
     /// <summary>Render off-screen indicators pointing to mission target planets/stations in a solar system.</summary>
-    public static void RenderSolarSystemMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+    public static void RenderSolarSystemMissionOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
         PlayerData player, int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
         World ecsWorld)
     {
@@ -189,7 +189,7 @@ public static class HudIndicatorsRenderer
     }
 
     /// <summary>Render off-screen indicators pointing to mission target settlements on a planet surface.</summary>
-    public static void RenderPlanetSurfaceMissionOffscreenIndicators(SpriteRenderer renderer, Camera camera,
+    public static void RenderPlanetSurfaceMissionOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
         PlayerData player, int systemIndex, int planetIndex, List<SettlementData> settlements)
     {
         var missions = player.Missions.Active;
@@ -214,7 +214,7 @@ public static class HudIndicatorsRenderer
     }
 
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
-    private static void RenderOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+    private static void RenderOffscreenIndicator(ISpriteRenderer renderer, Camera camera,
         Vector2 worldPos, Color4 color, string? prefix = null, float arrowSize = 8f)
     {
         const float margin = 30f;
@@ -290,7 +290,7 @@ public static class HudIndicatorsRenderer
     /// Draws pulsing mission target markers on planets and stations in a solar system
     /// that are objectives or turn-in locations of the player's active missions.
     /// </summary>
-    public static void RenderSolarSystemMissionMarkers(SpriteRenderer renderer, Camera camera,
+    public static void RenderSolarSystemMissionMarkers(ISpriteRenderer renderer, Camera camera,
         PlayerData player, float globalTime,
         int systemIndex, List<Entity> stationEntities, List<Entity> planetEntities,
         List<PlanetData> planets, World ecsWorld)
@@ -371,7 +371,7 @@ public static class HudIndicatorsRenderer
     /// Draws pulsing mission markers on settlements on a planet surface
     /// that are objectives of the player's active SettlementDelivery missions.
     /// </summary>
-    public static void RenderPlanetSurfaceMissionMarkers(SpriteRenderer renderer, Camera camera,
+    public static void RenderPlanetSurfaceMissionMarkers(ISpriteRenderer renderer, Camera camera,
         PlayerData player, float globalTime,
         int systemIndex, int planetIndex, List<SettlementData> settlements)
     {
@@ -410,7 +410,7 @@ public static class HudIndicatorsRenderer
     /// <summary>
     /// Render a prominent offscreen indicator for the player's current navigation target.
     /// </summary>
-    public static void RenderNavTargetOffscreenIndicator(SpriteRenderer renderer, Camera camera,
+    public static void RenderNavTargetOffscreenIndicator(ISpriteRenderer renderer, Camera camera,
         Vector2 targetWorldPos, string targetName, Color3 targetColor)
     {
         RenderOffscreenIndicator(renderer, camera, targetWorldPos,
@@ -421,7 +421,7 @@ public static class HudIndicatorsRenderer
     /// Render a pulsing world-space marker at the navigation target position on the planet surface.
     /// Shows concentric rings, a crosshair, and a label.
     /// </summary>
-    public static void RenderSurfaceNavTargetMarker(SpriteRenderer renderer, Camera camera,
+    public static void RenderSurfaceNavTargetMarker(ISpriteRenderer renderer, Camera camera,
         Vector2 targetWorldPos, string targetName, Color3 targetColor, float globalTime)
     {
         float pulse = (float)(0.5 + 0.5 * Math.Sin(globalTime * 3.0));

@@ -60,7 +60,7 @@ public class AvatarCustomizationOverlay : CustomizationOverlayBase
         player.OwnedAvatarParts.Remove(inv);
     }
 
-    protected override void RenderStatComparison(SpriteRenderer renderer, float x, float y,
+    protected override void RenderStatComparison(ISpriteRenderer renderer, float x, float y,
         ICustomizablePart newPart, ICustomizablePart currentPart)
     {
         var n = ((AvatarPart)newPart).Stats;

@@ -32,14 +32,14 @@ public class StarRenderer
     }
 
     /// <summary>Renders a star at world position.</summary>
-    public void Render(SpriteRenderer renderer, Camera camera,
+    public void Render(ISpriteRenderer renderer, Camera camera,
         Vector2 starCenter, float starDisplayRadius, Color3 color, float globalTime)
     {
         RenderStarWorld(renderer, camera, starCenter, starDisplayRadius, color, 255, globalTime);
     }
 
     /// <summary>Renders a star directly in screen space.</summary>
-    public void RenderScreen(SpriteRenderer renderer,
+    public void RenderScreen(ISpriteRenderer renderer,
         float x, float y, float displaySize, Color3 color, byte alpha, float globalTime)
     {
         float radius = displaySize * 0.5f;
@@ -74,7 +74,7 @@ public class StarRenderer
         return (byte)Math.Clamp((int)(value * factor), 0, 255);
     }
 
-    private static void RenderStarWorld(SpriteRenderer renderer, Camera camera,
+    private static void RenderStarWorld(ISpriteRenderer renderer, Camera camera,
         Vector2 starCenter, float starDisplayRadius, Color3 color, byte alpha, float globalTime)
     {
         float flicker = ComputeFlicker(color, globalTime);

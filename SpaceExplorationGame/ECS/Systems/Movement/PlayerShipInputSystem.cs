@@ -11,9 +11,9 @@ namespace SpaceExplorationGame.ECS.Systems.Movement;
 /// </summary>
 public partial class PlayerShipInputSystem : BaseSystem<World, float>
 {
-    private readonly InputManager _input;
+    private readonly IInputManager _input;
 
-    public PlayerShipInputSystem(World world, InputManager input) : base(world)
+    public PlayerShipInputSystem(World world, IInputManager input) : base(world)
     {
         _input = input;
     }

@@ -14,7 +14,7 @@ namespace SpaceExplorationGame.Rendering;
 public static class SurfaceRockRenderer
 {
     /// <summary>Render all surface mining rocks and their health bars.</summary>
-    public static void RenderRocks(SpriteRenderer renderer, Camera camera, World world)
+    public static void RenderRocks(ISpriteRenderer renderer, Camera camera, World world)
     {
         var query = new QueryDescription().WithAll<Transform, AsteroidField, Health, Sprite>();
         world.Query(in query, (ref Transform transform, ref AsteroidField rock, ref Health health, ref Sprite sprite) =>

@@ -50,7 +50,7 @@ public abstract class ListPanelOverlay : PanelOverlayBase
 
     // ── Input (all handled here, child classes provide callbacks only) ──
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         // Tab / column navigation (always available, even with empty lists)
         if (input.IsActionPressed(InputAction.MenuLeft))
@@ -81,7 +81,7 @@ public abstract class ListPanelOverlay : PanelOverlayBase
         HandleListMouseInput(game, input);
     }
 
-    private void HandleListMouseInput(Game game, InputManager input)
+    private void HandleListMouseInput(Game game, IInputManager input)
     {
         int count = ItemCount;
         if (count <= 0) return;

@@ -15,7 +15,7 @@ public static class SettlementRenderer
 
     public delegate Vector2 ProjectPointDelegate(Vector2 worldPos);
 
-    public static void Render(SpriteRenderer renderer, Camera camera, PlanetSurfaceData surfaceData)
+    public static void Render(ISpriteRenderer renderer, Camera camera, PlanetSurfaceData surfaceData)
     {
         RenderProjected(renderer, surfaceData,
             (worldCenterX, worldCenterY, worldWidth, worldHeight) =>
@@ -28,7 +28,7 @@ public static class SettlementRenderer
             worldPos => camera.WorldToScreen(worldPos));
     }
 
-    public static void RenderProjected(SpriteRenderer renderer, PlanetSurfaceData surfaceData,
+    public static void RenderProjected(ISpriteRenderer renderer, PlanetSurfaceData surfaceData,
         ProjectRectDelegate projectRect, ProjectPointDelegate projectPoint,
         byte alpha = 255)
     {
@@ -38,7 +38,7 @@ public static class SettlementRenderer
         }
     }
 
-    private static void RenderSettlementProjected(SpriteRenderer renderer,
+    private static void RenderSettlementProjected(ISpriteRenderer renderer,
         SettlementData settlement, ProjectRectDelegate projectRect,
         ProjectPointDelegate projectPoint, byte alpha)
     {
@@ -144,7 +144,7 @@ public static class SettlementRenderer
             settlement.Name, WithAlpha(new Color3(255, 255, 200), alpha));
     }
 
-    private static void DrawProjectedBuilding(SpriteRenderer renderer,
+    private static void DrawProjectedBuilding(ISpriteRenderer renderer,
         ProjectRectDelegate projectRect, SettlementBuilding b, byte alpha)
     {
         DrawProjectedRect(renderer, projectRect,
@@ -219,7 +219,7 @@ public static class SettlementRenderer
         }
     }
 
-    private static void DrawProjectedRect(SpriteRenderer renderer,
+    private static void DrawProjectedRect(ISpriteRenderer renderer,
         ProjectRectDelegate projectRect,
         float worldCenterX, float worldCenterY, float worldW, float worldH,
         Color4 color)

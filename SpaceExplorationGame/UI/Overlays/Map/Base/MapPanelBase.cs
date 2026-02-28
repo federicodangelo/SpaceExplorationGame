@@ -49,10 +49,10 @@ public abstract class MapPanelBase
     public abstract bool UpdateInput(Game game);
 
     /// <summary>Render the map content inside the clipped map area.</summary>
-    public abstract void RenderContent(Game game, SpriteRenderer renderer);
+    public abstract void RenderContent(Game game, ISpriteRenderer renderer);
 
     /// <summary>Render the info panel beside the map.</summary>
-    public abstract void RenderInfoPanel(Game game, SpriteRenderer renderer);
+    public abstract void RenderInfoPanel(Game game, ISpriteRenderer renderer);
 
     /// <summary>WASD / arrow key camera movement (shared for all panels).</summary>
     public virtual void Update(Game game)
@@ -68,7 +68,7 @@ public abstract class MapPanelBase
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Apply mouse wheel zoom (zoom-to-cursor) and drag panning.</summary>
-    protected void HandleZoomAndPan(InputManager input, Vector2 currentMouse)
+    protected void HandleZoomAndPan(IInputManager input, Vector2 currentMouse)
     {
         // Zoom to cursor
         if (input.MouseWheelY != 0)
@@ -101,7 +101,7 @@ public abstract class MapPanelBase
 
     protected Vector2 GetMapScreenCenter() => new(MapX + MapW * 0.5f, MapY + MapH * 0.5f);
 
-    protected void HandleGamepadTriggerZoom(InputManager input, float dt)
+    protected void HandleGamepadTriggerZoom(IInputManager input, float dt)
     {
         if (input.ActiveInputMethod != InputMethod.Gamepad)
             return;
@@ -131,7 +131,7 @@ public abstract class MapPanelBase
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Draw animated targeting brackets around an object.</summary>
-    protected static void DrawTargetBrackets(SpriteRenderer renderer, Camera camera,
+    protected static void DrawTargetBrackets(ISpriteRenderer renderer, Camera camera,
         Vector2 worldPos, float radius, Game game)
     {
         float pulse = (float)(0.7 + 0.3 * Math.Sin(game.GlobalTime * 3.0));
@@ -142,7 +142,7 @@ public abstract class MapPanelBase
     }
 
     /// <summary>Draw a mission diamond icon above an object.</summary>
-    protected static void DrawMissionDiamond(SpriteRenderer renderer, Camera camera,
+    protected static void DrawMissionDiamond(ISpriteRenderer renderer, Camera camera,
         Vector2 objectPos, float objectRadius, Color3 color, byte alpha, string? label = null)
     {
         var iconPos = objectPos + new Vector2(0, -(objectRadius + 16));
@@ -172,7 +172,7 @@ public abstract class MapPanelBase
     }
 
     /// <summary>Render an info panel header strip with centered title.</summary>
-    protected void RenderInfoPanelHeader(SpriteRenderer renderer, string title)
+    protected void RenderInfoPanelHeader(ISpriteRenderer renderer, string title)
     {
         renderer.DrawRectScreen(IpX, IpY, InfoPanelW, 30, new Color4(30, 40, 70, 240));
         renderer.DrawRectScreen(IpX, IpY + 29, InfoPanelW, 1, new Color4(60, 80, 140, 200));
@@ -180,7 +180,7 @@ public abstract class MapPanelBase
         renderer.DrawTextScreen(IpX + InfoPanelW / 2f - headerW / 2f, IpY + 6, title, new Color3(140, 170, 220), 1.8f);
     }
 
-    protected void RenderCenterSelectionReticle(SpriteRenderer renderer, Color4 color)
+    protected void RenderCenterSelectionReticle(ISpriteRenderer renderer, Color4 color)
     {
         Vector2 c = GetMapScreenCenter();
         const float outer = 9f;

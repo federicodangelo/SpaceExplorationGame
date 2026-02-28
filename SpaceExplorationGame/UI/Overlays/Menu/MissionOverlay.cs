@@ -151,7 +151,7 @@ public class MissionOverlay : ListPanelOverlay
 
     // ── Rendering ──
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         // Mission count display
@@ -196,7 +196,7 @@ public class MissionOverlay : ListPanelOverlay
             RenderActiveMissions(renderer, panelX, listY, panelW, listH, game);
     }
 
-    private void RenderAvailableMissions(SpriteRenderer renderer, float panelX, float startY,
+    private void RenderAvailableMissions(ISpriteRenderer renderer, float panelX, float startY,
         float panelW, float listH)
     {
         if (_availableMissions.Count == 0)
@@ -250,7 +250,7 @@ public class MissionOverlay : ListPanelOverlay
         }
     }
 
-    private void RenderActiveMissions(SpriteRenderer renderer, float panelX, float startY,
+    private void RenderActiveMissions(ISpriteRenderer renderer, float panelX, float startY,
         float panelW, float listH, Game game)
     {
         var active = game.Player.Missions.Active;

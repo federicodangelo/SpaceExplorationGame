@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 /// </summary>
 public abstract class PlanetMapPanelBase : MapPanelBase
 {
-    protected TextureManager _textures = null!;
+    protected ITextureManager _textures = null!;
     protected StarSystemData _starSystem = null!;
     protected PlanetData _planet = null!;
     protected PlanetSurfaceData _surfaceData = null!;
@@ -25,7 +25,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     /// <summary>Name of the planet/moon being viewed.</summary>
     public string PlanetName => _planet?.Name ?? "UNKNOWN";
 
-    public PlanetMapPanelBase(TextureManager textures)
+    public PlanetMapPanelBase(ITextureManager textures)
     {
         _textures = textures;
     }
@@ -172,7 +172,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
                 var terrain = _surfaceData.Tiles[x, y];
                 var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
 
-                var variationColor = TileMapRenderer.GetColorVariation(color, x, y, 800f);
+                var variationColor = ITileMapRenderer.GetColorVariation(color, x, y, 800f);
 
                 int idx = (y * w + x) * 4;
                 pixels[idx + 0] = variationColor.R;
@@ -224,7 +224,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     }
 
     /// <summary>Render a single settlement: outline rectangle + label above it.</summary>
-    protected static void RenderSettlementMarker(SpriteRenderer renderer, Camera camera,
+    protected static void RenderSettlementMarker(ISpriteRenderer renderer, Camera camera,
         SettlementData settlement, float tileScreenW, float tileScreenH, Color4 outlineColor)
     {
         float cx = settlement.TileRect.X + settlement.TileRect.Width / 2f;
@@ -248,7 +248,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     }
 
     /// <summary>Render an animated selection reticle (pulsing cross + corner brackets) at a screen position.</summary>
-    protected static void RenderSelectionReticle(SpriteRenderer renderer, Vector2 screenPos,
+    protected static void RenderSelectionReticle(ISpriteRenderer renderer, Vector2 screenPos,
         float pulse, Color3 crossColor, Color3 bracketColor)
     {
         float pulseSize = 6f + MathF.Sin(pulse) * 2f;
@@ -274,7 +274,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
 
     /// <summary>Render basic planet info lines (name, type, size, settlements).
     /// Returns the Y position after the last line for subclasses to continue rendering.</summary>
-    protected float RenderPlanetInfoBlock(SpriteRenderer renderer, float px, float py)
+    protected float RenderPlanetInfoBlock(ISpriteRenderer renderer, float px, float py)
     {
         renderer.DrawTextScreen(px, py, "NAME", new Color3(100, 120, 160), 1.3f);
         renderer.DrawTextScreen(px, py + 16, _planet.Name.ToUpper(), new Color3(200, 220, 255), 1.8f);
@@ -304,7 +304,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     }
 
     /// <summary>Render the settlement name list. Returns the Y position after.</summary>
-    protected float RenderSettlementList(SpriteRenderer renderer, float px, float nextY)
+    protected float RenderSettlementList(ISpriteRenderer renderer, float px, float nextY)
     {
         if (_surfaceData.Settlements.Count == 0) return nextY;
 

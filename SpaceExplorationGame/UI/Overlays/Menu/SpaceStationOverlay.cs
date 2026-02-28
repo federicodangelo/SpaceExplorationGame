@@ -186,7 +186,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         }
     }
 
-    protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
+    protected override void RenderAdditionalContent(Game game, ISpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
         int menuHeight = (int)Menu.TotalHeight;
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;

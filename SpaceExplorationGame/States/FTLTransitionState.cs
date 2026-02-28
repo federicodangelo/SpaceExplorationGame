@@ -205,7 +205,7 @@ public class FTLTransitionState : GameState
     //  SYSTEM STARS (source & target)
     // ─────────────────────────────────────────────────────────────
 
-    private void RenderSystemStars(Game game, SpriteRenderer renderer)
+    private void RenderSystemStars(Game game, ISpriteRenderer renderer)
     {
         float chargeEnd = ChargeDuration;
         float flashEnd = chargeEnd + JumpFlashDuration;
@@ -328,7 +328,7 @@ public class FTLTransitionState : GameState
     //  RENDERING
     // ─────────────────────────────────────────────────────────────
 
-    private void RenderStars(SpriteRenderer renderer)
+    private void RenderStars(ISpriteRenderer renderer)
     {
         float speed = GetStarSpeed();
 
@@ -368,7 +368,7 @@ public class FTLTransitionState : GameState
         }
     }
 
-    private void RenderEnergyWaves(SpriteRenderer renderer)
+    private void RenderEnergyWaves(ISpriteRenderer renderer)
     {
         float travelStart = ChargeDuration + JumpFlashDuration;
         float tp = (_elapsed - travelStart) / TravelDuration;
@@ -392,7 +392,7 @@ public class FTLTransitionState : GameState
         }
     }
 
-    private void RenderShip(Game game, SpriteRenderer renderer)
+    private void RenderShip(Game game, ISpriteRenderer renderer)
     {
         var shipType = game.Player.CurrentShipType;
         float size = shipType.SpriteSize * 2f; // render larger for the cutscene
@@ -402,7 +402,7 @@ public class FTLTransitionState : GameState
         game.SpaceshipRenderer.RenderFlyingScreen(renderer, sx, sy, 0f, shipType.Id, (int)size);
     }
 
-    private void RenderEngineGlow(Game game, SpriteRenderer renderer)
+    private void RenderEngineGlow(Game game, ISpriteRenderer renderer)
     {
         float shipSize = game.Player.CurrentShipType.SpriteSize * 2f;
         float sx = CX + _shipShakeX;
@@ -452,7 +452,7 @@ public class FTLTransitionState : GameState
         }
     }
 
-    private void RenderHudText(SpriteRenderer renderer)
+    private void RenderHudText(ISpriteRenderer renderer)
     {
         float chargeEnd = ChargeDuration;
         float flashEnd = chargeEnd + JumpFlashDuration;

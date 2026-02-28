@@ -294,7 +294,7 @@ public class OrbitalSurfaceTransitionState : GameState
             {
                 var terrain = surface.Tiles[x, y];
                 var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-                var variationColor = TileMapRenderer.GetColorVariation(color, x, y, 800f);
+                var variationColor = ITileMapRenderer.GetColorVariation(color, x, y, 800f);
                 int idx = (y * w + x) * 4;
                 pixels[idx + 0] = variationColor.R;
                 pixels[idx + 1] = variationColor.G;

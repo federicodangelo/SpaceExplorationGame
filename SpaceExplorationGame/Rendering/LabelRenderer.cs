@@ -16,10 +16,10 @@ public class LabelRenderer
         new QueryDescription().WithAll<Transform, Label>();
 
     private readonly World _world;
-    private readonly SpriteRenderer _renderer;
+    private readonly ISpriteRenderer _renderer;
     private readonly Camera _camera;
 
-    public LabelRenderer(World world, SpriteRenderer renderer, Camera camera)
+    public LabelRenderer(World world, ISpriteRenderer renderer, Camera camera)
     {
         _world = world;
         _renderer = renderer;

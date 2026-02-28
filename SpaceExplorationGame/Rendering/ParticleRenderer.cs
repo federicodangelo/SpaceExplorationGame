@@ -8,7 +8,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>Renders ECS particles as soft glowing circles.</summary>
 public static class ParticleRenderer
 {
-    public static void RenderParticles(SpriteRenderer renderer, Camera camera, World world)
+    public static void RenderParticles(ISpriteRenderer renderer, Camera camera, World world)
     {
         var query = new QueryDescription().WithAll<Transform, Particle>();
         world.Query(in query, (ref Transform transform, ref Particle particle) =>

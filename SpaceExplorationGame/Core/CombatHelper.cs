@@ -105,7 +105,7 @@ public static class CombatHelper
     /// <summary>
     /// Process damage events → SFX.
     /// </summary>
-    public static void PlayDamageSfx(AudioManager audio, IReadOnlyList<DamageEvent> events,
+    public static void PlayDamageSfx(IAudioManager audio, IReadOnlyList<DamageEvent> events,
         Vector2 listenerPos, float volume)
     {
         for (int i = 0; i < events.Count; i++)
@@ -130,7 +130,7 @@ public static class CombatHelper
     /// <param name="npcSize">Explosion radius for NPC death.</param>
     /// <param name="playerExplosionColor">Explosion color for player death.</param>
     public static void ProcessDestroyedEntities(
-        AudioManager audio, List<Explosion> explosions,
+        IAudioManager audio, List<Explosion> explosions,
         IReadOnlyList<DestroyedEntity> destroyed, Vector2 listenerPos,
         Func<Faction, Color3> npcExplosionColor,
         float asteroidSize = 15f, float playerSize = 50f, float npcSize = 30f,

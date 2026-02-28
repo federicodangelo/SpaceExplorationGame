@@ -150,7 +150,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         }
     }
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         UpdateCyclingLabels();
 
@@ -222,7 +222,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             $"Press {confirm} or {left}/{right} to change starting ship"));
     }
 
-    protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer,
+    protected override void RenderAdditionalContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         float y = MenuY + Menu.TotalHeight + 8;

@@ -2,20 +2,20 @@ using SDL3;
 using System.Numerics;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Platform;
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
 /// Shared utility for rendering tile-based maps with per-tile color variation.
 /// Used by PlanetSurfaceState and InteriorState.
 /// </summary>
-public class TileMapRenderer
+public class SdlTileMapRenderer : ITileMapRenderer
 {
     // Reusable buffers for batched tile rendering (avoids per-frame allocs).
     private SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
     private int[] _indexBuf = new int[1536];
     private nint _renderer;
 
-    public TileMapRenderer(nint renderer)
+    public SdlTileMapRenderer(nint renderer)
     {
         _renderer = renderer;
     }
@@ -33,7 +33,7 @@ public class TileMapRenderer
     /// <param name="variationDivisor">Controls brightness variation strength (higher = subtler).</param>
     /// <param name="renderDetail">Optional per-tile detail callback: (x, y, worldPos, hash).</param>
     public void RenderTiles(
-        SpriteRenderer renderer, Camera camera,
+        ISpriteRenderer renderer, Camera camera,
         int mapWidth, int mapHeight,
         Func<int, int, Color3?> getColor,
         float variationDivisor = 800f,
@@ -69,7 +69,7 @@ public class TileMapRenderer
                 var color = getColor(x, y);
                 if (color == null) continue;
 
-                var variationColor = GetColorVariation(color.Value, x, y, variationDivisor);
+                var variationColor = ITileMapRenderer.GetColorVariation(color.Value, x, y, variationDivisor);
 
                 var worldPos = new Vector2(
                     x * tileSize + halfTile,
@@ -155,13 +155,4 @@ public class TileMapRenderer
         return (x * 374761393 + y * 668265263) ^ (x * y);
     }
 
-    public static Color3 GetColorVariation(Color3 baseColor, int x, int y, float variationDivisor)
-    {
-        int hash = GetTileHash(x, y);
-        float variation = ((hash & 0xFF) - 128) / variationDivisor;
-        byte vr = (byte)Math.Clamp(baseColor.R + baseColor.R * variation, 0, 255);
-        byte vg = (byte)Math.Clamp(baseColor.G + baseColor.G * variation, 0, 255);
-        byte vb = (byte)Math.Clamp(baseColor.B + baseColor.B * variation, 0, 255);
-        return new Color3(vr, vg, vb);
-    }
 }

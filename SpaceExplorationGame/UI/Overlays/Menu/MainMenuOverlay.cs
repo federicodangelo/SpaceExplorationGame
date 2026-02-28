@@ -256,7 +256,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     // ── Custom input processing ──
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         UpdateCyclingLabels();
 
@@ -304,7 +304,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     // ── Custom content rendering ──
 
-    protected override void RenderAdditionalContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
+    protected override void RenderAdditionalContent(Game game, ISpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
         // Separator between config and actions
         float sep1Y = MenuY + 3 * Menu.ItemHeight;

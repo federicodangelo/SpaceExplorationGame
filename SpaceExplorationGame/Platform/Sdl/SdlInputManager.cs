@@ -3,61 +3,12 @@ using System.Text;
 using SDL3;
 using SpaceExplorationGame.Core;
 
-namespace SpaceExplorationGame.Platform;
-
-public enum InputAction
-{
-    DebugToggle,
-    MenuConfirm,
-    MenuUp,
-    MenuDown,
-    MenuLeft,
-    MenuRight,
-    MenuBack,
-    MenuSecondaryAction,
-
-    MoveUp,
-    MoveDown,
-    MoveLeft,
-    MoveRight,
-    FireWeapon,
-    MapZoomOut,
-    MapZoomIn,
-    MapPreviousView,
-    MapNextView,
-    Interact,
-    ToggleMap,
-}
-
-public enum InputActionAxis
-{
-    Movement,
-    Heading,
-}
-
-public enum InputMethod
-{
-    MouseKeyboard,
-    Gamepad,
-}
-
-public enum MouseButton
-{
-    Left = 1,
-    Middle = 2,
-    Right = 3,
-}
-
-public enum MovementInputMode
-{
-    HeadingRelative,
-    Absolute,
-}
+namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
-/// Input snapshot captured each frame. Provides current and previous state for edge detection.
+/// SDL3 input snapshot captured each frame. Provides current and previous state for edge detection.
 /// </summary>
-public class InputManager
+public class SdlInputManager : IInputManager
 {
     private readonly record struct InputBinding(SDL.Scancode? Scancode, int? MouseButton, SDL.GamepadButton? GamepadButton, SDL.GamepadAxis? GamepadAxis)
     {

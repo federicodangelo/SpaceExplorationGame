@@ -36,14 +36,14 @@ public class ControlsOverlay : PanelOverlayBase
         base.Open();
     }
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         // Any key dismisses
         if (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact))
             Close();
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer,
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
         _controls = GetControlsForState(StateType, game.Input);
@@ -59,7 +59,7 @@ public class ControlsOverlay : PanelOverlayBase
         }
     }
 
-    private static string[] GetControlsForState(GameStateType state, InputManager input)
+    private static string[] GetControlsForState(GameStateType state, IInputManager input)
     {
         bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
 

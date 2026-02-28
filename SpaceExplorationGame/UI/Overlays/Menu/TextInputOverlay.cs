@@ -61,7 +61,7 @@ public class TextInputOverlay : PanelOverlayBase
         Close();
     }
 
-    protected override void ProcessInput(Game game, InputManager input)
+    protected override void ProcessInput(Game game, IInputManager input)
     {
         // Backspace
         for (var i = 0; i < input.TextInputBackspacesCount; i++)
@@ -95,7 +95,7 @@ public class TextInputOverlay : PanelOverlayBase
         }
     }
 
-    protected override void RenderPanelContent(Game game, SpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
+    protected override void RenderPanelContent(Game game, ISpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
         float centerX = panelX + panelW / 2f;
         float centerY = contentY + contentH / 2f - 20;

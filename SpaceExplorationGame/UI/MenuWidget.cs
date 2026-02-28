@@ -93,7 +93,7 @@ public class MenuWidget<T> where T : struct, Enum
     /// Returns the confirmed enum value, or null if nothing was confirmed.
     /// Disabled options can be navigated to but cannot be confirmed.
     /// </summary>
-    public T? Update(InputManager input)
+    public T? Update(IInputManager input)
     {
         if (_options.Length == 0) return null;
 
@@ -121,7 +121,7 @@ public class MenuWidget<T> where T : struct, Enum
     /// <paramref name="itemWidth"/> is the clickable width of each item.
     /// Returns the confirmed enum value, or null if nothing was confirmed.
     /// </summary>
-    public T? Update(InputManager input, float menuScreenX, float menuScreenY, float itemWidth)
+    public T? Update(IInputManager input, float menuScreenX, float menuScreenY, float itemWidth)
     {
         if (_options.Length == 0) return null;
 
@@ -205,7 +205,7 @@ public class MenuWidget<T> where T : struct, Enum
     /// <paramref name="y"/> is the top of the first item.
     /// <paramref name="width"/> is used for highlight rect width and centering.
     /// </summary>
-    public void Render(SpriteRenderer renderer, float x, float y, float width, float panelBottom)
+    public void Render(ISpriteRenderer renderer, float x, float y, float width, float panelBottom)
     {
         for (int i = 0; i < _options.Length; i++)
         {

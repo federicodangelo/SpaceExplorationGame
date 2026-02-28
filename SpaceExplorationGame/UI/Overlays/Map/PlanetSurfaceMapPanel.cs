@@ -38,7 +38,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     private string? _invalidSelectionHint;
     private float _invalidSelectionHintTimer;
 
-    public PlanetSurfaceMapPanel(TextureManager textures) : base(textures)
+    public PlanetSurfaceMapPanel(ITextureManager textures) : base(textures)
     {
     }
 
@@ -240,7 +240,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     //  RENDERING
     // -----------------------------------------------------------------
 
-    public override void RenderContent(Game game, SpriteRenderer renderer)
+    public override void RenderContent(Game game, ISpriteRenderer renderer)
     {
         if (_surfaceData == null || _terrainTexture == nint.Zero) return;
 
@@ -377,7 +377,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     //  INFO PANEL
     // -----------------------------------------------------------------
 
-    public override void RenderInfoPanel(Game game, SpriteRenderer renderer)
+    public override void RenderInfoPanel(Game game, ISpriteRenderer renderer)
     {
         RenderInfoPanelHeader(renderer, "SURFACE DATA");
 
@@ -469,7 +469,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
     }
 
-    private void RenderSelectedObjectInfo(Game game, SpriteRenderer renderer, float px, float py)
+    private void RenderSelectedObjectInfo(Game game, ISpriteRenderer renderer, float px, float py)
     {
         var sel = _selectedObject;
         bool isTarget = IsCurrentNavTarget(game.Player, sel);
@@ -520,7 +520,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
     }
 
-    private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
+    private void RenderTargetButton(Game game, ISpriteRenderer renderer, float px, float py, bool isTarget)
     {
         string confirmText = game.Input.GetMouseButtonHelpText(MouseButton.Left).ToUpper();
         string btnText = isTarget
