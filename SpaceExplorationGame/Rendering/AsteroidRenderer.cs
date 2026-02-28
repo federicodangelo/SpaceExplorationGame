@@ -29,7 +29,7 @@ public class AsteroidRenderer
 
     /// <summary>Renders asteroids from ECS entities (with Transform, Health, AsteroidField).</summary>
     public void RenderAsteroids(ISpriteRenderer renderer, Camera camera,
-        World ecsWorld, List<Entity> asteroidEntities)
+        World ecsWorld, List<Entity> asteroidEntities, float globalTime)
     {
         foreach (var entity in asteroidEntities)
         {
@@ -41,19 +41,24 @@ public class AsteroidRenderer
 
             if (health.IsDead) continue;
 
-            float rot = MathF.Atan2(transform.Position.Y, transform.Position.X) * 180f / MathF.PI * 2f;
+            // Spinning rotation based on time + unique per-asteroid speed
+            float posHash = transform.Position.X * 7.3f + transform.Position.Y * 13.1f;
+            float spinSpeed = 8f + MathF.Abs(posHash % 15f); // 8-23 deg/sec
+            float rot = posHash + globalTime * spinSpeed;
 
             // Scale down visual size as HP drops
             float hpRatio = health.HullPercent;
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
             var resourceColor = ResourceCatalog.Get(asteroid.Resource).Color;
 
-            DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize, hpRatio, resourceColor);
+            DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize,
+                hpRatio, resourceColor, globalTime);
         }
     }
 
     private static void DrawAsteroidPrimitives(ISpriteRenderer renderer, Camera camera,
-        Vector2 position, float rotationDeg, float size, float hpRatio, Color3 resourceColor)
+        Vector2 position, float rotationDeg, float size, float hpRatio, Color3 resourceColor,
+        float globalTime)
     {
         float radius = size * 0.5f;
         byte tone = (byte)(110 + 40 * hpRatio);
@@ -113,6 +118,15 @@ public class AsteroidRenderer
         renderer.DrawFilledCircle(camera, core, coreR + outlinePad * 0.9f, feedbackOutlineOuter);
         renderer.DrawFilledCircle(camera, core, coreR + outlinePad * 0.45f, feedbackOutlineInner);
         renderer.DrawFilledCircle(camera, core, coreR, coreGlow);
+
+        // Resource shimmer pulse
+        float shimmer = (MathF.Sin(globalTime * 2.5f + position.X * 0.01f + position.Y * 0.013f) + 1f) * 0.5f;
+        if (shimmer > 0.6f)
+        {
+            byte shimmerA = (byte)((shimmer - 0.6f) * 2.5f * 40);
+            renderer.DrawFilledCircle(camera, position, radius * 0.6f,
+                new Color4(resourceColor.R, resourceColor.G, resourceColor.B, shimmerA));
+        }
     }
 
     private static byte BlendToByte(byte from, byte to, float t)

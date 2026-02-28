@@ -23,24 +23,36 @@ public static class ProjectileRenderer
             float rad = transform.Rotation * MathF.PI / 180f;
             var facingDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
 
-            // Draw projectile as a small elongated shape
             if (speed > 10f)
             {
-                // Trail: draw a line behind the projectile
-                var trailEnd = pos - facingDir * 8f;
+                // Glow behind projectile
+                var trailEnd = pos - facingDir * 12f;
+                var perp = new Vector2(-facingDir.Y, facingDir.X);
 
-                // Main beam
+                // Outer glow (wider, translucent)
+                renderer.DrawLine(camera, trailEnd + perp * 2f, pos + perp * 1.5f,
+                    proj.Color.WithAlpha(50));
+                renderer.DrawLine(camera, trailEnd - perp * 2f, pos - perp * 1.5f,
+                    proj.Color.WithAlpha(50));
+
+                // Main beam (bright)
                 renderer.DrawLine(camera, trailEnd, pos, proj.Color);
 
-                // Glow core (brighter, slightly offset lines)
-                var perp = new Vector2(-facingDir.Y, facingDir.X) * 0.8f;
-                renderer.DrawLine(camera, trailEnd + perp, pos + perp, proj.Color.WithAlpha(140));
-                renderer.DrawLine(camera, trailEnd - perp, pos - perp, proj.Color.WithAlpha(140));
+                // Core parallel lines
+                renderer.DrawLine(camera, trailEnd + perp * 0.8f, pos + perp * 0.8f,
+                    proj.Color.WithAlpha(160));
+                renderer.DrawLine(camera, trailEnd - perp * 0.8f, pos - perp * 0.8f,
+                    proj.Color.WithAlpha(160));
+
+                // Bright tip
+                renderer.DrawFilledCircle(camera, pos, 2f,
+                    new Color4(255, 255, 255, 180));
             }
             else
             {
-                // Slow/stationary projectile: just a dot
-                renderer.DrawFilledCircle(camera, pos, 2f, proj.Color);
+                renderer.DrawFilledCircle(camera, pos, 2.5f, proj.Color);
+                renderer.DrawFilledCircle(camera, pos, 1.5f,
+                    new Color4(255, 255, 255, 140));
             }
         });
     }
@@ -95,7 +107,7 @@ public static class ProjectileRenderer
         }
     }
 
-    /// <summary>Render explosion effects (no mutation).</summary>
+    /// <summary>Render explosion effects with shockwave, debris, and smoke.</summary>
     public static void RenderExplosions(ISpriteRenderer renderer, Camera camera,
         List<Explosion> explosions)
     {
@@ -105,27 +117,66 @@ public static class ProjectileRenderer
             float radius = explosion.Radius * (0.3f + progress * 0.7f);
             byte alpha = (byte)(255 * (1f - progress));
 
+            // Shockwave ring (expands fast, fades)
+            if (progress < 0.6f)
+            {
+                float ringProgress = progress / 0.6f;
+                float ringRadius = explosion.Radius * 1.4f * ringProgress;
+                byte ringAlpha = (byte)(100 * (1f - ringProgress));
+                renderer.DrawCircle(camera, explosion.Position, ringRadius,
+                    new Color4(255, 255, 255, ringAlpha), 24);
+                // Second thinner ring
+                renderer.DrawCircle(camera, explosion.Position, ringRadius * 0.85f,
+                    explosion.Color.WithAlpha((byte)(ringAlpha / 2)), 20);
+            }
+
             // Outer glow
             renderer.DrawFilledCircle(camera, explosion.Position, radius,
                 explosion.Color.WithAlpha((byte)(alpha / 2)));
 
-            // Inner core
-            renderer.DrawFilledCircle(camera, explosion.Position, radius * 0.5f,
-                new Color4(255, 255, 200, alpha));
-
-            // Sparks
+            // Hot core (white-yellow)
             if (progress < 0.5f)
             {
-                float sparkRadius = radius * 1.5f;
-                int sparkCount = 6;
+                float coreFade = 1f - progress * 2f;
+                renderer.DrawFilledCircle(camera, explosion.Position, radius * 0.5f,
+                    new Color4(255, 255, 200, (byte)(alpha * coreFade)));
+                // Bright center flash
+                renderer.DrawFilledCircle(camera, explosion.Position, radius * 0.2f,
+                    new Color4(255, 255, 255, (byte)(200 * coreFade)));
+            }
+
+            // Sparks that fly outward
+            if (progress < 0.7f)
+            {
+                float sparkRadius = radius * 1.8f;
+                int sparkCount = 8;
                 for (int s = 0; s < sparkCount; s++)
                 {
-                    float angle = s * MathF.PI * 2f / sparkCount + progress * 3f;
+                    float angle = s * MathF.PI * 2f / sparkCount + progress * 4f;
+                    float sparkDist = sparkRadius * progress * (0.8f + 0.4f * MathF.Sin(s * 3.7f));
                     var sparkPos = explosion.Position + new Vector2(
-                        MathF.Cos(angle) * sparkRadius * progress,
-                        MathF.Sin(angle) * sparkRadius * progress);
+                        MathF.Cos(angle) * sparkDist,
+                        MathF.Sin(angle) * sparkDist);
+                    byte sparkAlpha = (byte)(alpha * (1f - progress / 0.7f));
                     renderer.DrawFilledCircle(camera, sparkPos, 2f,
-                        new Color4(255, (byte)(200 * (1 - progress)), 50, alpha));
+                        new Color4(255, (byte)(220 - progress * 200), 50, sparkAlpha));
+                }
+            }
+
+            // Smoke puffs (late phase)
+            if (progress > 0.3f)
+            {
+                float smokeFade = (progress - 0.3f) / 0.7f;
+                int smokeCount = 4;
+                for (int s = 0; s < smokeCount; s++)
+                {
+                    float angle = s * MathF.PI * 2f / smokeCount + 0.5f;
+                    float dist = radius * 0.6f * smokeFade;
+                    var smokePos = explosion.Position + new Vector2(
+                        MathF.Cos(angle) * dist, MathF.Sin(angle) * dist);
+                    byte smokeAlpha = (byte)(30 * (1f - smokeFade));
+                    renderer.DrawFilledCircle(camera, smokePos, 4f + smokeFade * 4f,
+                        new Color4(80, 70, 60, smokeAlpha));
                 }
             }
         }

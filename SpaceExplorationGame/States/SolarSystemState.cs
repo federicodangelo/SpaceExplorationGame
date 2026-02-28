@@ -368,22 +368,34 @@ public class SolarSystemState : GameState
         float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
+        float globalTime = (float)game.GlobalTime;
+
         // Background
-        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _sim.BackgroundStars);
-        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _sim.BackgroundNebulae);
-        SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter);
+        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _sim.BackgroundStars, globalTime);
+        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _sim.BackgroundNebulae, globalTime);
+        SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
+
+        // Asteroid belt dust
+        foreach (var belt in _sim.Content.AsteroidBelts)
+        {
+            float beltRadius = (belt.InnerRadius + belt.OuterRadius) * 0.5f;
+            float beltWidth = belt.OuterRadius - belt.InnerRadius;
+            SolarSystemRenderer.RenderAsteroidBeltDust(renderer, camera,
+                starCenter, beltRadius, beltWidth, globalTime);
+        }
 
         // Asteroids
-        game.AsteroidRenderer.RenderAsteroids(renderer, camera, world, _sim.AsteroidEntities);
+        game.AsteroidRenderer.RenderAsteroids(renderer, camera, world,
+            _sim.AsteroidEntities, globalTime);
 
         // Star
         float starDisplayRadius = _starSystem.StarRadius * 2f;
         game.StarRenderer.Render(renderer, camera, starCenter, starDisplayRadius, _starSystem.StarColor,
-            (float)game.GlobalTime);
+            globalTime);
 
         // Planets and moons
         game.PlanetRenderer.RenderPlanetsAndMoons(renderer, camera, world,
-            _sim.Planets, _sim.PlanetEntities, _sim.MoonEntities, (float)game.GlobalTime);
+            _sim.Planets, _sim.PlanetEntities, _sim.MoonEntities, globalTime);
 
         // Stations
         game.StationRenderer.RenderStations(renderer, camera, world,
@@ -394,7 +406,7 @@ public class SolarSystemState : GameState
 
         // Mission markers
         HudIndicatorsRenderer.RenderSolarSystemMissionMarkers(renderer, camera,
-            game.Player, (float)game.GlobalTime, _starSystem.Index,
+            game.Player, globalTime, _starSystem.Index,
             _sim.SpaceStationEntities, _sim.PlanetEntities, _sim.Planets, world);
 
         // Thruster particles
@@ -402,7 +414,7 @@ public class SolarSystemState : GameState
 
         // NPC ships
         SolarSystemRenderer.RenderNPCShips(renderer, camera, world,
-            _sim.EnemyEntities, game.EnemyShipRenderer);
+            _sim.EnemyEntities, game.EnemyShipRenderer, globalTime);
 
         // Projectiles
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
@@ -414,6 +426,14 @@ public class SolarSystemState : GameState
             int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
             game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize);
+
+            // Damage smoke/sparks when HP is low
+            if (world.Has<Health>(_simPlayer.Entity))
+            {
+                ref var shipHealth = ref world.Get<Health>(_simPlayer.Entity);
+                SpaceshipRenderer.RenderDamageEffects(renderer, camera,
+                    shipTransform.Position, shipHealth.HullPercent, globalTime);
+            }
         }
 
         // Visual effects

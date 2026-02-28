@@ -39,6 +39,59 @@ public class SpaceshipRenderer
         renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", new Color3(180, 180, 200));
     }
 
+    /// <summary>Renders damage smoke and sparks when player ship hull is low.</summary>
+    public static void RenderDamageEffects(ISpriteRenderer renderer, Camera camera,
+        Vector2 position, float hullPercent, float globalTime)
+    {
+        if (hullPercent >= 0.6f) return; // No damage effects above 60% HP
+
+        float severity = 1f - (hullPercent / 0.6f); // 0 at 60%, 1 at 0%
+
+        // Smoke puffs
+        int smokeCount = (int)(severity * 4) + 1;
+        for (int i = 0; i < smokeCount; i++)
+        {
+            float phase = globalTime * 1.5f + i * 2.3f;
+            float offsetX = MathF.Sin(phase * 1.3f + i) * 8f;
+            float offsetY = MathF.Cos(phase * 0.9f + i * 0.7f) * 6f - MathF.Sin(phase) * 4f;
+            float size = 3f + severity * 4f + MathF.Sin(phase) * 2f;
+            byte smokeAlpha = (byte)(20 + severity * 30);
+
+            renderer.DrawFilledCircle(camera,
+                position + new Vector2(offsetX, offsetY), size,
+                new Color4(80, 70, 60, smokeAlpha));
+        }
+
+        // Sparks (flickering)
+        if (severity > 0.3f)
+        {
+            int sparkCount = (int)((severity - 0.3f) * 6) + 1;
+            for (int i = 0; i < sparkCount; i++)
+            {
+                float phase = globalTime * 8f + i * 5.7f;
+                float flicker = MathF.Sin(phase);
+                if (flicker < 0.3f) continue; // Only visible part of the time
+
+                float ox = MathF.Sin(phase * 0.7f + i * 3f) * 10f;
+                float oy = MathF.Cos(phase * 0.5f + i * 2f) * 8f;
+                byte sparkAlpha = (byte)(flicker * 200);
+
+                renderer.DrawFilledCircle(camera,
+                    position + new Vector2(ox, oy), 1.5f,
+                    new Color4(255, 200, 50, sparkAlpha));
+            }
+        }
+
+        // Critical red warning pulse
+        if (severity > 0.7f)
+        {
+            float pulse = (MathF.Sin(globalTime * 4f) + 1f) * 0.5f;
+            byte warnAlpha = (byte)(pulse * 15 * (severity - 0.7f) / 0.3f);
+            renderer.DrawFilledCircle(camera, position, 20f,
+                new Color4(255, 50, 30, warnAlpha));
+        }
+    }
+
     private static void DrawShipPrimitivesScreen(ISpriteRenderer renderer, float screenX, float screenY,
         float zoom, float rotationDeg, string shipTypeId, int spriteSize)
     {
