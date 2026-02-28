@@ -17,7 +17,7 @@ public static class InteriorRenderer
     public static void RenderWorld(ISpriteRenderer renderer, Camera camera, InteriorData interior,
         Vector2 playerPos, AvatarRenderer avatarRenderer, double globalTime, PlanetData? planet)
     {
-        RenderExteriorBackground(renderer, camera, interior, planet);
+        RenderExteriorBackground(renderer, camera, interior, planet, globalTime);
         RenderTiles(renderer, camera, interior, globalTime);
         RenderRoomAmbientTint(renderer, camera, interior);
         RenderRoomLabels(renderer, camera, interior);
@@ -65,12 +65,95 @@ public static class InteriorRenderer
         }
     }
 
+    /// <summary>Renders weather particle effects for settlements based on planet biome.</summary>
+    public static void RenderWeatherEffects(ISpriteRenderer renderer,
+        int screenW, int screenH, PlanetData? planet, double globalTime)
+    {
+        if (planet == null) return;
+        var biome = planet.Type;
+
+        // Weather particle count and style per biome
+        int particleCount;
+        switch (biome)
+        {
+            case PlanetType.Terrestrial:
+            case PlanetType.Ocean:
+                // Rain
+                particleCount = 60;
+                for (int i = 0; i < particleCount; i++)
+                {
+                    int hash = i * 374761 + (int)(globalTime * 100) * 17;
+                    float px = ((hash & 0xFFFF) % screenW);
+                    float speed = 400f + (hash >> 16 & 0xFF);
+                    float py = (float)((i * 73.7 + globalTime * speed) % (screenH + 20)) - 10;
+                    byte alpha = (byte)(30 + (hash >> 8 & 0x1F));
+                    renderer.DrawRectScreen((int)px, (int)py, 1, 6,
+                        new Color4(140, 160, 200, alpha));
+                }
+                break;
+
+            case PlanetType.Desert:
+                // Dust / sand particles drifting horizontally
+                particleCount = 35;
+                for (int i = 0; i < particleCount; i++)
+                {
+                    int hash = i * 668265 + (int)(globalTime * 60) * 23;
+                    float speed = 120f + (hash >> 16 & 0x7F);
+                    float px = (float)((i * 97.3 + globalTime * speed) % (screenW + 20)) - 10;
+                    float py = ((hash & 0xFFFF) % screenH);
+                    byte alpha = (byte)(20 + (hash >> 8 & 0x1F));
+                    renderer.DrawRectScreen((int)px, (int)py, 3, 2,
+                        new Color4(180, 160, 120, alpha));
+                }
+                break;
+
+            case PlanetType.Frozen:
+                // Snow
+                particleCount = 50;
+                for (int i = 0; i < particleCount; i++)
+                {
+                    int hash = i * 472882 + (int)(globalTime * 40) * 13;
+                    float drift = (float)Math.Sin(globalTime * 0.8 + i * 0.7) * 30f;
+                    float px = ((hash & 0xFFFF) % screenW) + drift;
+                    float speed = 60f + (hash >> 16 & 0x3F);
+                    float py = (float)((i * 53.1 + globalTime * speed) % (screenH + 10)) - 5;
+                    byte alpha = (byte)(40 + (hash >> 8 & 0x2F));
+                    int sz = (hash >> 12 & 1) == 0 ? 2 : 3;
+                    renderer.DrawRectScreen((int)px, (int)py, sz, sz,
+                        new Color4(210, 220, 230, alpha));
+                }
+                break;
+
+            case PlanetType.Volcanic:
+                // Floating ash / embers
+                particleCount = 30;
+                for (int i = 0; i < particleCount; i++)
+                {
+                    int hash = i * 338947 + (int)(globalTime * 50) * 11;
+                    float drift = (float)Math.Sin(globalTime * 1.5 + i * 1.3) * 20f;
+                    float px = ((hash & 0xFFFF) % screenW) + drift;
+                    float speed = 40f + (hash >> 16 & 0x3F);
+                    float py = (float)(screenH - (i * 61.7 + globalTime * speed) % (screenH + 10));
+                    bool isEmber = (hash >> 12 & 3) == 0;
+                    var color = isEmber
+                        ? new Color4(200, 100, 30, 50)
+                        : new Color4(80, 70, 60, 30);
+                    renderer.DrawRectScreen((int)px, (int)py, 2, 2, color);
+                }
+                break;
+
+            default:
+                // No weather for Rocky/GasGiant/IceGiant
+                break;
+        }
+    }
+
     /// <summary>
     /// Draws the exterior background visible through Void tiles.
     /// Stations show space with stars; settlements show planet terrain.
     /// </summary>
     private static void RenderExteriorBackground(ISpriteRenderer renderer, Camera camera,
-        InteriorData interior, PlanetData? planet)
+        InteriorData interior, PlanetData? planet, double globalTime)
     {
         var (topLeft, bottomRight) = camera.GetVisibleBounds();
 
@@ -90,7 +173,10 @@ public static class InteriorRenderer
         }
         else
         {
-            RenderTerrainBackground(renderer, camera, bgCenter, bgW, bgH, bgLeft, bgTop, bgRight, bgBottom, planet);
+            RenderTerrainBackground(renderer, camera, bgCenter, bgW, bgH,
+                bgLeft, bgTop, bgRight, bgBottom, planet);
+            RenderBiomeVegetation(renderer, camera,
+                bgLeft, bgTop, bgRight, bgBottom, planet, globalTime);
         }
 
         // Draw interior boundary outline to make the structure edges visible
@@ -165,6 +251,122 @@ public static class InteriorRenderer
 
                 renderer.DrawRect(camera, new Vector2(px, py), 3, 3, new Color3(dr, dg, db));
             }
+        }
+    }
+
+    /// <summary>Renders biome-specific vegetation and details on the terrain background.</summary>
+    private static void RenderBiomeVegetation(ISpriteRenderer renderer, Camera camera,
+        float bgLeft, float bgTop, float bgRight, float bgBottom,
+        PlanetData? planet, double globalTime)
+    {
+        var biome = planet?.Type ?? PlanetType.Rocky;
+        int gridSize = 80;
+        int gx0 = (int)MathF.Floor(bgLeft / gridSize) - 1;
+        int gy0 = (int)MathF.Floor(bgTop / gridSize) - 1;
+        int gx1 = (int)MathF.Ceiling(bgRight / gridSize) + 1;
+        int gy1 = (int)MathF.Ceiling(bgBottom / gridSize) + 1;
+
+        for (int gx = gx0; gx <= gx1; gx++)
+        {
+            for (int gy = gy0; gy <= gy1; gy++)
+            {
+                int h = (gx * 472882027 + gy * 338947111) ^ (gx * 19 + gy * 37);
+                if ((h & 7) > 3) continue;
+
+                float px = gx * gridSize + ((h >> 4) & 0x3F) - 32;
+                float py = gy * gridSize + ((h >> 10) & 0x3F) - 32;
+                int variant = (h >> 16) & 3;
+                float sway = (float)Math.Sin(globalTime * 1.2 + h * 0.01) * 2f;
+
+                RenderBiomeSprite(renderer, camera, biome, px, py, variant, sway);
+            }
+        }
+    }
+
+    /// <summary>Draws a single biome-specific vegetation/decoration sprite.</summary>
+    private static void RenderBiomeSprite(ISpriteRenderer renderer, Camera camera,
+        PlanetType biome, float px, float py, int variant, float sway)
+    {
+        switch (biome)
+        {
+            case PlanetType.Terrestrial:
+            case PlanetType.Ocean:
+                // Bushes and grass tufts
+                if (variant < 2)
+                {
+                    // Bush: cluster of green circles
+                    var leafColor = new Color3(30, (byte)(70 + variant * 20), 25);
+                    renderer.DrawRect(camera, new Vector2(px + sway * 0.5f, py - 4), 8, 6, leafColor);
+                    renderer.DrawRect(camera, new Vector2(px - 3 + sway * 0.5f, py - 2), 6, 5, leafColor);
+                    renderer.DrawRect(camera, new Vector2(px + 3 + sway * 0.5f, py - 2), 6, 5, leafColor);
+                    // Trunk
+                    renderer.DrawRect(camera, new Vector2(px, py + 2), 2, 4, new Color3(60, 40, 25));
+                }
+                else
+                {
+                    // Grass tuft: thin vertical lines
+                    var grass = new Color3(40, (byte)(80 + variant * 10), 30);
+                    for (int i = -2; i <= 2; i++)
+                        renderer.DrawRect(camera, new Vector2(px + i * 2 + sway, py - 3), 1, 6, grass);
+                }
+                break;
+
+            case PlanetType.Desert:
+                // Cacti and desert rocks
+                if (variant == 0)
+                {
+                    // Cactus
+                    var cactus = new Color3(50, 90, 40);
+                    renderer.DrawRect(camera, new Vector2(px, py - 6), 3, 12, cactus);
+                    renderer.DrawRect(camera, new Vector2(px - 4, py - 4), 3, 6, cactus);
+                    renderer.DrawRect(camera, new Vector2(px + 4, py - 2), 3, 6, cactus);
+                }
+                else
+                {
+                    // Desert rock
+                    var rock = new Color3(120, 100, 70);
+                    renderer.DrawRect(camera, new Vector2(px, py), (int)(5 + variant), 3, rock);
+                }
+                break;
+
+            case PlanetType.Frozen:
+                // Ice crystals and snow mounds
+                if (variant == 0)
+                {
+                    // Ice crystal
+                    var ice = new Color3(160, 200, 230);
+                    renderer.DrawRect(camera, new Vector2(px, py - 5), 2, 10, ice);
+                    renderer.DrawRect(camera, new Vector2(px - 3, py - 2), 6, 2, ice);
+                }
+                else
+                {
+                    // Snow mound
+                    var snow = new Color3(200, 210, 220);
+                    renderer.DrawRect(camera, new Vector2(px, py), 6 + variant, 3, snow);
+                    renderer.DrawRect(camera, new Vector2(px, py - 2), 4, 2, snow);
+                }
+                break;
+
+            case PlanetType.Volcanic:
+                // Lava vents and charred rocks
+                if (variant == 0)
+                {
+                    // Vent with glow
+                    renderer.DrawRect(camera, new Vector2(px, py), 4, 2, new Color3(60, 30, 20));
+                    renderer.DrawRect(camera, new Vector2(px, py - 1), 2, 2, new Color3(180, 80, 20));
+                }
+                else
+                {
+                    // Basalt rock
+                    renderer.DrawRect(camera, new Vector2(px, py), 5 + variant, 3, new Color3(40, 35, 30));
+                }
+                break;
+
+            default:
+                // Rocky / generic: scattered stones
+                var stoneColor = new Color3(80, 75, 70);
+                renderer.DrawRect(camera, new Vector2(px, py), 3 + variant, 2, stoneColor);
+                break;
         }
     }
 

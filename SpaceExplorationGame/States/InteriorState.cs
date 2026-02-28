@@ -286,6 +286,10 @@ public class InteriorState : GameState
         int h = GameConfig.WindowHeight;
         InteriorRenderer.RenderAtmosphere(renderer, w, h);
 
+        // Weather overlay for settlement biomes
+        if (_sim.Interior.Type == InteriorType.Settlement)
+            InteriorRenderer.RenderWeatherEffects(renderer, w, h, _planet, game.GlobalTime);
+
         // HUD
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
