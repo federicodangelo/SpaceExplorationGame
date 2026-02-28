@@ -485,7 +485,7 @@ public static class InteriorRenderer
         }
     }
 
-    /// <summary>Renders floating indicator markers above each interactable.</summary>
+    /// <summary>Renders floating indicator markers and recognizable icons above each interactable.</summary>
     private static void RenderInteractableMarkers(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
@@ -496,14 +496,124 @@ public static class InteriorRenderer
                 interactable.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
             );
 
-            float bob = MathF.Sin((float)globalTime * 2f) * 3f;
-            var indicatorPos = intPos - new Vector2(0, 20 + bob);
-
             var intColor = GetInteractableColor(interactable.Type);
+            float bob = MathF.Sin((float)globalTime * 2f) * 3f;
 
-            renderer.DrawRect(camera, indicatorPos, 6, 6, intColor);
+            // Render recognizable base object on the tile
+            RenderInteractableObject(renderer, camera, intPos, interactable.Type, intColor, globalTime);
+
+            // Floating indicator above
+            var indicatorPos = intPos - new Vector2(0, 22 + bob);
+            // Indicator diamond shape
+            renderer.DrawRect(camera, indicatorPos, 5, 5, intColor);
+            renderer.DrawRect(camera, indicatorPos, 3, 3, new Color3(255, 255, 255));
+
+            // Label
             float intLabelW = renderer.MeasureText(interactable.Name, 1.5f) / 2f / camera.Zoom;
-            renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10), interactable.Name, intColor, 1.5f);
+            renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10),
+                interactable.Name, intColor, 1.5f);
+        }
+    }
+
+    /// <summary>Renders a recognizable object for each interactable type on the tile.</summary>
+    private static void RenderInteractableObject(
+        ISpriteRenderer renderer, Camera camera, Vector2 pos,
+        InteractableType type, Color3 color, double globalTime)
+    {
+        float time = (float)globalTime;
+
+        switch (type)
+        {
+            case InteractableType.RepairStation:
+                // Workbench with wrench icon
+                renderer.DrawRect(camera, pos + new Vector2(0, 4), 20, 6, new Color3(70, 60, 50));
+                // Wrench shape (two rects forming angle)
+                renderer.DrawRect(camera, pos + new Vector2(-3, -2), 3, 10, new Color3(160, 160, 170));
+                renderer.DrawRect(camera, pos + new Vector2(1, -6), 6, 3, new Color3(160, 160, 170));
+                break;
+
+            case InteractableType.HealthStation:
+                // Medical capsule with cross symbol
+                renderer.DrawRect(camera, pos, 16, 18, new Color3(40, 60, 70));
+                float medPulse = MathF.Sin(time * 2f) * 0.2f + 0.8f;
+                byte mr = (byte)(100 * medPulse);
+                byte mg = (byte)(200 * medPulse);
+                byte mb = (byte)(255 * medPulse);
+                renderer.DrawRect(camera, pos, 8, 2, new Color3(mr, mg, mb));
+                renderer.DrawRect(camera, pos, 2, 8, new Color3(mr, mg, mb));
+                break;
+
+            case InteractableType.MissionBoard:
+                // Screen with scrolling lines
+                renderer.DrawRect(camera, pos, 18, 14, new Color3(20, 25, 35));
+                renderer.DrawRect(camera, pos, 16, 12, new Color3(30, 45, 70));
+                int lineOffset = (int)(time * 2f) % 4;
+                for (int i = 0; i < 3; i++)
+                {
+                    int lw = 8 + ((i + lineOffset) % 3) * 2;
+                    renderer.DrawRect(camera, pos + new Vector2(-2, -3 + i * 4), lw, 2,
+                        new Color3(80, 160, 220));
+                }
+                break;
+
+            case InteractableType.ShipCustomization:
+                // Ship silhouette on a terminal
+                renderer.DrawRect(camera, pos + new Vector2(0, 4), 18, 6, new Color3(50, 55, 65));
+                // Mini ship shape
+                renderer.DrawRect(camera, pos + new Vector2(0, -2), 8, 4, color);
+                renderer.DrawRect(camera, pos + new Vector2(-4, -2), 4, 2, color);
+                renderer.DrawRect(camera, pos + new Vector2(4, -2), 4, 2, color);
+                break;
+
+            case InteractableType.AvatarCustomization:
+                // Mirror / mannequin stand
+                renderer.DrawRect(camera, pos + new Vector2(0, 6), 4, 6, new Color3(80, 80, 90));
+                renderer.DrawRect(camera, pos + new Vector2(0, -2), 12, 14,
+                    new Color3(40, 50, 70));
+                // Reflection shimmer
+                float shimmer = MathF.Sin(time * 3f) * 0.3f + 0.7f;
+                renderer.DrawRect(camera, pos + new Vector2(-2, -4), 2, 8,
+                    new Color3((byte)(100 * shimmer), (byte)(110 * shimmer), (byte)(130 * shimmer)));
+                break;
+
+            case InteractableType.VehicleCustomization:
+                // Vehicle outline on terminal
+                renderer.DrawRect(camera, pos + new Vector2(0, 4), 18, 6, new Color3(50, 55, 65));
+                // Mini vehicle shape
+                renderer.DrawRect(camera, pos + new Vector2(0, -2), 12, 5, color);
+                renderer.DrawRect(camera, pos + new Vector2(-5, 2), 3, 3, new Color3(60, 60, 60));
+                renderer.DrawRect(camera, pos + new Vector2(5, 2), 3, 3, new Color3(60, 60, 60));
+                break;
+
+            case InteractableType.ShipDealer:
+                // Display podium with rotating ship
+                renderer.DrawRect(camera, pos + new Vector2(0, 5), 20, 4, new Color3(60, 55, 50));
+                float rot = time * 1.5f;
+                float sx = MathF.Cos(rot) * 4f;
+                renderer.DrawRect(camera, pos + new Vector2(sx, -3), 8, 4, new Color3(200, 180, 60));
+                renderer.DrawRect(camera, pos + new Vector2(sx - 4, -3), 3, 2, new Color3(200, 180, 60));
+                renderer.DrawRect(camera, pos + new Vector2(sx + 4, -3), 3, 2, new Color3(200, 180, 60));
+                break;
+
+            case InteractableType.CargoTerminal:
+                // Cargo display with moving indicator
+                renderer.DrawRect(camera, pos, 16, 14, new Color3(30, 30, 40));
+                renderer.DrawRect(camera, pos, 14, 12, new Color3(50, 45, 30));
+                // Cargo boxes icon
+                renderer.DrawRect(camera, pos + new Vector2(-3, 1), 5, 5, new Color3(140, 110, 50));
+                renderer.DrawRect(camera, pos + new Vector2(3, -1), 5, 5, new Color3(120, 100, 45));
+                break;
+
+            case InteractableType.ExitDoor:
+                // Door frame with arrow
+                renderer.DrawRect(camera, pos + new Vector2(-8, 0), 3, 18, new Color3(80, 80, 90));
+                renderer.DrawRect(camera, pos + new Vector2(8, 0), 3, 18, new Color3(80, 80, 90));
+                renderer.DrawRect(camera, pos + new Vector2(0, -8), 13, 3, new Color3(80, 80, 90));
+                // Pulsing exit arrow
+                float exitPulse = MathF.Sin(time * 3f) * 0.3f + 0.7f;
+                renderer.DrawRect(camera, pos + new Vector2(0, 2), 6, 3,
+                    new Color3((byte)(255 * exitPulse), (byte)(80 * exitPulse), (byte)(80 * exitPulse)));
+                break;
         }
     }
 
