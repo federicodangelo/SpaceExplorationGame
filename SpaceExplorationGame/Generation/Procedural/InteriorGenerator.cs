@@ -208,13 +208,54 @@ public static class InteriorGenerator
             for (int y = 0; y < StationHeight; y++)
                 data.Tiles[x, y] = InteriorTileType.Void;
 
-        // Generate rooms
-        var docking = new InteriorRoom { Name = "DOCKING BAY", Function = RoomFunction.DockingBay, TileRect = new(2, StationHeight / 2 - 5, 10, 10) };
-        var command = new InteriorRoom { Name = "COMMAND CENTER", Function = RoomFunction.CommandCenter, TileRect = new(StationWidth - 14, 2, 12, 8) };
-        var trading = new InteriorRoom { Name = "TRADING POST", Function = RoomFunction.TradingPost, TileRect = new(StationWidth / 2 - 6, 2, 12, 8) };
-        var medbay = new InteriorRoom { Name = "MEDBAY", Function = RoomFunction.Medbay, TileRect = new(StationWidth - 14, StationHeight - 10, 12, 8) };
-        var quarters = new InteriorRoom { Name = "CREW QUARTERS", Function = RoomFunction.CrewQuarters, TileRect = new(StationWidth / 2 - 6, StationHeight - 10, 12, 8) };
-        var cargo = new InteriorRoom { Name = "CARGO BAY", Function = RoomFunction.CargoBay, TileRect = new(2, 2, 10, 8) };
+        // Generate rooms with randomized sizes
+        int dockW = rng.NextInt(10, 14), dockH = rng.NextInt(10, 14);
+        int cmdW = rng.NextInt(10, 14), cmdH = rng.NextInt(7, 10);
+        int tradW = rng.NextInt(10, 14), tradH = rng.NextInt(7, 10);
+        int medW = rng.NextInt(10, 14), medH = rng.NextInt(7, 10);
+        int qtrW = rng.NextInt(10, 14), qtrH = rng.NextInt(7, 10);
+        int crgW = rng.NextInt(10, 14), crgH = rng.NextInt(7, 10);
+
+        // Position jitter
+        int jx() => rng.NextInt(-1, 2);
+        int jy() => rng.NextInt(-1, 2);
+
+        var docking = new InteriorRoom
+        {
+            Name = "DOCKING BAY",
+            Function = RoomFunction.DockingBay,
+            TileRect = new(2, StationHeight / 2 - dockH / 2 + jy(), dockW, dockH)
+        };
+        var command = new InteriorRoom
+        {
+            Name = "COMMAND CENTER",
+            Function = RoomFunction.CommandCenter,
+            TileRect = new(StationWidth - cmdW - 2 + jx(), 2 + jy(), cmdW, cmdH)
+        };
+        var trading = new InteriorRoom
+        {
+            Name = "TRADING POST",
+            Function = RoomFunction.TradingPost,
+            TileRect = new(StationWidth / 2 - tradW / 2 + jx(), 2 + jy(), tradW, tradH)
+        };
+        var medbay = new InteriorRoom
+        {
+            Name = "MEDBAY",
+            Function = RoomFunction.Medbay,
+            TileRect = new(StationWidth - medW - 2 + jx(), StationHeight - medH - 2 + jy(), medW, medH)
+        };
+        var quarters = new InteriorRoom
+        {
+            Name = "CREW QUARTERS",
+            Function = RoomFunction.CrewQuarters,
+            TileRect = new(StationWidth / 2 - qtrW / 2 + jx(), StationHeight - qtrH - 2 + jy(), qtrW, qtrH)
+        };
+        var cargo = new InteriorRoom
+        {
+            Name = "CARGO BAY",
+            Function = RoomFunction.CargoBay,
+            TileRect = new(2 + jx(), 2 + jy(), crgW, crgH)
+        };
 
         data.Rooms.AddRange([docking, command, trading, medbay, quarters, cargo]);
 
@@ -230,6 +271,9 @@ public static class InteriorGenerator
         ConnectRooms(data, trading, command);
         ConnectRooms(data, quarters, medbay);
         ConnectRooms(data, command, medbay);
+
+        // Carve alcoves along corridors
+        CarveAlcoves(data, rng, 3);
 
         // Mark docking bay floor as landing pad
         for (int x = docking.TileRect.X + 2; x < docking.TileRect.X + docking.TileRect.Width - 2; x++)
@@ -315,13 +359,49 @@ public static class InteriorGenerator
             for (int y = 0; y < SettlementHeight; y++)
                 data.Tiles[x, y] = InteriorTileType.Void;
 
-        // Generate settlement layout: central street with buildings on either side
-        var landing = new InteriorRoom { Name = "LANDING PAD", Function = RoomFunction.LandingPad, TileRect = new(SettlementWidth / 2 - 4, SettlementHeight - 9, 9, 7) };
-        var market = new InteriorRoom { Name = "MARKET", Function = RoomFunction.Market, TileRect = new(2, 4, 10, 8) };
-        var cantina = new InteriorRoom { Name = "CANTINA", Function = RoomFunction.Cantina, TileRect = new(SettlementWidth - 12, 4, 10, 8) };
-        var housing1 = new InteriorRoom { Name = "HOUSING A", Function = RoomFunction.Housing, TileRect = new(2, 16, 8, 6) };
-        var housing2 = new InteriorRoom { Name = "HOUSING B", Function = RoomFunction.Housing, TileRect = new(SettlementWidth - 10, 16, 8, 6) };
-        var comms = new InteriorRoom { Name = "COMMS CENTER", Function = RoomFunction.CommsCenter, TileRect = new(SettlementWidth / 2 - 5, 2, 10, 6) };
+        // Generate settlement layout with randomized sizes
+        int landW = rng.NextInt(8, 11), landH = rng.NextInt(6, 9);
+        int mktW = rng.NextInt(9, 12), mktH = rng.NextInt(7, 10);
+        int cantW = rng.NextInt(9, 12), cantH = rng.NextInt(7, 10);
+        int housW = rng.NextInt(7, 10), housH = rng.NextInt(5, 8);
+        int comW = rng.NextInt(9, 12), comH = rng.NextInt(5, 8);
+
+        var landing = new InteriorRoom
+        {
+            Name = "LANDING PAD",
+            Function = RoomFunction.LandingPad,
+            TileRect = new(SettlementWidth / 2 - landW / 2, SettlementHeight - landH - 2, landW, landH)
+        };
+        var market = new InteriorRoom
+        {
+            Name = "MARKET",
+            Function = RoomFunction.Market,
+            TileRect = new(2, 4 + rng.NextInt(-1, 2), mktW, mktH)
+        };
+        var cantina = new InteriorRoom
+        {
+            Name = "CANTINA",
+            Function = RoomFunction.Cantina,
+            TileRect = new(SettlementWidth - cantW - 2, 4 + rng.NextInt(-1, 2), cantW, cantH)
+        };
+        var housing1 = new InteriorRoom
+        {
+            Name = "HOUSING A",
+            Function = RoomFunction.Housing,
+            TileRect = new(2, 15 + rng.NextInt(-1, 2), housW, housH)
+        };
+        var housing2 = new InteriorRoom
+        {
+            Name = "HOUSING B",
+            Function = RoomFunction.Housing,
+            TileRect = new(SettlementWidth - housW - 2, 15 + rng.NextInt(-1, 2), housW, housH)
+        };
+        var comms = new InteriorRoom
+        {
+            Name = "COMMS CENTER",
+            Function = RoomFunction.CommsCenter,
+            TileRect = new(SettlementWidth / 2 - comW / 2, 2, comW, comH)
+        };
 
         data.Rooms.AddRange([landing, market, cantina, housing1, housing2, comms]);
 
@@ -585,6 +665,61 @@ public static class InteriorGenerator
 
     private static bool TileInBounds(InteriorData data, int x, int y)
         => x >= 0 && x < data.Width && y >= 0 && y < data.Height;
+
+    /// <summary>Carve small alcoves along corridor walls for visual interest.</summary>
+    private static void CarveAlcoves(InteriorData data, SeededRandom rng, int count)
+    {
+        int placed = 0;
+        int attempts = count * 20;
+        while (placed < count && attempts-- > 0)
+        {
+            int x = rng.NextInt(2, data.Width - 3);
+            int y = rng.NextInt(2, data.Height - 3);
+
+            // Look for a corridor floor tile with a wall on one side and void beyond
+            if (!TileInBounds(data, x, y) || data.Tiles[x, y] != InteriorTileType.Floor)
+                continue;
+
+            // Try each direction for an alcove
+            int[][] dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+            var dir = dirs[rng.NextInt(4)];
+            int wx = x + dir[0], wy = y + dir[1];
+            int vx = x + dir[0] * 2, vy = y + dir[1] * 2;
+            int vx2 = x + dir[0] * 3, vy2 = y + dir[1] * 3;
+
+            if (!TileInBounds(data, wx, wy) || data.Tiles[wx, wy] != InteriorTileType.Wall)
+                continue;
+            if (!TileInBounds(data, vx, vy) || data.Tiles[vx, vy] != InteriorTileType.Void)
+                continue;
+            if (!TileInBounds(data, vx2, vy2) || data.Tiles[vx2, vy2] != InteriorTileType.Void)
+                continue;
+
+            // Carve a 1x2 alcove: replace the wall with floor, place wall around the alcove
+            data.Tiles[wx, wy] = InteriorTileType.DoorOpen;
+            data.Tiles[vx, vy] = InteriorTileType.Floor;
+
+            // Wall around the new alcove tile
+            for (int ddx = -1; ddx <= 1; ddx++)
+            {
+                for (int ddy = -1; ddy <= 1; ddy++)
+                {
+                    int nx = vx + ddx, ny = vy + ddy;
+                    if (TileInBounds(data, nx, ny) && data.Tiles[nx, ny] == InteriorTileType.Void)
+                        data.Tiles[nx, ny] = InteriorTileType.Wall;
+                }
+            }
+
+            // Place a decoration in the alcove
+            var decoration = rng.NextInt(3) switch
+            {
+                0 => InteriorTileType.Crate,
+                1 => InteriorTileType.Plant,
+                _ => InteriorTileType.Console
+            };
+            data.Tiles[vx, vy] = decoration;
+            placed++;
+        }
+    }
 
     /// <summary>Build a per-tile room function map from the room list.</summary>
     private static void BuildRoomTileMap(InteriorData data)
