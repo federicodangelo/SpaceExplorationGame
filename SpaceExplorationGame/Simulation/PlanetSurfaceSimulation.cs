@@ -21,7 +21,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     // ── Data ────────────────────────────────────────────────────────
     public StarSystemData StarSystem { get; }
     public PlanetData Planet { get; }
-    public PlanetSurfaceData SurfaceData { get; private set; } = null!;
+    public PlanetSurfaceData SurfaceData { get; private init; }
 
     // ── Entities ────────────────────────────────────────────────────
     public Entity LocalShipEntity { get; set; }
@@ -43,26 +43,20 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     // ── ECS Systems (planet-surface-specific) ──────────────────────
     private AvatarEnemyAISystem _enemyAISystem = null!;
 
-    private readonly PlanetSurfaceData? _preGeneratedSurfaceData;
-
     private readonly List<string> _dbgInfo = [];
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
-        PlanetSurfaceData? preGeneratedSurfaceData = null,
-        ISimulation? parent = null)
+        PlanetSurfaceData? preGeneratedSurfaceData = null, ISimulation? parent = null)
         : base(game, parent)
     {
         StarSystem = starSystem;
         Planet = planet;
-        _preGeneratedSurfaceData = preGeneratedSurfaceData;
+        SurfaceData = preGeneratedSurfaceData
+            ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
     }
 
     public override void Create()
     {
-        // Generate surface
-        SurfaceData = _preGeneratedSurfaceData
-            ?? _game.WorldGenerator.GeneratePlanetSurface(_game.Seeds, StarSystem, Planet);
-
         SpawnFauna();
         SpawnBandits();
         SpawnRocks();
