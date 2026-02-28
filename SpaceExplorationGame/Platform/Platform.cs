@@ -12,7 +12,6 @@ public class Platform
     public TextureManager Textures { get; private set; }
     public InputManager InputManager { get; private set; }
     public AudioManager AudioManager { get; private set; }
-    public TileMapRenderer TileMapRenderer { get; private set; }
 
     public Platform()
     {
@@ -41,7 +40,6 @@ public class Platform
 
         Textures = new TextureManager(renderer);
         SpriteRenderer = new SpriteRenderer(window, renderer, Textures);
-        TileMapRenderer = new TileMapRenderer();
         InputManager = new InputManager();
         AudioManager = new AudioManager(
             masterVolume: GameConfig.AudioMasterVolume,

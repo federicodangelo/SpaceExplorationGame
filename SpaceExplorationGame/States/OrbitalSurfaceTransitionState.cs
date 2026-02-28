@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
@@ -353,17 +352,13 @@ public class OrbitalSurfaceTransitionState : GameState
         float dstCenterX = Lerp(planetX, CX, terrainBlend);
         float dstCenterY = Lerp(planetY, CY, terrainBlend);
 
-        var srcRect = new SDL.FRect { X = srcX, Y = srcY, W = srcW, H = srcH };
-        var dstRect = new SDL.FRect
-        {
-            X = dstCenterX - dstW * 0.5f,
-            Y = dstCenterY - dstH * 0.5f,
-            W = dstW,
-            H = dstH
-        };
+        float dstX = dstCenterX - dstW * 0.5f;
+        float dstY = dstCenterY - dstH * 0.5f;
 
         byte a = (byte)Math.Clamp((int)(terrainBlend * 255), 0, 255);
-        game.SpriteRenderer.DrawTextureScreen(_terrainTexture, in srcRect, in dstRect, a);
+        game.SpriteRenderer.DrawTextureScreen(_terrainTexture,
+            new Rect(srcX, srcY, srcW, srcH),
+            new Rect(dstX, dstY, dstW, dstH), a);
 
         float markerP = EaseInOut01(Math.Clamp((descentP - 0.22f) / 0.78f, 0f, 1f)) * terrainBlend;
         byte markerAlpha = (byte)Math.Clamp((int)(markerP * 255f), 0, 255);
@@ -383,10 +378,10 @@ public class OrbitalSurfaceTransitionState : GameState
                     float u1 = Math.Clamp((rightTile - srcX) / srcW, 0f, 1f);
                     float v1 = Math.Clamp((bottomTile - srcY) / srcH, 0f, 1f);
 
-                    float screenX = dstRect.X + u0 * dstRect.W;
-                    float screenY = dstRect.Y + v0 * dstRect.H;
-                    float screenW = MathF.Max(1f, (u1 - u0) * dstRect.W);
-                    float screenH = MathF.Max(1f, (v1 - v0) * dstRect.H);
+                    float screenX = dstX + u0 * dstW;
+                    float screenY = dstY + v0 * dstH;
+                    float screenW = MathF.Max(1f, (u1 - u0) * dstW);
+                    float screenH = MathF.Max(1f, (v1 - v0) * dstH);
                     return new Rect(screenX, screenY, screenW, screenH);
                 },
                 (Vector2 worldPos) =>
@@ -396,7 +391,7 @@ public class OrbitalSurfaceTransitionState : GameState
 
                     float u = Math.Clamp((tileX - srcX) / srcW, 0f, 1f);
                     float v = Math.Clamp((tileY - srcY) / srcH, 0f, 1f);
-                    return new Vector2(dstRect.X + u * dstRect.W, dstRect.Y + v * dstRect.H);
+                    return new Vector2(dstX + u * dstW, dstY + v * dstH);
                 },
                 markerAlpha);
         }
@@ -405,7 +400,7 @@ public class OrbitalSurfaceTransitionState : GameState
         float targetV = (_tileY - srcY) / srcH;
         targetU = Math.Clamp(targetU, 0f, 1f);
         targetV = Math.Clamp(targetV, 0f, 1f);
-        return new Vector2(dstRect.X + targetU * dstRect.W, dstRect.Y + targetV * dstRect.H);
+        return new Vector2(dstX + targetU * dstW, dstY + targetV * dstH);
     }
 
     private static float Lerp(float a, float b, float t) => float.Lerp(a, b, Math.Clamp(t, 0f, 1f));

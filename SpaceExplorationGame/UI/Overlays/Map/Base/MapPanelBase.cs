@@ -81,8 +81,8 @@ public abstract class MapPanelBase
         }
 
         // Drag pan
-        if (input.IsMousePressed(1)) { LastMouseScreen = currentMouse; IsPanning = false; }
-        if (input.IsMouseDown(1))
+        if (input.IsMousePressed(MouseButton.Left)) { LastMouseScreen = currentMouse; IsPanning = false; }
+        if (input.IsMouseDown(MouseButton.Left))
         {
             Vector2 delta = currentMouse - LastMouseScreen;
             if (delta.LengthSquared() > 4f)

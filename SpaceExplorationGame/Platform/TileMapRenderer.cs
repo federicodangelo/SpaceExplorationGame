@@ -13,6 +13,12 @@ public class TileMapRenderer
     // Reusable buffers for batched tile rendering (avoids per-frame allocs).
     private SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
     private int[] _indexBuf = new int[1536];
+    private nint _renderer;
+
+    public TileMapRenderer(nint renderer)
+    {
+        _renderer = renderer;
+    }
 
     /// <summary>
     /// Renders visible tiles with deterministic per-tile brightness variation.
@@ -121,7 +127,7 @@ public class TileMapRenderer
         }
 
         if (vi > 0)
-            renderer.DrawGeometryScreen(_vertexBuf, vi, _indexBuf, ii);
+            SDL.RenderGeometry(_renderer, nint.Zero, _vertexBuf, vi, _indexBuf, ii);
 
         // ── Pass 2: render per-tile details ──
         if (renderDetail != null)

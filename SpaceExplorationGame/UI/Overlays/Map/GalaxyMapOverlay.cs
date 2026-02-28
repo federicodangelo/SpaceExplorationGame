@@ -133,7 +133,7 @@ public class GalaxyMapOverlay : MapOverlayBase
 
         // Check if mouse clicked on tab buttons
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
-        if (input.IsMouseReleased(1))
+        if (input.IsMouseReleased(MouseButton.Left))
         {
             float tabSolarX = FrameX;
             float tabGalaxyX = FrameX + FrameW / 2f;

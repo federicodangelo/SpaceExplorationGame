@@ -346,7 +346,7 @@ public class PlanetSurfaceState : GameState
 
             if (gamepadHeading != Vector2.Zero)
                 aimDir = gamepadHeading;
-            else if (input.IsMouseDown(1))
+            else if (input.IsMouseDown(MouseButton.Left))
             {
                 var mouseWorld = _camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
                 aimDir = Vector2.Normalize(mouseWorld - avatarTf.Position);

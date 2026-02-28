@@ -106,7 +106,7 @@ public abstract class ListPanelOverlay : PanelOverlayBase
             {
                 _selectedIndex = i;
 
-                if (input.IsMousePressed(1))
+                if (input.IsMousePressed(MouseButton.Left))
                     OnItemConfirmed(game, i);
 
                 break;

@@ -41,6 +41,13 @@ public enum InputMethod
     Gamepad,
 }
 
+public enum MouseButton
+{
+    Left = 1,
+    Middle = 2,
+    Right = 3,
+}
+
 public enum MovementInputMode
 {
     HeadingRelative,
@@ -373,24 +380,16 @@ public class InputManager
         return GetActionHelpText(action, includeSecondary: true);
     }
 
-    public string GetKeyHelpText(SDL.Scancode scancode)
+    public string GetMouseButtonHelpText(MouseButton button)
     {
         return ActiveInputMethod == InputMethod.MouseKeyboard
-            ? GetBindingLabel(InputBinding.Key(scancode))
+            ? GetBindingLabel(InputBinding.Mouse((int)button))
             : string.Empty;
     }
 
-    public string GetMouseButtonHelpText(int button)
-    {
-        return ActiveInputMethod == InputMethod.MouseKeyboard
-            ? GetBindingLabel(InputBinding.Mouse(button))
-            : string.Empty;
-    }
-
-    // Mouse queries (SDL.ButtonLeft=1, SDL.ButtonMiddle=2, SDL.ButtonRight=3)
-    public bool IsMouseDown(int button) => _mouseDown.Contains(button);
-    public bool IsMousePressed(int button) => _mousePressed.Contains(button);
-    public bool IsMouseReleased(int button) => _mouseReleased.Contains(button);
+    public bool IsMouseDown(MouseButton button) => _mouseDown.Contains((int)button);
+    public bool IsMousePressed(MouseButton button) => _mousePressed.Contains((int)button);
+    public bool IsMouseReleased(MouseButton button) => _mouseReleased.Contains((int)button);
 
     private bool IsAnyBindingActive(
         InputAction action,

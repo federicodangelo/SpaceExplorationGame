@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -215,14 +214,9 @@ public abstract class PlanetMapPanelBase : MapPanelBase
 
         var topLeft = Camera.WorldToScreen(Vector2.Zero);
         var bottomRight = Camera.WorldToScreen(new Vector2(worldW, worldH));
-        var dstRect = new SDL.FRect
-        {
-            X = topLeft.X,
-            Y = topLeft.Y,
-            W = bottomRight.X - topLeft.X,
-            H = bottomRight.Y - topLeft.Y
-        };
-        game.SpriteRenderer.DrawTextureScreen(_terrainTexture, in dstRect);
+        game.SpriteRenderer.DrawTextureScreen(_terrainTexture,
+            new Rect(topLeft.X, topLeft.Y,
+                bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y));
 
         float tileScreenW = (bottomRight.X - topLeft.X) / worldW;
         float tileScreenH = (bottomRight.Y - topLeft.Y) / worldH;

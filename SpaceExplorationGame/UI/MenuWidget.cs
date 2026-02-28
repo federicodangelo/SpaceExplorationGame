@@ -147,13 +147,13 @@ public class MenuWidget<T> where T : struct, Enum
                     my >= r.Y && my <= r.Y + r.H)
                 {
                     _selected = i;
-                    if (input.IsMouseReleased(1) && _options[i].Enabled)
+                    if (input.IsMouseReleased(MouseButton.Left) && _options[i].Enabled)
                         return _options[i].Value;
                     break;
                 }
             }
         }
-        else if (input.IsMousePressed(1))
+        else if (input.IsMousePressed(MouseButton.Left))
         {
             // Allow click even while ignoring hover — re-enable mouse and process click
             _ignoreMouseHover = false;

@@ -27,7 +27,7 @@ public class SpriteRenderer : IDisposable
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
         _fontRenderer = new FontRenderer(renderer, textures);
-        _tileMapRenderer = new TileMapRenderer();
+        _tileMapRenderer = new TileMapRenderer(renderer);
         _cachedCircleTexture = CreateCachedCircleTexture();
     }
 
@@ -250,10 +250,12 @@ public class SpriteRenderer : IDisposable
             SDL.SetTextureAlphaMod(texture, 255);
     }
 
-    public void DrawTextureScreen(nint texture, in SDL.FRect dstRect, byte alpha = 255)
+    /// <summary>Draw a texture in screen space (dst rect only, no src rect).</summary>
+    public void DrawTextureScreen(nint texture, Rect dst, byte alpha = 255)
     {
-
         if (texture == nint.Zero) return;
+
+        var dstRect = new SDL.FRect { X = dst.X, Y = dst.Y, W = dst.W, H = dst.H };
 
         if (alpha < 255)
             SDL.SetTextureAlphaMod(texture, alpha);
@@ -264,10 +266,13 @@ public class SpriteRenderer : IDisposable
             SDL.SetTextureAlphaMod(texture, 255);
     }
 
-    public void DrawTextureScreen(nint texture, in SDL.FRect srcRect, in SDL.FRect dstRect, byte alpha = 255)
+    /// <summary>Draw a texture in screen space (src + dst rects).</summary>
+    public void DrawTextureScreen(nint texture, Rect src, Rect dst, byte alpha = 255)
     {
-
         if (texture == nint.Zero) return;
+
+        var srcRect = new SDL.FRect { X = src.X, Y = src.Y, W = src.W, H = src.H };
+        var dstRect = new SDL.FRect { X = dst.X, Y = dst.Y, W = dst.W, H = dst.H };
 
         if (alpha < 255)
             SDL.SetTextureAlphaMod(texture, alpha);
@@ -309,7 +314,7 @@ public class SpriteRenderer : IDisposable
     }
 
     /// <summary>Render pre-built colored geometry (no texture) in a single batched draw call.</summary>
-    public void DrawGeometryScreen(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices, nint? texture = null)
+    private void DrawGeometryScreen(SDL.Vertex[] vertices, int numVertices, int[] indices, int numIndices, nint? texture = null)
     {
         SDL.RenderGeometry(_renderer, texture ?? nint.Zero, vertices, numVertices, indices, numIndices);
     }

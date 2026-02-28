@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -89,7 +88,7 @@ public class GalaxyMapPanel : MapPanelBase
             }
         }
 
-        if (input.IsMouseReleased(1))
+        if (input.IsMouseReleased(MouseButton.Left))
         {
             if (!IsPanning && _hoveredSystemIndex >= 0)
             {
@@ -464,7 +463,7 @@ public class GalaxyMapPanel : MapPanelBase
         else
         {
             string panText =
-                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
             renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);

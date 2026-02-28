@@ -149,7 +149,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
                     _selectedSlot = i;
                     RefreshAvailableParts();
                 }
-                if (input.IsMousePressed(1))
+                if (input.IsMousePressed(MouseButton.Left))
                 {
                     _activeColumn = Column.Parts;
                     _selectedPart = 0;
@@ -198,7 +198,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
             if (mx >= rightX && mx <= rightX + rightW && my >= itemY && my < itemY + 65)
             {
                 _selectedPart = i;
-                if (input.IsMousePressed(1))
+                if (input.IsMousePressed(MouseButton.Left))
                     TryEquipOrBuy(game);
                 break;
             }

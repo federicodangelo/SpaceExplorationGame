@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -142,7 +141,7 @@ public class SolarSystemMapPanel : MapPanelBase
         }
 
         // Click to select / click same object again to set target and close
-        if (input.IsMouseReleased(1) && !IsPanning)
+        if (input.IsMouseReleased(MouseButton.Left) && !IsPanning)
         {
             if (_hoveredObject.Type != SolarMapObjectType.None)
             {
@@ -156,7 +155,7 @@ public class SolarSystemMapPanel : MapPanelBase
             }
             IsPanning = false;
         }
-        else if (input.IsMouseReleased(1))
+        else if (input.IsMouseReleased(MouseButton.Left))
             IsPanning = false;
 
         if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm)
@@ -491,11 +490,11 @@ public class SolarSystemMapPanel : MapPanelBase
         else
         {
             string panText =
-                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
             renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 40,
-                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
+                $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -606,7 +605,7 @@ public class SolarSystemMapPanel : MapPanelBase
     {
         string confirmText = game.Input.ActiveInputMethod == InputMethod.Gamepad
             ? game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()
-            : game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
+            : game.Input.GetMouseButtonHelpText(MouseButton.Left).ToUpper();
         string btnText = isTarget
             ? $"[{confirmText}] SAME OBJECT: TARGET LOCKED"
             : $"[{confirmText}] SAME OBJECT: SET AS TARGET + CLOSE";

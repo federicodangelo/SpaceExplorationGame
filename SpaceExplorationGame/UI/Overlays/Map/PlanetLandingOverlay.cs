@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -106,7 +105,7 @@ public class PlanetLandingOverlay : MapOverlayBase
             string prompt = canLand
                 ? usingGamepad
                     ? $"[{confirmText}] CONFIRM LANDING"
-                    : $"[DBLCLICK/{confirmText}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper()}] CONFIRM LANDING"
+                    : $"[DBLCLICK/{confirmText}/{game.Input.GetMouseButtonHelpText(MouseButton.Left).ToUpper()}] CONFIRM LANDING"
                 : "CANNOT LAND ON " + _panel.CursorTerrainName;
             byte pr = canLand ? (byte)100 : (byte)255;
             byte pg = canLand ? (byte)255 : (byte)80;

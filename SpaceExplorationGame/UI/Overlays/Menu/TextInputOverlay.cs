@@ -1,4 +1,3 @@
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Platform;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
@@ -40,9 +39,8 @@ public class TextInputOverlay : PanelOverlayBase
             var input = CurrentInput;
             if (input == null) return "";
 
-            return $"{input.GetKeyHelpText(SDL.Scancode.Return)}: CONFIRM   " +
-                   $"{input.GetKeyHelpText(SDL.Scancode.Escape)}: CANCEL   " +
-                   $"{input.GetKeyHelpText(SDL.Scancode.Backspace)}: DELETE";
+            return $"{input.GetActionHelpText(InputAction.MenuConfirm)}: CONFIRM   " +
+                   $"{input.GetActionHelpText(InputAction.MenuBack)}: CANCEL";
         }
     }
 

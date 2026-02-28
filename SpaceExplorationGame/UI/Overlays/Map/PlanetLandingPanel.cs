@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -132,7 +131,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         ClampCameraPosition();
 
         // Click to select / double-click to land
-        if (input.IsMouseReleased(1) && !IsPanning)
+        if (input.IsMouseReleased(MouseButton.Left) && !IsPanning)
         {
             if (IsMouseInMap(currentMouse))
             {
@@ -169,7 +168,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             }
             IsPanning = false;
         }
-        else if (input.IsMouseReleased(1))
+        else if (input.IsMouseReleased(MouseButton.Left))
             IsPanning = false;
 
         // Arrow keys to nudge cursor
@@ -371,9 +370,9 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         else
         {
             string panText =
-                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
             renderer.DrawTextScreen(px, ctrlStartY + 8,
-                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT SITE",
+                $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT SITE",
                 new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);

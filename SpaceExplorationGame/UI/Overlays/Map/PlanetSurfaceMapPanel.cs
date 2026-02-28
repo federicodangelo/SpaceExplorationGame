@@ -1,5 +1,4 @@
 using System.Numerics;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
@@ -130,7 +129,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
 
         // Click to select / click same selection again to set target and close
-        if (input.IsMouseReleased(1) && !IsPanning)
+        if (input.IsMouseReleased(MouseButton.Left) && !IsPanning)
         {
             // Determine what was clicked: settlement/ship take priority, otherwise any terrain location
             SurfaceMapSelection clickTarget;
@@ -176,7 +175,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             }
             IsPanning = false;
         }
-        else if (input.IsMouseReleased(1))
+        else if (input.IsMouseReleased(MouseButton.Left))
             IsPanning = false;
 
         return true;
@@ -458,11 +457,11 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         else
         {
             string panText =
-                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}-DRAG: PAN";
+                $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
             renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 40,
-                $"{game.Input.GetMouseButtonHelpText(SDL.ButtonLeft)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
+                $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -523,7 +522,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
     private void RenderTargetButton(Game game, SpriteRenderer renderer, float px, float py, bool isTarget)
     {
-        string confirmText = game.Input.GetMouseButtonHelpText(SDL.ButtonLeft).ToUpper();
+        string confirmText = game.Input.GetMouseButtonHelpText(MouseButton.Left).ToUpper();
         string btnText = isTarget
             ? $"[{confirmText}] SAME SELECTION: TARGET LOCKED"
             : $"[{confirmText}] SAME SELECTION: SET AS TARGET + CLOSE";
