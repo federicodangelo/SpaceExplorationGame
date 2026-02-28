@@ -26,6 +26,8 @@ public class PlanetSurfaceData
     public int Width { get; init; }
     public int Height { get; init; }
     public TerrainType[,] Tiles { get; init; } = null!;
+    /// <summary>Noise-based height value per tile (0-1), used for shading.</summary>
+    public float[,] HeightMap { get; init; } = null!;
     public List<SettlementData> Settlements { get; init; } = [];
     public TilePos LandingZone { get; set; }
 
@@ -98,7 +100,8 @@ public static class PlanetSurfaceGenerator
         {
             Width = width,
             Height = height,
-            Tiles = tiles
+            Tiles = tiles,
+            HeightMap = heightMap
         };
 
         // Place settlements

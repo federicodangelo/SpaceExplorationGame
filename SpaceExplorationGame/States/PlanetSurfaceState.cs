@@ -531,7 +531,8 @@ public class PlanetSurfaceState : GameState
         var world = _sim.EcsWorld;
 
         // Terrain
-        PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData);
+        PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,
+            game.GlobalTime, _planet.Type);
 
         // Settlements
         SettlementRenderer.Render(renderer, camera, _sim.SurfaceData);
@@ -579,7 +580,7 @@ public class PlanetSurfaceState : GameState
 
         // Rocks, enemies, projectiles
         SurfaceRockRenderer.RenderRocks(renderer, camera, world);
-        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world);
+        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planet.Type);
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Damage/explosions
