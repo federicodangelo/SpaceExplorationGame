@@ -329,6 +329,17 @@ public class InteriorState : GameState
         // Draw world
         InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, avatarTf.Position,
             game.AvatarRenderer, game.GlobalTime, _planet);
+
+        int w = GameConfig.WindowWidth;
+        int h = GameConfig.WindowHeight;
+
+        // Atmospheric post-processing (vignette)
+        InteriorRenderer.RenderAtmosphere(renderer, w, h);
+
+        // Weather overlay for settlement biomes
+        if (_sim.Interior.Type == InteriorType.Settlement)
+            InteriorRenderer.RenderWeatherEffects(renderer, w, h, _planet, game.GlobalTime,
+                _camera.Position.X, _camera.Position.Y);
     }
 
     public override void RenderHud(Game game)
@@ -339,13 +350,6 @@ public class InteriorState : GameState
 
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
-
-        // Atmospheric post-processing (vignette)
-        InteriorRenderer.RenderAtmosphere(renderer, w, h);
-
-        // Weather overlay for settlement biomes
-        if (_sim.Interior.Type == InteriorType.Settlement)
-            InteriorRenderer.RenderWeatherEffects(renderer, w, h, _planet, game.GlobalTime);
 
         // HUD
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
