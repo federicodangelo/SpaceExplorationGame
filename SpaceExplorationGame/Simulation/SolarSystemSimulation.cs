@@ -6,7 +6,6 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
-using SpaceExplorationGame.ECS.Systems.Effects;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Simulation.Base;
 
@@ -58,7 +57,6 @@ public class SolarSystemSimulation : CombatSimulationBase
     private ShipSystem _shipSystem = null!;
     private ShieldRegenSystem _shieldRegenSystem = null!;
     private ShipEnemyAISystem _enemyAISystem = null!;
-    private ParticleSystem _particleSystem = null!;
 
     private const float InteractionRadius = 20f;
 
@@ -108,9 +106,6 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         _enemyAISystem = new ShipEnemyAISystem(EcsWorld, totalW, totalH);
         _enemyAISystem.Initialize();
-
-        _particleSystem = new ParticleSystem(EcsWorld);
-        _particleSystem.Initialize();
     }
 
     public override void Destroy()
@@ -132,7 +127,6 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Orbits", () => _orbitSystem.Update(in globalTime)); // Orbits depend on global time, not dt
-        t.Time("Particles", () => _particleSystem.Update(in dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Ships", () => _shipSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));

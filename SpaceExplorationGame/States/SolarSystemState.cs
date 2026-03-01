@@ -4,6 +4,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
+using SpaceExplorationGame.ECS.Systems.Effects;
 using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
@@ -32,6 +33,9 @@ public class SolarSystemState : GameState
     // ── Camera ──────────────────────────────────────────────────────
     private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
         GameConfig.SolarSystemZoomMin, GameConfig.SolarSystemZoomMax);
+
+    // ── Particle system (rendering-side, only updated when state is active) ──
+    private ParticleSystem _particleSystem = null!;
 
     // ── Input system (runs on simulation ECS world) ─────────────────
     private PlayerShipInputSystem _playerShipInputSystem = null!;
@@ -97,6 +101,10 @@ public class SolarSystemState : GameState
 
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
+
+        // Particle system lives in the state — only updated when this state is active
+        _particleSystem = new ParticleSystem(_sim.EcsWorld);
+        _particleSystem.Initialize();
 
         // Create input/camera systems that operate on the simulation's ECS world
         _playerShipInputSystem = new PlayerShipInputSystem(_sim.EcsWorld, game.Input);
@@ -221,6 +229,10 @@ public class SolarSystemState : GameState
         ApplyAnchor();
 
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
+
+        // Particles: cull off-screen emitters then simulate — only runs while this state is active
+        _particleSystem.SetEmitterValidationBounds(_camera.GetVisibleBounds());
+        t.Time("Particles", () => _particleSystem.Update(in dt));
 
         // Handle respawn station auto-dock
         if (_sim.RespawnSpaceStationIndex >= 0)
