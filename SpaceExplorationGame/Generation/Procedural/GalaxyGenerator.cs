@@ -51,17 +51,56 @@ public static class GalaxyGenerator
         float centerY = mapHeight / 2f;
         float galaxyRadius = MathF.Min(mapWidth, mapHeight) * 0.4f;
 
+        // Use Poisson disk sampling inside the galaxy disc for well-distributed star positions.
+        // Choose minDist so that the disc fits roughly systemCount points:
+        //   Packing estimate: N ≈ π·R² / (π/4·minDist²) = 4R²/minDist²  →  minDist = 2R/√N
+        // Reduce by 0.5 to generate a surplus of candidates, then trim to systemCount.
+        float minDist = 2f * galaxyRadius / MathF.Sqrt(systemCount) * 0.5f;
+        float bx0 = centerX - galaxyRadius;
+        float by0 = centerY - galaxyRadius;
+        float bx1 = centerX + galaxyRadius;
+        float by1 = centerY + galaxyRadius;
+
+        var poissonPoints = PoissonDiskSampler.Sample(rng, bx0, by0, bx1, by1, minDist);
+
+        // Keep only points that fall inside the galaxy disc (with a small empty-core exclusion).
+        float innerRadius = galaxyRadius * 0.05f;
+        float innerRadiusSq = innerRadius * innerRadius;
+        float outerRadiusSq = galaxyRadius * galaxyRadius;
+        var discPoints = new List<Vector2>(poissonPoints.Count);
+        foreach (var p in poissonPoints)
+        {
+            float dx = p.X - centerX;
+            float dy = p.Y - centerY;
+            float distSq = dx * dx + dy * dy;
+            if (distSq >= innerRadiusSq && distSq <= outerRadiusSq)
+                discPoints.Add(p);
+        }
+
+        // Fisher-Yates shuffle so we pick a varied subset when we have more than needed.
+        for (int s = discPoints.Count - 1; s > 0; s--)
+        {
+            int j = rng.NextInt(0, s + 1);
+            (discPoints[s], discPoints[j]) = (discPoints[j], discPoints[s]);
+        }
+
+        // Pad with random disc positions if Poisson delivered fewer than requested
+        // (should only happen in degenerate cases with unusual config values).
+        while (discPoints.Count < systemCount)
+        {
+            float angle = rng.NextFloat(0, MathF.PI * 2f);
+            float r = MathF.Sqrt(rng.NextFloat(innerRadius * innerRadius / outerRadiusSq, 1f)) * galaxyRadius;
+            discPoints.Add(new Vector2(centerX + MathF.Cos(angle) * r, centerY + MathF.Sin(angle) * r));
+        }
+
         // Generate names pool
         var usedNames = new HashSet<string>();
 
         for (int i = 0; i < systemCount; i++)
         {
-            // Distribute stars in a spiral/disc pattern
-            float angle = rng.NextFloat(0, MathF.PI * 2f);
-            float dist = rng.NextFloat(0.05f, 1f);
-            dist = MathF.Sqrt(dist); // sqrt for uniform disc distribution
-            float x = centerX + MathF.Cos(angle) * dist * galaxyRadius;
-            float y = centerY + MathF.Sin(angle) * dist * galaxyRadius;
+            var pos = discPoints[i];
+            float x = pos.X;
+            float y = pos.Y;
 
             // Generate unique name (with retry limit to avoid infinite loop)
             string name;
@@ -86,13 +125,13 @@ public static class GalaxyGenerator
             // Planet count (correlates somewhat with star class)
             int planetCount = starClass switch
             {
-                StarClass.O => rng.NextInt(1, 4),
-                StarClass.B => rng.NextInt(1, 5),
-                StarClass.A => rng.NextInt(2, 6),
-                StarClass.F => rng.NextInt(2, 8),
-                StarClass.G => rng.NextInt(3, 10),  // Sun-like stars have more planets
-                StarClass.K => rng.NextInt(2, 8),
-                StarClass.M => rng.NextInt(1, 6),
+                StarClass.O => rng.NextInt(3, 6),
+                StarClass.B => rng.NextInt(3, 7),
+                StarClass.A => rng.NextInt(4, 7),
+                StarClass.F => rng.NextInt(4, 8),
+                StarClass.G => rng.NextInt(6, 10),  // Sun-like stars have more planets
+                StarClass.K => rng.NextInt(4, 8),
+                StarClass.M => rng.NextInt(3, 6),
                 _ => rng.NextInt(2, 6)
             };
 
