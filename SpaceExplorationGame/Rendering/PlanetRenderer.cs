@@ -61,7 +61,7 @@ public class PlanetRenderer
             // Settlement indicator (small diamond below planet)
             if (p.HasSettlement)
             {
-                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 6);
+                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 15);
                 float pulse = 1f + 0.25f * MathF.Sin(globalTime * 3f + p.Index * 0.7f);
                 renderer.DrawFilledCircle(camera, indicatorPos, 3f * pulse, new Color4(255, 210, 200, 220));
             }

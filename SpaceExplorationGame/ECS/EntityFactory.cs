@@ -47,7 +47,7 @@ public static class EntityFactory
                 HasSolidSurface = planet.HasSolidSurface
             },
             new Orbit(starEntity, planet.OrbitRadius, planet.OrbitSpeed, planet.StartAngle),
-            new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 10) }
+            new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 30) }
         );
 
         if (planet.HasSolidSurface)
@@ -77,7 +77,7 @@ public static class EntityFactory
                 HasSolidSurface = true
             },
             new Orbit(parentPlanet, moon.OrbitRadius, moon.OrbitSpeed, moon.StartAngle),
-            new Label { Text = moon.Name, OffsetY = (int)(moon.Radius + 8) },
+            new Label { Text = moon.Name, OffsetY = (int)(moon.Radius + 30) },
             new Interactable
             {
                 Type = InteractionType.LandOnPlanet,
@@ -100,7 +100,7 @@ public static class EntityFactory
                 DataIndex = spaceStation.Index
             },
             new Orbit(parent, spaceStation.OrbitRadius, spaceStation.OrbitSpeed, spaceStation.StartAngle),
-            new Label { Text = spaceStation.Name, OffsetY = 280 },
+            new Label { Text = spaceStation.Name, OffsetY = 140 },
             new Interactable
             {
                 Type = InteractionType.DockAtSpaceStation,
