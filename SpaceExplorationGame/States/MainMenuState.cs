@@ -39,8 +39,9 @@ public class MainMenuState : GameState
 
     private float _animTimer;
 
-    // Background star field
+    // Background star field & nebulae
     private StarsBackgroundRenderer? _starsBackground;
+    private NebulaBackgroundRenderer? _nebulaBackground;
 
     private readonly MainMenuOverlay _menuOverlay = new();
     private readonly DebugMenuOverlay _debugOverlay = new();
@@ -120,6 +121,9 @@ public class MainMenuState : GameState
         float cy = GameConfig.WindowHeight * 0.5f;
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 1.0f);
         _starsBackground.Generate(cx, cy, cx, cy, seed: 42uL, minDist: 80f);
+
+        _nebulaBackground = new NebulaBackgroundRenderer();
+        _nebulaBackground.Generate(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, seed: 42uL, count: 5, minRadius: 200f, maxRadius: 600f);
     }
 
     public override void Exit(Game game) { }
@@ -648,6 +652,7 @@ public class MainMenuState : GameState
         var renderer = game.SpriteRenderer;
 
         _starsBackground?.Render(renderer, _fakeCamera, _animTimer);
+        _nebulaBackground?.Render(renderer, _fakeCamera, _animTimer);
 
         float centerX = GameConfig.WindowWidth / 2f;
         float centerY = GameConfig.WindowHeight / 2f;

@@ -31,7 +31,10 @@ public class NebulaBackgroundRenderer
     /// <param name="toY">Maximum world Y of the camera roaming area.</param>
     /// <param name="seed">Seed for deterministic generation.</param>
     /// <param name="count">Number of nebula clouds to generate.</param>
-    public void Generate(float fromX, float fromY, float toX, float toY, ulong seed, int count = 32)
+    /// <param name="minRadius">Minimum cloud radius. Defaults to 1200.</param>
+    /// <param name="maxRadius">Maximum cloud radius. Defaults to 5000.</param>
+    public void Generate(float fromX, float fromY, float toX, float toY, ulong seed,
+        int count = 32, float minRadius = 1200f, float maxRadius = 5000f)
     {
         float extW = (toX - fromX) * 0.5f;
         float extH = (toY - fromY) * 0.5f;
@@ -54,7 +57,7 @@ public class NebulaBackgroundRenderer
                 (byte)colorRng.NextInt(30, 70)
             ];
             int ci = colorRng.NextInt(0, 3);
-            float radius = colorRng.NextFloat(1200, 5000);
+            float radius = colorRng.NextFloat(minRadius, maxRadius);
 
             _nebulae.Add(new NebulaCloud(
                 posRng.NextFloat(x0, x1),
@@ -76,9 +79,13 @@ public class NebulaBackgroundRenderer
     /// Renders all cached nebula clouds in world space with drift animation and internal structure.
     /// Must be called after <see cref="Generate"/>.
     /// </summary>
-    public void Render(ISpriteRenderer renderer, Camera camera, float globalTime)
+    /// <param name="brightnessMultiplier">Scales all cloud alpha values. Default 1.0.</param>
+    public void Render(ISpriteRenderer renderer, Camera camera, float globalTime,
+        float brightnessMultiplier = 1.0f)
     {
         if (_nebulae == null) return;
+
+        byte A(int baseAlpha) => (byte)Math.Clamp((int)(baseAlpha * brightnessMultiplier), 0, 255);
 
         foreach (var (nx, ny, nr, nColor) in _nebulae)
         {
@@ -92,13 +99,13 @@ public class NebulaBackgroundRenderer
             float r = nr * pulse;
 
             // Main cloud layers (layered for depth)
-            renderer.DrawFilledCircle(camera, center, r, nColor.WithAlpha(18));
+            renderer.DrawFilledCircle(camera, center, r, nColor.WithAlpha(A(18)));
             renderer.DrawFilledCircle(camera,
                 center + new Vector2(r * 0.25f, -r * 0.15f),
-                r * 0.75f, nColor.WithAlpha(14));
+                r * 0.75f, nColor.WithAlpha(A(14)));
             renderer.DrawFilledCircle(camera,
                 center + new Vector2(-r * 0.35f, r * 0.25f),
-                r * 0.55f, nColor.WithAlpha(12));
+                r * 0.55f, nColor.WithAlpha(A(12)));
 
             // Animated interior wisp
             float wispPhase = globalTime * 0.08f + ny * 0.001f;
@@ -106,7 +113,7 @@ public class NebulaBackgroundRenderer
             float wispY = MathF.Sin(wispPhase * 1.3f) * r * 0.2f;
             renderer.DrawFilledCircle(camera,
                 center + new Vector2(wispX, wispY),
-                r * 0.3f, nColor.WithAlpha(22));
+                r * 0.3f, nColor.WithAlpha(A(22)));
 
             // Secondary wisp with slight color shift
             float wisp2Phase = globalTime * 0.06f + nx * 0.0015f;
@@ -117,7 +124,7 @@ public class NebulaBackgroundRenderer
             byte altB = (byte)Math.Min(nColor.B + 20, 255);
             renderer.DrawFilledCircle(camera,
                 center + new Vector2(wisp2X, wisp2Y),
-                r * 0.25f, new Color4(altR, altG, altB, 16));
+                r * 0.25f, new Color4(altR, altG, altB, A(16)));
         }
     }
 }
