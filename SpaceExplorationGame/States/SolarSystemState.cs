@@ -37,8 +37,9 @@ public class SolarSystemState : GameState
     private PlayerShipInputSystem _playerShipInputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
     private LabelRenderer _labelRenderer = null!;
-    // ── Background stars ──────────────────────────────────────────────────────
+    // ── Background stars & nebulae ──────────────────────────────────────────────
     private StarsBackgroundRenderer? _starsBackground;
+    private NebulaBackgroundRenderer? _nebulaBackground;
     // ── Visual effects (rendering-only) ─────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
@@ -90,6 +91,9 @@ public class SolarSystemState : GameState
         _starsBackground.Generate(0f, 0f, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xCAFEBABEuL,
             minDist: 800f);
+
+        _nebulaBackground = new NebulaBackgroundRenderer();
+        _nebulaBackground.Generate(0f, 0f, totalW, totalH, seed: game.Seeds.GalaxySeed);
 
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
@@ -402,7 +406,7 @@ public class SolarSystemState : GameState
 
         // Background
         _starsBackground?.Render(renderer, camera, globalTime);
-        SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _sim.BackgroundNebulae, globalTime);
+        _nebulaBackground?.Render(renderer, camera, globalTime);
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
 
         // Asteroid belt dust

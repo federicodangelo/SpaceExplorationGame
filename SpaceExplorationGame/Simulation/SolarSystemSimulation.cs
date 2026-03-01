@@ -34,11 +34,6 @@ public class SolarSystemSimulation : CombatSimulationBase
     public List<Entity> AsteroidEntities { get; } = [];
     public List<Entity> EnemyEntities { get; } = [];
 
-    // ── Background (cosmetic data, no entities) ─────────────────────
-
-    public List<NebulaCloud> BackgroundNebulae { get; } = [];
-
-
     // ── Proximity (updated per-player) ──────────────────────────────
     public int NearbyPlanetIndex { get; private set; } = -1;
     public int NearbySpaceStationIndex { get; private set; } = -1;
@@ -95,7 +90,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         SpawnSpaceStations(Content.SpaceStations, globalTime);
         SpawnAsteroids(Content.AsteroidBelts, new SeededRandom(rng.DeriveChildSeed(999)));
         SpawnNPCShips(Content.NpcShipSpawns);
-        SpawnBackground(totalW, totalH);
 
         // Initialize ECS systems
         // Shared systems (velocity, projectiles, cleanup)
@@ -127,7 +121,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         MoonEntities.Clear();
         AsteroidEntities.Clear();
         EnemyEntities.Clear();
-        BackgroundNebulae.Clear();
         base.Destroy();
     }
 
@@ -352,22 +345,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    private void SpawnBackground(float mapW, float mapH)
-    {
-        var nebRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xFACEFEED);
-        var bgRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xCAFEBABE);
 
-        for (int i = 0; i < 32; i++)
-        {
-            byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
-            int ci = nebRng.NextInt(0, 3);
-            BackgroundNebulae.Add(new NebulaCloud(
-                bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
-                bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
-                nebRng.NextFloat(1200, 5000),
-                new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
-        }
-    }
 
     private void UpdateProximity()
     {

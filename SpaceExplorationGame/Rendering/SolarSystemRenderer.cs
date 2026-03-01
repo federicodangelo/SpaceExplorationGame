@@ -8,58 +8,12 @@ using SpaceExplorationGame.Platform;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders solar system visuals: nebulae, orbit lines, NPC ships, and effects.
-/// Background stars are rendered separately via <see cref="StarsBackgroundRenderer"/>.
+/// Renders solar system visuals: orbit lines, NPC ships, and effects.
+/// Background stars and nebulae are rendered via <see cref="StarsBackgroundRenderer"/>
+/// and <see cref="NebulaBackgroundRenderer"/> respectively.
 /// </summary>
 public static class SolarSystemRenderer
 {
-    // ── Nebulae ─────────────────────────────────────────────────────
-
-    /// <summary>Renders background nebulae with drift animation and internal structure.</summary>
-    public static void RenderBackgroundNebulae(ISpriteRenderer renderer, Camera camera,
-        List<NebulaCloud> nebulae, float globalTime)
-    {
-        foreach (var (nx, ny, nr, nColor) in nebulae)
-        {
-            // Slow drift
-            float driftX = MathF.Sin(globalTime * 0.03f + nx * 0.001f) * nr * 0.08f;
-            float driftY = MathF.Cos(globalTime * 0.025f + ny * 0.001f) * nr * 0.06f;
-            var center = new Vector2(nx + driftX, ny + driftY);
-
-            // Pulsing size
-            float pulse = 1.0f + 0.04f * MathF.Sin(globalTime * 0.15f + nx * 0.002f);
-            float r = nr * pulse;
-
-            // Main cloud layers (more layers for depth)
-            renderer.DrawFilledCircle(camera, center, r, nColor.WithAlpha(18));
-            renderer.DrawFilledCircle(camera,
-                center + new Vector2(r * 0.25f, -r * 0.15f),
-                r * 0.75f, nColor.WithAlpha(14));
-            renderer.DrawFilledCircle(camera,
-                center + new Vector2(-r * 0.35f, r * 0.25f),
-                r * 0.55f, nColor.WithAlpha(12));
-
-            // Internal bright wisps
-            float wispPhase = globalTime * 0.08f + ny * 0.001f;
-            float wispX = MathF.Cos(wispPhase) * r * 0.3f;
-            float wispY = MathF.Sin(wispPhase * 1.3f) * r * 0.2f;
-            renderer.DrawFilledCircle(camera,
-                center + new Vector2(wispX, wispY),
-                r * 0.3f, nColor.WithAlpha(22));
-
-            // Secondary wisp (different color shift)
-            float wisp2Phase = globalTime * 0.06f + nx * 0.0015f;
-            float wisp2X = MathF.Sin(wisp2Phase) * r * 0.25f;
-            float wisp2Y = MathF.Cos(wisp2Phase * 0.8f) * r * 0.35f;
-            byte altR = (byte)Math.Min(nColor.R + 15, 255);
-            byte altG = (byte)Math.Min(nColor.G + 10, 255);
-            byte altB = (byte)Math.Min(nColor.B + 20, 255);
-            renderer.DrawFilledCircle(camera,
-                center + new Vector2(wisp2X, wisp2Y),
-                r * 0.25f, new Color4(altR, altG, altB, 16));
-        }
-    }
-
     // ── Orbit Lines ─────────────────────────────────────────────────
 
     /// <summary>Renders orbit lines with fading glow effect.</summary>
