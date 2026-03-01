@@ -24,12 +24,14 @@ public static class SolarSystemRenderer
         {
             float radius = planet.OrbitRadius;
 
+            if (!camera.CircleOverlapsCamera(starCenter, radius)) continue;
+
             // Outer faint glow
-            renderer.DrawCircle(camera, starCenter, radius + 2, new Color4(25, 30, 55, 15), 80);
-            renderer.DrawCircle(camera, starCenter, radius - 2, new Color4(25, 30, 55, 15), 80);
+            renderer.DrawCircle(camera, starCenter, radius + 2, new Color4(25, 30, 55, 180), 80);
+            renderer.DrawCircle(camera, starCenter, radius - 2, new Color4(25, 30, 55, 180), 80);
 
             // Main orbit line
-            renderer.DrawCircle(camera, starCenter, radius, new Color4(35, 40, 60, 40), 80);
+            renderer.DrawCircle(camera, starCenter, radius, new Color4(35, 40, 60, 180), 80);
 
             // Animated bright dot traveling the orbit
             float dotAngle = globalTime * (0.15f + planet.Index * 0.02f) + planet.Index * 1.5f;
@@ -37,6 +39,84 @@ public static class SolarSystemRenderer
             float dotY = starCenter.Y + MathF.Sin(dotAngle) * radius;
             renderer.DrawFilledCircle(camera, new Vector2(dotX, dotY), 3f,
                 new Color4(60, 80, 120, 50));
+        }
+    }
+
+    /// <summary>Renders orbit lines for all moons, centered on their parent planet's current position.</summary>
+    public static void RenderMoonOrbitLines(ISpriteRenderer renderer, Camera camera,
+        List<PlanetData> planets, Vector2 starCenter, float globalTime)
+    {
+        foreach (var planet in planets)
+        {
+            if (planet.Moons.Count == 0) continue;
+
+            // Compute planet's current world position
+            float planetAngle = planet.StartAngle + planet.OrbitSpeed * globalTime;
+            var planetCenter = new Vector2(
+                starCenter.X + MathF.Cos(planetAngle) * planet.OrbitRadius,
+                starCenter.Y + MathF.Sin(planetAngle) * planet.OrbitRadius);
+
+            foreach (var moon in planet.Moons)
+            {
+                float radius = moon.OrbitRadius;
+
+                if (!camera.CircleOverlapsCamera(planetCenter, radius)) continue;
+
+                // Outer faint glow
+                renderer.DrawCircle(camera, planetCenter, radius + 1, new Color4(20, 25, 45, 140), 48);
+                renderer.DrawCircle(camera, planetCenter, radius - 1, new Color4(20, 25, 45, 140), 48);
+
+                // Main orbit line (more subtle than planet orbits)
+                renderer.DrawCircle(camera, planetCenter, radius, new Color4(28, 33, 50, 140), 48);
+
+                // Animated bright dot traveling the moon orbit
+                float dotAngle = globalTime * (0.4f + moon.Index * 0.05f) + moon.Index * 2.1f;
+                float dotX = planetCenter.X + MathF.Cos(dotAngle) * radius;
+                float dotY = planetCenter.Y + MathF.Sin(dotAngle) * radius;
+                renderer.DrawFilledCircle(camera, new Vector2(dotX, dotY), 2f,
+                    new Color4(50, 70, 110, 40));
+            }
+        }
+    }
+
+    /// <summary>Renders orbit lines for all space stations around their parent (star or planet).</summary>
+    public static void RenderSpaceStationOrbitLines(ISpriteRenderer renderer, Camera camera,
+        List<SpaceStationData> stations, List<PlanetData> planets, Vector2 starCenter, float globalTime)
+    {
+        foreach (var station in stations)
+        {
+            // Resolve parent center
+            Vector2 parentCenter;
+            if (station.OrbitParentPlanetIndex < 0 || station.OrbitParentPlanetIndex >= planets.Count)
+            {
+                parentCenter = starCenter;
+            }
+            else
+            {
+                var parent = planets[station.OrbitParentPlanetIndex];
+                float parentAngle = parent.StartAngle + parent.OrbitSpeed * globalTime;
+                parentCenter = new Vector2(
+                    starCenter.X + MathF.Cos(parentAngle) * parent.OrbitRadius,
+                    starCenter.Y + MathF.Sin(parentAngle) * parent.OrbitRadius);
+            }
+
+            float radius = station.OrbitRadius;
+
+            if (!camera.CircleOverlapsCamera(parentCenter, radius)) continue;
+
+            // Outer faint glow (cyan-tinted for stations)
+            renderer.DrawCircle(camera, parentCenter, radius + 1, new Color4(20, 40, 50, 140), 48);
+            renderer.DrawCircle(camera, parentCenter, radius - 1, new Color4(20, 40, 50, 140), 48);
+
+            // Main orbit line
+            renderer.DrawCircle(camera, parentCenter, radius, new Color4(25, 50, 60, 160), 48);
+
+            // Animated bright dot traveling the station orbit
+            float dotAngle = station.StartAngle + station.OrbitSpeed * globalTime;
+            float dotX = parentCenter.X + MathF.Cos(dotAngle) * radius;
+            float dotY = parentCenter.Y + MathF.Sin(dotAngle) * radius;
+            renderer.DrawFilledCircle(camera, new Vector2(dotX, dotY), 2.5f,
+                new Color4(60, 160, 180, 60));
         }
     }
 

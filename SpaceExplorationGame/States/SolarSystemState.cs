@@ -408,6 +408,8 @@ public class SolarSystemState : GameState
         _starsBackground?.RenderParallax(renderer, camera, globalTime);
         _nebulaBackground?.Render(renderer, camera, globalTime);
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
+        SolarSystemRenderer.RenderMoonOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
+        SolarSystemRenderer.RenderSpaceStationOrbitLines(renderer, camera, _sim.SpaceStations, _sim.Planets, starCenter, globalTime);
 
         // Asteroid belt dust
         foreach (var belt in _sim.Content.AsteroidBelts)
