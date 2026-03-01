@@ -553,6 +553,10 @@ public class PlanetSurfaceState : GameState
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,
             game.GlobalTime, _planet.Type);
 
+        // Atmosphere halo – soft glow at the disc boundary to mask jagged tile edges
+        PlanetSurfaceRenderer.RenderAtmosphere(renderer, camera, _sim.SurfaceData,
+            _planet.Type, game.GlobalTime);
+
         // Settlements
         SettlementRenderer.Render(renderer, camera, _sim.SurfaceData);
 
