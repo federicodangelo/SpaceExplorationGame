@@ -149,7 +149,7 @@ public class FTLTransitionState : GameState
         }
     }
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
 
@@ -196,9 +196,12 @@ public class FTLTransitionState : GameState
             byte a = (byte)(intensity * 200);
             renderer.DrawRectScreen(0, 0, ScreenW, ScreenH, new Color4(200, 220, 255, a));
         }
+    }
 
+    public override void RenderHud(Game game)
+    {
         // ── HUD text ──
-        RenderHudText(renderer);
+        RenderHudText(game.SpriteRenderer);
     }
 
     // ─────────────────────────────────────────────────────────────

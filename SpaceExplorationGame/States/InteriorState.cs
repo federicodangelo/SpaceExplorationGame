@@ -319,7 +319,7 @@ public class InteriorState : GameState
         }
     }
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
         var camera = _camera;
@@ -329,10 +329,18 @@ public class InteriorState : GameState
         // Draw world
         InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, avatarTf.Position,
             game.AvatarRenderer, game.GlobalTime, _planet);
+    }
 
-        // Atmospheric post-processing (vignette)
+    public override void RenderHud(Game game)
+    {
+        var renderer = game.SpriteRenderer;
+        var world = _sim.EcsWorld;
+        var avatarTf = world.Get<Transform>(_simPlayer.Entity);
+
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
+
+        // Atmospheric post-processing (vignette)
         InteriorRenderer.RenderAtmosphere(renderer, w, h);
 
         // Weather overlay for settlement biomes

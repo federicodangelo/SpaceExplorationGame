@@ -648,7 +648,7 @@ public class MainMenuState : GameState
 
     // ── Render ──
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
 
@@ -664,6 +664,11 @@ public class MainMenuState : GameState
             new Vector2(centerX - 600f, centerY - 180f), game.GlobalTime);
         game.StationRenderer.RenderStation(renderer, _fakeCamera,
             new Vector2(centerX + 600f, centerY + 180f), game.GlobalTime + 0.5f);
+    }
+
+    public override void RenderHud(Game game)
+    {
+        var renderer = game.SpriteRenderer;
 
         // Title
         string title = "SPACE EXPLORATION";

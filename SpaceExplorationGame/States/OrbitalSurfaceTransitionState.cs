@@ -216,7 +216,7 @@ public class OrbitalSurfaceTransitionState : GameState
         }
     }
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
 
@@ -275,6 +275,8 @@ public class OrbitalSurfaceTransitionState : GameState
                 new Color4(200, 170, 120, a), 40);
         }
     }
+
+    public override void RenderHud(Game game) { }
 
     private Vector2 WorldToScreenFromSolarSnapshot(Vector2 world)
     {

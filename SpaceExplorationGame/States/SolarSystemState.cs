@@ -358,7 +358,7 @@ public class SolarSystemState : GameState
 
     // ── Render ──────────────────────────────────────────────────────
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
         var camera = _camera;
@@ -439,6 +439,19 @@ public class SolarSystemState : GameState
         // Visual effects
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
+    }
+
+    public override void RenderHud(Game game)
+    {
+        var renderer = game.SpriteRenderer;
+        var camera = _camera;
+        var world = _sim.EcsWorld;
+
+        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
+        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        Vector2 starCenter = new(starCenterX, starCenterY);
+
+        float globalTime = (float)game.GlobalTime;
 
         // HUD
         {

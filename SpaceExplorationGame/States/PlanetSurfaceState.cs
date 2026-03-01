@@ -524,7 +524,7 @@ public class PlanetSurfaceState : GameState
 
     // ── Render ──────────────────────────────────────────────────────
 
-    public override void Render(Game game)
+    public override void RenderGame(Game game)
     {
         var renderer = game.SpriteRenderer;
         var camera = _camera;
@@ -565,17 +565,11 @@ public class PlanetSurfaceState : GameState
         }
 
         // Player avatar
-        Vector2 avatarPos;
         if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
         {
             ref var avatarTf = ref world.Get<Transform>(_simPlayer.Entity);
-            avatarPos = avatarTf.Position;
             if (!_inVehicle && !_playerInsideShip)
                 game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
-        }
-        else
-        {
-            avatarPos = shipTf.Position; // fallback when dead
         }
 
         // Rocks, enemies, projectiles
@@ -586,6 +580,19 @@ public class PlanetSurfaceState : GameState
         // Damage/explosions
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
+    }
+
+    public override void RenderHud(Game game)
+    {
+        var renderer = game.SpriteRenderer;
+        var camera = _camera;
+        var world = _sim.EcsWorld;
+
+        // Resolve positions needed for HUD
+        var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
+        Vector2 avatarPos = !_sim.PlayerDead && world.IsAlive(_simPlayer.Entity)
+            ? world.Get<Transform>(_simPlayer.Entity).Position
+            : shipTf.Position; // fallback when dead
 
         // Interaction prompts
         if (!_sim.PlayerDead && !_playerInsideShip)
