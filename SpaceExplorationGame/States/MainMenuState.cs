@@ -519,7 +519,7 @@ public class MainMenuState : GameState
                     StartOption.SettlementOnFoot => " [On Foot]",
                     _ => " [On Vehicle]"
                 };
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} (Settlement){settlementMode}";
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}) (Settlement){settlementMode}";
                 break;
             }
         }
