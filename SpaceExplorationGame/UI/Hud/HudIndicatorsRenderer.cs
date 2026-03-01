@@ -267,7 +267,7 @@ public static class HudIndicatorsRenderer
         float screenPixelDist = Vector2.Distance(screenPos, new Vector2(ix, iy));
         float worldDist = screenPixelDist / camera.Zoom;
         string distText = worldDist < 1000 ? $"{worldDist:F0}" : $"{worldDist / 1000f:F1}K";
-        string label = prefix != null ? prefix + distText : distText;
+        string label = prefix != null ? prefix + " " + distText : distText;
 
         const float labelFontScale = 1.3f;
         float labelW = renderer.MeasureText(label, labelFontScale);
