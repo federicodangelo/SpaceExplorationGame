@@ -61,6 +61,36 @@ public abstract class MapPanelBase
         float camSpeed = 500f / Camera.Zoom;
         Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
         Camera.Position += moveDir * camSpeed * game.DeltaTime;
+        ClampCameraPosition();
+    }
+
+    /// <summary>
+    /// Override to keep the camera within world bounds after any camera-mutating operation.
+    /// Called automatically at the end of every <see cref="Update"/> tick.
+    /// Subclasses should also call this explicitly from <see cref="SetupCamera"/> and
+    /// <see cref="UpdateInput"/> whenever zoom or position changes.
+    /// </summary>
+    protected virtual void ClampCameraPosition() { }
+
+    /// <summary>
+    /// Clamps <see cref="Camera.Position"/> so the viewport never shows area outside
+    /// [0, worldW] × [0, worldH].  When fully zoomed out past the world size the camera
+    /// is centred instead of clamped.
+    /// </summary>
+    protected void ClampCameraToWorldBounds(float worldW, float worldH)
+    {
+        float halfViewW = MapW / (2f * Camera.Zoom);
+        float halfViewH = MapH / (2f * Camera.Zoom);
+
+        float minX = halfViewW;
+        float maxX = worldW - halfViewW;
+        float minY = halfViewH;
+        float maxY = worldH - halfViewH;
+
+        float cx = (minX <= maxX) ? Math.Clamp(Camera.Position.X, minX, maxX) : worldW / 2f;
+        float cy = (minY <= maxY) ? Math.Clamp(Camera.Position.Y, minY, maxY) : worldH / 2f;
+
+        Camera.Position = new Vector2(cx, cy);
     }
 
     // ─────────────────────────────────────────────────────────────

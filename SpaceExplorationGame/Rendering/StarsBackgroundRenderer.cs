@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.Rendering;
 /// Usage:
 ///   1. Construct with <see cref="StarsBackgroundRenderer(float, ulong, float)"/>.
 ///   2. Call <see cref="Generate"/> once after world data is available to build the star cache.
-///   3. Call <see cref="Render"/> every frame before drawing world geometry.
+///   3. Call <see cref="RenderParallax"/> every frame before drawing world geometry.
 /// </summary>
 public class StarsBackgroundRenderer
 {
@@ -31,7 +31,7 @@ public class StarsBackgroundRenderer
 
     // ── Cache ────────────────────────────────────────────────────────────────
 
-    private Vector2[]? _starPositions;
+    private BackgroundStar[]? _stars;
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
@@ -86,17 +86,27 @@ public class StarsBackgroundRenderer
         var rng = new SeededRandom(seed);
         var samples = PoissonDiskSampler.Sample(rng, x0, y0, x1, y1, minDist: minDist);
 
-        if (filter != null)
+        var stars = new List<BackgroundStar>(samples.Count);
+        foreach (var p in samples)
         {
-            var filtered = new List<Vector2>(samples.Count);
-            foreach (var p in samples)
-                if (filter(p)) filtered.Add(p);
-            _starPositions = filtered.ToArray();
+            if (filter != null && !filter(p)) continue;
+
+            // Hash drives all deterministic visual variation — computed once here,
+            // never again in the render loop.
+            int hash = (int)((uint)(p.X * 7.3f) * 374761393u ^ (uint)(p.Y * 7.3f) * 668265263u);
+
+            float twinklePhase = ((hash >> 4) & 0xFF) / 255f * MathF.PI * 2f;
+            float twinkleSpeed = TwinkleSpeedBase + ((hash >> 8) & 0x7) * TwinkleSpeedStep;
+            byte baseBrightness = (byte)(100 + ((hash >> 16) & 0x7F));
+            byte colorType = (byte)((hash >> 11) & 0x7);
+            int sizeClass = (hash >> 14) & 0xF;
+            byte size = (byte)(sizeClass < 2 ? 1 : sizeClass < 4 ? 3 : 2);
+            bool hasGlow = baseBrightness > 120 && size >= 2;
+
+            stars.Add(new BackgroundStar(p.X, p.Y, baseBrightness,
+                twinklePhase, twinkleSpeed, colorType, size, hasGlow));
         }
-        else
-        {
-            _starPositions = samples.ToArray();
-        }
+        _stars = stars.ToArray();
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -106,63 +116,87 @@ public class StarsBackgroundRenderer
     /// Stars are zoom-independent (they represent infinitely distant objects).
     /// Must be called after <see cref="Generate"/> and before world geometry is drawn.
     /// </summary>
-    public void Render(ISpriteRenderer renderer, Camera camera, float globalTime, float brightnessMultiplier = 0.5f)
+    public void RenderParallax(ISpriteRenderer renderer, Camera camera, float globalTime, float brightnessMultiplier = 0.5f)
     {
-        if (_starPositions == null) return;
+        if (_stars == null) return;
 
         float screenCX = camera.ViewportOffsetX + camera.ViewportWidth * 0.5f;
         float screenCY = camera.ViewportOffsetY + camera.ViewportHeight * 0.5f;
-        float screenW = camera.ViewportWidth;
-        float screenH = camera.ViewportHeight;
+        float viewportW = camera.ViewportWidth;
+        float viewportH = camera.ViewportHeight;
+        float viewportX = camera.ViewportOffsetX;
+        float viewportY = camera.ViewportOffsetY;
 
-        for (int i = 0; i < _starPositions.Length; i++)
+        for (int i = 0; i < _stars.Length; i++)
         {
-            float wx = _starPositions[i].X;
-            float wy = _starPositions[i].Y;
+            ref readonly var star = ref _stars[i];
 
             // Parallax: stars shift at a fraction of the camera velocity, ignoring zoom.
-            float sx = screenCX + (wx - camera.Position.X) * _parallaxFactor;
-            float sy = screenCY + (wy - camera.Position.Y) * _parallaxFactor;
+            float sx = screenCX + (star.X - camera.Position.X) * _parallaxFactor;
+            float sy = screenCY + (star.Y - camera.Position.Y) * _parallaxFactor;
 
-            if (sx < -4 || sx > screenW + 4 || sy < -4 || sy > screenH + 4) continue;
+            if (sx < viewportX - 4 || sx > viewportX + viewportW + 4 || sy < viewportY - 4 || sy > viewportY + viewportH + 4) continue;
 
-            // Deterministic per-star hash drives all visual variation.
-            int hash = (int)((uint)(wx * 7.3f) * 374761393u ^ (uint)(wy * 7.3f) * 668265263u);
+            DrawStar(renderer, star, sx, sy, MathF.Max(1f, star.Size), globalTime, brightnessMultiplier);
+        }
+    }
 
-            // Twinkle: sinusoidal brightness pulse with a unique phase and speed per star.
-            float phase = ((hash >> 4) & 0xFF) / 255f * MathF.PI * 2f;
-            float twinkleSpeed = TwinkleSpeedBase + ((hash >> 8) & 0x7) * TwinkleSpeedStep;
-            float twinkle = TwinkleMin + TwinkleRange * (MathF.Sin(globalTime * twinkleSpeed + phase) * 0.5f + 0.5f);
+    /// <summary>
+    /// Renders all cached stars using a standard world-to-screen camera transform (zoom-aware).
+    /// Star size scales with camera zoom. No culling is performed.
+    /// Use this for views where stars exist at actual world positions (e.g. galaxy map).
+    /// </summary>
+    public void RenderWorldSpace(ISpriteRenderer renderer, Camera camera, float globalTime, float brightnessMultiplier = 0.5f, bool cull = true)
+    {
+        if (_stars == null) return;
 
-            byte brightness = (byte)(100 + ((hash >> 16) & 0x7F));
-            byte b = (byte)Math.Clamp((int)(brightness * twinkle * brightnessMultiplier), 30, 255);
+        float viewportW = camera.ViewportWidth;
+        float viewportH = camera.ViewportHeight;
+        float viewportX = camera.ViewportOffsetX;
+        float viewportY = camera.ViewportOffsetY;
 
-            // Color temperature: blue-white, warm yellow, orange-red, or plain white.
-            int colorType = (hash >> 11) & 0x7;
-            var color = colorType switch
-            {
-                0 => new Color3(b, b, (byte)Math.Min(b + 40, 255)),                            // blue-white
-                1 => new Color3((byte)Math.Min(b + 30, 255), (byte)Math.Min(b + 15, 255), b),  // warm yellow
-                2 => new Color3((byte)Math.Min(b + 25, 255), (byte)(b * 0.7f), (byte)(b * 0.6f)), // orange-red
-                _ => new Color3(b, b, b)                                                        // white (most common)
-            };
+        for (int i = 0; i < _stars.Length; i++)
+        {
+            ref readonly var star = ref _stars[i];
 
-            // Size: mostly 1 px, occasionally 2, rarely 3.
-            int sizeClass = (hash >> 14) & 0xF;
-            int starSize = sizeClass < 2 ? 1 : sizeClass < 4 ? 3 : 2;
+            var screenPos = camera.WorldToScreen(new System.Numerics.Vector2(star.X, star.Y));
+            var sx = screenPos.X;
+            var sy = screenPos.Y;
 
-            renderer.DrawRectScreen(sx - starSize * 0.5f, sy - starSize * 0.5f,
-                starSize, starSize, color);
+            if (cull && (sx < viewportX - 4 || sx > viewportX + viewportW + 4 || sy < viewportY - 4 || sy > viewportY + viewportH + 4)) continue;
 
-            // Prominent stars (bright + large) get a soft cross-shaped glow.
-            if (brightness > 120 && starSize >= 2)
-            {
-                byte glowA = (byte)(b * 0.25f);
-                renderer.DrawRectScreen(sx - 0.5f, sy - 3, 1, 7,
-                    new Color4(color.R, color.G, color.B, glowA));
-                renderer.DrawRectScreen(sx - 3, sy - 0.5f, 7, 1,
-                    new Color4(color.R, color.G, color.B, glowA));
-            }
+            DrawStar(renderer, star, screenPos.X, screenPos.Y, MathF.Max(1f, star.Size), globalTime, brightnessMultiplier);
+        }
+    }
+
+    private static void DrawStar(ISpriteRenderer renderer, in BackgroundStar star,
+        float sx, float sy, float size, float globalTime, float brightnessMultiplier)
+    {
+        // Twinkle: only per-frame work — a single sine evaluation.
+        float twinkle = TwinkleMin + TwinkleRange *
+            (MathF.Sin(globalTime * star.TwinkleSpeed + star.TwinklePhase) * 0.5f + 0.5f);
+
+        byte b = (byte)Math.Clamp((int)(star.BaseBrightness * twinkle * brightnessMultiplier), 30, 255);
+
+        // Color temperature — pre-stored type, no hash needed.
+        var color = star.ColorType switch
+        {
+            0 => new Color3(b, b, (byte)Math.Min(b + 40, 255)),                              // blue-white
+            1 => new Color3((byte)Math.Min(b + 30, 255), (byte)Math.Min(b + 15, 255), b),    // warm yellow
+            2 => new Color3((byte)Math.Min(b + 25, 255), (byte)(b * 0.7f), (byte)(b * 0.6f)), // orange-red
+            _ => new Color3(b, b, b)                                                          // white (most common)
+        };
+
+        renderer.DrawRectScreen(sx - size * 0.5f, sy - size * 0.5f, size, size, color);
+
+        // Prominent stars (bright + large) get a soft cross-shaped glow.
+        if (star.HasGlow)
+        {
+            byte glowA = (byte)(b * 0.25f);
+            renderer.DrawRectScreen(sx - 0.5f, sy - 3, 1, 7,
+                new Color4(color.R, color.G, color.B, glowA));
+            renderer.DrawRectScreen(sx - 3, sy - 0.5f, 7, 1,
+                new Color4(color.R, color.G, color.B, glowA));
         }
     }
 }

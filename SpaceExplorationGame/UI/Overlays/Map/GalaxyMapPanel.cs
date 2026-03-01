@@ -2,6 +2,7 @@ using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
+using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
 
@@ -17,7 +18,7 @@ public class GalaxyMapPanel : MapPanelBase
     private List<StarSystemData> _starSystems = [];
     private int _selectedSystemIndex = -1;
     private int _hoveredSystemIndex = -1;
-    private List<BackgroundStar> _backgroundStars = [];
+    private StarsBackgroundRenderer? _starsBackground;
     private List<NebulaCloud> _nebulae = [];
     private float _lastClickTime;
     private int _lastClickSystem = -1;
@@ -36,7 +37,7 @@ public class GalaxyMapPanel : MapPanelBase
     public override void Close(Game game)
     {
         _nebulae.Clear();
-        _backgroundStars.Clear();
+        _starsBackground = null;
     }
 
     public override void SetupCamera(Game game)
@@ -58,7 +59,14 @@ public class GalaxyMapPanel : MapPanelBase
         }
         Camera.Zoom = GameConfig.GalaxyMapZoomDefault;
         Camera.ClampZoom();
+        ClampCameraPosition();
     }
+
+    /// <summary>Keep the camera within the galaxy world bounds so empty space is never visible.</summary>
+    protected override void ClampCameraPosition() =>
+        ClampCameraToWorldBounds(
+            GameConfig.GalaxyWidth * GameConfig.TileSize,
+            GameConfig.GalaxyHeight * GameConfig.TileSize);
 
     // ─────────────────────────────────────────────────────────────
     //  INPUT
@@ -73,6 +81,7 @@ public class GalaxyMapPanel : MapPanelBase
 
         HandleZoomAndPan(input, currentMouse);
         HandleGamepadTriggerZoom(input, game.DeltaTime);
+        ClampCameraPosition();
 
         // Hover
         _hoveredSystemIndex = -1;
@@ -131,13 +140,12 @@ public class GalaxyMapPanel : MapPanelBase
 
     private void InitGalaxyBackground(Game game)
     {
-        var bgRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xDEADBEEF);
-        _backgroundStars.Clear();
-        for (int i = 0; i < 500; i++)
-            _backgroundStars.Add(new BackgroundStar(
-                bgRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
-                bgRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
-                (byte)bgRng.NextInt(30, 120)));
+        float totalW = GameConfig.GalaxyWidth * GameConfig.TileSize;
+        float totalH = GameConfig.GalaxyHeight * GameConfig.TileSize;
+        _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.02f);
+        _starsBackground.Generate(0, 0, totalW, totalH,
+            seed: game.Seeds.GalaxySeed ^ 0xDEADBEEFuL,
+            minDist: 6000f);
 
         var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
         _nebulae.Clear();
@@ -197,7 +205,7 @@ public class GalaxyMapPanel : MapPanelBase
             var sourceSystem = _starSystems[current];
             var targetSystem = _starSystems[_selectedSystemIndex];
             _nebulae.Clear();
-            _backgroundStars.Clear();
+            _starsBackground = null;
             OnRequestClose?.Invoke(game);
             game.ChangeState(new FTLTransitionState(sourceSystem, targetSystem));
         }
@@ -213,13 +221,7 @@ public class GalaxyMapPanel : MapPanelBase
         int currentSys = game.Player.CurrentStarSystemIndex;
 
         // Background stars
-        foreach (var (x, y, brightness) in _backgroundStars)
-        {
-            var screenPos = camera.WorldToScreen(new Vector2(x, y));
-            renderer.DrawRectScreen(screenPos.X, screenPos.Y,
-                Math.Max(1, camera.Zoom), Math.Max(1, camera.Zoom),
-                new Color3(brightness, brightness, brightness));
-        }
+        _starsBackground?.RenderWorldSpace(renderer, camera, (float)game.GlobalTime);
 
         // Nebula clouds
         foreach (var (nx, ny, nr, nColor) in _nebulae)

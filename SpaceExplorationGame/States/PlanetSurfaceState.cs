@@ -547,7 +547,7 @@ public class PlanetSurfaceState : GameState
         var world = _sim.EcsWorld;
 
         // Background stars in the void outside the planet disc
-        _starsBackground?.Render(renderer, camera, (float)game.GlobalTime);
+        _starsBackground?.RenderParallax(renderer, camera, (float)game.GlobalTime);
 
         // Terrain
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,

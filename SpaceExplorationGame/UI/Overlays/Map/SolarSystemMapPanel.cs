@@ -63,7 +63,14 @@ public class SolarSystemMapPanel : MapPanelBase
         Camera.Position = new Vector2(centerX, centerY);
         Camera.Zoom = ZoomDefault;
         Camera.ClampZoom();
+        ClampCameraPosition();
     }
+
+    /// <summary>Keep the camera within the solar system world bounds so empty space is never visible.</summary>
+    protected override void ClampCameraPosition() =>
+        ClampCameraToWorldBounds(
+            GameConfig.SolarSystemWidth * GameConfig.TileSize,
+            GameConfig.SolarSystemHeight * GameConfig.TileSize);
 
     // ─────────────────────────────────────────────────────────────
     //  INPUT
@@ -79,6 +86,7 @@ public class SolarSystemMapPanel : MapPanelBase
 
         HandleZoomAndPan(input, currentMouse);
         HandleGamepadTriggerZoom(input, game.DeltaTime);
+        ClampCameraPosition();
 
         // Hover detection
         _hoveredObject = new(SolarMapObjectType.None);

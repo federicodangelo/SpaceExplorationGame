@@ -405,7 +405,7 @@ public class SolarSystemState : GameState
         float globalTime = (float)game.GlobalTime;
 
         // Background
-        _starsBackground?.Render(renderer, camera, globalTime);
+        _starsBackground?.RenderParallax(renderer, camera, globalTime);
         _nebulaBackground?.Render(renderer, camera, globalTime);
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
 

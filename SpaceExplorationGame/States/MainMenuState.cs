@@ -651,7 +651,7 @@ public class MainMenuState : GameState
         _fakeCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         var renderer = game.SpriteRenderer;
 
-        _starsBackground?.Render(renderer, _fakeCamera, _animTimer);
+        _starsBackground?.RenderParallax(renderer, _fakeCamera, _animTimer);
         _nebulaBackground?.Render(renderer, _fakeCamera, _animTimer);
 
         float centerX = GameConfig.WindowWidth / 2f;

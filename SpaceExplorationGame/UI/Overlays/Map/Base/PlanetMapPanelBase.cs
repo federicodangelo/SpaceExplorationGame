@@ -127,30 +127,14 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     public override void Update(Game game)
     {
         _selectionPulse += game.DeltaTime * 3f;
-        base.Update(game);
-        ClampCameraPosition();
+        base.Update(game); // base calls ClampCameraPosition() automatically
     }
 
     /// <summary>Keep the camera within the terrain bounds so no empty space is visible.</summary>
-    protected void ClampCameraPosition()
+    protected override void ClampCameraPosition()
     {
         if (_surfaceData == null) return;
-
-        float worldW = _surfaceData.Width;
-        float worldH = _surfaceData.Height;
-
-        float halfViewW = MapW / (2f * Camera.Zoom);
-        float halfViewH = MapH / (2f * Camera.Zoom);
-
-        float minX = halfViewW;
-        float maxX = worldW - halfViewW;
-        float minY = halfViewH;
-        float maxY = worldH - halfViewH;
-
-        float cx = (minX <= maxX) ? Math.Clamp(Camera.Position.X, minX, maxX) : worldW / 2f;
-        float cy = (minY <= maxY) ? Math.Clamp(Camera.Position.Y, minY, maxY) : worldH / 2f;
-
-        Camera.Position = new Vector2(cx, cy);
+        ClampCameraToWorldBounds(_surfaceData.Width, _surfaceData.Height);
     }
 
     // ─────────────────────────────────────────────────────────────

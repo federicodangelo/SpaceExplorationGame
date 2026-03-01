@@ -57,8 +57,21 @@ public readonly record struct ViewArea(Vector2 Origin, Vector2 Size);
 
 // ── Background decorations ───────────────────────────────────────
 
-/// <summary>A cosmetic background star with brightness.</summary>
-public readonly record struct BackgroundStar(float X, float Y, byte Brightness);
+/// <summary>
+/// A pre-computed background star ready for parallax rendering.
+/// All visual properties are baked at generation time so the render loop
+/// only needs to evaluate the per-frame twinkle sine and a few multiplies.
+/// </summary>
+public readonly record struct BackgroundStar(
+    float X,
+    float Y,
+    byte BaseBrightness,   // base luminance before twinkle (100-227)
+    float TwinklePhase,    // sine phase offset unique to this star
+    float TwinkleSpeed,    // sine angular frequency unique to this star
+    byte ColorType,        // 0=blue-white 1=warm-yellow 2=orange-red 3=white
+    byte Size,             // render size in pixels: 1, 2, or 3
+    bool HasGlow           // whether to draw the cross glow
+);
 
 /// <summary>A cosmetic nebula cloud with position, radius, and color.</summary>
 public readonly record struct NebulaCloud(float X, float Y, float Radius, Color3 Color);
