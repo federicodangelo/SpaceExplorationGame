@@ -17,23 +17,44 @@ SpaceExplorationGame/
 ├── SpaceExplorationGame.csproj    # .NET 10 project file
 ├── Program.cs                     # Entry point
 ├── Core/
-│   ├── Game.cs                    # Main game class (SDL window, ECS world, game loop)
+│   ├── Game.cs                    # Main game class (platform, ECS world, game loop)
 │   ├── GameConfig.cs              # All tunable constants
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── Camera.cs                  # 2D camera with zoom and viewport
 │   ├── CommonTypes.cs             # Shared lightweight value types (colors, geometry, spawn data, etc.)
 │   ├── GalaxyLocation.cs          # Galaxy location value type (system/planet/settlement) for missions
-│   ├── InputManager.cs            # Input state tracking (keys, mouse, edge detection)
 │   ├── PlayerData.cs              # Persistent player data across state changes (includes mission tracking)
 │   ├── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
+│   ├── FactionRules.cs            # Centralized faction interaction/friendly-fire rules
+│   ├── ICustomizablePart.cs       # Common interface for all equipment parts
+│   ├── IDebugInfoProvider.cs      # DebugTimer / DebugTimingEntry — lightweight timing infrastructure
+│   ├── MenuOptionsPersistence.cs  # Persists main-menu selections to disk (JSON)
 │   ├── NpcShipLoadoutHelper.cs    # NPC ship type/loadout/weapon selection and stat derivation by danger tier
 │   ├── Missions.cs                # Mission data model (MissionType, MissionStatus, Mission class)
-│   ├── ICustomizablePart.cs       # Common interface for all equipment parts
+│   ├── MissionTracker.cs          # Active/completed mission state + Notify* callbacks
+│   ├── NavigationTarget.cs        # Player navigation target (Set* / Clear helpers)
 │   ├── ShipParts.cs               # Ship types, equipment data model, stats, and part catalog
 │   ├── ShipStatsHelper.cs         # Shared ship stat aggregation helper (type + parts -> final stats)
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   ├── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
+├── Platform/
+│   ├── IPlatform.cs               # Top-level platform interface (SpriteRenderer, Textures, InputManager, AudioManager)
+│   ├── ISpriteRenderer.cs         # Rendering abstraction (primitives, textures, text — world & screen space)
+│   ├── ITextureManager.cs         # Texture creation utilities (CreateFromPixels, SetPixelBlock)
+│   ├── IFontRenderer.cs           # Font/text rendering abstraction
+│   ├── ITileMapRenderer.cs        # Tilemap rendering abstraction (hash brightness, detail callback)
+│   ├── IInputManager.cs           # Input abstraction (actions, axes, mouse, text input)
+│   ├── IAudioManager.cs           # Audio abstraction (music themes, SFX playback, volume)
+│   ├── InputTypes.cs              # InputAction, InputActionAxis, MouseButton, InputMethod, MovementInputMode enums
+│   └── Sdl/
+│       ├── SdlPlatform.cs         # SDL3 IPlatform implementation (window, renderer lifecycle)
+│       ├── SdlSpriteRenderer.cs   # SDL3 ISpriteRenderer implementation
+│       ├── SdlTextureManager.cs   # SDL3 ITextureManager implementation
+│       ├── SdlFontRenderer.cs     # SDL3 IFontRenderer implementation (wraps MiniBitmapFont)
+│       ├── SdlTileMapRenderer.cs  # SDL3 ITileMapRenderer implementation
+│       ├── SdlInputManager.cs     # SDL3 IInputManager implementation (keyboard, mouse, gamepad)
+│       └── SdlAudioManager.cs     # SDL3 IAudioManager implementation (push-streaming audio)
 ├── ECS/
 │   ├── EntityFactory.cs           # Centralized entity creation (all component compositions)
 │   ├── Components/
@@ -57,33 +78,40 @@ SpaceExplorationGame/
 │           ├── ShipEnemyAISystem.cs     # AI state machine for NPC ships (pirate/trader/patrol)
 │           └── AvatarEnemyAISystem.cs   # AI state machine for surface enemies (fauna/bandits)
 ├── Audio/
-│   ├── AudioManager.cs             # Central audio manager (SDL3 device, mixing, crossfade, volume)
 │   ├── MusicGenerator.cs            # Real-time procedural ambient music (6 layers, 7 themes)
 │   └── SfxGenerator.cs              # Pre-generated sound effects (15 types, additive synthesis)
 ├── Generation/
+│   ├── IUniverseGenerator.cs      # Interface: GenerateGalaxy, GenerateSolarSystem, GeneratePlanetSurface, etc.
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
-│   ├── GalaxyGenerator.cs         # Galaxy star system placement & properties
-│   ├── SolarSystemGenerator.cs    # Planets, moons, asteroids, stations
-│   ├── PlanetSurfaceGenerator.cs  # Terrain tilemap generation
-│   ├── InteriorGenerator.cs       # Station/settlement interior layouts + InteractableType enum
-│   └── MissionGenerator.cs        # Deterministic mission generation per station/settlement board
+│   ├── SurfaceTerrainRules.cs     # Shared walkability/landing/spawn validation rules for terrain types
+│   ├── Procedural/
+│   │   ├── ProceduralUniverseGenerator.cs  # Default IUniverseGenerator — delegates to individual generators
+│   │   ├── GalaxyGenerator.cs              # Galaxy star system placement & properties
+│   │   ├── SolarSystemGenerator.cs         # Planets, moons, asteroids, stations
+│   │   ├── PlanetSurfaceGenerator.cs       # Terrain tilemap generation
+│   │   ├── InteriorGenerator.cs            # Station/settlement interior layouts + InteractableType enum
+│   │   └── MissionGenerator.cs             # Deterministic mission generation per station/settlement board
+│   └── Showcase/
+│       ├── ShowcaseUniverseGeneratorHelpers.cs      # Shared helpers for showcase generators
+│       ├── StarTypeShowcaseUniverseGenerator.cs     # IUniverseGenerator for star-type debug showcase
+│       ├── PlanetTypeShowcaseUniverseGenerator.cs   # IUniverseGenerator for planet-type debug showcase
+│       ├── AsteroidMiningShowcaseUniverseGenerator.cs  # IUniverseGenerator for asteroid mining showcase
+│       └── SurfaceMiningShowcaseUniverseGenerator.cs   # IUniverseGenerator for surface mining showcase
 ├── Simulation/
 │   ├── ISimulation.cs             # Interface + UpdateContext/AddContext value types
-│   ├── SimulationBase.cs          # Abstract base class (ECS world, player management, template methods)
-│   ├── CombatSimulationBase.cs    # Intermediate base for combat simulations (death/respawn, combat messages, music timer)
 │   ├── SimulationPlayer.cs        # Player presence within a simulation (PlayerData + Entity)
 │   ├── SimulationCoordinator.cs   # Manages all active simulations (lifecycle, 90s empty timeout, parent chain keep-alive)
 │   ├── SolarSystemSimulation.cs   # Solar system simulation (orbits, combat, NPC AI, mining, loot)
 │   ├── PlanetSurfaceSimulation.cs # Planet surface simulation (terrain, surface combat, avatar/vehicle, respawn)
-│   └── InteriorSimulation.cs      # Interior simulation (walkable rooms, NPC interaction, no combat)
+│   ├── InteriorSimulation.cs      # Interior simulation (walkable rooms, NPC interaction, no combat)
+│   └── Base/
+│       ├── SimulationBase.cs          # Abstract base class (ECS world, player management, template methods)
+│       └── CombatSimulationBase.cs    # Intermediate base for combat simulations (death/respawn, combat messages, music timer)
 ├── Rendering/
 │   ├── Base/
-│   │   ├── FontRenderer.cs        # Text rendering helper used by UI/HUD and overlays
-│   │   ├── MiniBitmapFont.cs      # Built-in 5x8 pixel font
-│   │   ├── SpriteRenderer.cs      # SDL3 rendering abstraction (primitives + textures)
-│   │   ├── TextureManager.cs      # Low-level texture creation utilities (CreateTextureFromPixels, SetPixelBlock)
-│   │   └── TileMapRenderer.cs     # Shared tilemap rendering utility (hash-based brightness, detail callback)
+│   │   ├── MiniBitmapFont.cs      # Built-in 5x8 pixel font data (used by SdlFontRenderer)
+│   │   └── RenderColors.cs        # Shared color/style constants used across multiple renderers
 │   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
 │   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
@@ -219,11 +247,11 @@ Simulation logic (ECS entity management, physics, combat, AI) is fully separated
 - `AddContext` — readonly record struct for per-join data: `LandingTileX`, `LandingTileY`
 - `SimulationPlayer` — encapsulates a player's presence: `PlayerData` + `Entity` in the simulation's ECS world
 
-**Class hierarchy**:
+**Class hierarchy** (`Simulation/Base/` contains the abstract base classes):
 ```
 ISimulation
-└── SimulationBase (abstract)
-    ├── CombatSimulationBase (abstract)
+└── SimulationBase (abstract)                  Simulation/Base/SimulationBase.cs
+    ├── CombatSimulationBase (abstract)        Simulation/Base/CombatSimulationBase.cs
     │   ├── SolarSystemSimulation
     │   └── PlanetSurfaceSimulation
     └── InteriorSimulation
@@ -256,6 +284,40 @@ ISimulation
 3. State creates input-only ECS systems (movement, camera) on `simulation.EcsWorld`
 4. State reads simulation public properties for rendering (entities, combat state, messages)
 5. State `Exit()` calls `simulation.RemovePlayer(player)` — simulation stays alive in coordinator
+
+### Platform Abstraction Layer
+The `Platform/` folder defines a clean interface boundary between game logic and the concrete SDL3 implementation. Every platform-capability is exposed via a C# interface; the rest of the codebase only references these interfaces. Swapping the renderer or input backend requires no changes outside `Platform/Sdl/`.
+
+**Top-level interface: `IPlatform`** — aggregates all platform capabilities:
+```
+IPlatform
+├── ISpriteRenderer  — 2D primitives, texture draw, text (world & screen space), clip regions
+├── ITextureManager  — CreateFromPixels / SetPixelBlock texture creation helpers
+├── IInputManager    — keyboard, mouse, gamepad; action/axis abstraction; text input
+└── IAudioManager    — music theme switching, SFX playback, volume controls
+```
+
+**`IInputManager`** replaces the former `Core/InputManager.cs`. It has:
+- Action-based API: `IsActionDown/Pressed/Released(InputAction)`, `GetActionAxisDirection(InputActionAxis)`
+- Mouse helpers: `IsMouseDown/Pressed/Released(MouseButton)`, `MouseX/Y/MouseWheelY`
+- Text input support: `TextInput`, `TextInputBackspacesCount`, `TextInputReturnsCount`
+- `InputMethod` enum (`MouseKeyboard` / `Gamepad`) and `MovementInputMode`
+- `InputTypes.cs` defines all enums: `InputAction`, `InputActionAxis`, `MouseButton`, `InputMethod`, `MovementInputMode`
+
+**`IAudioManager`** replaces `Audio/AudioManager.cs`. It wraps `MusicGenerator` and `SfxGenerator` behind a platform interface. All game states and simulations call `game.Platform.AudioManager` (or the injected reference) — they never import SDL directly.
+
+**SDL3 Implementations** (`Platform/Sdl/`):
+| Interface          | SDL3 Implementation  | Notes                                                       |
+| ------------------ | -------------------- | ----------------------------------------------------------- |
+| `IPlatform`        | `SdlPlatform`        | Window creation, renderer lifecycle, frame timing           |
+| `ISpriteRenderer`  | `SdlSpriteRenderer`  | SDL3 draw calls, texture rendering, rotation, alpha         |
+| `ITextureManager`  | `SdlTextureManager`  | `SDL_CreateTexture`, pixel upload                           |
+| `IFontRenderer`    | `SdlFontRenderer`    | Wraps `MiniBitmapFont` for text rasterization               |
+| `ITileMapRenderer` | `SdlTileMapRenderer` | Visible-tile culling, hash-based brightness, detail sprites |
+| `IInputManager`    | `SdlInputManager`    | SDL3 event polling, keyboard + mouse + gamepad mapping      |
+| `IAudioManager`    | `SdlAudioManager`    | SDL3 audio device stream, push-based mixing, crossfade      |
+
+**Generation abstraction: `IUniverseGenerator`** (`Generation/IUniverseGenerator.cs`) — a parallel platform abstraction for world content. Defines `GenerateGalaxy()`, `GenerateSolarSystem()`, `GeneratePlanetSurface()`, `GenerateStationInterior()`, `GenerateSettlementInterior()`, and `GenerateBoardMissions()`. The default implementation is `ProceduralUniverseGenerator` (`Generation/Procedural/`), which delegates to the individual static generator classes. Showcase modes use dedicated `IUniverseGenerator` subclasses (`Generation/Showcase/`) that override specific methods to return curated content.
 
 ### Overlays
 Overlays are semi-transparent UI layers rendered on top of a game state. All overlays inherit from `OverlayBase`, which provides:
@@ -357,6 +419,12 @@ Galaxy Seed (user-provided or random)
 All RNG uses `SeededRandom` (xorshift64) — fully deterministic. Same galaxy seed = same universe every time.
 Station interiors derive seeds from system seed + 2000 + station index. Settlement interiors derive from surface seed + 3000 + position hash.
 
+**Generation folder structure**:
+- `IUniverseGenerator` defines the full content-generation contract; `Game` always works through this interface.
+- `Generation/Procedural/ProceduralUniverseGenerator` is the default implementation — a thin orchestrator that calls the individual static generator classes (`GalaxyGenerator`, `SolarSystemGenerator`, `PlanetSurfaceGenerator`, `InteriorGenerator`, `MissionGenerator`).
+- `Generation/Showcase/` contains alternative `IUniverseGenerator` implementations for debug showcases (`StarTypeShowcase`, `PlanetTypeShowcase`, `AsteroidMiningShowcase`, `SurfaceMiningShowcase`). They subclass `ProceduralUniverseGenerator` and override only the methods needed for the showcase.
+- `SurfaceTerrainRules` centralizes walkability/landing/spawn validation so that `PlanetSurfaceGenerator`, `PlanetSurfaceSimulation`, and the landing overlay all use identical rules.
+
 ### ECS Usage (Arch)
 Components are plain structs defined in `Components.cs`. The game uses Arch's `World.Query()` with lambda syntax for ad-hoc iteration, plus dedicated **systems** for recurring logic. Key component types:
 - `Transform` — position + rotation
@@ -447,13 +515,17 @@ System details:
 - **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemSimulation and PlanetSurfaceSimulation. Part drops are gated by `enablePartDrops` flag (space combat only) and tier is capped by danger level. Won't drop parts already owned or equipped.
 
 ### Rendering
-The `SpriteRenderer` class provides both SDL3 draw primitives (filled rects, scanline circles, lines) and texture-based rendering with rotation and alpha support.
-
-**TextureManager** is a lightweight utility class that wraps the SDL renderer handle and provides two public methods used by all entity renderers:
+The `ISpriteRenderer` interface (implemented by `SdlSpriteRenderer`) provides both SDL3 draw primitives (filled rects, circles, lines) and texture-based rendering with rotation and alpha support, in both world-space and screen-space variants. The `ITextureManager` interface (implemented by `SdlTextureManager`) exposes:
 - `CreateTextureFromPixels(byte[] pixels, int width, int height)` — creates an SDL texture from raw RGBA pixel data
 - `SetPixelBlock(...)` — static helper to fill rectangular pixel regions
 
-**Entity Renderers** follow a consistent pattern: each is an `IDisposable` class that receives a `TextureManager` in its constructor, generates its own textures procedurally, owns them for their lifetime, and provides `Render()`/rendering methods. They are all owned by `Game` and disposed on shutdown.
+**`Rendering/Base/`** now contains only two files:
+- `MiniBitmapFont.cs` — built-in 5×8 pixel font data (used by `SdlFontRenderer`)
+- `RenderColors.cs` — shared color/style constants (`HealthBarBackground`, `ShieldBarFill`, `StarCoreHighlight`, etc.) used across multiple renderers
+
+The former `FontRenderer.cs`, `SpriteRenderer.cs`, `TextureManager.cs`, and `TileMapRenderer.cs` that used to live in `Rendering/Base/` have been moved into the Platform abstraction layer (`ISpriteRenderer`, `ITextureManager`, `IFontRenderer`, `ITileMapRenderer` interfaces + SDL3 implementations in `Platform/Sdl/`).
+
+**Entity Renderers** follow a consistent pattern: each is an `IDisposable` class that receives an `ITextureManager` in its constructor, generates its own textures procedurally, owns them for their lifetime, and provides `Render()`/rendering methods. They are all owned by `Game` and disposed on shutdown.
 
 | Renderer              | Texture Ownership                                 | Key Methods                                                                                               |
 | --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -728,7 +800,7 @@ Real-time projectile combat in the solar system. Players fire weapons with Space
 
 **Combat HUD**: Hull bar (red→green gradient) and shield bar (blue) displayed below the cargo HUD. Danger level shown as colored text. Floating damage numbers appear at hit locations (blue = shield, yellow = hull). Expanding explosion circles on entity destruction.
 
-**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols. On planet surfaces, fauna and bandit projectiles don't hit each other but do hit the player.
+**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols. On planet surfaces, fauna and bandit projectiles don't hit each other but do hit the player. All friendly-fire logic is centralized in `Core/FactionRules.cs` (`FactionRules.CanHit(attacker, target)`) and shared between `ProjectileSystem` and `AvatarEnemyAISystem`.
 
 ### Surface Combat
 Real-time projectile combat on planet surfaces. Players shoot with Space (fires in last movement direction) or left mouse button (fires toward cursor). Hostile fauna and bandits spawn on walkable terrain during planet surface generation.
@@ -765,9 +837,9 @@ Base avatar weapon damage is 10. Total damage = base + equipped weapon's `Weapon
 ### Audio System
 Fully procedural audio engine using SDL3's built-in audio API (push-based streaming at 44100 Hz, stereo float32). No external audio files — all music and sound effects are synthesized at runtime, matching the game's procedural generation philosophy.
 
-**Architecture**: `Game` owns a single `AudioManager` instance (`game.Audio`). States call `SetMusicTheme()` and `PlaySfx()` directly.
+**Architecture**: `Game` accesses audio via `IPlatform.AudioManager` (`IAudioManager`). The concrete implementation is `SdlAudioManager` (`Platform/Sdl/SdlAudioManager.cs`). States call `SetMusicTheme()` and `PlaySfx()` through this interface.
 
-**AudioManager** (`Audio/AudioManager.cs`):
+**`IAudioManager` / `SdlAudioManager`** (`Platform/Sdl/SdlAudioManager.cs`):
 - Opens an SDL3 audio device stream via `SDL.OpenAudioDeviceStream` (44100 Hz, float32 LE, stereo)
 - `Update(float dt)` generates and pushes mixed audio chunks (~2048 frames / ~46ms) to the device, keeping ~0.2s buffered via `SDL.GetAudioStreamAvailable`
 - `SetMusicTheme(theme, instant)` with smooth crossfade (fade out → switch → fade in, 2 vol units/s)
@@ -953,6 +1025,12 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Combat music tracking (auto-switch to combat theme on damage, fade back after 5s)
 - [x] Sound effects and music (procedural synthesis via SDL3 built-in audio)
 - [x] Main menu debug overlay and showcase launchers
+- [x] Platform abstraction layer (IPlatform / ISpriteRenderer / ITextureManager / IInputManager / IAudioManager + SDL3 implementations)
+- [x] Universe generation interface (IUniverseGenerator / ProceduralUniverseGenerator) with showcase subclass overrides
+- [x] Centralized faction rules (FactionRules.CanHit)
+- [x] Centralized surface terrain rules (SurfaceTerrainRules)
+- [x] Menu option persistence (MenuOptionsPersistence — saves danger/location/sublocation selections to disk)
+- [x] Debug timing infrastructure (DebugTimer / DebugTimingEntry / IDebugInfoProvider)
 
 ## TODO / Next Steps
 - [ ] Save/load game
