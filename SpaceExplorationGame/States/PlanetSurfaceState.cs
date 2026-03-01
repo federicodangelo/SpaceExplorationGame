@@ -122,7 +122,7 @@ public class PlanetSurfaceState : GameState
             _starsBackground.Generate(
                 discCX - discR, discCY - discR, discCX + discR, discCY + discR,
                 seed: 0xC1A551C_5AFED1CuL,
-                minDist: 600f,
+                minDist: 1200f,
                 filter: p => { float dx = p.X - discCX, dy = p.Y - discCY; return dx * dx + dy * dy > discRSq; });
         }
 

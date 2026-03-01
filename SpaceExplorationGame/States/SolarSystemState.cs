@@ -90,7 +90,7 @@ public class SolarSystemState : GameState
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.08f);
         _starsBackground.Generate(0f, 0f, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xCAFEBABEuL,
-            minDist: 800f);
+            minDist: 2000f);
 
         _nebulaBackground = new NebulaBackgroundRenderer();
         _nebulaBackground.Generate(0f, 0f, totalW, totalH, seed: game.Seeds.GalaxySeed);
