@@ -391,7 +391,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
         };
 
         int requiredVerts = segments + 2;
-        int requiredIndices = (segments + 1) * 3;
+        int requiredIndices = segments * 3;
         EnsureBuffers(requiredVerts, requiredIndices);
         var v = _vertexBuf;
         var id = _indexBuf;
