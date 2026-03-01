@@ -351,17 +351,32 @@ public static class HudRenderer
             var planet = planets[nearbyPlanetIndex];
             string details = $"MOONS: {planet.MoonCount}";
             if (planet.HasRings) details += "  RINGS: YES";
-            string settText = planet.HasSettlement ? "SETTLEMENTS: YES" : "NO SETTLEMENTS";
 
-            RenderPromptPanel(renderer,
-                [$"[{interactHelpText}] LAND ON {planet.Name.ToUpper()}",
-                 $"TYPE: {planet.Type.ToString().ToUpper()}",
-                 details,
-                 settText],
-                [new Color3(100, 255, 100),
-                 new Color3(180, 180, 180),
-                 new Color3(150, 150, 150),
-                 planet.HasSettlement ? new Color3(255, 220, 100) : new Color3(120, 120, 120)]);
+            if (planet.HasSolidSurface)
+            {
+                string settText = planet.HasSettlement ? "SETTLEMENTS: YES" : "NO SETTLEMENTS";
+                RenderPromptPanel(renderer,
+                    [$"[{interactHelpText}] LAND ON {planet.Name.ToUpper()}",
+                     $"TYPE: {planet.Type.ToString().ToUpper()}",
+                     details,
+                     settText],
+                    [new Color3(100, 255, 100),
+                     new Color3(180, 180, 180),
+                     new Color3(150, 150, 150),
+                     planet.HasSettlement ? new Color3(255, 220, 100) : new Color3(120, 120, 120)]);
+            }
+            else
+            {
+                RenderPromptPanel(renderer,
+                    [planet.Name.ToUpper(),
+                     $"TYPE: {planet.Type.ToString().ToUpper()}",
+                     details,
+                     "LANDABLE: NO"],
+                    [new Color3(200, 220, 255),
+                     new Color3(180, 180, 180),
+                     new Color3(150, 150, 150),
+                     new Color3(255, 80, 80)]);
+            }
         }
         else if (nearbyMoonIndex >= 0 && nearbyMoonPlanetIndex >= 0
             && nearbyMoonPlanetIndex < planets.Count

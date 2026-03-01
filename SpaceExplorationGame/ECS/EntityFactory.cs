@@ -50,14 +50,11 @@ public static class EntityFactory
             new Label { Text = planet.Name, OffsetY = (int)(planet.Radius + 30) }
         );
 
-        if (planet.HasSolidSurface)
+        world.Add(entity, new Interactable
         {
-            world.Add(entity, new Interactable
-            {
-                Type = InteractionType.LandOnPlanet,
-                Label = "Land"
-            });
-        }
+            Type = InteractionType.LandOnPlanet,
+            Label = planet.HasSolidSurface ? "Land" : "Info"
+        });
 
         return entity;
     }

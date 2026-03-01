@@ -183,7 +183,7 @@ public class SolarSystemState : GameState
                 SetAnchor(_sim.SpaceStationEntities[_sim.NearbySpaceStationIndex]);
                 _spaceStationOverlay.Open(_starSystem, _sim.SpaceStations[_sim.NearbySpaceStationIndex], game);
             }
-            else if (_sim.NearbyPlanetIndex >= 0)
+            else if (_sim.NearbyPlanetIndex >= 0 && _sim.Planets[_sim.NearbyPlanetIndex].HasSolidSurface)
             {
                 SetAnchor(_sim.PlanetEntities[_sim.NearbyPlanetIndex]);
                 _planetLandingOverlay.Open(_starSystem, _sim.Planets[_sim.NearbyPlanetIndex], game);
