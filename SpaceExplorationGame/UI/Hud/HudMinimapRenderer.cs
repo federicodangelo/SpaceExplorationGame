@@ -166,7 +166,30 @@ public static class HudMinimapRenderer
         CollectSurfaceRockMarkers(ecsWorld, markers);
 
         RenderMinimap(renderer, viewOrigin, viewSize,
-            areas.ToArray(), markers.ToArray(), playerPos, centerOnPlayer: true);
+            areas.ToArray(), markers.ToArray(), playerPos, centerOnPlayer: true,
+            extraDrawing: renderer =>
+            {
+                // Planet boundary circle — drawn on top as a subtle ring
+                int tW = surfaceData.Width;
+                int tH = surfaceData.Height;
+                float bCenterX = (tW - 1) * 0.5f * GameConfig.TileSize;
+                float bCenterY = (tH - 1) * 0.5f * GameConfig.TileSize;
+                float bRadius = (MathF.Min(tW, tH) * 0.5f - 2f) * GameConfig.TileSize;
+
+                float mmX = GameConfig.WindowWidth - MinimapSize - MinimapMargin;
+                float mmY = MinimapMargin;
+                float scaleX = MinimapSize / viewSize.X;
+                float scaleY = MinimapSize / viewSize.Y;
+
+                float screenCX = mmX + (bCenterX - viewOrigin.X) * scaleX;
+                float screenCY = mmY + (bCenterY - viewOrigin.Y) * scaleY;
+                float screenR = bRadius * ((scaleX + scaleY) * 0.5f);
+
+                renderer.DrawSolidRingScreen(screenCX, screenCY,
+                    MathF.Max(screenR - 1.5f, 0f), screenR,
+                    new Color4(160, 200, 255, 150));
+            }
+        );
     }
 
     /// <summary>Render the interior minimap (top-right, shows entire interior).</summary>
@@ -221,13 +244,16 @@ public static class HudMinimapRenderer
     private static void RenderMinimap(ISpriteRenderer renderer,
         Vector2 viewOrigin, Vector2 viewSize,
         ReadOnlySpan<MinimapArea> areas, ReadOnlySpan<MinimapMarker> markers,
-        Vector2 playerWorldPos, bool centerOnPlayer)
+        Vector2 playerWorldPos, bool centerOnPlayer, Action<ISpriteRenderer>? extraDrawing = null)
     {
         float mmX = GameConfig.WindowWidth - MinimapSize - MinimapMargin;
         float mmY = MinimapMargin;
 
         // Border + background (sci-fi frame)
         OverlayBase.DrawFrame(renderer, mmX, mmY, MinimapSize, MinimapSize, 220);
+
+        // Set clipping to prevent drawing outside the minimap area (e.g. when player is near edge and view extends beyond map)
+        renderer.SetClipRect(mmX, mmY, MinimapSize, MinimapSize);
 
         float scaleX = MinimapSize / viewSize.X;
         float scaleY = MinimapSize / viewSize.Y;
@@ -270,6 +296,12 @@ public static class HudMinimapRenderer
             py = mmY + (playerWorldPos.Y - viewOrigin.Y) * scaleY;
         }
         renderer.DrawRectScreen(px - 2, py - 2, 4, 4, new Color3(100, 255, 100));
+
+        if (extraDrawing != null)
+            extraDrawing(renderer);
+
+        // Clear clipping
+        renderer.ClearClipRect();
     }
 
     /// <summary>Computes the player-centered view for scrolling minimaps.</summary>

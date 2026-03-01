@@ -528,6 +528,9 @@ public class PlanetSurfaceState : GameState
         var camera = _camera;
         var world = _sim.EcsWorld;
 
+        // Background stars in the void outside the planet disc
+        PlanetSurfaceRenderer.RenderBackgroundStars(renderer, camera, _sim.SurfaceData, game.GlobalTime);
+
         // Terrain
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,
             game.GlobalTime, _planet.Type);
