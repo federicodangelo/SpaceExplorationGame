@@ -55,6 +55,13 @@ public class PlanetRenderer
             var pTransform = ecsWorld.Get<Transform>(planetEntities[i]);
             var p = planets[i];
 
+            // Compute the maximum world-space extent of this planet including rings and moons,
+            // and skip the entire block when nothing can be visible.
+            float maxExtent = p.HasRings ? p.Radius * 2f : p.Radius;
+            if (p.Moons.Count > 0)
+                maxExtent = MathF.Max(maxExtent, p.Moons[^1].OrbitRadius + p.Moons[^1].Radius);
+            if (!camera.DiskOverlapsCamera(pTransform.Position, maxExtent)) continue;
+
             // Planet body
             RenderBody(renderer, camera, pTransform.Position, p.Radius, p.Color, p.Type, false, p.Index, globalTime);
 
@@ -86,12 +93,6 @@ public class PlanetRenderer
                     p.Color.WithAlpha(ringAlphaB), 48);
             }
 
-            // Moon orbit lines
-            foreach (var moon in p.Moons)
-            {
-                byte orbitA = (byte)Math.Clamp((int)(30 + 12 * MathF.Sin(globalTime * 0.9f + moon.Index)), 0, 255);
-                renderer.DrawCircle(camera, pTransform.Position, moon.OrbitRadius, new Color4(20, 20, 40, orbitA), 24);
-            }
 
             // Moons
             if (i < moonEntities.Count)
@@ -101,6 +102,7 @@ public class PlanetRenderer
                     if (m >= p.Moons.Count) break;
                     var moonTransform = ecsWorld.Get<Transform>(moonEntities[i][m]);
                     var moon = p.Moons[m];
+                    if (!camera.DiskOverlapsCamera(moonTransform.Position, moon.Radius)) continue;
                     int seed = p.Index * 101 + moon.Index * 17 + 7;
                     RenderBody(renderer, camera, moonTransform.Position, moon.Radius, moon.Color, moon.Type, true, seed, globalTime);
                 }

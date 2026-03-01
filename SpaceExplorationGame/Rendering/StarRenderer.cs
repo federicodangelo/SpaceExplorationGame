@@ -36,10 +36,16 @@ public class StarRenderer
     {
     }
 
+    // CoronaRadiusMultiplier (1.8) + max ray reach (1.4) ≈ 3.2 — used for culling
+    private const float MaxExtentMultiplier = CoronaRadiusMultiplier + 1.4f;
+
     /// <summary>Renders a star at world position with corona and rays.</summary>
     public void Render(ISpriteRenderer renderer, Camera camera,
         Vector2 starCenter, float starDisplayRadius, Color3 color, float globalTime)
     {
+        if (!camera.DiskOverlapsCamera(starCenter, starDisplayRadius * MaxExtentMultiplier))
+            return;
+
         RenderCoronaAndRays(renderer, camera, starCenter, starDisplayRadius, color, globalTime);
         RenderStarWorld(renderer, camera, starCenter, starDisplayRadius, color, 255, globalTime);
         RenderProminences(renderer, camera, starCenter, starDisplayRadius, color, globalTime);

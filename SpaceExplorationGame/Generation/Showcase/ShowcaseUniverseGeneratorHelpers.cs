@@ -62,7 +62,7 @@ internal static class ShowcaseUniverseGeneratorHelpers
         var planets = new List<PlanetData>(types.Length);
 
         float baseOrbit = 2100f;
-        float spacing = 760f;
+        float spacing = 1200f;
 
         for (int i = 0; i < types.Length; i++)
         {

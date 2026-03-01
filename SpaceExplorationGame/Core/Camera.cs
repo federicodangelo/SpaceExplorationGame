@@ -97,6 +97,20 @@ public class Camera
     }
 
     /// <summary>
+    /// Returns true when a world-space filled disk (centered at <paramref name="center"/> with
+    /// <paramref name="radius"/>) overlaps the camera viewport, approximated as a circle whose
+    /// radius equals the half-diagonal of the visible world area.
+    /// Test: distance(camera.Position, center) &lt;= cameraRadius + diskRadius
+    /// </summary>
+    public bool DiskOverlapsCamera(Vector2 center, float radius)
+    {
+        float halfW = ViewportWidth / (2f * Zoom);
+        float halfH = ViewportHeight / (2f * Zoom);
+        float cameraRadius = MathF.Sqrt(halfW * halfW + halfH * halfH);
+        return Vector2.Distance(Position, center) <= cameraRadius + radius;
+    }
+
+    /// <summary>
     /// Center the camera on a position smoothly.
     /// </summary>
     public void LerpTo(Vector2 target, float t)
