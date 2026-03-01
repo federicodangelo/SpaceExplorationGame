@@ -660,9 +660,9 @@ public class MainMenuState : GameState
 
         float centerX = GameConfig.WindowWidth / 2f;
         float centerY = GameConfig.WindowHeight / 2f;
-        game.StationRenderer.RenderStation(renderer, _fakeCamera,
+        game.SpaceStationRenderer.RenderSpaceStation(renderer, _fakeCamera,
             new Vector2(centerX - 600f, centerY - 180f), game.GlobalTime);
-        game.StationRenderer.RenderStation(renderer, _fakeCamera,
+        game.SpaceStationRenderer.RenderSpaceStation(renderer, _fakeCamera,
             new Vector2(centerX + 600f, centerY + 180f), game.GlobalTime + 0.5f);
     }
 

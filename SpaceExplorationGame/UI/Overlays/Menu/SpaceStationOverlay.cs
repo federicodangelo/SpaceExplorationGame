@@ -1,7 +1,6 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Platform;
-using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
@@ -89,7 +88,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         new(StationMenuOption.ShipDealer, "SHIP DEALER"),
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
-        new(StationMenuOption.Disembark, "DISEMBARK"),
+        new(StationMenuOption.Disembark, "DOCK"),
         new(StationMenuOption.ExitSpaceStation, "LAUNCH"),
     ])
     {
@@ -101,6 +100,14 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         HighlightBg = new Color3(40, 40, 80),
         HighlightAlpha = 255,
     };
+
+    // ── Callbacks ──
+
+    /// <summary>
+    /// Invoked when the player chooses to walk off the ship into the station interior.
+    /// The receiver (SolarSystemState) supplies the docking-transition context.
+    /// </summary>
+    public Action<Game, SpaceStationData>? OnDisembarkRequested { get; set; }
 
     // ── Open ──
 
@@ -150,9 +157,8 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
                 game.Player.ReturnSpaceStationIndex = _spaceStation.Index;
                 Close();
-                game.ChangeState(new InteriorState(
-                    InteriorOrigin.SpaceStation, _starSystem, spaceStation: _spaceStation,
-                    startInShip: true));
+                // Let SolarSystemState handle the transition so it can supply solar-camera data.
+                OnDisembarkRequested?.Invoke(game, _spaceStation);
                 break;
             case StationMenuOption.ExitSpaceStation:
                 Close();

@@ -71,6 +71,7 @@ public class SolarSystemState : GameState
     {
         _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
         _planetLandingOverlay.OnLandingConfirmed = (g, landing) => BeginSeamlessLanding(g, landing);
+        _spaceStationOverlay.OnDisembarkRequested = BeginDocking;
         _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
 
         // Music
@@ -279,6 +280,26 @@ public class SolarSystemState : GameState
                 ? new Color3(255, 120, 80) : new Color3(200, 200, 200));
     }
 
+    private void BeginDocking(Game game, SpaceStationData station)
+    {
+        Vector2 shipWorldPos = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
+            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position
+            : game.Player.ShipWorldPosition;
+
+        int stIdx = _sim.SpaceStations.FindIndex(s => s.Index == station.Index);
+        Vector2 stationWorldPos = stIdx >= 0 && stIdx < _sim.SpaceStationEntities.Count
+            && _sim.EcsWorld.IsAlive(_sim.SpaceStationEntities[stIdx])
+            ? _sim.EcsWorld.Get<Transform>(_sim.SpaceStationEntities[stIdx]).Position
+            : _camera.Position;
+
+        game.ChangeState(new StationDockingTransitionState(
+            _starSystem, station,
+            shipWorldStart: shipWorldPos,
+            stationWorldPos: stationWorldPos,
+            solarCameraStart: _camera.Position,
+            solarZoomStart: _camera.Zoom));
+    }
+
     private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)
     {
         Vector2 shipWorldPos = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
@@ -398,7 +419,7 @@ public class SolarSystemState : GameState
             _sim.Planets, _sim.PlanetEntities, _sim.MoonEntities, globalTime);
 
         // Stations
-        game.StationRenderer.RenderStations(renderer, camera, world,
+        game.SpaceStationRenderer.RenderSpaceStations(renderer, camera, world,
             _sim.SpaceStationEntities, game.GlobalTime);
 
         // Labels

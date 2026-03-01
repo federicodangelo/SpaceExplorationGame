@@ -377,7 +377,25 @@ public class InteriorState : GameState
             case InteriorOrigin.SpaceStation:
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
                 game.Player.ReturnSpaceStationIndex = _spaceStation!.Index;
-                game.ChangeState(new SolarSystemState(_starSystem, _spaceStation));
+
+                // Look up the station world position from the still-alive solar simulation
+                // so the undocking cinematic can render the exterior at the right location.
+                Vector2 stationWorldPos = Vector2.Zero;
+                var solarSim = game.Coordinator.Find<SolarSystemSimulation>(
+                    s => s.StarSystem.Index == _starSystem.Index);
+                if (solarSim != null)
+                {
+                    int stIdx = solarSim.SpaceStations.FindIndex(s => s.Index == _spaceStation.Index);
+                    if (stIdx >= 0 && stIdx < solarSim.SpaceStationEntities.Count
+                        && solarSim.EcsWorld.IsAlive(solarSim.SpaceStationEntities[stIdx]))
+                    {
+                        stationWorldPos = solarSim.EcsWorld.Get<Transform>(
+                            solarSim.SpaceStationEntities[stIdx]).Position;
+                    }
+                }
+
+                game.ChangeState(new StationDockingTransitionState(
+                    _starSystem, _spaceStation!, _sim.Interior, stationWorldPos));
                 break;
             case InteriorOrigin.Settlement:
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;

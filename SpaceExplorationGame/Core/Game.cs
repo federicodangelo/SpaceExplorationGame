@@ -32,7 +32,7 @@ public class Game : IDisposable
     public AvatarRenderer AvatarRenderer { get; private set; } = null!;
     public VehicleRenderer VehicleRenderer { get; private set; } = null!;
     public SpaceshipRenderer SpaceshipRenderer { get; private set; } = null!;
-    public StationRenderer StationRenderer { get; private set; } = null!;
+    public SpaceStationRenderer SpaceStationRenderer { get; private set; } = null!;
     public AsteroidRenderer AsteroidRenderer { get; private set; } = null!;
     public PlanetRenderer PlanetRenderer { get; private set; } = null!;
     public StarRenderer StarRenderer { get; private set; } = null!;
@@ -88,7 +88,7 @@ public class Game : IDisposable
         AvatarRenderer = new AvatarRenderer();
         VehicleRenderer = new VehicleRenderer();
         SpaceshipRenderer = new SpaceshipRenderer();
-        StationRenderer = new StationRenderer(Textures);
+        SpaceStationRenderer = new SpaceStationRenderer(Textures);
         AsteroidRenderer = new AsteroidRenderer();
         PlanetRenderer = new PlanetRenderer();
         StarRenderer = new StarRenderer();

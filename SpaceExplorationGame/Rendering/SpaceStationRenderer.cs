@@ -9,7 +9,7 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders space stations using primitive geometry.
 /// </summary>
-public class StationRenderer
+public class SpaceStationRenderer
 {
     const int NumLightsOuterRing = 8;
     const double BlinkPeriod = 2.0; // seconds
@@ -68,28 +68,28 @@ public class StationRenderer
     private static readonly Color4 DockingMarkerCoolBase = new(120, 190, 255, 170);
     private static readonly Color4 DockingMarkerNotchColor = new(40, 45, 70, 180);
 
-    public StationRenderer(ITextureManager textures)
+    public SpaceStationRenderer(ITextureManager textures)
     {
         _ = textures;
     }
 
     /// <summary>Renders all stations with a slowly rotating texture.</summary>
-    public void RenderStations(ISpriteRenderer renderer, Camera camera,
-        World ecsWorld, List<Entity> stationEntities, double globalTime)
+    public void RenderSpaceStations(ISpriteRenderer renderer, Camera camera,
+        World ecsWorld, List<Entity> spaceStationEntities, double globalTime)
     {
-        for (int i = 0; i < stationEntities.Count; i++)
+        foreach (var spaceStation in spaceStationEntities)
         {
-            var stTransform = ecsWorld.Get<Transform>(stationEntities[i]);
+            var stTransform = ecsWorld.Get<Transform>(spaceStation);
 
-            RenderStation(renderer, camera, stTransform.Position, globalTime);
+            RenderSpaceStation(renderer, camera, stTransform.Position, globalTime);
         }
     }
 
-    public void RenderStation(ISpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
+    public void RenderSpaceStation(ISpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
     {
         float stRotation = (float)(globalTime * 10) % 360f;
 
-        DrawStationBody(renderer, camera, position, stRotation, globalTime);
+        DrawSpaceStationBody(renderer, camera, position, stRotation, globalTime);
 
         // Blinking lights overlay (on the outer ring)
         double blinkPhase = globalTime % BlinkPeriod;
@@ -119,7 +119,7 @@ public class StationRenderer
         }
     }
 
-    private static void DrawStationBody(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime)
+    private static void DrawSpaceStationBody(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime)
     {
         // Struts (cross)
         DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, -StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, -StrutOuterRadius), rotationDeg), StrutThickness, StrutColor);
