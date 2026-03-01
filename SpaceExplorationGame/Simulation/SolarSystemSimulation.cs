@@ -35,7 +35,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     public List<Entity> EnemyEntities { get; } = [];
 
     // ── Background (cosmetic data, no entities) ─────────────────────
-    public List<BackgroundStar> BackgroundStars { get; } = [];
+
     public List<NebulaCloud> BackgroundNebulae { get; } = [];
 
 
@@ -127,7 +127,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         MoonEntities.Clear();
         AsteroidEntities.Clear();
         EnemyEntities.Clear();
-        BackgroundStars.Clear();
         BackgroundNebulae.Clear();
         base.Destroy();
     }
@@ -355,16 +354,8 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private void SpawnBackground(float mapW, float mapH)
     {
-        var bgRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xCAFEBABE);
         var nebRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xFACEFEED);
-
-        for (int i = 0; i < 4000; i++)
-        {
-            BackgroundStars.Add(new BackgroundStar(
-                bgRng.NextFloat(-mapW * 0.5f, mapW * 1.5f),
-                bgRng.NextFloat(-mapH * 0.5f, mapH * 1.5f),
-                (byte)bgRng.NextInt(50, 150)));
-        }
+        var bgRng = new SeededRandom(_game.Seeds.GalaxySeed ^ 0xCAFEBABE);
 
         for (int i = 0; i < 32; i++)
         {

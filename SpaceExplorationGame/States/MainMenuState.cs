@@ -3,6 +3,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Generation.Showcase;
 
@@ -38,8 +39,8 @@ public class MainMenuState : GameState
 
     private float _animTimer;
 
-    // Background stars for visual flair
-    private List<AnimatedStar> _bgStars = [];
+    // Background star field
+    private StarsBackgroundRenderer? _starsBackground;
 
     private readonly MainMenuOverlay _menuOverlay = new();
     private readonly DebugMenuOverlay _debugOverlay = new();
@@ -115,16 +116,10 @@ public class MainMenuState : GameState
             _debugOverlay.Open();
         }
 
-        var rng = new Random(42);
-        for (int i = 0; i < 200; i++)
-        {
-            _bgStars.Add(new AnimatedStar(
-                rng.Next(0, GameConfig.WindowWidth),
-                rng.Next(0, GameConfig.WindowHeight),
-                (byte)rng.Next(40, 160),
-                0.2f + (float)rng.NextDouble() * 0.8f
-            ));
-        }
+        float cx = GameConfig.WindowWidth * 0.5f;
+        float cy = GameConfig.WindowHeight * 0.5f;
+        _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 1.0f);
+        _starsBackground.Generate(cx, cy, cx, cy, seed: 42uL, minDist: 80f);
     }
 
     public override void Exit(Game game) { }
@@ -652,11 +647,7 @@ public class MainMenuState : GameState
         _fakeCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         var renderer = game.SpriteRenderer;
 
-        foreach (var (x, y, brightness, speed) in _bgStars)
-        {
-            float blink = (byte)Math.Clamp(brightness + 30 * MathF.Sin(_animTimer * speed * 2f + x), 20, 200);
-            renderer.DrawRectScreen(x, y, 2, 2, new Color3((byte)blink, (byte)blink, (byte)(blink * 0.9f)));
-        }
+        _starsBackground?.Render(renderer, _fakeCamera, _animTimer);
 
         float centerX = GameConfig.WindowWidth / 2f;
         float centerY = GameConfig.WindowHeight / 2f;

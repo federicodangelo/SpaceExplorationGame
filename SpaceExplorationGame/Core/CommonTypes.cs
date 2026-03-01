@@ -60,9 +60,6 @@ public readonly record struct ViewArea(Vector2 Origin, Vector2 Size);
 /// <summary>A cosmetic background star with brightness.</summary>
 public readonly record struct BackgroundStar(float X, float Y, byte Brightness);
 
-/// <summary>A cosmetic background star with brightness and animation speed.</summary>
-public readonly record struct AnimatedStar(float X, float Y, byte Brightness, float Speed);
-
 /// <summary>A cosmetic nebula cloud with position, radius, and color.</summary>
 public readonly record struct NebulaCloud(float X, float Y, float Radius, Color3 Color);
 

@@ -37,7 +37,8 @@ public class SolarSystemState : GameState
     private PlayerShipInputSystem _playerShipInputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
     private LabelRenderer _labelRenderer = null!;
-
+    // ── Background stars ──────────────────────────────────────────────────────
+    private StarsBackgroundRenderer? _starsBackground;
     // ── Visual effects (rendering-only) ─────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
@@ -81,6 +82,14 @@ public class SolarSystemState : GameState
         _sim = game.Coordinator.FindOrCreate<SolarSystemSimulation>(
             s => s.StarSystem.Index == _starSystem.Index,
             () => new SolarSystemSimulation(game, _starSystem));
+
+        // Generate background star field (Poisson disk, deterministic per galaxy seed)
+        float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
+        float totalH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.08f);
+        _starsBackground.Generate(0f, 0f, totalW, totalH,
+            seed: game.Seeds.GalaxySeed ^ 0xCAFEBABEuL,
+            minDist: 800f);
 
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
@@ -392,7 +401,7 @@ public class SolarSystemState : GameState
         float globalTime = (float)game.GlobalTime;
 
         // Background
-        SolarSystemRenderer.RenderBackgroundStars(renderer, camera, _sim.BackgroundStars, globalTime);
+        _starsBackground?.Render(renderer, camera, globalTime);
         SolarSystemRenderer.RenderBackgroundNebulae(renderer, camera, _sim.BackgroundNebulae, globalTime);
         SolarSystemRenderer.RenderOrbitLines(renderer, camera, _sim.Planets, starCenter, globalTime);
 

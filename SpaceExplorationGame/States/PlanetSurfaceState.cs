@@ -46,6 +46,9 @@ public class PlanetSurfaceState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
     private VehicleMovementSystem? _vehicleMovementSystem;
 
+    // ── Background stars ──────────────────────────────────────────────
+    private StarsBackgroundRenderer? _starsBackground;
+
     // ── Visual effects ──────────────────────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
@@ -107,6 +110,21 @@ public class PlanetSurfaceState : GameState
         _sim = game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
             s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planet.Index,
             () => new PlanetSurfaceSimulation(game, _starSystem, _planet, _preGeneratedSurfaceData, parentSim));
+
+        // Generate background star field outside the planet disc (Poisson disk, fixed seed)
+        {
+            float ts = GameConfig.TileSize;
+            float discCX = (_sim.SurfaceData.Width - 1) * 0.5f * ts;
+            float discCY = (_sim.SurfaceData.Height - 1) * 0.5f * ts;
+            float discR = (MathF.Min(_sim.SurfaceData.Width, _sim.SurfaceData.Height) * 0.5f - 2f) * ts;
+            float discRSq = discR * discR;
+            _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.12f);
+            _starsBackground.Generate(
+                discCX - discR, discCY - discR, discCX + discR, discCY + discR,
+                seed: 0xC1A551C_5AFED1CuL,
+                minDist: 600f,
+                filter: p => { float dx = p.X - discCX, dy = p.Y - discCY; return dx * dx + dy * dy > discRSq; });
+        }
 
         // Add player
         _simPlayer = _sim.AddPlayer(game.Player, new AddContext(_landingTileX, _landingTileY));
@@ -529,7 +547,7 @@ public class PlanetSurfaceState : GameState
         var world = _sim.EcsWorld;
 
         // Background stars in the void outside the planet disc
-        PlanetSurfaceRenderer.RenderBackgroundStars(renderer, camera, _sim.SurfaceData, game.GlobalTime);
+        _starsBackground?.Render(renderer, camera, (float)game.GlobalTime);
 
         // Terrain
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,

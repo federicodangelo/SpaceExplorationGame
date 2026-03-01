@@ -8,63 +8,11 @@ using SpaceExplorationGame.Platform;
 namespace SpaceExplorationGame.Rendering;
 
 /// <summary>
-/// Renders solar system visuals: background stars, nebulae, orbit lines, NPC ships, and effects.
+/// Renders solar system visuals: nebulae, orbit lines, NPC ships, and effects.
+/// Background stars are rendered separately via <see cref="StarsBackgroundRenderer"/>.
 /// </summary>
 public static class SolarSystemRenderer
 {
-    // ── Background Stars ────────────────────────────────────────────
-
-    /// <summary>Renders background stars with twinkling, color, and size variation.</summary>
-    public static void RenderBackgroundStars(ISpriteRenderer renderer, Camera camera,
-        List<BackgroundStar> bgStars, float globalTime)
-    {
-        foreach (var (x, y, brightness) in bgStars)
-        {
-            var pos = new Vector2(x, y);
-            var screenPos = camera.WorldToScreen(pos) * 0.9f; // parallax
-
-            if (screenPos.X < -4 || screenPos.X > GameConfig.WindowWidth + 4 ||
-                screenPos.Y < -4 || screenPos.Y > GameConfig.WindowHeight + 4)
-                continue;
-
-            // Deterministic per-star hash for stable variation
-            int hash = HashXY(x, y);
-
-            // Twinkle: sinusoidal brightness pulsing, unique phase per star
-            float phase = (hash & 0xFF) * 0.0245f; // 0-6.2
-            float twinkleSpeed = 1.0f + ((hash >> 8) & 0x7) * 0.4f; // 1.0-3.8 Hz
-            float twinkle = 0.7f + 0.3f * MathF.Sin(globalTime * twinkleSpeed + phase);
-            byte b = (byte)Math.Clamp((int)(brightness * twinkle), 30, 255);
-
-            // Color temperature variation
-            int colorType = (hash >> 11) & 0x7;
-            var color = colorType switch
-            {
-                0 => new Color3(b, b, (byte)Math.Min(b + 40, 255)),           // blue-white
-                1 => new Color3((byte)Math.Min(b + 30, 255), (byte)Math.Min(b + 15, 255), b), // warm yellow
-                2 => new Color3((byte)Math.Min(b + 25, 255), (byte)(b * 0.7f), (byte)(b * 0.6f)), // orange-red
-                _ => new Color3(b, b, b) // white (most common)
-            };
-
-            // Size variation: most are 2px, some 3, rare 1
-            int sizeClass = (hash >> 14) & 0xF;
-            int starSize = sizeClass < 2 ? 1 : sizeClass < 4 ? 3 : 2;
-
-            renderer.DrawRectScreen(screenPos.X - starSize * 0.5f, screenPos.Y - starSize * 0.5f,
-                starSize, starSize, color);
-
-            // Bright stars get a soft cross/glow
-            if (brightness > 120 && starSize >= 2)
-            {
-                byte glowA = (byte)(b * 0.25f);
-                renderer.DrawRectScreen(screenPos.X - 0.5f, screenPos.Y - 3, 1, 7,
-                    new Color4(color.R, color.G, color.B, glowA));
-                renderer.DrawRectScreen(screenPos.X - 3, screenPos.Y - 0.5f, 7, 1,
-                    new Color4(color.R, color.G, color.B, glowA));
-            }
-        }
-    }
-
     // ── Nebulae ─────────────────────────────────────────────────────
 
     /// <summary>Renders background nebulae with drift animation and internal structure.</summary>
@@ -242,13 +190,6 @@ public static class SolarSystemRenderer
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
-
-    private static int HashXY(float x, float y)
-    {
-        int ix = (int)(x * 100);
-        int iy = (int)(y * 100);
-        return (ix * 374761393 + iy * 668265263) ^ (ix * 17 + iy * 31);
-    }
 
     private static int HashAngle(float angle, float radius)
     {

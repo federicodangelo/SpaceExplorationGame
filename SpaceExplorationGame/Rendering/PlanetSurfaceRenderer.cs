@@ -8,108 +8,11 @@ namespace SpaceExplorationGame.Rendering;
 /// <summary>
 /// Renders planet surface visuals: terrain tiles with per-tile detail overlays,
 /// height-based shading, animated effects, terrain transitions, and decorations.
+/// Background stars are rendered separately via <see cref="StarsBackgroundRenderer"/>.
 /// </summary>
 public static class PlanetSurfaceRenderer
 {
-    // ── Background star cache ────────────────────────────────────────────────
-
-    // Parallax factor shared by generation and rendering (stars move at 12% of camera speed).
-    private const float StarParallax = 0.12f;
-
-    /// <summary>Lazy-cached Poisson-disk star positions in star-world space.</summary>
-    private static Vector2[]? _starPositions;
-
-    /// <summary>
-    /// Generate (once) Poisson-disk star positions that cover the full screen
-    /// from every reachable camera position on the planet surface.
-    /// Points are filtered so only void space (outside the planet disc) is used.
-    /// </summary>
-    private static Vector2[] GetOrCreateStarPositions(float discCX, float discCY, float discRSq)
-    {
-        if (_starPositions != null) return _starPositions;
-
-        // The visible half-extent in star-world coords (parallax, no zoom):
-        //   screenPx / (2 * Parallax)
-        float screenHalf = MathF.Max(GameConfig.WindowWidth, GameConfig.WindowHeight) / (2f * StarParallax);
-
-        // Camera can roam up to discR from the disc centre, so add that too.
-        float discR = MathF.Sqrt(discRSq);
-        float halfExtent = screenHalf + discR + 200f; // small extra margin
-
-        float x0 = discCX - halfExtent;
-        float y0 = discCY - halfExtent;
-        float x1 = discCX + halfExtent;
-        float y1 = discCY + halfExtent;
-
-        // minDist of 600 world units → comfortable visual spacing between stars.
-        var rng = new SeededRandom(0xC1A551C_5AFED1C);
-        var samples = PoissonDiskSampler.Sample(rng, x0, y0, x1, y1, minDist: 600f);
-
-        // Keep only points that lie outside the planet disc (void / space).
-        var stars = new List<Vector2>(samples.Count);
-        foreach (var p in samples)
-        {
-            float dx = p.X - discCX, dy = p.Y - discCY;
-            if (dx * dx + dy * dy > discRSq)
-                stars.Add(p);
-        }
-
-        _starPositions = stars.ToArray();
-        return _starPositions;
-    }
-
     // ── Public rendering API ─────────────────────────────────────────────────
-
-    /// <summary>Renders blinking background stars in the void outside the planet disc.</summary>
-    /// <remarks>
-    /// Stars are positioned using Poisson disk sampling for a natural scatter,
-    /// rendered in screen space with parallax factor <see cref="StarParallax"/> so they
-    /// feel very far away and are unaffected by camera zoom.
-    /// Call this before <see cref="RenderTerrain"/> so terrain draws on top.
-    /// </remarks>
-    public static void RenderBackgroundStars(ISpriteRenderer renderer, Camera camera,
-        PlanetSurfaceData surfaceData, double globalTime)
-    {
-        int mapW = surfaceData.Width;
-        int mapH = surfaceData.Height;
-        float ts = GameConfig.TileSize;
-        float discCX = (mapW - 1) * 0.5f * ts;
-        float discCY = (mapH - 1) * 0.5f * ts;
-        float discR = (MathF.Min(mapW, mapH) * 0.5f - 2f) * ts;
-        float discRSq = discR * discR;
-
-        float time = (float)globalTime;
-
-        float screenCX = camera.ViewportOffsetX + camera.ViewportWidth * 0.5f;
-        float screenCY = camera.ViewportOffsetY + camera.ViewportHeight * 0.5f;
-        float screenW = camera.ViewportWidth;
-        float screenH = camera.ViewportHeight;
-
-        var starPositions = GetOrCreateStarPositions(discCX, discCY, discRSq);
-
-        for (int i = 0; i < starPositions.Length; i++)
-        {
-            float wx = starPositions[i].X;
-            float wy = starPositions[i].Y;
-
-            // Parallax screen projection — zoom-independent (stars are too far away).
-            float sx = screenCX + (wx - camera.Position.X) * StarParallax;
-            float sy = screenCY + (wy - camera.Position.Y) * StarParallax;
-            if (sx < -2 || sx > screenW + 2 || sy < -2 || sy > screenH + 2) continue;
-
-            // Deterministic per-star hash drives blink phase and brightness.
-            int h = (int)((uint)(wx * 7.3f) * 374761393u ^ (uint)(wy * 7.3f) * 668265263u);
-            float phase = ((h >> 4) & 0xFF) / 255f * MathF.PI * 2f;
-            float speed = 0.3f + ((h >> 20) & 0xF) * 0.05f;
-            byte alpha = (byte)(50 + (MathF.Sin(time * speed + phase) + 1f) * 0.5f * 140f);
-
-            byte brightness = (byte)(100 + ((h >> 16) & 0x7F));
-            int starSize = ((h >> 24) & 0x7) == 0 ? 2 : 1; // mostly 1 px, rare 2 px
-            renderer.DrawRectScreen(
-                sx - starSize * 0.5f, sy - starSize * 0.5f, starSize, starSize,
-                new Color4(brightness, brightness, (byte)Math.Min(brightness + 30, 255), alpha));
-        }
-    }
 
     /// <summary>Renders the terrain tiles with full visual detail.</summary>
     public static void RenderTerrain(ISpriteRenderer renderer, Camera camera,
