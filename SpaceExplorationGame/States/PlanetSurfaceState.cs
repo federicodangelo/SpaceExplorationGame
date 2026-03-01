@@ -4,7 +4,7 @@ using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
-using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
@@ -42,9 +42,9 @@ public class PlanetSurfaceState : GameState
         GameConfig.PlanetSurfaceZoomMin, GameConfig.PlanetSurfaceZoomMax);
 
     // ── Input systems ───────────────────────────────────────────────
-    private AvatarMovementSystem _movementSystem = null!;
+    private PlayerAvatarInputSystem _inputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
-    private VehicleMovementSystem? _vehicleMovementSystem;
+    private PlayerVehicleInputSystem? _vehicleMovementSystem;
 
     // ── Background stars ──────────────────────────────────────────────
     private StarsBackgroundRenderer? _starsBackground;
@@ -152,8 +152,8 @@ public class PlanetSurfaceState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _movementSystem = new AvatarMovementSystem(_sim.EcsWorld, game.Input, avatarSpeed);
-        _movementSystem.Initialize();
+        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed);
+        _inputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
@@ -256,7 +256,7 @@ public class PlanetSurfaceState : GameState
             }
             else
             {
-                _movementSystem.Update(in dt);
+                _inputSystem.Update(in dt);
             }
 
             // Player shooting
@@ -428,7 +428,7 @@ public class PlanetSurfaceState : GameState
         avatarTf.Rotation = vTf.Rotation;
 
         var vStats = game.Player.GetCombinedVehicleStats();
-        _vehicleMovementSystem = new VehicleMovementSystem(
+        _vehicleMovementSystem = new PlayerVehicleInputSystem(
             _sim.EcsWorld, game.Input, _simPlayer.Entity,
             acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
             maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,

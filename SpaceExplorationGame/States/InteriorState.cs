@@ -3,7 +3,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
-using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
@@ -42,7 +42,7 @@ public class InteriorState : GameState
     private const float DockingMenuDelay = 0.6f;
 
     // ── Input system ────────────────────────────────────────────────
-    private AvatarMovementSystem _movementSystem = null!;
+    private PlayerAvatarInputSystem _inputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
 
     // ── Camera ──────────────────────────────────────────────────────
@@ -94,8 +94,8 @@ public class InteriorState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _movementSystem = new AvatarMovementSystem(_sim.EcsWorld, game.Input, avatarSpeed);
-        _movementSystem.Initialize();
+        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed);
+        _inputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
@@ -205,7 +205,7 @@ public class InteriorState : GameState
 
         // Movement input (write to entity each frame)
         float dt = game.DeltaTime;
-        _movementSystem.Update(in dt);
+        _inputSystem.Update(in dt);
     }
 
     public override void Update(Game game)

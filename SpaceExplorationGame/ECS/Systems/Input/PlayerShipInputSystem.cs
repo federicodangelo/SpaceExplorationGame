@@ -4,7 +4,7 @@ using Arch.System;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Platform;
 
-namespace SpaceExplorationGame.ECS.Systems.Movement;
+namespace SpaceExplorationGame.ECS.Systems.Input;
 
 /// <summary>
 /// Reads player controls and writes per-frame intent into <see cref="ShipInputComponent"/>.

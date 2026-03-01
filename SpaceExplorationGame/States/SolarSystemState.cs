@@ -4,7 +4,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
-using SpaceExplorationGame.ECS.Systems.Movement;
+using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;

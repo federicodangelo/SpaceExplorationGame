@@ -5,13 +5,13 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Platform;
 
-namespace SpaceExplorationGame.ECS.Systems.Movement;
+namespace SpaceExplorationGame.ECS.Systems.Input;
 
 /// <summary>
 /// Handles vehicle-style movement intent from the unified movement axis.
 /// Physics integration is handled by VelocitySystem.
 /// </summary>
-public partial class VehicleMovementSystem : BaseSystem<World, float>
+public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
 {
     private readonly IInputManager _input;
     private readonly float _acceleration;
@@ -23,7 +23,7 @@ public partial class VehicleMovementSystem : BaseSystem<World, float>
     /// <summary>The entity being controlled.</summary>
     private readonly Entity _entity;
 
-    public VehicleMovementSystem(World world, IInputManager input, Entity entity,
+    public PlayerVehicleInputSystem(World world, IInputManager input, Entity entity,
         float acceleration = GameConfig.VehicleAcceleration,
         float maxSpeed = GameConfig.VehicleMaxSpeed,
         float rotationSpeed = GameConfig.VehicleRotationSpeed,

@@ -4,18 +4,18 @@ using Arch.System;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Platform;
 
-namespace SpaceExplorationGame.ECS.Systems.Movement;
+namespace SpaceExplorationGame.ECS.Systems.Input;
 
 /// <summary>
 /// Handles top-down 4-way WASD/arrow movement intent for the player-controlled entity.
 /// Physics integration is handled by VelocitySystem.
 /// </summary>
-public partial class AvatarMovementSystem : BaseSystem<World, float>
+public partial class PlayerAvatarInputSystem : BaseSystem<World, float>
 {
     private readonly IInputManager _input;
     private readonly float _speed;
 
-    public AvatarMovementSystem(World world, IInputManager input, float speed) : base(world)
+    public PlayerAvatarInputSystem(World world, IInputManager input, float speed) : base(world)
     {
         _input = input;
         _speed = speed;

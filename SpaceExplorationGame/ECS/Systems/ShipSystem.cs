@@ -4,7 +4,7 @@ using Arch.System;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 
-namespace SpaceExplorationGame.ECS.Systems.Movement;
+namespace SpaceExplorationGame.ECS.Systems;
 
 /// <summary>
 /// Applies shared ship behavior for all ships: movement intent consumption and weapon firing.
