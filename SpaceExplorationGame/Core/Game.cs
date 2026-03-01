@@ -161,6 +161,8 @@ public class Game : IDisposable
 
         while (IsRunning)
         {
+            Platform.Update();
+
             var currentTime = sw.Elapsed.TotalSeconds;
             var elapsed = currentTime - previousTime;
             previousTime = currentTime;

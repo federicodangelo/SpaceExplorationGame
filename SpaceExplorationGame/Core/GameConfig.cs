@@ -6,8 +6,10 @@ namespace SpaceExplorationGame.Core;
 public static class GameConfig
 {
     // Window
-    public const int WindowWidth = 1920;
-    public const int WindowHeight = 1080;
+    static public int DefaultWindowWidth = 1920;
+    static public int DefaultWindowHeight = 1080;
+    static public int WindowWidth = DefaultWindowWidth;
+    static public int WindowHeight = DefaultWindowHeight;
     public const string WindowTitle = "Space Exploration Game";
 
     // Tiles

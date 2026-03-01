@@ -28,7 +28,7 @@ public class SdlPlatform : IPlatform
                 GameConfig.WindowTitle,
                 GameConfig.WindowWidth,
                 GameConfig.WindowHeight,
-                0,
+                SDL.WindowFlags.Resizable,
                 out var window,
                 out var renderer))
         {
@@ -50,6 +50,14 @@ public class SdlPlatform : IPlatform
             sfxVolume: GameConfig.AudioSfxVolume
         );
         AudioManager.Initialize();
+    }
+
+    public void Update()
+    {
+        // Update window size in case of resize
+        SDL.GetWindowSize(_window, out var width, out var height);
+        GameConfig.WindowWidth = width;
+        GameConfig.WindowHeight = height;
     }
 
     public void Dispose()

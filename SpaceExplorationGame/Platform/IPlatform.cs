@@ -9,4 +9,5 @@ public interface IPlatform : IDisposable
     ITextureManager Textures { get; }
     IInputManager InputManager { get; }
     IAudioManager AudioManager { get; }
+    void Update();
 }
