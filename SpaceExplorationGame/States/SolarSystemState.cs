@@ -360,6 +360,7 @@ public class SolarSystemState : GameState
 
     public override void RenderGame(Game game)
     {
+        _camera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         var renderer = game.SpriteRenderer;
         var camera = _camera;
         var world = _sim.EcsWorld;

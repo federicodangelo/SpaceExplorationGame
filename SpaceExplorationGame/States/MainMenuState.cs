@@ -650,6 +650,7 @@ public class MainMenuState : GameState
 
     public override void RenderGame(Game game)
     {
+        _fakeCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         var renderer = game.SpriteRenderer;
 
         foreach (var (x, y, brightness, speed) in _bgStars)

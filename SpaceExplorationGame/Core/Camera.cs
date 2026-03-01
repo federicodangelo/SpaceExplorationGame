@@ -67,6 +67,15 @@ public class Camera
         );
     }
 
+    /// <summary>
+    /// Call once per frame before rendering to sync the viewport dimensions.
+    /// </summary>
+    public void Update(int viewportWidth, int viewportHeight)
+    {
+        ViewportWidth = viewportWidth;
+        ViewportHeight = viewportHeight;
+    }
+
     public void ClampZoom()
     {
         Zoom = Math.Clamp(Zoom, ZoomMin, ZoomMax);

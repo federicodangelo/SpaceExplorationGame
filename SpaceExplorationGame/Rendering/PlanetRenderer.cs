@@ -31,6 +31,7 @@ public class PlanetRenderer
         float screenX, float screenY, float radius,
         Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
     {
+        _screenSpaceCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         _screenSpaceCamera.Position = Vector2.Zero;
         _screenSpaceCamera.Zoom = 1f;
         _screenSpaceCamera.ViewportOffsetX = screenX - _screenSpaceCamera.ViewportWidth / 2f;
