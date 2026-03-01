@@ -19,7 +19,7 @@ public class GalaxyMapPanel : MapPanelBase
     private int _selectedSystemIndex = -1;
     private int _hoveredSystemIndex = -1;
     private StarsBackgroundRenderer? _starsBackground;
-    private List<NebulaCloud> _nebulae = [];
+    private NebulaBackgroundRenderer? _nebulaBackground;
     private float _lastClickTime;
     private int _lastClickSystem = -1;
 
@@ -36,7 +36,7 @@ public class GalaxyMapPanel : MapPanelBase
 
     public override void Close(Game game)
     {
-        _nebulae.Clear();
+        _nebulaBackground = null;
         _starsBackground = null;
     }
 
@@ -147,18 +147,10 @@ public class GalaxyMapPanel : MapPanelBase
             seed: game.Seeds.GalaxySeed ^ 0xDEADBEEFuL,
             minDist: 6000f);
 
-        var nebRng = new SeededRandom(game.Seeds.GalaxySeed ^ 0xFACEFEED);
-        _nebulae.Clear();
-        for (int i = 0; i < 8; i++)
-        {
-            byte[] choices = [(byte)nebRng.NextInt(20, 60), (byte)nebRng.NextInt(10, 40), (byte)nebRng.NextInt(30, 70)];
-            int ci = nebRng.NextInt(0, 3);
-            _nebulae.Add(new NebulaCloud(
-                nebRng.NextFloat(0, GameConfig.GalaxyWidth * GameConfig.TileSize),
-                nebRng.NextFloat(0, GameConfig.GalaxyHeight * GameConfig.TileSize),
-                nebRng.NextFloat(1200, 5000),
-                new Color3(ci == 0 ? choices[0] : (byte)10, ci == 1 ? choices[1] : (byte)10, ci == 2 ? choices[2] : (byte)15)));
-        }
+        _nebulaBackground = new NebulaBackgroundRenderer();
+        _nebulaBackground.Generate(0, 0, totalW, totalH,
+            seed: game.Seeds.GalaxySeed,
+            count: 8);
     }
 
     private float GetSystemDistance(int indexA, int indexB)
@@ -204,7 +196,7 @@ public class GalaxyMapPanel : MapPanelBase
             game.Player.CurrentStarSystemIndex = _selectedSystemIndex;
             var sourceSystem = _starSystems[current];
             var targetSystem = _starSystems[_selectedSystemIndex];
-            _nebulae.Clear();
+            _nebulaBackground = null;
             _starsBackground = null;
             OnRequestClose?.Invoke(game);
             game.ChangeState(new FTLTransitionState(sourceSystem, targetSystem));
@@ -224,12 +216,7 @@ public class GalaxyMapPanel : MapPanelBase
         _starsBackground?.RenderWorldSpace(renderer, camera, (float)game.GlobalTime);
 
         // Nebula clouds
-        foreach (var (nx, ny, nr, nColor) in _nebulae)
-        {
-            renderer.DrawFilledCircle(camera, new Vector2(nx, ny), nr, nColor.WithAlpha(20));
-            renderer.DrawFilledCircle(camera, new Vector2(nx + nr * 0.3f, ny - nr * 0.2f), nr * 0.7f, nColor.WithAlpha(15));
-            renderer.DrawFilledCircle(camera, new Vector2(nx - nr * 0.4f, ny + nr * 0.3f), nr * 0.5f, nColor.WithAlpha(10));
-        }
+        _nebulaBackground?.Render(renderer, camera, (float)game.GlobalTime);
 
         // FTL range circle
         if (currentSys >= 0 && currentSys < _starSystems.Count)
