@@ -416,3 +416,20 @@ public struct Particle
     public float Drag;
     public Color3 Color;
 }
+
+/// <summary>
+/// Warp-in / warp-out visual effect attached to NPC ships.
+/// During the animation the ship is invulnerable and non-interactive.
+/// </summary>
+[Component]
+public struct WarpEffect
+{
+    /// <summary>True = ship is warping in (appearing); false = warping out (leaving).</summary>
+    public bool IsWarpingIn;
+    /// <summary>Animation progress 0→1.</summary>
+    public float Progress;
+    /// <summary>Total animation duration in seconds.</summary>
+    public float Duration;
+
+    public readonly bool IsComplete => Progress >= 1f;
+}

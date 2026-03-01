@@ -176,6 +176,9 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     {
         if (targetHealth.IsDead) return;
 
+        // Ships that are warping in/out are invulnerable
+        if (World.Has<WarpEffect>(target)) return;
+
         Faction? targetFaction = null;
         if (World.Has<EnemyAI>(target))
             targetFaction = World.Get<EnemyAI>(target).Config.Faction;

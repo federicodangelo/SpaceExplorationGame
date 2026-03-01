@@ -75,6 +75,15 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             return;
         }
 
+        // Ships that are warping in/out don't run AI
+        if (World.Has<WarpEffect>(entity))
+        {
+            shipInput.AccelerationDirection = Vector2.Zero;
+            shipInput.RotationSpeed = 0f;
+            shipInput.Shoot = false;
+            return;
+        }
+
         ai.StateTimer += _dt;
         shipInput.AccelerationDirection = Vector2.Zero;
         shipInput.RotationSpeed = 0f;
@@ -379,6 +388,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
         {
             if (entity == self || h.IsDead) return;
+            if (World.Has<WarpEffect>(entity)) return; // warping ships are not valid targets
             if (!ShouldTargetFaction(selfFaction, ai.Config.Faction)) return;
 
             TrySelectTarget(t.Position, v.Linear, entity, selfPos, range,
@@ -425,6 +435,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
         {
             if (h.IsDead || ai.Config.Faction != Faction.Pirate) return;
+            if (World.Has<WarpEffect>(entity)) return; // warping ships are not targetable
             float dist = Vector2.Distance(pos, t.Position);
             if (dist < bestDist)
             {

@@ -174,6 +174,16 @@ public static class SolarSystemRenderer
                 _ => 28
             };
 
+            // ── Warp effect: render stretched/fading ship with flash ──
+            bool isWarping = ecsWorld.Has<WarpEffect>(entity);
+            if (isWarping)
+            {
+                var warp = ecsWorld.Get<WarpEffect>(entity);
+                RenderWarpEffect(renderer, camera, transform.Position, transform.Rotation,
+                    ai.Config.Faction, shipSize, warp, enemyShipRenderer, globalTime);
+                continue; // skip normal rendering
+            }
+
             enemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
                 ai.Config.Faction, shipSize);
 
@@ -220,6 +230,98 @@ public static class SolarSystemRenderer
             };
             var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
             renderer.DrawText(camera, labelPos, factionLabel, factionColor, 0.8f);
+        }
+    }
+
+    // ── Warp Effect Rendering ───────────────────────────────────────
+
+    /// <summary>Render the warp-in or warp-out visual effect for an NPC ship.</summary>
+    private static void RenderWarpEffect(ISpriteRenderer renderer, Camera camera,
+        Vector2 position, float rotation, Faction faction, int shipSize,
+        WarpEffect warp, EnemyShipRenderer enemyShipRenderer, float globalTime)
+    {
+        float t = warp.Progress;
+        // For warp-out, reverse the visual (1→0 instead of 0→1)
+        float visualT = warp.IsWarpingIn ? t : 1f - t;
+
+        // Phase 1 (0-0.4): Bright streak converging to a point
+        // Phase 2 (0.4-0.7): Flash + ship appearing with horizontal stretch
+        // Phase 3 (0.7-1.0): Ship settling to normal size
+        float rad = rotation * MathF.PI / 180f;
+        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+
+        var factionColor = faction switch
+        {
+            Faction.Pirate => new Color4(255, 100, 80, 255),
+            Faction.Patrol => new Color4(100, 180, 255, 255),
+            _ => new Color4(255, 220, 120, 255)
+        };
+
+        if (visualT < 0.4f)
+        {
+            // Streak phase — elongated line converging to position
+            float streakT = visualT / 0.4f; // 0→1 within this phase
+            float streakLen = shipSize * (4f - 3f * streakT);
+            byte alpha = (byte)(60 + 140 * streakT);
+
+            var streakStart = position - forward * streakLen;
+            var streakEnd = position + forward * streakLen * 0.3f;
+
+            // Draw streak as multiple overlapping circles
+            int steps = 8;
+            for (int i = 0; i <= steps; i++)
+            {
+                float st = i / (float)steps;
+                var p = Vector2.Lerp(streakStart, streakEnd, st);
+                float radius = (1f - Math.Abs(st - 0.7f)) * shipSize * 0.3f * streakT;
+                byte a = (byte)(alpha * (1f - Math.Abs(st - 0.5f) * 1.5f));
+                renderer.DrawFilledCircle(camera, p, Math.Max(radius, 1f),
+                    factionColor.WithAlpha(Math.Max(a, (byte)10)));
+            }
+
+            // Central bright point
+            renderer.DrawFilledCircle(camera, position, 3f + 4f * streakT,
+                new Color4(255, 255, 255, (byte)(100 + 155 * streakT)));
+        }
+        else if (visualT < 0.7f)
+        {
+            // Flash + stretched ship phase
+            float flashT = (visualT - 0.4f) / 0.3f; // 0→1 within this phase
+
+            // Bright flash at the beginning of this phase
+            float flashIntensity = MathF.Max(0, 1f - flashT * 2f);
+            if (flashIntensity > 0)
+            {
+                renderer.DrawFilledCircle(camera, position, shipSize * (1f + flashIntensity),
+                    new Color4(255, 255, 255, (byte)(200 * flashIntensity)));
+                renderer.DrawFilledCircle(camera, position, shipSize * (0.5f + flashIntensity * 0.5f),
+                    factionColor.WithAlpha((byte)(150 * flashIntensity)));
+            }
+
+            // Render ship (it's stretched but becoming normal)
+            enemyShipRenderer.Render(renderer, camera, position, rotation,
+                faction, shipSize);
+
+            // Overlay glow fading out
+            byte glowAlpha = (byte)(120 * (1f - flashT));
+            renderer.DrawFilledCircle(camera, position, shipSize * 0.4f,
+                factionColor.WithAlpha(glowAlpha));
+        }
+        else
+        {
+            // Settlement phase — ship fully visible with fading glow
+            float settleT = (visualT - 0.7f) / 0.3f; // 0→1
+
+            enemyShipRenderer.Render(renderer, camera, position, rotation,
+                faction, shipSize);
+
+            // Residual energy glow
+            byte glowAlpha = (byte)(60 * (1f - settleT));
+            if (glowAlpha > 5)
+            {
+                renderer.DrawFilledCircle(camera, position, shipSize * 0.3f * (1f - settleT * 0.5f),
+                    factionColor.WithAlpha(glowAlpha));
+            }
         }
     }
 

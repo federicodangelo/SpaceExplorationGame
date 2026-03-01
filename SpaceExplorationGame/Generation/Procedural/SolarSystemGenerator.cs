@@ -172,8 +172,6 @@ public static class SolarSystemGenerator
         var planets = GeneratePlanetsOnly(rng, starSystem);
         var asteroidBelts = new List<AsteroidBeltData>();
         var stations = new List<SpaceStationData>();
-        var npcShipSpawns = new List<NpcShipSpawnData>();
-
         int planetCount = starSystem.PlanetCount;
 
         // Asteroid belt (50% chance, usually between inner and outer planets)
@@ -229,78 +227,51 @@ public static class SolarSystemGenerator
             }
         }
 
-        GenerateNpcShipSpawns(rng, starSystem, planets, npcShipSpawns);
+        var npcSpawnConfig = GenerateNpcSpawnConfig(rng, starSystem, planets);
 
         float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
         float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
         float starDisplayRadius = starSystem.StarRadius * 2f;
         Vector2 startingPosition = new(centerX - (starDisplayRadius + 100f), centerY);
 
-        return new SolarSystemContent(planets, asteroidBelts, stations, npcShipSpawns, startingPosition);
+        return new SolarSystemContent(planets, asteroidBelts, stations, npcSpawnConfig, startingPosition);
     }
 
-    private static void GenerateNpcShipSpawns(
+    private static NpcSpawnConfig GenerateNpcSpawnConfig(
         SeededRandom rng,
         StarSystemData starSystem,
-        List<PlanetData> planets,
-        List<NpcShipSpawnData> npcShipSpawns)
+        List<PlanetData> planets)
     {
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
-        Vector2 center = new(centerX, centerY);
-
         var enemyRng = new SeededRandom(rng.DeriveChildSeed(5000));
         int dangerLevel = starSystem.DangerLevel;
 
         float maxOrbit = 0f;
         foreach (var planet in planets)
             maxOrbit = MathF.Max(maxOrbit, planet.OrbitRadius);
-        float spawnRadius = MathF.Max(maxOrbit + 4000f, 8000f);
+
+        // Initial spawn radius: anywhere across the system's orbit zone
+        float initialMinSpawnRadius = 250f;
+        float initialMaxSpawnRadius = MathF.Max(maxOrbit + 4000f, 8000f);
+
+        // Warp-in radius: close to the star
+        float warpInMinRadius = starSystem.StarRadius * 2f;
+        float warpInMaxRadius = warpInMinRadius + 4000f;
 
         int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
         int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
         int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
         int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
 
-        SpawnFaction(enemyRng, npcShipSpawns, Faction.Pirate, pirateCount,
-            dangerLevel, qualityTier, center, spawnRadius, 250f);
-        SpawnFaction(enemyRng, npcShipSpawns, Faction.Trader, traderCount,
-            dangerLevel, qualityTier, center, spawnRadius, 300f);
-        SpawnFaction(enemyRng, npcShipSpawns, Faction.Patrol, patrolCount,
-            dangerLevel, qualityTier, center, spawnRadius, 300f);
-    }
-
-    private static void SpawnFaction(SeededRandom rng, List<NpcShipSpawnData> spawns,
-        Faction faction, int count, int dangerLevel, int qualityTier,
-        Vector2 center, float maxRadius, float minRadius)
-    {
-        for (int i = 0; i < count; i++)
-        {
-            var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(faction, dangerLevel, rng);
-            var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, faction, qualityTier, rng);
-            var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
-            var weapons = CombatHelper.BuildWeaponSpecs(loadout);
-            int lootCredits = faction == Faction.Pirate
-                ? NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout) : 0;
-
-            spawns.Add(new NpcShipSpawnData
-            {
-                Position = SpawnPositionInOrbitZone(rng, center, maxRadius, minRadius),
-                Rotation = rng.NextFloat(0, 360),
-                Faction = faction,
-                Stats = stats,
-                Weapons = weapons,
-                DangerLevel = dangerLevel,
-                LootCredits = lootCredits
-            });
-        }
-    }
-
-    private static Vector2 SpawnPositionInOrbitZone(SeededRandom rng, Vector2 center, float maxRadius, float minRadius)
-    {
-        float angle = rng.NextFloat(0, MathF.PI * 2f);
-        float dist = rng.NextFloat(minRadius, maxRadius);
-        return center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * dist;
+        return new NpcSpawnConfig(
+            TargetPirates: pirateCount,
+            TargetTraders: traderCount,
+            TargetPatrols: patrolCount,
+            DangerLevel: dangerLevel,
+            QualityTier: qualityTier,
+            InitialMinSpawnRadius: initialMinSpawnRadius,
+            InitialMaxSpawnRadius: initialMaxSpawnRadius,
+            WarpInMinRadius: warpInMinRadius,
+            WarpInMaxRadius: warpInMaxRadius);
     }
 
     private static PlanetType GeneratePlanetType(SeededRandom rng, int orbitIndex, int totalPlanets)

@@ -6,6 +6,7 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
+using SpaceExplorationGame.ECS.Systems.Effects;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Simulation.Base;
 
@@ -57,6 +58,10 @@ public class SolarSystemSimulation : CombatSimulationBase
     private ShipSystem _shipSystem = null!;
     private ShieldRegenSystem _shieldRegenSystem = null!;
     private ShipEnemyAISystem _enemyAISystem = null!;
+    private WarpEffectSystem _warpEffectSystem = null!;
+
+    // ── Dynamic NPC spawning ────────────────────────────────────────
+    private NpcSpawnManager _npcSpawnManager = null!;
 
     private const float InteractionRadius = 20f;
 
@@ -86,8 +91,6 @@ public class SolarSystemSimulation : CombatSimulationBase
         SpawnPlanets(Content.Planets, center, globalTime);
         SpawnSpaceStations(Content.SpaceStations, globalTime);
         SpawnAsteroids(Content.AsteroidBelts, new SeededRandom(rng.DeriveChildSeed(999)));
-        SpawnNPCShips(Content.NpcShipSpawns);
-
         // Initialize ECS systems
         // Shared systems (velocity, projectiles, cleanup)
         InitCoreSystems();
@@ -106,6 +109,13 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         _enemyAISystem = new ShipEnemyAISystem(EcsWorld, totalW, totalH);
         _enemyAISystem.Initialize();
+
+        _warpEffectSystem = new WarpEffectSystem(EcsWorld);
+        _warpEffectSystem.Initialize();
+
+        // Dynamic NPC spawn manager — handles both initial wave and runtime warp-ins
+        _npcSpawnManager = new NpcSpawnManager(EcsWorld, EnemyEntities, Content.NpcSpawnConfig);
+        _npcSpawnManager.SpawnInitialWave();
     }
 
     public override void Destroy()
@@ -127,11 +137,13 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Orbits", () => _orbitSystem.Update(in globalTime)); // Orbits depend on global time, not dt
+        t.Time("Warp", () => UpdateWarpEffects(dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Ships", () => _shipSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
         t.Time("Combat", () => ProcessCombatResults(dt));
+        t.Time("NpcSpawn", () => _npcSpawnManager.Update(dt));
 
         // Death / respawn timer
         UpdateDeathTimer(dt);
@@ -326,17 +338,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    private void SpawnNPCShips(List<NpcShipSpawnData> npcShipSpawns)
-    {
-        foreach (var spawn in npcShipSpawns)
-        {
-            if (spawn.Faction is not (Faction.Pirate or Faction.Trader or Faction.Patrol))
-                continue;
 
-            var entity = EntityFactory.CreateNpcShip(EcsWorld, spawn);
-            EnemyEntities.Add(entity);
-        }
-    }
 
 
 
@@ -442,10 +444,29 @@ public class SolarSystemSimulation : CombatSimulationBase
             pirateStopper.Data.Missions.NotifyPirateKilled();
         }
 
+        // Notify spawn manager so it can schedule a replacement
+        _npcSpawnManager.NotifyDestroyed(destroyed.Faction);
+
         if (EcsWorld.IsAlive(destroyed.Entity))
         {
             EnemyEntities.Remove(destroyed.Entity);
             EcsWorld.Destroy(destroyed.Entity);
+        }
+    }
+
+    /// <summary>Tick warp animations and clean up ships that finished warping out.</summary>
+    private void UpdateWarpEffects(float dt)
+    {
+        _warpEffectSystem.Update(in dt);
+
+        // Remove entities that completed warp-out
+        foreach (var entity in _warpEffectSystem.WarpOutCompleted)
+        {
+            if (EcsWorld.IsAlive(entity))
+            {
+                EnemyEntities.Remove(entity);
+                EcsWorld.Destroy(entity);
+            }
         }
     }
 

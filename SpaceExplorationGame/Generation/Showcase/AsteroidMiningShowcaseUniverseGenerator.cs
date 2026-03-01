@@ -27,7 +27,7 @@ public class AsteroidMiningShowcaseUniverseGenerator : ProceduralUniverseGenerat
             Planets: BuildPlanets(),
             AsteroidBelts: BuildBelts(),
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
-            NpcShipSpawns: [],
+            NpcSpawnConfig: default,
             StartingPosition: new Vector2(
                 GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
                 GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));

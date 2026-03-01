@@ -88,8 +88,23 @@ public readonly record struct SolarSystemContent(
     List<PlanetData> Planets,
     List<AsteroidBeltData> AsteroidBelts,
     List<SpaceStationData> SpaceStations,
-    List<NpcShipSpawnData> NpcShipSpawns,
+    NpcSpawnConfig NpcSpawnConfig,
     Vector2 StartingPosition);
+
+/// <summary>
+/// Runtime configuration for the dynamic NPC spawn manager.
+/// Stored in <see cref="SolarSystemContent"/>; all NPC spawning is handled at runtime.
+/// </summary>
+public readonly record struct NpcSpawnConfig(
+    int TargetPirates,
+    int TargetTraders,
+    int TargetPatrols,
+    int DangerLevel,
+    int QualityTier,
+    float InitialMinSpawnRadius,
+    float InitialMaxSpawnRadius,
+    float WarpInMinRadius,
+    float WarpInMaxRadius);
 
 // ── Menu start helpers ───────────────────────────────────────────
 

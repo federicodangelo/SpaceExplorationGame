@@ -98,6 +98,14 @@ public static class GameConfig
     public const int MinDangerLevel = 1;
     public const int MaxDangerLevel = 5;
 
+    // ── Dynamic NPC Spawning ────────────────────────────────────
+    public const float NpcWarpDuration = 1.5f;          // warp-in/out animation length in seconds
+    public const float NpcSpawnCheckInterval = 15f;      // seconds between spawn budget checks
+    public const float NpcPirateRespawnDelay = 45f;      // seconds before a killed pirate is replaced
+    public const float NpcTraderRespawnDelay = 20f;      // seconds before a killed trader is replaced
+    public const float NpcPatrolRespawnDelay = 30f;      // seconds before a killed patrol is replaced
+    public const float NpcInitialSpawnFraction = 0.6f;   // fraction of target spawned instantly on entry
+
     // Death penalty
     public const float DeathCargoLossPercent = 0.25f;    // lose 25% of cargo
     public const float DeathCreditsLossPercent = 0.10f;  // lose 10% of credits

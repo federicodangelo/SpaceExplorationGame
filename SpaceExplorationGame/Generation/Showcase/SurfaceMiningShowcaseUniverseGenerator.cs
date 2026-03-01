@@ -47,7 +47,7 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
             ],
             AsteroidBelts: [],
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
-            NpcShipSpawns: [],
+            NpcSpawnConfig: default,
             StartingPosition: new Vector2(
                 GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
                 GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
