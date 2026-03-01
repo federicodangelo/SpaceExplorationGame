@@ -110,6 +110,10 @@ public static class SolarSystemGenerator
         "kr", "pl", "tr", "gr", "br", "dr", "fr", "pr", "st", "ch"
     ];
 
+    private const float BaseOrbitRadius = 3000f; // starting orbit distance from center
+    private const float OrbitSpacing = 2000f;
+
+
     /// <summary>
     /// Generates only the planet data for a star system, without stations, NPC spawns,
     /// or asteroid belts. Useful for mission queries that only need planet metadata.
@@ -119,12 +123,10 @@ public static class SolarSystemGenerator
     {
         var planets = new List<PlanetData>();
         int planetCount = starSystem.PlanetCount;
-        float baseOrbitRadius = 3000f;
-        float orbitSpacing = 2000f;
 
         for (int i = 0; i < planetCount; i++)
         {
-            float orbitRadius = baseOrbitRadius + i * orbitSpacing + rng.NextFloat(-400, 400);
+            float orbitRadius = BaseOrbitRadius + i * OrbitSpacing + rng.NextFloat(-400, 400);
             float orbitSpeed = 0.0015f / (1f + i * 0.5f);
 
             var planetType = GeneratePlanetType(rng, i, planetCount);
@@ -173,14 +175,12 @@ public static class SolarSystemGenerator
         var npcShipSpawns = new List<NpcShipSpawnData>();
 
         int planetCount = starSystem.PlanetCount;
-        float baseOrbitRadius = 3000f; // starting orbit distance from center
-        float orbitSpacing = 2000f;
 
         // Asteroid belt (50% chance, usually between inner and outer planets)
         if (rng.NextBool(0.5f) && planetCount >= 4)
         {
             int beltPosition = planetCount / 3;
-            float beltRadius = baseOrbitRadius + beltPosition * orbitSpacing;
+            float beltRadius = BaseOrbitRadius + beltPosition * OrbitSpacing;
             asteroidBelts.Add(new AsteroidBeltData
             {
                 InnerRadius = beltRadius - 600,
@@ -200,12 +200,20 @@ public static class SolarSystemGenerator
 
                 if (parentPlanet >= 0)
                 {
-                    stationOrbitRadius = planets[parentPlanet].Radius + rng.NextFloat(500, 1000);
+                    var parentPlanetData = planets[parentPlanet];
+                    // Place station beyond the outermost moon orbit so orbits don't overlap
+                    float minOrbit = parentPlanetData.Radius + 500f;
+                    if (parentPlanetData.Moons.Count > 0)
+                    {
+                        float outermostMoon = parentPlanetData.Moons.Max(m => m.OrbitRadius + m.Radius);
+                        minOrbit = MathF.Max(minOrbit, outermostMoon + 300f);
+                    }
+                    stationOrbitRadius = minOrbit + rng.NextFloat(0, 500f);
                     stationOrbitSpeed = 0.004f;
                 }
                 else
                 {
-                    stationOrbitRadius = baseOrbitRadius + rng.NextFloat(0, planetCount * orbitSpacing);
+                    stationOrbitRadius = BaseOrbitRadius + rng.NextFloat(0, planetCount * OrbitSpacing);
                     stationOrbitSpeed = 0.001f;
                 }
 
@@ -365,9 +373,29 @@ public static class SolarSystemGenerator
     private static List<MoonData> GenerateMoons(SeededRandom rng, int count, float parentRadius, string parentName)
     {
         var moons = new List<MoonData>(count);
+        if (count == 0) return moons;
+
+        // Moons must stay within half the planet orbit spacing from the planet center
+        // so they never overlap with moons of a neighbouring planet.
+        const float maxMoonReach = OrbitSpacing / 2f; // 1000 units from planet centre
+        const float innerGap = 150f;                  // minimum clearance from planet surface
+
+        // Radial range available for all moon orbit centres
+        float available = maxMoonReach - parentRadius - innerGap;
+        available = MathF.Max(available, count * 80f); // guarantee at least 80 units per slot
+
+        float slotSize = available / count;
+
+        // Moon radius must fit inside its slot with a small margin on each side
+        float maxMoonRadius = Math.Clamp(slotSize * 0.38f, 20f, Math.Min(140f, parentRadius * 0.5f));
+        float minMoonRadius = Math.Clamp(maxMoonRadius * 0.5f, 20f, maxMoonRadius);
+
+        // Evenly distribute start-angles with a random base rotation
+        float angleStep = MathF.PI * 2f / count;
+        float baseAngle = rng.NextFloat(0, MathF.PI * 2f);
+
         for (int i = 0; i < count; i++)
         {
-            // Assign moon type based on parent planet context
             var moonType = rng.NextFloat() switch
             {
                 < 0.4f => PlanetType.Rocky,
@@ -377,14 +405,20 @@ public static class SolarSystemGenerator
                 _ => PlanetType.Ocean
             };
 
+            // Centre of slot i, with a small random jitter (max ±10 % of slot)
+            float slotCentre = parentRadius + innerGap + (i + 0.5f) * slotSize;
+            float jitter = slotSize * 0.1f;
+            float moonOrbitRadius = slotCentre + rng.NextFloat(-jitter, jitter);
+            float moonRadius = rng.NextFloat(minMoonRadius, maxMoonRadius);
+
             moons.Add(new MoonData
             {
                 Index = i,
                 Name = $"{parentName} {(char)('a' + i)}",
-                OrbitRadius = parentRadius + 400 + i * 300 + rng.NextFloat(-100, 100),
+                OrbitRadius = moonOrbitRadius,
                 OrbitSpeed = 0.0075f + rng.NextFloat(-0.0015f, 0.0015f),
-                StartAngle = rng.NextFloat(0, MathF.PI * 2),
-                Radius = rng.NextFloat(60, 140),
+                StartAngle = baseAngle + angleStep * i,
+                Radius = moonRadius,
                 Color = new Color3((byte)rng.NextInt(150, 220), (byte)rng.NextInt(150, 220), (byte)rng.NextInt(150, 220)),
                 Type = moonType
             });
