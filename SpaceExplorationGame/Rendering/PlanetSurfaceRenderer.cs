@@ -145,14 +145,14 @@ public static class PlanetSurfaceRenderer
     private static Color4 GetAtmosphereBaseColor(PlanetType type) => type switch
     {
         PlanetType.Terrestrial => new Color4(115, 185, 255, 255),
-        PlanetType.Ocean       => new Color4( 75, 155, 255, 255),
-        PlanetType.Desert      => new Color4(215, 175, 100, 255),
-        PlanetType.Volcanic    => new Color4(255, 105,  40, 255),
-        PlanetType.Frozen      => new Color4(195, 225, 255, 255),
-        PlanetType.Rocky       => new Color4(165, 155, 148, 255),
-        PlanetType.GasGiant    => new Color4(230, 200, 140, 255),
-        PlanetType.IceGiant    => new Color4(160, 210, 255, 255),
-        _                      => new Color4(160, 160, 175, 255),
+        PlanetType.Ocean => new Color4(75, 155, 255, 255),
+        PlanetType.Desert => new Color4(215, 175, 100, 255),
+        PlanetType.Volcanic => new Color4(255, 105, 40, 255),
+        PlanetType.Frozen => new Color4(195, 225, 255, 255),
+        PlanetType.Rocky => new Color4(165, 155, 148, 255),
+        PlanetType.GasGiant => new Color4(230, 200, 140, 255),
+        PlanetType.IceGiant => new Color4(160, 210, 255, 255),
+        _ => new Color4(160, 160, 175, 255),
     };
 
     #region Terrain Details
