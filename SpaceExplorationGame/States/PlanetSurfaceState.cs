@@ -599,6 +599,12 @@ public class PlanetSurfaceState : GameState
         // Damage/explosions
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
+
+        // Weather overlay based on planet biome
+        int screenW = GameConfig.WindowWidth;
+        int screenH = GameConfig.WindowHeight;
+        WeatherRenderer.Render(renderer, screenW, screenH, _planet, game.GlobalTime,
+            _camera.Position.X, _camera.Position.Y);
     }
 
     public override void RenderHud(Game game)

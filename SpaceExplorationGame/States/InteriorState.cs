@@ -446,7 +446,7 @@ public class InteriorState : GameState
 
         // Weather overlay for settlement biomes
         if (_sim.Interior.Type == InteriorType.Settlement)
-            InteriorRenderer.RenderWeatherEffects(renderer, w, h, _planet, game.GlobalTime,
+            WeatherRenderer.Render(renderer, w, h, _planet, game.GlobalTime,
                 _camera.Position.X, _camera.Position.Y);
     }
 
