@@ -401,11 +401,18 @@ public static class HudRenderer
             RenderPrompt(renderer, $"[{interactHelpText}] ENTER {nearSettlement.Name.ToUpper()}", 255, 255, 100);
     }
 
-    /// <summary>Render interior interaction prompts (interactables and NPCs).</summary>
+    /// <summary>Render interior interaction prompts (interactables, NPCs, and ship boarding).</summary>
     public static void RenderInteriorPrompt(ISpriteRenderer renderer,
         InteriorInteractable? nearestInteractable, InteriorNpc? nearestNpc,
-        string interactHelpText)
+        string interactHelpText, bool nearShip = false)
     {
+        // Ship prompt takes highest priority: it covers both "board" and "currently inside" states
+        if (nearShip)
+        {
+            RenderPrompt(renderer, $"[{interactHelpText}] BOARD STARSHIP", 100, 255, 100);
+            return;
+        }
+
         if (nearestInteractable != null)
         {
             string prompt = nearestInteractable.Type switch

@@ -27,13 +27,20 @@ public class StarshipMenuOverlay : MenuPanelOverlayBase<StarshipMenuOption>
     /// <summary>Whether the player has a vehicle available for the vehicle option.</summary>
     public bool HasVehicle { get; set; } = true;
 
+    /// <summary>Whether the player can deploy the vehicle on the planet surface (if they have one).</summary>
+    public bool VehicleCanBeDeployed { get; set; } = true;
+
     /// <summary>Whether the vehicle is already deployed on the planet surface.</summary>
     public bool VehicleDeployed { get; set; }
 
     public override void Open()
     {
-        bool vehicleEnabled = HasVehicle && !VehicleDeployed;
-        string? vehicleHint = !HasVehicle ? "(NO VEHICLE)" : VehicleDeployed ? "(ALREADY DEPLOYED)" : null;
+        bool vehicleEnabled = HasVehicle && !VehicleDeployed && VehicleCanBeDeployed;
+        string? vehicleHint =
+            !HasVehicle ? "(NO VEHICLE)" :
+            VehicleDeployed ? "(ALREADY DEPLOYED)" :
+            !VehicleCanBeDeployed ? "(CAN'T BE DEPLOYED HERE)" :
+            null;
 
         Menu = new MenuWidget<StarshipMenuOption>([
             new(StarshipMenuOption.DisembarkOnFoot, "DISEMBARK (ON FOOT)"),

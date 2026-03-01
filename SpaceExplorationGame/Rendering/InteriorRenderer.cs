@@ -12,10 +12,11 @@ namespace SpaceExplorationGame.Rendering;
 public static class InteriorRenderer
 {
     /// <summary>
-    /// Renders the full interior world (background, tiles, NPCs, interactables, player avatar, atmosphere).
+    /// Renders the full interior world (background, tiles, NPCs, interactables).
+    /// Call <see cref="RenderPlayerAvatar"/> separately if you want to draw the avatar.
     /// </summary>
     public static void RenderWorld(ISpriteRenderer renderer, Camera camera, InteriorData interior,
-        Vector2 playerPos, AvatarRenderer avatarRenderer, double globalTime, PlanetData? planet)
+        double globalTime, PlanetData? planet)
     {
         RenderExteriorBackground(renderer, camera, interior, planet, globalTime);
         RenderTiles(renderer, camera, interior, globalTime);
@@ -23,7 +24,6 @@ public static class InteriorRenderer
         RenderRoomLabels(renderer, camera, interior);
         RenderNpcs(renderer, camera, interior, globalTime);
         RenderInteractableMarkers(renderer, camera, interior, globalTime);
-        RenderPlayerAvatar(renderer, camera, playerPos, avatarRenderer);
     }
 
     /// <summary>
@@ -989,7 +989,8 @@ public static class InteriorRenderer
     }
 
     /// <summary>Renders the player avatar texture at the given position.</summary>
-    private static void RenderPlayerAvatar(ISpriteRenderer renderer, Camera camera,
+    /// <summary>Renders the player avatar at the given world position.</summary>
+    public static void RenderPlayerAvatar(ISpriteRenderer renderer, Camera camera,
         Vector2 playerPos, AvatarRenderer avatarRenderer)
     {
         avatarRenderer.Render(renderer, camera, playerPos);

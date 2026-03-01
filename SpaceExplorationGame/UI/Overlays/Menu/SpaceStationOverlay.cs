@@ -151,7 +151,8 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 game.Player.ReturnSpaceStationIndex = _spaceStation.Index;
                 Close();
                 game.ChangeState(new InteriorState(
-                    InteriorOrigin.SpaceStation, _starSystem, spaceStation: _spaceStation));
+                    InteriorOrigin.SpaceStation, _starSystem, spaceStation: _spaceStation,
+                    startInShip: true));
                 break;
             case StationMenuOption.ExitSpaceStation:
                 Close();

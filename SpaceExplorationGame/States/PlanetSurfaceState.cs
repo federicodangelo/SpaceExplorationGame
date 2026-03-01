@@ -1,6 +1,4 @@
 using System.Numerics;
-using Arch.Core;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS;
@@ -13,7 +11,6 @@ using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
-using SpaceExplorationGame.Simulation.Base;
 using SpaceExplorationGame.Platform;
 
 namespace SpaceExplorationGame.States;

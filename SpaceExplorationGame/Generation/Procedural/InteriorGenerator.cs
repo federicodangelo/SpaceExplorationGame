@@ -123,6 +123,9 @@ public class InteriorData
     public List<InteriorNpc> Npcs { get; init; } = [];
     public List<InteriorInteractable> Interactables { get; init; } = [];
     public TilePos SpawnPoint { get; set; }
+    /// <summary>Tile position of the landing pad center where the player's ship is parked.
+    /// Only set for dockable interiors (e.g. space stations). Null for settlements.</summary>
+    public TilePos? LandingPadTilePos { get; set; }
 }
 
 /// <summary>
@@ -301,8 +304,9 @@ public static class InteriorGenerator
         // Remove any furniture that blocks doorway access
         ClearDoorwayObstructions(data);
 
-        // Spawn point
+        // Spawn point + ship landing pad (same location: center of docking bay)
         data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
+        data.LandingPadTilePos = new TilePos(docking.CenterX, docking.CenterY);
 
         // Cargo terminal (sell mined resources)
         PlaceInteractable(data, "CARGO TERMINAL", InteractableType.CargoTerminal,
@@ -313,10 +317,6 @@ public static class InteriorGenerator
 
         PlaceInteractable(data, "MISSION BOARD", InteractableType.MissionBoard,
             command.CenterX, command.TileRect.Y + 1);
-
-        PlaceInteractable(data, "EXIT", InteractableType.ExitDoor,
-            docking.TileRect.X + docking.TileRect.Width / 2, docking.TileRect.Y + docking.TileRect.Height - 1,
-            markConsole: false);
 
         // Repair station in docking bay (next to landing pad)
         PlaceInteractable(data, "REPAIR STATION", InteractableType.RepairStation,

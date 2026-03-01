@@ -1,4 +1,3 @@
-using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS;
@@ -28,6 +27,8 @@ public class InteriorSimulation : SimulationBase
     // ── Proximity ───────────────────────────────────────────────────
     public InteriorNpc? NearestNpc { get; private set; }
     public InteriorInteractable? NearestInteractable { get; private set; }
+    /// <summary>True when the local player avatar is close enough to board the landed ship.</summary>
+    public bool NearShip { get; private set; }
     private const float InteractionRadius = 1.5f; // in tiles
 
     // ── ECS Systems ─────────────────────────────────────────────────
@@ -111,6 +112,7 @@ public class InteriorSimulation : SimulationBase
     {
         NearestNpc = null;
         NearestInteractable = null;
+        NearShip = false;
 
         if (LocalPlayer is not { } local) return;
         if (!EcsWorld.IsAlive(local.Entity)) return;
@@ -143,6 +145,18 @@ public class InteriorSimulation : SimulationBase
                 nearestIntDist = dist;
                 NearestInteractable = interactable;
             }
+        }
+
+        // Check proximity to the ship on the landing pad
+        if (Interior.LandingPadTilePos.HasValue)
+        {
+            float padX = Interior.LandingPadTilePos.Value.X;
+            float padY = Interior.LandingPadTilePos.Value.Y;
+            float dx = padX - playerTileX;
+            float dy = padY - playerTileY;
+            float dist = MathF.Sqrt(dx * dx + dy * dy);
+            if (dist < InteractionRadius)
+                NearShip = true;
         }
     }
 }

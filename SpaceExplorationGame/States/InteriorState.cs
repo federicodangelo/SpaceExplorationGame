@@ -1,6 +1,4 @@
 using System.Numerics;
-using Arch.Core;
-using SDL3;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
@@ -35,6 +33,14 @@ public class InteriorState : GameState
     private readonly PlanetData? _planet;
     private readonly SettlementData? _settlement;
 
+    // ── Ship boarding ───────────────────────────────────────────────
+    /// <summary>Whether the player is currently inside their ship (not yet disembarked).</summary>
+    private bool _playerInsideShip;
+    private readonly bool _startInShip;
+    /// <summary>Countdown (sec) before the docking menu auto-opens on fresh arrival.</summary>
+    private float _dockingMenuOpenDelay;
+    private const float DockingMenuDelay = 0.6f;
+
     // ── Input system ────────────────────────────────────────────────
     private AvatarMovementSystem _movementSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
@@ -58,15 +64,18 @@ public class InteriorState : GameState
     private readonly ShipDealerOverlay _shipDealer = new();
     private readonly SellCargoOverlay _sellCargo = new();
     private readonly HealthStationOverlay _healthStationOverlay = new();
+    private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
-        SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null)
+        SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null,
+        bool startInShip = false)
     {
         _origin = origin;
         _starSystem = starSystem;
         _spaceStation = spaceStation;
         _planet = planet;
         _settlement = settlement;
+        _startInShip = startInShip;
     }
 
     public override void Enter(Game game)
@@ -98,6 +107,11 @@ public class InteriorState : GameState
         _camera.Zoom = GameConfig.InteriorZoomDefault;
         _camera.ClampZoom();
 
+        // Ship boarding — arriving by ship triggers the docking menu after a brief delay
+        _playerInsideShip = _startInShip && _sim.Interior.LandingPadTilePos.HasValue;
+        if (_playerInsideShip)
+            _dockingMenuOpenDelay = DockingMenuDelay;
+
         // Music
         game.Audio.SetMusicTheme(MusicTheme.Interior);
     }
@@ -120,6 +134,14 @@ public class InteriorState : GameState
         if (_vehicleCustomization.UpdateInput(game)) return;
         if (_shipDealer.UpdateInput(game)) return;
         if (_sellCargo.UpdateInput(game)) return;
+
+        // Starship menu (while player is inside their ship on the landing pad)
+        if (_starshipMenuOverlay.UpdateInput(game))
+        {
+            if (_starshipMenuOverlay.LastChoice.HasValue)
+                HandleDockingMenuChoice(game, _starshipMenuOverlay.LastChoice.Value);
+            return;
+        }
 
         // Dialogue
         if (_showingDialogue)
@@ -150,10 +172,21 @@ public class InteriorState : GameState
             return;
         }
 
+        // Block normal interactions while inside ship
+        if (_playerInsideShip)
+        {
+            // E while inside ship re-opens the docking menu
+            if (input.IsActionPressed(InputAction.Interact))
+                OpenDockingMenu();
+            return;
+        }
+
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {
-            if (_sim.NearestInteractable != null)
+            if (_sim.NearShip)
+                BoardShip();
+            else if (_sim.NearestInteractable != null)
                 HandleInteraction(game, _sim.NearestInteractable);
             else if (_sim.NearestNpc != null)
             {
@@ -181,6 +214,14 @@ public class InteriorState : GameState
         var t = _debugTimer;
         t.Begin();
 
+        // Auto-open docking menu after landing delay
+        if (_dockingMenuOpenDelay > 0)
+        {
+            _dockingMenuOpenDelay -= dt;
+            if (_dockingMenuOpenDelay <= 0)
+                OpenDockingMenu();
+        }
+
         t.Time("Overlays", () =>
         {
             _shipCustomization.Update(game);
@@ -194,11 +235,47 @@ public class InteriorState : GameState
         // Skip post-processing when overlays are active
         if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen)
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen
+            || _starshipMenuOverlay.IsOpen)
             return;
 
         // Camera
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
+    }
+
+    private void OpenDockingMenu()
+    {
+        // Vehicles can't be deployed inside space stations
+        _starshipMenuOverlay.VehicleCanBeDeployed = false;
+        _starshipMenuOverlay.Open();
+    }
+
+    private void HandleDockingMenuChoice(Game game, StarshipMenuOption choice)
+    {
+        switch (choice)
+        {
+            case StarshipMenuOption.TakeOff:
+                ExitInterior(game);
+                break;
+
+            case StarshipMenuOption.DisembarkOnFoot:
+                _playerInsideShip = false;
+                // Position avatar next to the ship on the landing pad
+                if (_sim.Interior.LandingPadTilePos.HasValue)
+                {
+                    ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
+                    float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
+                    float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+                    avatarTf.Position = new Vector2(shipX + GameConfig.TileSize * 2f, shipY);
+                }
+                break;
+        }
+    }
+
+    private void BoardShip()
+    {
+        _playerInsideShip = true;
+        OpenDockingMenu();
     }
 
     private void HandleInteraction(Game game, InteriorInteractable interactable)
@@ -242,7 +319,7 @@ public class InteriorState : GameState
                 _healthStationOverlay.Open();
                 break;
             case InteractableType.NoticeBoard:
-                ShowNoticeBoardText(game);
+                ShowNoticeBoardText();
                 break;
         }
     }
@@ -263,7 +340,7 @@ public class InteriorState : GameState
         "TRADE ALERT: Fuel prices expected to rise. Stock up now."
     ];
 
-    private void ShowNoticeBoardText(Game game)
+    private void ShowNoticeBoardText()
     {
         // Generate deterministic notice based on location
         int seed = _starSystem.Index * 997 +
@@ -328,8 +405,20 @@ public class InteriorState : GameState
         var avatarTf = world.Get<Transform>(_simPlayer.Entity);
 
         // Draw world
-        InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, avatarTf.Position,
-            game.AvatarRenderer, game.GlobalTime, _planet);
+        InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, game.GlobalTime, _planet);
+
+        // Draw landed ship on the docking bay landing pad (always visible)
+        if (_sim.Interior.LandingPadTilePos.HasValue)
+        {
+            float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
+            float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+            game.SpaceshipRenderer.RenderLanded(renderer, camera, new Vector2(shipX, shipY),
+                game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+        }
+
+        // Draw player avatar only when not inside the ship
+        if (!_playerInsideShip)
+            InteriorRenderer.RenderPlayerAvatar(renderer, camera, avatarTf.Position, game.AvatarRenderer);
 
         int w = GameConfig.WindowWidth;
         int h = GameConfig.WindowHeight;
@@ -355,14 +444,26 @@ public class InteriorState : GameState
         // HUD
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen;
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen
+            || _starshipMenuOverlay.IsOpen;
 
         HudRenderer.RenderInteriorHud(renderer, game.Player, _sim.Interior, _starSystem);
 
         if (!anyOverlayOpen)
         {
-            HudRenderer.RenderInteriorPrompt(renderer, _sim.NearestInteractable, _sim.NearestNpc,
-                game.Input.GetActionHelpText(InputAction.Interact));
+            if (_playerInsideShip)
+            {
+                // Inside the ship: prompt to re-open the ship menu if it's been closed
+                HudRenderer.RenderCenteredMessage(renderer,
+                    $"[{game.Input.GetActionHelpText(InputAction.Interact)}] SHIP MENU",
+                    -20, new Color3(100, 255, 100), 2f);
+            }
+            else
+            {
+                HudRenderer.RenderInteriorPrompt(renderer, _sim.NearestInteractable, _sim.NearestNpc,
+                    game.Input.GetActionHelpText(InputAction.Interact),
+                    nearShip: _sim.NearShip);
+            }
         }
 
         // Dialogue
@@ -379,6 +480,7 @@ public class InteriorState : GameState
         _shipDealer.Render(game);
         _sellCargo.Render(game);
         _inGameMenuOverlay.Render(game);
+        _starshipMenuOverlay.Render(game);
 
         // Minimap
         HudMinimapRenderer.RenderInteriorMinimap(renderer, _sim.Interior, avatarTf.Position);
@@ -390,6 +492,7 @@ public class InteriorState : GameState
         _debugInfo.Add($"Origin: {_origin}  NPCs: {_sim.Interior.Npcs.Count}");
         _debugInfo.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
         _debugInfo.Add($"Dialogue: {_showingDialogue}  NearNpc: {_sim.NearestNpc?.Name ?? "none"}");
+        _debugInfo.Add($"InShip: {_playerInsideShip}  NearShip: {_sim.NearShip}");
         return _debugInfo.Entries;
     }
 }
