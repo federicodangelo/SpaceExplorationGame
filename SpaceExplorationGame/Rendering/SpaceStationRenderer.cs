@@ -85,11 +85,11 @@ public class SpaceStationRenderer
         }
     }
 
-    public void RenderSpaceStation(ISpriteRenderer renderer, Camera camera, Vector2 position, double globalTime)
+    public void RenderSpaceStation(ISpriteRenderer renderer, Camera camera, Vector2 position, double globalTime, float alpha = 1f)
     {
         float stRotation = (float)(globalTime * 10) % 360f;
 
-        DrawSpaceStationBody(renderer, camera, position, stRotation, globalTime);
+        DrawSpaceStationBody(renderer, camera, position, stRotation, globalTime, alpha);
 
         // Blinking lights overlay (on the outer ring)
         double blinkPhase = globalTime % BlinkPeriod;
@@ -105,8 +105,8 @@ public class SpaceStationRenderer
             // Alternate blinking color for each light
             bool blinkState = (l % 2 == 0) ? (blinkPhase < BlinkPeriod / 2) : (blinkPhase >= BlinkPeriod / 2);
             var color = blinkState ? BlinkColor1 : BlinkColor2;
-            DrawLightGlow(renderer, camera, lightPos, OuterRingLightRadius * OuterRingLightGlowMultiplier, color);
-            DrawLight(renderer, camera, lightPos, OuterRingLightRadius, color);
+            DrawLightGlow(renderer, camera, lightPos, OuterRingLightRadius * OuterRingLightGlowMultiplier, color, alpha);
+            DrawLight(renderer, camera, lightPos, OuterRingLightRadius, ScaleAlpha(color, alpha));
         }
 
         // Center light
@@ -114,21 +114,21 @@ public class SpaceStationRenderer
             Vector2 lightPos = position;
             bool blinkState = blinkPhase >= BlinkPeriod / 2;
             var color = blinkState ? BlinkColor1 : BlinkColor2; //Inverted colors for inner ring
-            DrawLightGlow(renderer, camera, lightPos, CenterLightRadius * CenterLightGlowMultiplier, color); // Draw glow
-            DrawLight(renderer, camera, lightPos, CenterLightRadius, color);
+            DrawLightGlow(renderer, camera, lightPos, CenterLightRadius * CenterLightGlowMultiplier, color, alpha); // Draw glow
+            DrawLight(renderer, camera, lightPos, CenterLightRadius, ScaleAlpha(color, alpha));
         }
     }
 
-    private static void DrawSpaceStationBody(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime)
+    private static void DrawSpaceStationBody(ISpriteRenderer renderer, Camera camera, Vector2 center, float rotationDeg, double globalTime, float alpha = 1f)
     {
         // Struts (cross)
-        DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, -StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, -StrutOuterRadius), rotationDeg), StrutThickness, StrutColor);
-        DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, StrutOuterRadius), rotationDeg), StrutThickness, StrutColor);
-        DrawThickLine(renderer, camera, center, Rotate(new Vector2(-StrutInnerRadius, 0), rotationDeg), Rotate(new Vector2(-StrutOuterRadius, 0), rotationDeg), StrutThickness, StrutColor);
-        DrawThickLine(renderer, camera, center, Rotate(new Vector2(StrutInnerRadius, 0), rotationDeg), Rotate(new Vector2(StrutOuterRadius, 0), rotationDeg), StrutThickness, StrutColor);
+        DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, -StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, -StrutOuterRadius), rotationDeg), StrutThickness, ScaleAlpha(StrutColor, alpha));
+        DrawThickLine(renderer, camera, center, Rotate(new Vector2(0, StrutInnerRadius), rotationDeg), Rotate(new Vector2(0, StrutOuterRadius), rotationDeg), StrutThickness, ScaleAlpha(StrutColor, alpha));
+        DrawThickLine(renderer, camera, center, Rotate(new Vector2(-StrutInnerRadius, 0), rotationDeg), Rotate(new Vector2(-StrutOuterRadius, 0), rotationDeg), StrutThickness, ScaleAlpha(StrutColor, alpha));
+        DrawThickLine(renderer, camera, center, Rotate(new Vector2(StrutInnerRadius, 0), rotationDeg), Rotate(new Vector2(StrutOuterRadius, 0), rotationDeg), StrutThickness, ScaleAlpha(StrutColor, alpha));
 
         // Outer ring
-        renderer.DrawSolidRing(camera, center, RingInnerRadius, RingOuterRadius, RingColor, RingSegments);
+        renderer.DrawSolidRing(camera, center, RingInnerRadius, RingOuterRadius, ScaleAlpha(RingColor, alpha), RingSegments);
 
         // Docking indicators on ring
         for (int i = 0; i < DockingMarkerCount; i++)
@@ -143,33 +143,33 @@ public class SpaceStationRenderer
                 ? new Color4(DockingMarkerWarmBase.R, DockingMarkerWarmBase.G, DockingMarkerWarmBase.B, (byte)(DockingMarkerWarmBase.A * pulse))
                 : new Color4(DockingMarkerCoolBase.R, DockingMarkerCoolBase.G, DockingMarkerCoolBase.B, (byte)(DockingMarkerCoolBase.A * pulse));
 
-            DrawDockingMarker(renderer, camera, center, a, markerColor);
+            DrawDockingMarker(renderer, camera, center, a, ScaleAlpha(markerColor, alpha));
         }
 
         // Solar panels
         DrawRotatedQuad(renderer, camera, center, rotationDeg,
             new Vector2(-PanelHalfWidth, -PanelOuterRadius), new Vector2(PanelHalfWidth, -PanelOuterRadius), new Vector2(PanelHalfWidth, -PanelInnerRadius), new Vector2(-PanelHalfWidth, -PanelInnerRadius),
-            PanelColor);
+            ScaleAlpha(PanelColor, alpha));
         DrawRotatedQuad(renderer, camera, center, rotationDeg,
             new Vector2(-PanelHalfWidth, PanelInnerRadius), new Vector2(PanelHalfWidth, PanelInnerRadius), new Vector2(PanelHalfWidth, PanelOuterRadius), new Vector2(-PanelHalfWidth, PanelOuterRadius),
-            PanelColor);
+            ScaleAlpha(PanelColor, alpha));
         DrawRotatedQuad(renderer, camera, center, rotationDeg,
             new Vector2(-PanelOuterRadius, -PanelHalfWidth), new Vector2(-PanelInnerRadius, -PanelHalfWidth), new Vector2(-PanelInnerRadius, PanelHalfWidth), new Vector2(-PanelOuterRadius, PanelHalfWidth),
-            PanelColor);
+            ScaleAlpha(PanelColor, alpha));
         DrawRotatedQuad(renderer, camera, center, rotationDeg,
             new Vector2(PanelInnerRadius, -PanelHalfWidth), new Vector2(PanelOuterRadius, -PanelHalfWidth), new Vector2(PanelOuterRadius, PanelHalfWidth), new Vector2(PanelInnerRadius, PanelHalfWidth),
-            PanelColor);
+            ScaleAlpha(PanelColor, alpha));
 
         // Central hub
-        renderer.DrawFilledCircle(camera, center, HubOuterRadius, HubOuterColor);
-        renderer.DrawCircle(camera, center, HubOuterRadius, HubOutlineColor, 40);
-        renderer.DrawFilledCircle(camera, center, HubInnerRadius, HubInnerColor);
+        renderer.DrawFilledCircle(camera, center, HubOuterRadius, ScaleAlpha(HubOuterColor, alpha));
+        renderer.DrawCircle(camera, center, HubOuterRadius, ScaleAlpha(HubOutlineColor, alpha), 40);
+        renderer.DrawFilledCircle(camera, center, HubInnerRadius, ScaleAlpha(HubInnerColor, alpha));
     }
 
     // Draw a soft glow using a single radial gradient circle
-    private void DrawLightGlow(ISpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color3 color)
+    private void DrawLightGlow(ISpriteRenderer renderer, Camera camera, Vector2 position, float radius, Color3 color, float alpha = 1f)
     {
-        var inner = new Color4(color.R, color.G, color.B, LightGlowInnerAlpha);
+        var inner = new Color4(color.R, color.G, color.B, (byte)(LightGlowInnerAlpha * alpha));
         var outer = new Color4(color.R, color.G, color.B, 0);
         renderer.DrawFilledCircle(camera, position, radius, inner, outer, radius * LightGlowTransitionRatio, LightGlowSegments);
     }
@@ -234,6 +234,9 @@ public class SpaceStationRenderer
         var b3 = camera.WorldToScreen(iR);
         renderer.DrawFilledTriangleScreen(b1.X, b1.Y, b2.X, b2.Y, b3.X, b3.Y, DockingMarkerNotchColor);
     }
+
+    private static Color4 ScaleAlpha(Color4 c, float alpha) =>
+        new(c.R, c.G, c.B, (byte)(c.A * alpha));
 
     private static void DrawThickLine(ISpriteRenderer renderer, Camera camera, Vector2 center,
         Vector2 localStart, Vector2 localEnd, int thickness, Color4 color)

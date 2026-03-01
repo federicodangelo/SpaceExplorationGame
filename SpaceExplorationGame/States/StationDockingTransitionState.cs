@@ -241,7 +241,7 @@ public class StationDockingTransitionState : GameState
             }
         }
 
-        // ── 3. Station exterior (visible during Approach; fades out during Entry) ──
+        // ── 3. Space Station exterior (visible during Approach; fades in then out) ──
         if (touchdownP <= 0f)
         {
             float stationAlpha = entryP > 0f ? (1f - EaseInOut01(entryP)) : 1f;
@@ -252,12 +252,7 @@ public class StationDockingTransitionState : GameState
                 _stationCamera.Zoom = Lerp(1f, 6f, zoomP);
                 _stationCamera.ClampZoom();
 
-                // Tint a dark overlay to blend with black background as the interior takes over
-                byte overlayA = (byte)((1f - stationAlpha) * 200f);
-                if (overlayA > 0)
-                    renderer.DrawRectScreen(0, 0, ScreenW, ScreenH, new Color4(3, 4, 10, overlayA));
-
-                game.SpaceStationRenderer.RenderSpaceStation(renderer, _stationCamera, _stationWorldPos, game.GlobalTime);
+                game.SpaceStationRenderer.RenderSpaceStation(renderer, _stationCamera, _stationWorldPos, game.GlobalTime, stationAlpha);
             }
         }
 
