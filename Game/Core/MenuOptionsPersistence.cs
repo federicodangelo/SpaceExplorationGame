@@ -1,103 +1,63 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 namespace SpaceExplorationGame.Core;
 
-public sealed class PersistedMenuOptions
+/// <summary>
+/// Persists menu option selections (danger, location, debug) across sessions
+/// using the platform <see cref="Engine.Platform.ISettings"/> service.
+/// </summary>
+public sealed class MenuOptionsPersistence
 {
-    public int DangerIndex { get; set; }
-    public int LocationIndex { get; set; }
-    public int SubLocationIndex { get; set; }
-    public int DebugStarTypeIndex { get; set; }
-    public int DebugShipTypeIndex { get; set; }
-    public int DebugSelectedIndex { get; set; }
-}
+    private const string KeyDangerIndex = "menu.dangerIndex";
+    private const string KeyLocationIndex = "menu.locationIndex";
+    private const string KeySubLocationIndex = "menu.subLocationIndex";
+    private const string KeyDebugStarTypeIndex = "menu.debugStarTypeIndex";
+    private const string KeyDebugShipTypeIndex = "menu.debugShipTypeIndex";
+    private const string KeyDebugSelectedIndex = "menu.debugSelectedIndex";
 
-public static class MenuOptionsPersistence
-{
-    private static readonly object Sync = new();
-    private static readonly string FilePath = Path.Combine(AppContext.BaseDirectory, "menu-options.json");
-    private static PersistedMenuOptions? _cached;
+    private readonly Engine.Platform.ISettings _settings;
 
-    public static (int dangerIndex, int locationIndex, int subLocationIndex) GetMainMenuSelections()
+    public MenuOptionsPersistence(Engine.Platform.ISettings settings)
     {
-        var settings = EnsureLoaded();
-        return (settings.DangerIndex, settings.LocationIndex, settings.SubLocationIndex);
+        _settings = settings;
     }
 
-    public static void SetMainMenuSelections(int dangerIndex, int locationIndex, int subLocationIndex)
+    public (int dangerIndex, int locationIndex, int subLocationIndex) GetMainMenuSelections()
     {
-        lock (Sync)
-        {
-            var settings = EnsureLoaded();
-            settings.DangerIndex = dangerIndex;
-            settings.LocationIndex = locationIndex;
-            settings.SubLocationIndex = subLocationIndex;
-            SaveInternal(settings);
-        }
+        return (
+            LoadInt(KeyDangerIndex),
+            LoadInt(KeyLocationIndex),
+            LoadInt(KeySubLocationIndex));
     }
 
-    public static (int starTypeIndex, int shipTypeIndex, int selectedIndex) GetDebugSelections()
+    public void SetMainMenuSelections(int dangerIndex, int locationIndex, int subLocationIndex)
     {
-        var settings = EnsureLoaded();
-        return (settings.DebugStarTypeIndex, settings.DebugShipTypeIndex, settings.DebugSelectedIndex);
+        SaveInt(KeyDangerIndex, dangerIndex);
+        SaveInt(KeyLocationIndex, locationIndex);
+        SaveInt(KeySubLocationIndex, subLocationIndex);
     }
 
-    public static void SetDebugSelections(int starTypeIndex, int shipTypeIndex, int selectedIndex)
+    public (int starTypeIndex, int shipTypeIndex, int selectedIndex) GetDebugSelections()
     {
-        lock (Sync)
-        {
-            var settings = EnsureLoaded();
-            settings.DebugStarTypeIndex = starTypeIndex;
-            settings.DebugShipTypeIndex = shipTypeIndex;
-            settings.DebugSelectedIndex = selectedIndex;
-            SaveInternal(settings);
-        }
+        return (
+            LoadInt(KeyDebugStarTypeIndex),
+            LoadInt(KeyDebugShipTypeIndex),
+            LoadInt(KeyDebugSelectedIndex));
     }
 
-    private static PersistedMenuOptions EnsureLoaded()
+    public void SetDebugSelections(int starTypeIndex, int shipTypeIndex, int selectedIndex)
     {
-        lock (Sync)
-        {
-            _cached ??= LoadInternal();
-            return _cached;
-        }
+        SaveInt(KeyDebugStarTypeIndex, starTypeIndex);
+        SaveInt(KeyDebugShipTypeIndex, shipTypeIndex);
+        SaveInt(KeyDebugSelectedIndex, selectedIndex);
     }
 
-    private static PersistedMenuOptions LoadInternal()
+    private int LoadInt(string key)
     {
-        try
-        {
-            if (!File.Exists(FilePath))
-            {
-                return new PersistedMenuOptions();
-            }
-
-            string json = File.ReadAllText(FilePath);
-            return JsonSerializer.Deserialize(json, MenuOptionsJsonContext.Default.PersistedMenuOptions) as PersistedMenuOptions
-                ?? new PersistedMenuOptions();
-        }
-        catch
-        {
-            return new PersistedMenuOptions();
-        }
+        var value = _settings.Load(key);
+        return value != null && int.TryParse(value, out int result) ? result : 0;
     }
 
-    private static void SaveInternal(PersistedMenuOptions settings)
+    private void SaveInt(string key, int value)
     {
-        try
-        {
-            var json = JsonSerializer.Serialize(settings, MenuOptionsJsonContext.Default.PersistedMenuOptions);
-            File.WriteAllText(FilePath, json);
-        }
-        catch
-        {
-        }
+        _settings.Save(key, value.ToString());
     }
-}
-
-[JsonSerializable(typeof(PersistedMenuOptions))]
-[JsonSourceGenerationOptions(WriteIndented = true)]
-internal partial class MenuOptionsJsonContext : JsonSerializerContext
-{
 }

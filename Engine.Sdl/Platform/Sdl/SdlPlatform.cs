@@ -18,6 +18,7 @@ public class SdlPlatform : IPlatform
     public ITextureManager Textures { get; private set; }
     public IInputManager InputManager { get; private set; }
     public IAudioManager AudioManager { get; private set; }
+    public ISettings Settings { get; private set; }
 
     public SdlPlatform(string windowTitle, int windowWidth, int windowHeight,
         IMusicProvider musicProvider, ISfxProvider sfxProvider,
@@ -59,6 +60,7 @@ public class SdlPlatform : IPlatform
             sfxVolume: sfxVolume
         );
         AudioManager.Initialize();
+        Settings = new SdlSettings();
     }
 
     public void Update()

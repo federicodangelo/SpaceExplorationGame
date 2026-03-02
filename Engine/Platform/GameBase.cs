@@ -13,6 +13,7 @@ public abstract class GameBase : IDisposable
     public ISpriteRenderer SpriteRenderer => Platform.SpriteRenderer;
     public ITextureManager Textures => Platform.Textures;
     public IAudioManager Audio => Platform.AudioManager;
+    public ISettings Settings => Platform.Settings;
 
     public abstract void Dispose();
 }

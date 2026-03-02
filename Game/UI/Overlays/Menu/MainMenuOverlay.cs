@@ -59,6 +59,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     ];
 
     private readonly TextInputOverlay _seedInputOverlay = new();
+    private readonly MenuOptionsPersistence _menuOptions;
 
     // Current cycling state
     private int _dangerIndex;
@@ -126,8 +127,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     // ── Constructor ──
 
-    public MainMenuOverlay()
+    public MainMenuOverlay(MenuOptionsPersistence menuOptions)
     {
+        _menuOptions = menuOptions;
         Menu = new MenuWidget<MenuAction>(BuildOptions())
         {
             CenterAlign = true,
@@ -150,7 +152,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     public override void Open()
     {
         base.Open();
-        var (savedDangerIndex, savedLocationIndex, savedSubLocationIndex) = MenuOptionsPersistence.GetMainMenuSelections();
+        var (savedDangerIndex, savedLocationIndex, savedSubLocationIndex) = _menuOptions.GetMainMenuSelections();
         _dangerIndex = Math.Clamp(savedDangerIndex, 0, DangerLabels.Length - 1);
         _locationIndex = Math.Clamp(savedLocationIndex, 0, LocationLabels.Length - 1);
         _subLocationIndex = Math.Clamp(savedSubLocationIndex, 0, CurrentSubLocations.Length - 1);
@@ -235,7 +237,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     private void SaveSelections()
     {
-        MenuOptionsPersistence.SetMainMenuSelections(_dangerIndex, _locationIndex, _subLocationIndex);
+        _menuOptions.SetMainMenuSelections(_dangerIndex, _locationIndex, _subLocationIndex);
     }
 
     private void UpdateCyclingLabels()

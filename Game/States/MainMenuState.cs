@@ -43,8 +43,8 @@ public class MainMenuState : GameState
     private StarsBackgroundRenderer? _starsBackground;
     private NebulaBackgroundRenderer? _nebulaBackground;
 
-    private readonly MainMenuOverlay _menuOverlay = new();
-    private readonly DebugMenuOverlay _debugOverlay = new();
+    private MainMenuOverlay _menuOverlay = null!;
+    private DebugMenuOverlay _debugOverlay = null!;
 
     // Auto-launch: if not None, skip menu and launch this option immediately
     private readonly StartOption _autoLaunchOption;
@@ -78,6 +78,9 @@ public class MainMenuState : GameState
 
     public override void Enter(Game game)
     {
+        _menuOverlay = new MainMenuOverlay(game.MenuOptions);
+        _debugOverlay = new DebugMenuOverlay(game.MenuOptions);
+
         game.Player.Reset();
         game.Coordinator.DestroyAll();
         game.Audio.SetMusicTheme(AudioThemes.MainMenu);

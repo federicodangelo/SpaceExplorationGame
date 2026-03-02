@@ -43,6 +43,9 @@ public class Game : GameBase
     // Player persistent data
     public PlayerData Player { get; } = new();
 
+    // Menu options persistence
+    public MenuOptionsPersistence MenuOptions { get; private set; } = null!;
+
     // Global simulation time (never resets, used for deterministic orbit positions)
     public double GlobalTime { get; private set; }
 
@@ -64,6 +67,9 @@ public class Game : GameBase
     {
         // Platform
         Platform = platform;
+
+        // Menu options persistence (uses platform settings)
+        MenuOptions = new MenuOptionsPersistence(platform.Settings);
 
         // Sync GameConfig with platform window dimensions
         GameConfig.WindowWidth = Platform.WindowWidth;

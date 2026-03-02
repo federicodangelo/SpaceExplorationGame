@@ -38,6 +38,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     private static readonly StarClass[] StarTypes = Enum.GetValues<StarClass>();
     private static readonly ShipType[] ShipTypes = ShipTypeCatalog.AllTypes;
 
+    private readonly MenuOptionsPersistence _menuOptions;
     private int _starTypeIndex;
     private int _shipTypeIndex;
 
@@ -66,8 +67,9 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         }
     }
 
-    public DebugMenuOverlay()
+    public DebugMenuOverlay(MenuOptionsPersistence menuOptions)
     {
+        _menuOptions = menuOptions;
         Menu = new MenuWidget<DebugMenuAction>(
         [
             new(DebugMenuAction.StarType, "STAR TYPE: < G >", "Select the star type used by debug showcase scenarios"),
@@ -96,7 +98,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
     {
         base.Open();
 
-        var (savedStarTypeIndex, savedShipTypeIndex, savedSelectedIndex) = MenuOptionsPersistence.GetDebugSelections();
+        var (savedStarTypeIndex, savedShipTypeIndex, savedSelectedIndex) = _menuOptions.GetDebugSelections();
         _starTypeIndex = Math.Clamp(savedStarTypeIndex, 0, StarTypes.Length - 1);
         _shipTypeIndex = Math.Clamp(savedShipTypeIndex, 0, ShipTypes.Length - 1);
         Menu.SelectedIndex = Math.Clamp(savedSelectedIndex, 0, Menu.ItemCount - 1);
@@ -206,7 +208,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     private void SaveSelectionState()
     {
-        MenuOptionsPersistence.SetDebugSelections(_starTypeIndex, _shipTypeIndex, Menu.SelectedIndex);
+        _menuOptions.SetDebugSelections(_starTypeIndex, _shipTypeIndex, Menu.SelectedIndex);
     }
 
     private void UpdateCyclingLabels()
