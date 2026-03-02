@@ -34,38 +34,85 @@ Initial version (v1.0.0 — information below does not include post-v1.0.0 chang
 - **ECS:** [Arch ECS](https://github.com/genaray/Arch) with Arch.System extensions
 - **Audio:** SDL3 built-in audio API with fully procedural synthesis (no external audio files or SDL_mixer)
 
-## Screenshots (v1.0.0 - game might look different now)
+## Screenshots (v1.1.0)
 
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215012.png" width="400" alt="Screenshot 1" />
-  <img src="media/Screenshot%202026-02-17%20215031.png" width="400" alt="Screenshot 2" />
+  <img src="media/v1.1.0/screenshot_20260302_030347.png" width="400" alt="Screenshot 1" />
+  <img src="media/v1.1.0/screenshot_20260302_030411.png" width="400" alt="Screenshot 2" />
 </p>
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215045.png" width="400" alt="Screenshot 3" />
-  <img src="media/Screenshot%202026-02-17%20215054.png" width="400" alt="Screenshot 4" />
+  <img src="media/v1.1.0/screenshot_20260302_030425.png" width="400" alt="Screenshot 3" />
+  <img src="media/v1.1.0/screenshot_20260302_030437.png" width="400" alt="Screenshot 4" />
 </p>
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215109.png" width="400" alt="Screenshot 5" />
-  <img src="media/Screenshot%202026-02-17%20215123.png" width="400" alt="Screenshot 6" />
+  <img src="media/v1.1.0/screenshot_20260302_030443.png" width="400" alt="Screenshot 5" />
+  <img src="media/v1.1.0/screenshot_20260302_030455.png" width="400" alt="Screenshot 6" />
 </p>
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215133.png" width="400" alt="Screenshot 7" />
-  <img src="media/Screenshot%202026-02-17%20215148.png" width="400" alt="Screenshot 8" />
+  <img src="media/v1.1.0/screenshot_20260302_030500.png" width="400" alt="Screenshot 7" />
+  <img src="media/v1.1.0/screenshot_20260302_030546.png" width="400" alt="Screenshot 8" />
 </p>
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215158.png" width="400" alt="Screenshot 9" />
-  <img src="media/Screenshot%202026-02-17%20215206.png" width="400" alt="Screenshot 10" />
+  <img src="media/v1.1.0/screenshot_20260302_030553.png" width="400" alt="Screenshot 9" />
+  <img src="media/v1.1.0/screenshot_20260302_030558.png" width="400" alt="Screenshot 10" />
 </p>
 <p align="center">
-  <img src="media/Screenshot%202026-02-17%20215217.png" width="400" alt="Screenshot 11" />
-  <img src="media/Screenshot%202026-02-17%20215236.png" width="400" alt="Screenshot 12" />
+  <img src="media/v1.1.0/screenshot_20260302_030603.png" width="400" alt="Screenshot 11" />
+  <img src="media/v1.1.0/screenshot_20260302_030614.png" width="400" alt="Screenshot 12" />
+</p>
+<p align="center">
+  <img src="media/v1.1.0/screenshot_20260302_030619.png" width="400" alt="Screenshot 13" />
+  <img src="media/v1.1.0/screenshot_20260302_030632.png" width="400" alt="Screenshot 14" />
+</p>
+<p align="center">
+  <img src="media/v1.1.0/screenshot_20260302_030639.png" width="400" alt="Screenshot 15" />
+  <img src="media/v1.1.0/screenshot_20260302_030647.png" width="400" alt="Screenshot 16" />
+</p>
+<p align="center">
+  <img src="media/v1.1.0/screenshot_20260302_030654.png" width="400" alt="Screenshot 17" />
+  <img src="media/v1.1.0/screenshot_20260302_030729.png" width="400" alt="Screenshot 18" />
+</p>
+<p align="center">
+  <img src="media/v1.1.0/screenshot_20260302_030736.png" width="400" alt="Screenshot 19" />
+  <img src="media/v1.1.0/screenshot_20260302_030740.png" width="400" alt="Screenshot 20" />
+</p>
+<p align="center">
+  <img src="media/v1.1.0/screenshot_20260302_030806.png" width="400" alt="Screenshot 21" />
+  <img src="media/v1.1.0/screenshot_20260302_030828.png" width="400" alt="Screenshot 22" />
+</p>
+
+## Screenshots (v1.0.0)
+
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215012.png" width="400" alt="Screenshot 1" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215031.png" width="400" alt="Screenshot 2" />
+</p>
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215045.png" width="400" alt="Screenshot 3" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215054.png" width="400" alt="Screenshot 4" />
+</p>
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215109.png" width="400" alt="Screenshot 5" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215123.png" width="400" alt="Screenshot 6" />
+</p>
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215133.png" width="400" alt="Screenshot 7" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215148.png" width="400" alt="Screenshot 8" />
+</p>
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215158.png" width="400" alt="Screenshot 9" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215206.png" width="400" alt="Screenshot 10" />
+</p>
+<p align="center">
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215217.png" width="400" alt="Screenshot 11" />
+  <img src="media/v1.0.0/Screenshot%202026-02-17%20215236.png" width="400" alt="Screenshot 12" />
 </p>
 
 ## Video Demo
 
-https://github.com/federicodangelo/SpaceExplorationGame/raw/master/media/Recording%202026-02-17%20214814.mp4
+https://github.com/federicodangelo/SpaceExplorationGame/raw/master/media/v1.0.0/Recording%202026-02-17%20214814.mp4
 
-> If the video doesn't play inline, [download it here](media/Recording%202026-02-17%20214814.mp4).
+> If the video doesn't play inline, [download it here](media/v1.0.0/Recording%202026-02-17%20214814.mp4).
 
 ## Building & Running
 
