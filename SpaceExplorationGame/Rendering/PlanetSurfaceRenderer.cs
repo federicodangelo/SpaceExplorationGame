@@ -24,7 +24,7 @@ public static class PlanetSurfaceRenderer
         var heightMap = surfaceData.HeightMap;
         float time = (float)globalTime;
 
-        renderer.RenderTiles(camera, w, h,
+        renderer.RenderTiles(camera, w, h, GameConfig.TileSize,
             (x, y) =>
             {
                 var terrain = tiles[x, y];

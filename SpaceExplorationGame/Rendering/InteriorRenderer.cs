@@ -311,7 +311,7 @@ public static class InteriorRenderer
     private static void RenderTiles(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
-        renderer.RenderTiles(camera, interior.Width, interior.Height,
+        renderer.RenderTiles(camera, interior.Width, interior.Height, GameConfig.TileSize,
             (x, y) =>
             {
                 var tile = interior.Tiles[x, y];

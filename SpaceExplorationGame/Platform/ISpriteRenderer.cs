@@ -56,7 +56,7 @@ public interface ISpriteRenderer : IDisposable
     void SetTitle(string title);
 
     // ── Tile map ─────────────────────────────────────────────────────
-    void RenderTiles(Camera camera, int mapWidth, int mapHeight,
+    void RenderTiles(Camera camera, int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor, float variationDivisor = 800f,
         Action<int, int, Vector2, int>? renderDetail = null);
 }

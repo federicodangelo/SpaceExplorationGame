@@ -9,7 +9,7 @@ namespace SpaceExplorationGame.Platform;
 public interface ITileMapRenderer
 {
     void RenderTiles(ISpriteRenderer renderer, Camera camera,
-        int mapWidth, int mapHeight,
+        int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor,
         float variationDivisor = 800f,
         Action<int, int, Vector2, int>? renderDetail = null);

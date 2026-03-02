@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text;
 using SDL3;
-using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.Platform.Sdl;
 
@@ -10,6 +9,7 @@ namespace SpaceExplorationGame.Platform.Sdl;
 /// </summary>
 public class SdlInputManager : IInputManager
 {
+    private readonly Func<(int Width, int Height)> _getWindowSize;
     private readonly record struct InputBinding(SDL.Scancode? Scancode, int? MouseButton, SDL.GamepadButton? GamepadButton, SDL.GamepadAxis? GamepadAxis)
     {
         public static InputBinding Key(SDL.Scancode scancode) => new(scancode, null, null, null);
@@ -89,6 +89,11 @@ public class SdlInputManager : IInputManager
     public InputMethod ActiveInputMethod { get; private set; } = InputMethod.MouseKeyboard;
     public MovementInputMode MovementMode =>
         ActiveInputMethod == InputMethod.Gamepad ? MovementInputMode.Absolute : MovementInputMode.HeadingRelative;
+
+    public SdlInputManager(Func<(int Width, int Height)> getWindowSize)
+    {
+        _getWindowSize = getWindowSize;
+    }
 
     /// <summary>Call at the start of each frame before processing events.</summary>
     public void BeginFrame()
@@ -546,7 +551,8 @@ public class SdlInputManager : IInputManager
 
     private Vector2 GetDirectionFromScreenCenterToMouse()
     {
-        Vector2 screenCenter = new(GameConfig.WindowWidth / 2f, GameConfig.WindowHeight / 2f);
+        var (winW, winH) = _getWindowSize();
+        Vector2 screenCenter = new(winW / 2f, winH / 2f);
         Vector2 mousePosition = new(MouseX, MouseY);
         Vector2 direction = mousePosition - screenCenter;
         return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);

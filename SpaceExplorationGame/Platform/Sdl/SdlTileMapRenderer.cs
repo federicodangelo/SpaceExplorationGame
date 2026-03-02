@@ -34,18 +34,17 @@ public class SdlTileMapRenderer : ITileMapRenderer
     /// <param name="renderDetail">Optional per-tile detail callback: (x, y, worldPos, hash).</param>
     public void RenderTiles(
         ISpriteRenderer renderer, Camera camera,
-        int mapWidth, int mapHeight,
+        int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor,
         float variationDivisor = 800f,
         Action<int, int, Vector2, int>? renderDetail = null)
     {
         var (topLeft, bottomRight) = camera.GetVisibleBounds();
-        int startX = Math.Max(0, (int)(topLeft.X / GameConfig.TileSize) - 1);
-        int startY = Math.Max(0, (int)(topLeft.Y / GameConfig.TileSize) - 1);
-        int endX = Math.Min(mapWidth - 1, (int)(bottomRight.X / GameConfig.TileSize) + 1);
-        int endY = Math.Min(mapHeight - 1, (int)(bottomRight.Y / GameConfig.TileSize) + 1);
+        int startX = Math.Max(0, (int)(topLeft.X / tileSize) - 1);
+        int startY = Math.Max(0, (int)(topLeft.Y / tileSize) - 1);
+        int endX = Math.Min(mapWidth - 1, (int)(bottomRight.X / tileSize) + 1);
+        int endY = Math.Min(mapHeight - 1, (int)(bottomRight.Y / tileSize) + 1);
 
-        float tileSize = GameConfig.TileSize;
         float halfTile = tileSize / 2f;
         float scaledSize = tileSize * camera.Zoom;
         float halfScaled = scaledSize / 2f;

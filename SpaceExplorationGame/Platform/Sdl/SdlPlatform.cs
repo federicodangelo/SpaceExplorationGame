@@ -52,7 +52,7 @@ public class SdlPlatform : IPlatform
 
         Textures = new SdlTextureManager(renderer);
         SpriteRenderer = new SdlSpriteRenderer(window, renderer, (SdlTextureManager)Textures);
-        InputManager = new SdlInputManager();
+        InputManager = new SdlInputManager(() => (WindowWidth, WindowHeight));
         AudioManager = new SdlAudioManager(musicProvider, sfxProvider,
             masterVolume: masterVolume,
             musicVolume: musicVolume,
