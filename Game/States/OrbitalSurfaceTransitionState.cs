@@ -3,7 +3,6 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.States;
 
@@ -134,7 +133,7 @@ public class OrbitalSurfaceTransitionState : GameState
             _planetRadiusStartPx = MathF.Max(_planet.Radius * _solarZoomStart, 8f);
         }
 
-        _terrainTexture = CreateTerrainTexture(game, _surfaceData);
+        _terrainTexture = TerrainRenderer.CreateTerrainTexture(game.Textures, _surfaceData);
 
         _stars.Clear();
         for (int i = 0; i < 50; i++)
@@ -282,46 +281,6 @@ public class OrbitalSurfaceTransitionState : GameState
     {
         Vector2 delta = (world - _solarCameraStart) * _solarZoomStart;
         return new Vector2(CX + delta.X, CY + delta.Y);
-    }
-
-    private static nint CreateTerrainTexture(Game game, PlanetSurfaceData surface)
-    {
-        int w = surface.Width;
-        int h = surface.Height;
-        var pixels = new byte[w * h * 4];
-
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                var terrain = surface.Tiles[x, y];
-                var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-                var variationColor = RenderColors.GetColorVariation(color, x, y, 800f);
-                int idx = (y * w + x) * 4;
-                pixels[idx + 0] = variationColor.R;
-                pixels[idx + 1] = variationColor.G;
-                pixels[idx + 2] = variationColor.B;
-                pixels[idx + 3] = 255;
-            }
-        }
-
-        // Match planet map terrain texture: settlement overlay + nearest sampling.
-        foreach (var s in surface.Settlements)
-        {
-            for (int sx = s.TileRect.X; sx < s.TileRect.X + s.TileRect.Width && sx < w; sx++)
-            {
-                for (int sy = s.TileRect.Y; sy < s.TileRect.Y + s.TileRect.Height && sy < h; sy++)
-                {
-                    int idx = (sy * w + sx) * 4;
-                    pixels[idx + 0] = 100;
-                    pixels[idx + 1] = 100;
-                    pixels[idx + 2] = 120;
-                    pixels[idx + 3] = 255;
-                }
-            }
-        }
-
-        return game.Textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
     }
 
     private Vector2 DrawTerrainLandingBlend(Game game, float planetX, float planetY, float planetRadius,

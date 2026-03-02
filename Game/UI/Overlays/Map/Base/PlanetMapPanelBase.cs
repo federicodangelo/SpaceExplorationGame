@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Map.Base;
@@ -145,44 +146,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     protected void CreateTerrainTexture(Game game)
     {
         _textures = game.Textures;
-        int w = _surfaceData.Width;
-        int h = _surfaceData.Height;
-        var pixels = new byte[w * h * 4];
-
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                var terrain = _surfaceData.Tiles[x, y];
-                var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-
-                var variationColor = RenderColors.GetColorVariation(color, x, y, 800f);
-
-                int idx = (y * w + x) * 4;
-                pixels[idx + 0] = variationColor.R;
-                pixels[idx + 1] = variationColor.G;
-                pixels[idx + 2] = variationColor.B;
-                pixels[idx + 3] = 255;
-            }
-        }
-
-        // Mark settlement tiles
-        foreach (var s in _surfaceData.Settlements)
-        {
-            for (int sx = s.TileRect.X; sx < s.TileRect.X + s.TileRect.Width && sx < w; sx++)
-            {
-                for (int sy = s.TileRect.Y; sy < s.TileRect.Y + s.TileRect.Height && sy < h; sy++)
-                {
-                    int idx = (sy * w + sx) * 4;
-                    pixels[idx + 0] = 100;
-                    pixels[idx + 1] = 100;
-                    pixels[idx + 2] = 120;
-                    pixels[idx + 3] = 255;
-                }
-            }
-        }
-
-        _terrainTexture = game.Textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
+        _terrainTexture = TerrainRenderer.CreateTerrainTexture(game.Textures, _surfaceData);
     }
 
     // ─────────────────────────────────────────────────────────────

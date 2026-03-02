@@ -29,23 +29,8 @@ public static class PlanetSurfaceRenderer
             {
                 var terrain = tiles[x, y];
                 if (terrain == TerrainType.Void) return null;
-                var baseColor = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-
-                // Per-tile color variation using hash
-                int tileHash = (x * 374761393 + y * 668265263) ^ (x * 17 + y * 31);
-                int variation = ((tileHash >> 4) & 0xF) - 8; // -8 to +7
-                byte cr = (byte)Math.Clamp(baseColor.R + variation, 0, 255);
-                byte cg = (byte)Math.Clamp(baseColor.G + variation, 0, 255);
-                byte cb = (byte)Math.Clamp(baseColor.B + variation, 0, 255);
-
-                // Height-based shading: darken low areas, brighten high
-                float height = heightMap[x, y];
-                float shade = (height - 0.5f) * 0.15f; // +/-7.5% brightness
-                cr = (byte)Math.Clamp(cr + (int)(cr * shade), 0, 255);
-                cg = (byte)Math.Clamp(cg + (int)(cg * shade), 0, 255);
-                cb = (byte)Math.Clamp(cb + (int)(cb * shade), 0, 255);
-
-                return new Color3(cr, cg, cb);
+                return TerrainRenderer.GetTileColor(
+                    PlanetSurfaceGenerator.GetTerrainColor(terrain), x, y, heightMap[x, y]);
             },
             (x, y, worldPos, hash) =>
             {
