@@ -34,5 +34,5 @@ Thumbs.db
 *.cache
 
 # External tools
-*.bat
+animate-git.bat
 gource.*
