@@ -1,7 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 
@@ -156,7 +156,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
                 var terrain = _surfaceData.Tiles[x, y];
                 var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
 
-                var variationColor = ITileMapRenderer.GetColorVariation(color, x, y, 800f);
+                var variationColor = RenderColors.GetColorVariation(color, x, y, 800f);
 
                 int idx = (y * w + x) * 4;
                 pixels[idx + 0] = variationColor.R;

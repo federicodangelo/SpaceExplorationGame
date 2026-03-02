@@ -5,10 +5,10 @@ using Engine.Core;
 namespace Engine.Platform.Sdl;
 
 /// <summary>
-/// Shared utility for rendering tile-based maps with per-tile color variation.
-/// Used by PlanetSurfaceState and InteriorState.
+/// Shared utility for rendering tile-based maps.
+/// Used internally by <see cref="SdlSpriteRenderer"/>.
 /// </summary>
-public class SdlTileMapRenderer : ITileMapRenderer
+public class SdlTileMapRenderer
 {
     // Reusable buffers for batched tile rendering (avoids per-frame allocs).
     private SDL.Vertex[] _vertexBuf = new SDL.Vertex[1024];
@@ -30,13 +30,11 @@ public class SdlTileMapRenderer : ITileMapRenderer
     /// <param name="mapWidth">Width of the tile map.</param>
     /// <param name="mapHeight">Height of the tile map.</param>
     /// <param name="getColor">Returns (R, G, B) for the tile at (x, y), or null to skip.</param>
-    /// <param name="variationDivisor">Controls brightness variation strength (higher = subtler).</param>
     /// <param name="renderDetail">Optional per-tile detail callback: (x, y, worldPos, hash).</param>
     public void RenderTiles(
         ISpriteRenderer renderer, Camera camera,
         int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor,
-        float variationDivisor = 800f,
         Action<int, int, Vector2, int>? renderDetail = null)
     {
         var (topLeft, bottomRight) = camera.GetVisibleBounds();
@@ -68,8 +66,6 @@ public class SdlTileMapRenderer : ITileMapRenderer
                 var color = getColor(x, y);
                 if (color == null) continue;
 
-                var variationColor = ITileMapRenderer.GetColorVariation(color.Value, x, y, variationDivisor);
-
                 var worldPos = new Vector2(
                     x * tileSize + halfTile,
                     y * tileSize + halfTile);
@@ -80,11 +76,12 @@ public class SdlTileMapRenderer : ITileMapRenderer
                 float right = left + scaledSize;
                 float bottom = top + scaledSize;
 
+                var c = color.Value;
                 var fcolor = new SDL.FColor
                 {
-                    R = variationColor.R / 255f,
-                    G = variationColor.G / 255f,
-                    B = variationColor.B / 255f,
+                    R = c.R / 255f,
+                    G = c.G / 255f,
+                    B = c.B / 255f,
                     A = 1f
                 };
 

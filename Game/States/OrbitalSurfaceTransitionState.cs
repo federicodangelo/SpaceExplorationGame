@@ -3,7 +3,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
-using Engine.Platform;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.States;
 
@@ -296,7 +296,7 @@ public class OrbitalSurfaceTransitionState : GameState
             {
                 var terrain = surface.Tiles[x, y];
                 var color = PlanetSurfaceGenerator.GetTerrainColor(terrain);
-                var variationColor = ITileMapRenderer.GetColorVariation(color, x, y, 800f);
+                var variationColor = RenderColors.GetColorVariation(color, x, y, 800f);
                 int idx = (y * w + x) * 4;
                 pixels[idx + 0] = variationColor.R;
                 pixels[idx + 1] = variationColor.G;

@@ -47,7 +47,6 @@ public static class PlanetSurfaceRenderer
 
                 return new Color3(cr, cg, cb);
             },
-            800f,
             (x, y, worldPos, hash) =>
             {
                 var terrain = tiles[x, y];

@@ -316,9 +316,8 @@ public static class InteriorRenderer
             {
                 var tile = interior.Tiles[x, y];
                 if (tile == InteriorTileType.Void) return null;
-                return InteriorGenerator.GetTileColor(tile);
+                return RenderColors.GetColorVariation(InteriorGenerator.GetTileColor(tile), x, y, 1200f);
             },
-            1200f,
             (x, y, worldPos, hash) =>
             {
                 var tile = interior.Tiles[x, y];
