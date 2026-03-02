@@ -6,29 +6,98 @@ A 2D procedural space exploration game built with C# (.NET 10), SDL3 (via SDL3-C
 ## Tech Stack
 - **Runtime**: .NET 10
 - **Rendering**: SDL3 via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS) NuGet package
-- **ECS**: [Arch ECS](https://github.com/genaray/Arch) v2.1.0 with [Arch.System](https://github.com/genaray/Arch.Extended) v1.1.0 and Arch.System.SourceGenerator v2.1.0
+- **ECS**: [Arch ECS](https://github.com/genaray/Arch) v2.0.0 with [Arch.System](https://github.com/genaray/Arch.Extended) v1.1.0 and Arch.System.SourceGenerator v2.0.0
 - **Graphics**: Procedural pixel art textures generated at runtime (sphere-shaded planets, glow-gradient stars, pixel-art ship/avatar/station sprites) plus SDL3 draw primitives and a minimal bitmap font.
 - **Audio**: SDL3 built-in audio API (push-based streaming) — fully procedural synthesis, no external audio files or SDL_mixer
 
-## Project Structure
+## Solution Structure
+
+The solution is split into four projects with clear dependency boundaries:
 
 ```
-SpaceExplorationGame/
-├── SpaceExplorationGame.csproj    # .NET 10 project file
-├── Program.cs                     # Entry point
+SpaceExplorationGame.slnx
+├── Engine/Engine.csproj            # Core engine library (interfaces, base types)
+├── Engine.Sdl/Engine.Sdl.csproj    # SDL3 platform implementation
+├── Game/Game.csproj                # Game logic (ECS, states, rendering, UI)
+└── Game.Sdl/Game.Sdl.csproj        # Executable entry point (wires platform to game)
+```
+
+**Dependency graph** (→ = "depends on"):
+```
+Game.Sdl → Game + Engine.Sdl
+Game     → Engine
+Engine.Sdl → Engine
+Engine   → (nothing)
+```
+
+**Namespace mapping**:
+- `Engine/` and `Engine.Sdl/` use `RootNamespace = Engine` → namespaces: `Engine.Core`, `Engine.Platform`, `Engine.Platform.Sdl`, `Engine.Rendering.Base`
+- `Game/` and `Game.Sdl/` use `RootNamespace = SpaceExplorationGame` → namespaces: `SpaceExplorationGame.Core`, `SpaceExplorationGame.States`, etc.
+- `Game/GlobalUsings.cs` provides `global using Engine.Core;` and `global using Engine.Platform;` so game code can access engine types without per-file usings
+
+### Engine (Engine/Engine.csproj)
+Core engine library — platform interfaces, value types, and base classes. No SDL or third-party dependencies.
+
+```
+Engine/
+├── Engine.csproj
 ├── Core/
-│   ├── Game.cs                    # Main game class (platform, ECS world, game loop)
+│   ├── Camera.cs                  # 2D camera with zoom and viewport
+│   └── EngineTypes.cs             # Color3, Color4, Rect, VisibleBounds value types
+├── Platform/
+│   ├── GameBase.cs                # Abstract base class for games (holds IPlatform + convenience accessors)
+│   ├── IPlatform.cs               # Top-level platform interface (SpriteRenderer, Textures, InputManager, AudioManager, Settings)
+│   ├── ISpriteRenderer.cs         # Rendering abstraction (primitives, textures, text, tile maps — world & screen space)
+│   ├── ITextureManager.cs         # Texture creation utilities (CreateFromPixels, SetPixelBlock)
+│   ├── IFontRenderer.cs           # Font/text rendering abstraction
+│   ├── IInputManager.cs           # Input abstraction (actions, axes, mouse, text input)
+│   ├── IAudioManager.cs           # Audio abstraction (music themes, SFX playback, volume)
+│   ├── IMusicProvider.cs          # Interface for music generation (decouples audio from SDL)
+│   ├── ISfxProvider.cs            # Interface for sound effect generation
+│   ├── ISettings.cs               # Key/value settings persistence abstraction
+│   └── InputTypes.cs              # InputAction, InputActionAxis, MouseButton, InputMethod, MovementInputMode enums
+└── Rendering/
+    └── Base/
+        └── MiniBitmapFont.cs      # Built-in 5x8 pixel font data (used by SdlFontRenderer)
+```
+
+### Engine.Sdl (Engine.Sdl/Engine.Sdl.csproj)
+SDL3 platform implementation. References Engine + SDL3-CS NuGet packages.
+
+```
+Engine.Sdl/
+├── Engine.Sdl.csproj
+└── Platform/
+    └── Sdl/
+        ├── SdlPlatform.cs         # SDL3 IPlatform implementation (window, renderer lifecycle)
+        ├── SdlSpriteRenderer.cs   # SDL3 ISpriteRenderer implementation (delegates tile rendering to SdlTileMapRenderer)
+        ├── SdlTextureManager.cs   # SDL3 ITextureManager implementation
+        ├── SdlFontRenderer.cs     # SDL3 IFontRenderer implementation (wraps MiniBitmapFont)
+        ├── SdlTileMapRenderer.cs  # Internal tile-map batching renderer (used by SdlSpriteRenderer)
+        ├── SdlInputManager.cs     # SDL3 IInputManager implementation (keyboard, mouse, gamepad)
+        ├── SdlAudioManager.cs     # SDL3 IAudioManager implementation (push-streaming audio)
+        └── SdlSettings.cs         # File-based ISettings implementation (JSON key/value store)
+```
+
+### Game (Game/Game.csproj)
+All game logic. References Engine + Arch ECS. No SDL dependency.
+
+```
+Game/
+├── Game.csproj
+├── GlobalUsings.cs                # global using Engine.Core; global using Engine.Platform;
+├── Core/
+│   ├── Game.cs                    # Main game class (extends GameBase; ECS world, game loop)
 │   ├── GameConfig.cs              # All tunable constants
 │   ├── GameState.cs               # Abstract base class for game states
-│   ├── Camera.cs                  # 2D camera with zoom and viewport
-│   ├── CommonTypes.cs             # Shared lightweight value types (colors, geometry, spawn data, etc.)
+│   ├── CommonTypes.cs             # Shared lightweight value types (spawn data, etc.)
 │   ├── GalaxyLocation.cs          # Galaxy location value type (system/planet/settlement) for missions
 │   ├── PlayerData.cs              # Persistent player data across state changes (includes mission tracking)
 │   ├── CombatHelper.cs            # Shared combat utilities (loot drops, damage popups, effects)
 │   ├── FactionRules.cs            # Centralized faction interaction/friendly-fire rules
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── IDebugInfoProvider.cs      # DebugTimer / DebugTimingEntry — lightweight timing infrastructure
-│   ├── MenuOptionsPersistence.cs  # Persists main-menu selections to disk (JSON)
+│   ├── MenuOptionsPersistence.cs  # Persists menu selections using ISettings (instance class)
 │   ├── NpcShipLoadoutHelper.cs    # NPC ship type/loadout/weapon selection and stat derivation by danger tier
 │   ├── Missions.cs                # Mission data model (MissionType, MissionStatus, Mission class)
 │   ├── MissionTracker.cs          # Active/completed mission state + Notify* callbacks
@@ -38,23 +107,13 @@ SpaceExplorationGame/
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   ├── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
-├── Platform/
-│   ├── IPlatform.cs               # Top-level platform interface (SpriteRenderer, Textures, InputManager, AudioManager)
-│   ├── ISpriteRenderer.cs         # Rendering abstraction (primitives, textures, text — world & screen space)
-│   ├── ITextureManager.cs         # Texture creation utilities (CreateFromPixels, SetPixelBlock)
-│   ├── IFontRenderer.cs           # Font/text rendering abstraction
-│   ├── ITileMapRenderer.cs        # Tilemap rendering abstraction (hash brightness, detail callback)
-│   ├── IInputManager.cs           # Input abstraction (actions, axes, mouse, text input)
-│   ├── IAudioManager.cs           # Audio abstraction (music themes, SFX playback, volume)
-│   ├── InputTypes.cs              # InputAction, InputActionAxis, MouseButton, InputMethod, MovementInputMode enums
-│   └── Sdl/
-│       ├── SdlPlatform.cs         # SDL3 IPlatform implementation (window, renderer lifecycle)
-│       ├── SdlSpriteRenderer.cs   # SDL3 ISpriteRenderer implementation
-│       ├── SdlTextureManager.cs   # SDL3 ITextureManager implementation
-│       ├── SdlFontRenderer.cs     # SDL3 IFontRenderer implementation (wraps MiniBitmapFont)
-│       ├── SdlTileMapRenderer.cs  # SDL3 ITileMapRenderer implementation
-│       ├── SdlInputManager.cs     # SDL3 IInputManager implementation (keyboard, mouse, gamepad)
-│       └── SdlAudioManager.cs     # SDL3 IAudioManager implementation (push-streaming audio)
+├── Audio/
+│   ├── AudioThemes.cs             # Music theme string constants
+│   ├── AudioSfx.cs                # SFX type string constants
+│   ├── GameMusicProvider.cs       # IMusicProvider implementation (procedural ambient music)
+│   ├── GameSfxProvider.cs         # ISfxProvider implementation (procedural sound effects)
+│   ├── MusicGenerator.cs          # Real-time procedural ambient music (6 layers, 7 themes)
+│   └── SfxGenerator.cs            # Pre-generated sound effects (15 types, additive synthesis)
 ├── ECS/
 │   ├── EntityFactory.cs           # Centralized entity creation (all component compositions)
 │   ├── Components/
@@ -78,9 +137,6 @@ SpaceExplorationGame/
 │       └── AI/
 │           ├── ShipEnemyAISystem.cs     # AI state machine for NPC ships (pirate/trader/patrol)
 │           └── AvatarEnemyAISystem.cs   # AI state machine for surface enemies (fauna/bandits)
-├── Audio/
-│   ├── MusicGenerator.cs            # Real-time procedural ambient music (6 layers, 7 themes)
-│   └── SfxGenerator.cs              # Pre-generated sound effects (15 types, additive synthesis)
 ├── Generation/
 │   ├── IUniverseGenerator.cs      # Interface: GenerateGalaxy, GenerateSolarSystem, GeneratePlanetSurface, etc.
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
@@ -111,8 +167,7 @@ SpaceExplorationGame/
 │       └── CombatSimulationBase.cs    # Intermediate base for combat simulations (death/respawn, combat messages, music timer)
 ├── Rendering/
 │   ├── Base/
-│   │   ├── MiniBitmapFont.cs      # Built-in 5x8 pixel font data (used by SdlFontRenderer)
-│   │   └── RenderColors.cs        # Shared color/style constants used across multiple renderers
+│   │   └── RenderColors.cs        # Shared color/style constants + GetColorVariation helper
 │   ├── LabelRenderer.cs           # Centered text labels below entities (queries Transform + Label)
 │   ├── AvatarRenderer.cs          # Player avatar texture & rendering (IDisposable, owns texture)
 │   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
@@ -182,6 +237,15 @@ SpaceExplorationGame/
             └── Base/
                 ├── MenuPanelOverlayBase.cs   # Abstract base for MenuWidget-driven panel overlays
                 └── PanelOverlayBase.cs       # Root base for all centered-panel overlays (dimming, border, title)
+```
+
+### Game.Sdl (Game.Sdl/Game.Sdl.csproj)
+Executable entry point. Wires the SDL platform to the game. AOT-enabled. References Game + Engine.Sdl.
+
+```
+Game.Sdl/
+├── Game.Sdl.csproj
+└── Program.cs                     # Entry point (creates SdlPlatform, Game, runs game loop)
 ```
 
 ## Command Line Options
@@ -289,7 +353,7 @@ ISimulation
 5. State `Exit()` calls `simulation.RemovePlayer(player)` — simulation stays alive in coordinator
 
 ### Platform Abstraction Layer
-The `Platform/` folder defines a clean interface boundary between game logic and the concrete SDL3 implementation. Every platform-capability is exposed via a C# interface; the rest of the codebase only references these interfaces. Swapping the renderer or input backend requires no changes outside `Platform/Sdl/`.
+The `Engine/Platform/` folder defines a clean interface boundary between game logic and the concrete SDL3 implementation. Every platform-capability is exposed via a C# interface in the Engine project; the rest of the codebase only references these interfaces. Swapping the renderer or input backend requires no changes outside `Engine.Sdl/Platform/Sdl/`.
 
 **Top-level interface: `IPlatform`** — aggregates all platform capabilities:
 ```
@@ -297,28 +361,33 @@ IPlatform
 ├── ISpriteRenderer  — 2D primitives, texture draw, text (world & screen space), clip regions
 ├── ITextureManager  — CreateFromPixels / SetPixelBlock texture creation helpers
 ├── IInputManager    — keyboard, mouse, gamepad; action/axis abstraction; text input
-└── IAudioManager    — music theme switching, SFX playback, volume controls
+├── IAudioManager    — music theme switching, SFX playback, volume controls
+└── ISettings        — key/value settings persistence (save/load strings)
 ```
 
-**`IInputManager`** replaces the former `Core/InputManager.cs`. It has:
+**`GameBase`** (`Engine/Platform/GameBase.cs`) is an abstract base class that holds an `IPlatform` reference and exposes convenience accessors (`Renderer`, `Textures`, `Input`, `Audio`, `Settings`). The game's `Game.cs` extends `GameBase`.
+
+**`IInputManager`** provides:
 - Action-based API: `IsActionDown/Pressed/Released(InputAction)`, `GetActionAxisDirection(InputActionAxis)`
 - Mouse helpers: `IsMouseDown/Pressed/Released(MouseButton)`, `MouseX/Y/MouseWheelY`
 - Text input support: `TextInput`, `TextInputBackspacesCount`, `TextInputReturnsCount`
 - `InputMethod` enum (`MouseKeyboard` / `Gamepad`) and `MovementInputMode`
 - `InputTypes.cs` defines all enums: `InputAction`, `InputActionAxis`, `MouseButton`, `InputMethod`, `MovementInputMode`
 
-**`IAudioManager`** replaces `Audio/AudioManager.cs`. It wraps `MusicGenerator` and `SfxGenerator` behind a platform interface. All game states and simulations call `game.Platform.AudioManager` (or the injected reference) — they never import SDL directly.
+**`IAudioManager`** wraps music and SFX playback behind a platform interface. Theme and SFX names are plain strings — the engine has no knowledge of which themes or effects exist. Content generation is delegated to `IMusicProvider` (real-time stereo PCM music) and `ISfxProvider` (pre-generated mono PCM buffers), which are injected into `SdlAudioManager` at startup. The game provides concrete implementations (`GameMusicProvider` wrapping `MusicGenerator`, `GameSfxProvider` wrapping `SfxGenerator`) so all synthesis code lives in the Game project. Game code defines theme/SFX names as string constants in `AudioThemes.cs` and `AudioSfx.cs`.
 
-**SDL3 Implementations** (`Platform/Sdl/`):
-| Interface          | SDL3 Implementation  | Notes                                                       |
-| ------------------ | -------------------- | ----------------------------------------------------------- |
-| `IPlatform`        | `SdlPlatform`        | Window creation, renderer lifecycle, frame timing           |
-| `ISpriteRenderer`  | `SdlSpriteRenderer`  | SDL3 draw calls, texture rendering, rotation, alpha         |
-| `ITextureManager`  | `SdlTextureManager`  | `SDL_CreateTexture`, pixel upload                           |
-| `IFontRenderer`    | `SdlFontRenderer`    | Wraps `MiniBitmapFont` for text rasterization               |
-| `ITileMapRenderer` | `SdlTileMapRenderer` | Visible-tile culling, hash-based brightness, detail sprites |
-| `IInputManager`    | `SdlInputManager`    | SDL3 event polling, keyboard + mouse + gamepad mapping      |
-| `IAudioManager`    | `SdlAudioManager`    | SDL3 audio device stream, push-based mixing, crossfade      |
+**SDL3 Implementations** (`Engine.Sdl/Platform/Sdl/`):
+| Interface         | SDL3 Implementation | Notes                                                  |
+| ----------------- | ------------------- | ------------------------------------------------------ |
+| `IPlatform`       | `SdlPlatform`       | Window creation, renderer lifecycle, frame timing      |
+| `ISpriteRenderer` | `SdlSpriteRenderer` | SDL3 draw calls, texture rendering, rotation, alpha    |
+| `ITextureManager` | `SdlTextureManager` | `SDL_CreateTexture`, pixel upload                      |
+| `IFontRenderer`   | `SdlFontRenderer`   | Wraps `MiniBitmapFont` for text rasterization          |
+| `IInputManager`   | `SdlInputManager`   | SDL3 event polling, keyboard + mouse + gamepad mapping |
+| `IAudioManager`   | `SdlAudioManager`   | SDL3 audio device stream, push-based mixing, crossfade |
+| `ISettings`       | `SdlSettings`       | File-based JSON key/value store (`settings.json`)      |
+
+`SdlTileMapRenderer` is an internal implementation detail of `SdlSpriteRenderer` — it handles visible-tile culling and batched tile rendering. It has no corresponding engine interface.
 
 **Generation abstraction: `IUniverseGenerator`** (`Generation/IUniverseGenerator.cs`) — a parallel platform abstraction for world content. Defines `GenerateGalaxy()`, `GenerateSolarSystem()`, `GeneratePlanetSurface()`, `GenerateStationInterior()`, `GenerateSettlementInterior()`, and `GenerateBoardMissions()`. The default implementation is `ProceduralUniverseGenerator` (`Generation/Procedural/`), which delegates to the individual static generator classes. Showcase modes use dedicated `IUniverseGenerator` subclasses (`Generation/Showcase/`) that override specific methods to return curated content.
 
@@ -499,10 +568,9 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 | **ParticleSystem**               | `Systems/Effects/` | `BaseSystem` (manual query) | `Transform + Particle`, `Transform + ParticleEmitter`                          | SolarSystemSimulation                                       |
 
 Rendering helpers (not ECS systems but query ECS data):
-| Helper              | Location          | Description                                                                                 |
-| ------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| **LabelRenderer**   | `Rendering/`      | Queries `Transform + Label` and draws centered text below entities                          |
-| **TileMapRenderer** | `Rendering/Base/` | Static utility for visible tilemap rendering with hash-based brightness and detail callback |
+| Helper            | Location     | Description                                                        |
+| ----------------- | ------------ | ------------------------------------------------------------------ |
+| **LabelRenderer** | `Rendering/` | Queries `Transform + Label` and draws centered text below entities |
 
 System details:
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
@@ -526,11 +594,10 @@ The `ISpriteRenderer` interface (implemented by `SdlSpriteRenderer`) provides bo
 - `CreateTextureFromPixels(byte[] pixels, int width, int height)` — creates an SDL texture from raw RGBA pixel data
 - `SetPixelBlock(...)` — static helper to fill rectangular pixel regions
 
-**`Rendering/Base/`** now contains only two files:
-- `MiniBitmapFont.cs` — built-in 5×8 pixel font data (used by `SdlFontRenderer`)
-- `RenderColors.cs` — shared color/style constants (`HealthBarBackground`, `ShieldBarFill`, `StarCoreHighlight`, etc.) used across multiple renderers
+**`Rendering/Base/`** in the Game project contains a single file:
+- `RenderColors.cs` — shared color/style constants (`HealthBarBackground`, `ShieldBarFill`, `StarCoreHighlight`, etc.) and a `GetColorVariation` helper for per-tile brightness jitter, used across multiple renderers
 
-The former `FontRenderer.cs`, `SpriteRenderer.cs`, `TextureManager.cs`, and `TileMapRenderer.cs` that used to live in `Rendering/Base/` have been moved into the Platform abstraction layer (`ISpriteRenderer`, `ITextureManager`, `IFontRenderer`, `ITileMapRenderer` interfaces + SDL3 implementations in `Platform/Sdl/`).
+`MiniBitmapFont.cs` (built-in 5×8 pixel font data) lives in `Engine/Rendering/Base/` and is used by `SdlFontRenderer` in Engine.Sdl.
 
 **Entity Renderers** follow a consistent pattern: each is an `IDisposable` class that receives an `ITextureManager` in its constructor, generates its own textures procedurally, owns them for their lifetime, and provides `Render()`/rendering methods. They are all owned by `Game` and disposed on shutdown.
 
@@ -844,9 +911,9 @@ Base avatar weapon damage is 10. Total damage = base + equipped weapon's `Weapon
 ### Audio System
 Fully procedural audio engine using SDL3's built-in audio API (push-based streaming at 44100 Hz, stereo float32). No external audio files — all music and sound effects are synthesized at runtime, matching the game's procedural generation philosophy.
 
-**Architecture**: `Game` accesses audio via `IPlatform.AudioManager` (`IAudioManager`). The concrete implementation is `SdlAudioManager` (`Platform/Sdl/SdlAudioManager.cs`). States call `SetMusicTheme()` and `PlaySfx()` through this interface.
+**Architecture**: Audio follows the same provider-injection pattern as the rest of the platform layer. `IAudioManager` (Engine) defines theme/SFX operations using plain string names — the engine has no knowledge of which themes or effects exist. `SdlAudioManager` (Engine.Sdl) implements the SDL3 push-streaming device and delegates content generation to two injected interfaces: `IMusicProvider` (real-time stereo PCM) and `ISfxProvider` (pre-generated mono buffers). The Game project supplies concrete implementations — `GameMusicProvider` (wraps `MusicGenerator`) and `GameSfxProvider` (wraps `SfxGenerator`) — and defines all theme/SFX names as string constants in `AudioThemes.cs` and `AudioSfx.cs`. Game states call `game.Audio.SetMusicTheme(AudioThemes.Combat)` and `game.Audio.PlaySfx(AudioSfx.LaserFire)` — they never import SDL directly.
 
-**`IAudioManager` / `SdlAudioManager`** (`Platform/Sdl/SdlAudioManager.cs`):
+**`IAudioManager` / `SdlAudioManager`** (`Engine.Sdl/Platform/Sdl/SdlAudioManager.cs`):
 - Opens an SDL3 audio device stream via `SDL.OpenAudioDeviceStream` (44100 Hz, float32 LE, stereo)
 - `Update(float dt)` generates and pushes mixed audio chunks (~2048 frames / ~46ms) to the device, keeping ~0.2s buffered via `SDL.GetAudioStreamAvailable`
 - `SetMusicTheme(theme, instant)` with smooth crossfade (fade out → switch → fade in, 2 vol units/s)
@@ -864,7 +931,7 @@ Fully procedural audio engine using SDL3's built-in audio API (push-based stream
 - Pentatonic minor scale `[0, 3, 5, 7, 10]` with 4 chord voicings and smooth portamento (~2s glide)
 - Deterministic noise via xorshift PRNG (thread-safe, no locking)
 
-**Music Themes** (`MusicTheme` enum):
+**Music Themes** (`AudioThemes` string constants):
 | Theme         | Root   | BPM | Character                                |
 | ------------- | ------ | --- | ---------------------------------------- |
 | MainMenu      | 110 Hz | 60  | Warm drone, gentle pad, slow arp         |
@@ -878,7 +945,7 @@ Fully procedural audio engine using SDL3's built-in audio API (push-based stream
 - Pre-generates all SFX as mono float arrays at startup
 - Synthesis techniques: frequency sweeps, filtered noise bursts, sine thumps, ADSR envelopes, single-pole low-pass filter
 
-**SFX Types** (`SfxType` enum — 15 types):
+**SFX Types** (`AudioSfx` string constants — 15 types):
 | SFX            | Technique                  | Duration | Triggered By                        |
 | -------------- | -------------------------- | -------- | ----------------------------------- |
 | LaserFire      | Descending sine sweep      | ~0.15s   | Player fires weapon (space/surface) |
@@ -1034,11 +1101,13 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Combat music tracking (auto-switch to combat theme on damage, fade back after 5s)
 - [x] Sound effects and music (procedural synthesis via SDL3 built-in audio)
 - [x] Main menu debug overlay and showcase launchers
-- [x] Platform abstraction layer (IPlatform / ISpriteRenderer / ITextureManager / IInputManager / IAudioManager + SDL3 implementations)
+- [x] Platform abstraction layer (IPlatform / ISpriteRenderer / ITextureManager / IInputManager / IAudioManager / ISettings + SDL3 implementations; IMusicProvider / ISfxProvider for audio content injection; GameBase convenience base class)
 - [x] Universe generation interface (IUniverseGenerator / ProceduralUniverseGenerator) with showcase subclass overrides
 - [x] Centralized faction rules (FactionRules.CanHit)
 - [x] Centralized surface terrain rules (SurfaceTerrainRules)
-- [x] Menu option persistence (MenuOptionsPersistence — saves danger/location/sublocation selections to disk)
+- [x] Menu option persistence (MenuOptionsPersistence — instance class using ISettings to save danger/location/sublocation selections)
+- [x] Settings persistence abstraction (ISettings / SdlSettings — file-based JSON key/value store)
+- [x] 4-project solution split (Engine, Engine.Sdl, Game, Game.Sdl — clear dependency boundaries)
 - [x] Debug timing infrastructure (DebugTimer / DebugTimingEntry / IDebugInfoProvider)
 
 ## TODO / Next Steps
