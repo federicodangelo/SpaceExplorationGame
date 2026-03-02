@@ -1,13 +1,14 @@
 using System.Numerics;
 using SDL3;
-using SpaceExplorationGame.Audio;
 
 namespace SpaceExplorationGame.Platform.Sdl;
 
 /// <summary>
-/// Central audio manager — procedurally generated music and sound effects via SDL3.
+/// Central audio manager — music and sound effects via SDL3.
 /// Uses a push-based model: the game loop calls <see cref="Update"/> each frame to keep
 /// the audio stream fed with mixed music + SFX samples.
+/// Music and SFX content is provided via <see cref="IMusicProvider"/> and <see cref="ISfxProvider"/>,
+/// so this class has no knowledge of which themes or effects exist.
 /// </summary>
 public sealed class SdlAudioManager : IAudioManager
 {
@@ -22,9 +23,9 @@ public sealed class SdlAudioManager : IAudioManager
     private nint _stream;
     private bool _initialized;
 
-    // Generators
-    private readonly MusicGenerator _music;
-    private readonly Dictionary<SfxType, float[]> _sfxBuffers;
+    // Content providers (injected — no knowledge of specific themes/effects)
+    private readonly IMusicProvider _music;
+    private readonly ISfxProvider _sfx;
 
     // Active one-shot SFX instances
     private readonly List<ActiveSfx> _activeSfx = new(MaxSimultaneousSfx);
@@ -37,7 +38,7 @@ public sealed class SdlAudioManager : IAudioManager
     // Crossfade state
     private float _fadeGain = 1f;
     private float _fadeTarget = 1f;
-    private MusicTheme? _pendingTheme;
+    private string? _pendingTheme;
 
     // Pre-allocated buffers to avoid per-frame allocation
     private readonly float[] _genBuf = new float[GenerateFrames * ChannelCount];
@@ -52,14 +53,15 @@ public sealed class SdlAudioManager : IAudioManager
         public float Pan;        // –1 = left, 0 = center, +1 = right
     }
 
-    public SdlAudioManager(float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
+    public SdlAudioManager(IMusicProvider music, ISfxProvider sfx,
+        float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
     {
         MasterVolume = masterVolume;
         MusicVolume = musicVolume;
         SfxVolume = sfxVolume;
 
-        _music = new MusicGenerator(SampleRate);
-        _sfxBuffers = SfxGenerator.GenerateAll(SampleRate);
+        _music = music;
+        _sfx = sfx;
     }
 
     /// <summary>
@@ -98,18 +100,18 @@ public sealed class SdlAudioManager : IAudioManager
     /// Switch the background music theme. If <paramref name="instant"/> is false the current
     /// theme fades out, the new one fades in (crossfade ≈ 0.5 s each way).
     /// </summary>
-    public void SetMusicTheme(MusicTheme theme, bool instant = false)
+    public void SetMusicTheme(string theme, bool instant = false)
     {
         if (!_initialized) return;
 
-        if (instant || _music.CurrentTheme == MusicTheme.None)
+        if (instant || _music.CurrentTheme.Length == 0)
         {
             _music.SetTheme(theme);
             _fadeGain = 1f;
             _fadeTarget = 1f;
             _pendingTheme = null;
         }
-        else if (theme != _music.CurrentTheme || _pendingTheme.HasValue)
+        else if (theme != _music.CurrentTheme || _pendingTheme != null)
         {
             _pendingTheme = theme;
             _fadeTarget = 0f;   // start fade-out
@@ -124,7 +126,7 @@ public sealed class SdlAudioManager : IAudioManager
     /// Play a one-shot sound effect with volume attenuated by distance from <paramref name="relativeToPos"/>.
     /// <paramref name="maxRange"/>: distance beyond which the sound is inaudible.
     /// </summary>
-    public void PlaySfxAtDistance(SfxType type, Vector2 soundPos, Vector2 relativeToPos,
+    public void PlaySfxAtDistance(string sfx, Vector2 soundPos, Vector2 relativeToPos,
         float volume = 1f, float maxRange = 800f)
     {
         float dist = Vector2.Distance(soundPos, relativeToPos);
@@ -132,16 +134,16 @@ public sealed class SdlAudioManager : IAudioManager
         float atten = 1f - (dist / maxRange);
         atten *= atten; // quadratic falloff for more natural sound
         float pan = Math.Clamp((soundPos.X - relativeToPos.X) / (maxRange * 0.5f), -1f, 1f);
-        PlaySfx(type, volume * atten, pan);
+        PlaySfx(sfx, volume * atten, pan);
     }
 
     /// <summary>
     /// Play a one-shot sound effect. <paramref name="pan"/>: –1 left, 0 center, +1 right.
     /// </summary>
-    public void PlaySfx(SfxType type, float volume = 1f, float pan = 0f)
+    public void PlaySfx(string sfx, float volume = 1f, float pan = 0f)
     {
         if (!_initialized) return;
-        if (!_sfxBuffers.TryGetValue(type, out var buf)) return;
+        if (!_sfx.TryGetBuffer(sfx, out var buf)) return;
         if (_activeSfx.Count >= MaxSimultaneousSfx) return;
 
         _activeSfx.Add(new ActiveSfx
@@ -195,9 +197,9 @@ public sealed class SdlAudioManager : IAudioManager
         }
 
         // When fade-out is complete and a new theme is waiting, switch and start fade-in
-        if (_fadeGain <= 0f && _pendingTheme.HasValue)
+        if (_fadeGain <= 0f && _pendingTheme != null)
         {
-            _music.SetTheme(_pendingTheme.Value);
+            _music.SetTheme(_pendingTheme);
             _pendingTheme = null;
             _fadeTarget = 1f;
         }

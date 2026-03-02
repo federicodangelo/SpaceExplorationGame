@@ -64,7 +64,7 @@ public static class CombatHelper
         // Credits
         int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
         game.Player.Credits += credits;
-        game.Audio.PlaySfx(SfxType.PickupCredits, 0.6f);
+        game.Audio.PlaySfx(AudioSfx.PickupCredits, 0.6f);
         string message = $"+{credits} CREDITS";
 
         // Resource drop
@@ -77,7 +77,7 @@ public static class CombatHelper
             {
                 var resName = ResourceCatalog.Get(resource).Name;
                 message += $"  +{added} {resName.ToUpper()}";
-                game.Audio.PlaySfx(SfxType.PickupItem, 0.5f);
+                game.Audio.PlaySfx(AudioSfx.PickupItem, 0.5f);
             }
         }
 
@@ -112,7 +112,7 @@ public static class CombatHelper
         {
             var evt = events[i];
             audio.PlaySfxAtDistance(
-                evt.ShieldHit ? SfxType.ShieldHit : SfxType.HullDamage,
+                evt.ShieldHit ? AudioSfx.ShieldHit : AudioSfx.HullDamage,
                 evt.Position, listenerPos, volume);
         }
     }
@@ -143,17 +143,17 @@ public static class CombatHelper
             if (d.Asteroid.HasValue)
             {
                 explosions.Add(new Explosion(d.Position, asteroidSize, new Color3(140, 120, 100)));
-                audio.PlaySfxAtDistance(SfxType.SmallExplosion, d.Position, listenerPos, 0.5f);
+                audio.PlaySfxAtDistance(AudioSfx.SmallExplosion, d.Position, listenerPos, 0.5f);
             }
             else if (d.Faction == Faction.Player)
             {
                 explosions.Add(new Explosion(d.Position, playerSize, playerColor));
-                audio.PlaySfx(SfxType.Explosion, 1.2f);
+                audio.PlaySfx(AudioSfx.Explosion, 1.2f);
             }
             else
             {
                 explosions.Add(new Explosion(d.Position, npcSize, npcExplosionColor(d.Faction)));
-                audio.PlaySfxAtDistance(SfxType.Explosion, d.Position, listenerPos, npcSfxVolume);
+                audio.PlaySfxAtDistance(AudioSfx.Explosion, d.Position, listenerPos, npcSfxVolume);
             }
         }
     }

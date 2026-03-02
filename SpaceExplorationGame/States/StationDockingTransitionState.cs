@@ -126,12 +126,12 @@ public class StationDockingTransitionState : GameState
             // Ship starts at its solar-system screen position
             _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
 
-            game.Audio.SetMusicTheme(MusicTheme.Interior);
+            game.Audio.SetMusicTheme(AudioThemes.Interior);
         }
         else
         {
-            game.Audio.PlaySfx(SfxType.Takeoff);
-            game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+            game.Audio.PlaySfx(AudioSfx.Takeoff);
+            game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
         }
 
         // Station camera: keep station centred on screen
@@ -168,7 +168,7 @@ public class StationDockingTransitionState : GameState
         if (_mode == TransitionMode.Docking && !_sfxPlayed &&
             _elapsed >= ApproachDuration * 0.65f)
         {
-            game.Audio.PlaySfx(SfxType.Landing);
+            game.Audio.PlaySfx(AudioSfx.Landing);
             _sfxPlayed = true;
         }
 

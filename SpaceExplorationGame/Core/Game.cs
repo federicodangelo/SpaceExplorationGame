@@ -1,4 +1,5 @@
 using Arch.Core;
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
@@ -75,7 +76,9 @@ public class Game : IDisposable
     public void Initialize(ulong? galaxySeed = null)
     {
         // Platform and rendering setup
-        Platform = new SdlPlatform();
+        var musicProvider = new GameMusicProvider(SdlAudioManager.SampleRate);
+        var sfxProvider = new GameSfxProvider(SdlAudioManager.SampleRate);
+        Platform = new SdlPlatform(musicProvider, sfxProvider);
         Textures = Platform.Textures;
         SpriteRenderer = Platform.SpriteRenderer;
         Input = Platform.InputManager;

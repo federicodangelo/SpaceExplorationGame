@@ -60,7 +60,7 @@ public class PlanetSurfaceState : GameState
     private Vector2 _lastMoveDir = new(0, -1);
 
     // ── Combat music ────────────────────────────────────────────────
-    private MusicTheme _activeMusicTheme = MusicTheme.PlanetSurface;
+    private string _activeMusicTheme = AudioThemes.PlanetSurface;
 
     // ── Overlays ────────────────────────────────────────────────────
     private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.PlanetSurface };
@@ -169,7 +169,7 @@ public class PlanetSurfaceState : GameState
             _waitingToOpenStarshipMenuAfterLanding = true;
 
         // Music
-        game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
+        game.Audio.SetMusicTheme(AudioThemes.PlanetSurface);
     }
 
     public override void Exit(Game game)
@@ -305,16 +305,16 @@ public class PlanetSurfaceState : GameState
         // Combat music
         if (_sim.CombatMusicTimer > 0)
         {
-            if (_activeMusicTheme != MusicTheme.Combat)
+            if (_activeMusicTheme != AudioThemes.Combat)
             {
-                game.Audio.SetMusicTheme(MusicTheme.Combat);
-                _activeMusicTheme = MusicTheme.Combat;
+                game.Audio.SetMusicTheme(AudioThemes.Combat);
+                _activeMusicTheme = AudioThemes.Combat;
             }
         }
-        else if (_activeMusicTheme != MusicTheme.PlanetSurface)
+        else if (_activeMusicTheme != AudioThemes.PlanetSurface)
         {
-            game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
-            _activeMusicTheme = MusicTheme.PlanetSurface;
+            game.Audio.SetMusicTheme(AudioThemes.PlanetSurface);
+            _activeMusicTheme = AudioThemes.PlanetSurface;
         }
     }
 
@@ -326,7 +326,7 @@ public class PlanetSurfaceState : GameState
 
         // Enemy weapon fire SFX
         foreach (var spawn in _sim.EnemyProjectilesSpawnedLastUpdate)
-            game.Audio.PlaySfxAtDistance(SfxType.EnemyLaser, spawn.Pos, playerPos, 0.4f);
+            game.Audio.PlaySfxAtDistance(AudioSfx.EnemyLaser, spawn.Pos, playerPos, 0.4f);
 
         // Damage popups + SFX
         CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
@@ -374,7 +374,7 @@ public class PlanetSurfaceState : GameState
             EntityFactory.CreateProjectile(_sim.EcsWorld, _simPlayer.Entity, spawnPos, aimDir,
                 weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
                 new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime, Vector2.Zero);
-            game.Audio.PlaySfx(SfxType.LaserFire, 0.5f);
+            game.Audio.PlaySfx(AudioSfx.LaserFire, 0.5f);
         }
     }
 

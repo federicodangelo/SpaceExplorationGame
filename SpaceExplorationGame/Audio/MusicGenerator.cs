@@ -1,17 +1,5 @@
 namespace SpaceExplorationGame.Audio;
 
-/// <summary>Identifies the current background music mood / game context.</summary>
-public enum MusicTheme
-{
-    None,
-    MainMenu,
-    SolarSystem,
-    PlanetSurface,
-    Interior,
-    FTL,
-    Combat,
-}
-
 /// <summary>
 /// Real-time procedural ambient music generator.
 /// Produces stereo float PCM via layered synthesis:
@@ -27,7 +15,7 @@ public sealed class MusicGenerator
     private readonly int _sr;      // sample rate
     private readonly float _dt;    // 1 / sample rate
 
-    public MusicTheme CurrentTheme { get; private set; } = MusicTheme.None;
+    public string CurrentTheme { get; private set; } = AudioThemes.None;
 
     // ── Oscillator phases (never reset — ensures continuity) ──
     private double _droneP1, _droneP2, _droneSub;
@@ -86,7 +74,7 @@ public sealed class MusicGenerator
     }
 
     /// <summary>Switch to a new theme. Resets beat/chord state but keeps phases for smooth timbre.</summary>
-    public void SetTheme(MusicTheme theme)
+    public void SetTheme(string theme)
     {
         CurrentTheme = theme;
         _chordIdx = 0;
@@ -108,12 +96,12 @@ public sealed class MusicGenerator
 
     private ThemeParams Params => CurrentTheme switch
     {
-        MusicTheme.MainMenu => new(110.00f, 50, .15f, .12f, .05f, .08f, .04f, .50f, ArpDefault),
-        MusicTheme.SolarSystem => new(130.81f, 65, .12f, .10f, .08f, .10f, .06f, .40f, ArpDefault),
-        MusicTheme.PlanetSurface => new(164.81f, 72, .08f, .12f, .06f, .12f, .03f, .30f, ArpDefault),
-        MusicTheme.Interior => new(196.00f, 55, .10f, .08f, .03f, .06f, .05f, .35f, ArpDefault),
-        MusicTheme.FTL => new(146.83f, 130, .18f, .06f, .15f, .14f, .08f, .50f, ArpFtl),
-        MusicTheme.Combat => new(110.00f, 110, .14f, .06f, .12f, .16f, .05f, .30f, ArpCombat),
+        AudioThemes.MainMenu => new(110.00f, 50, .15f, .12f, .05f, .08f, .04f, .50f, ArpDefault),
+        AudioThemes.SolarSystem => new(130.81f, 65, .12f, .10f, .08f, .10f, .06f, .40f, ArpDefault),
+        AudioThemes.PlanetSurface => new(164.81f, 72, .08f, .12f, .06f, .12f, .03f, .30f, ArpDefault),
+        AudioThemes.Interior => new(196.00f, 55, .10f, .08f, .03f, .06f, .05f, .35f, ArpDefault),
+        AudioThemes.FTL => new(146.83f, 130, .18f, .06f, .15f, .14f, .08f, .50f, ArpFtl),
+        AudioThemes.Combat => new(110.00f, 110, .14f, .06f, .12f, .16f, .05f, .30f, ArpCombat),
         _ => new(130.81f, 60, 0, 0, 0, 0, 0, 0, ArpDefault),
     };
 
@@ -127,13 +115,13 @@ public sealed class MusicGenerator
     /// </summary>
     public void Generate(float[] buffer, int frames)
     {
-        if (CurrentTheme == MusicTheme.None) return;
+        if (CurrentTheme == AudioThemes.None) return;
 
         var p = Params;
         float bps = p.Bpm / 60f;
-        float chordBeats = CurrentTheme is MusicTheme.FTL or MusicTheme.Combat ? 4f : 8f;
-        float arpBeats = CurrentTheme is MusicTheme.FTL ? 0.25f
-                       : CurrentTheme is MusicTheme.Combat ? 0.5f
+        float chordBeats = CurrentTheme is AudioThemes.FTL or AudioThemes.Combat ? 4f : 8f;
+        float arpBeats = CurrentTheme is AudioThemes.FTL ? 0.25f
+                       : CurrentTheme is AudioThemes.Combat ? 0.5f
                        : 1f;
         float arpDecay = 6f / (arpBeats / bps); // envelope rate
 

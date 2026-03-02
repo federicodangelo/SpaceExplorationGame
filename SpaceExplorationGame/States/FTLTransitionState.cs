@@ -58,8 +58,8 @@ public class FTLTransitionState : GameState
         _elapsed = 0f;
 
         // Audio: FTL theme + charge-up SFX
-        game.Audio.SetMusicTheme(MusicTheme.FTL, instant: true);
-        game.Audio.PlaySfx(SfxType.FtlCharge);
+        game.Audio.SetMusicTheme(AudioThemes.FTL, instant: true);
+        game.Audio.PlaySfx(AudioSfx.FtlCharge);
 
         // Scatter star streaks across the screen
         _stars.Clear();
@@ -90,7 +90,7 @@ public class FTLTransitionState : GameState
         // Play jump SFX at the flash moment
         if (!_jumpSfxPlayed && _elapsed >= ChargeDuration)
         {
-            game.Audio.PlaySfx(SfxType.FtlJump);
+            game.Audio.PlaySfx(AudioSfx.FtlJump);
             _jumpSfxPlayed = true;
         }
 

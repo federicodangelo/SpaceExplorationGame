@@ -49,7 +49,7 @@ public class SolarSystemState : GameState
     private readonly List<Explosion> _explosions = [];
 
     // ── Combat music ────────────────────────────────────────────────
-    private MusicTheme _activeMusicTheme = MusicTheme.SolarSystem;
+    private string _activeMusicTheme = AudioThemes.SolarSystem;
 
     // ── Overlays ────────────────────────────────────────────────────
     private readonly SpaceStationOverlay _spaceStationOverlay = new();
@@ -81,7 +81,7 @@ public class SolarSystemState : GameState
         _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
 
         // Music
-        game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+        game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
 
         // Get or create the simulation
         _sim = game.Coordinator.FindOrCreate<SolarSystemSimulation>(
@@ -271,16 +271,16 @@ public class SolarSystemState : GameState
         // Combat music tracking
         if (_sim.CombatMusicTimer > 0)
         {
-            if (_activeMusicTheme != MusicTheme.Combat)
+            if (_activeMusicTheme != AudioThemes.Combat)
             {
-                game.Audio.SetMusicTheme(MusicTheme.Combat);
-                _activeMusicTheme = MusicTheme.Combat;
+                game.Audio.SetMusicTheme(AudioThemes.Combat);
+                _activeMusicTheme = AudioThemes.Combat;
             }
         }
-        else if (_activeMusicTheme != MusicTheme.SolarSystem)
+        else if (_activeMusicTheme != AudioThemes.SolarSystem)
         {
-            game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
-            _activeMusicTheme = MusicTheme.SolarSystem;
+            game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
+            _activeMusicTheme = AudioThemes.SolarSystem;
         }
     }
 
@@ -290,7 +290,7 @@ public class SolarSystemState : GameState
         foreach (var spawn in _sim.ProjectilesSpawnedLastUpdate)
         {
             game.Audio.PlaySfxAtDistance(
-                spawn.Faction == Faction.Player ? SfxType.LaserFire : SfxType.EnemyLaser,
+                spawn.Faction == Faction.Player ? AudioSfx.LaserFire : AudioSfx.EnemyLaser,
                 spawn.Pos, _camera.Position, 0.5f);
         }
 

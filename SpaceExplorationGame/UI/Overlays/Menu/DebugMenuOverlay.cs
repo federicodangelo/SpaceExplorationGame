@@ -1,3 +1,4 @@
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Platform;
@@ -159,13 +160,13 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             if (input.IsActionPressed(InputAction.MenuLeft))
             {
                 CycleStarType(-1);
-                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                game.Audio.PlaySfx(AudioSfx.MenuSelect);
                 return;
             }
             if (input.IsActionPressed(InputAction.MenuRight))
             {
                 CycleStarType(1);
-                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                game.Audio.PlaySfx(AudioSfx.MenuSelect);
                 return;
             }
         }
@@ -174,13 +175,13 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
             if (input.IsActionPressed(InputAction.MenuLeft))
             {
                 CycleStartingShip(-1);
-                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                game.Audio.PlaySfx(AudioSfx.MenuSelect);
                 return;
             }
             if (input.IsActionPressed(InputAction.MenuRight))
             {
                 CycleStartingShip(1);
-                game.Audio.PlaySfx(Audio.SfxType.MenuSelect);
+                game.Audio.PlaySfx(AudioSfx.MenuSelect);
                 return;
             }
         }

@@ -147,12 +147,12 @@ public class OrbitalSurfaceTransitionState : GameState
 
         if (_mode == TransitionMode.Landing)
         {
-            game.Audio.SetMusicTheme(MusicTheme.PlanetSurface);
+            game.Audio.SetMusicTheme(AudioThemes.PlanetSurface);
         }
         else
         {
-            game.Audio.PlaySfx(SfxType.Takeoff);
-            game.Audio.SetMusicTheme(MusicTheme.SolarSystem);
+            game.Audio.PlaySfx(AudioSfx.Takeoff);
+            game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
         }
     }
 
@@ -177,7 +177,7 @@ public class OrbitalSurfaceTransitionState : GameState
 
         if (_mode == TransitionMode.Landing && !_landingSfxPlayed && _elapsed >= AlignDuration * 0.65f)
         {
-            game.Audio.PlaySfx(SfxType.Landing);
+            game.Audio.PlaySfx(AudioSfx.Landing);
             _landingSfxPlayed = true;
         }
 

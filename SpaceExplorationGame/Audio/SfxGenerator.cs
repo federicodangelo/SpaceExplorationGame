@@ -1,48 +1,28 @@
 namespace SpaceExplorationGame.Audio;
 
-/// <summary>Identifies a one-shot sound effect.</summary>
-public enum SfxType
-{
-    LaserFire,
-    EnemyLaser,
-    Explosion,
-    SmallExplosion,
-    ShieldHit,
-    HullDamage,
-    MenuSelect,
-    MenuNavigate,
-    FtlCharge,
-    FtlJump,
-    PickupCredits,
-    PickupItem,
-    MiningHit,
-    Landing,
-    Takeoff,
-}
-
 /// <summary>
 /// Procedurally generates all sound effect buffers at startup.
 /// Each buffer is a mono float array at the given sample rate.
 /// </summary>
 public static class SfxGenerator
 {
-    public static Dictionary<SfxType, float[]> GenerateAll(int sr) => new()
+    public static Dictionary<string, float[]> GenerateAll(int sr) => new()
     {
-        [SfxType.LaserFire] = LaserFire(sr),
-        [SfxType.EnemyLaser] = EnemyLaser(sr),
-        [SfxType.Explosion] = Explosion(sr),
-        [SfxType.SmallExplosion] = SmallExplosion(sr),
-        [SfxType.ShieldHit] = ShieldHit(sr),
-        [SfxType.HullDamage] = HullDamage(sr),
-        [SfxType.MenuSelect] = MenuSelect(sr),
-        [SfxType.MenuNavigate] = MenuNavigate(sr),
-        [SfxType.FtlCharge] = FtlCharge(sr),
-        [SfxType.FtlJump] = FtlJump(sr),
-        [SfxType.PickupCredits] = PickupCredits(sr),
-        [SfxType.PickupItem] = PickupItem(sr),
-        [SfxType.MiningHit] = MiningHit(sr),
-        [SfxType.Landing] = LandingSound(sr),
-        [SfxType.Takeoff] = TakeoffSound(sr),
+        [AudioSfx.LaserFire] = LaserFire(sr),
+        [AudioSfx.EnemyLaser] = EnemyLaser(sr),
+        [AudioSfx.Explosion] = Explosion(sr),
+        [AudioSfx.SmallExplosion] = SmallExplosion(sr),
+        [AudioSfx.ShieldHit] = ShieldHit(sr),
+        [AudioSfx.HullDamage] = HullDamage(sr),
+        [AudioSfx.MenuSelect] = MenuSelect(sr),
+        [AudioSfx.MenuNavigate] = MenuNavigate(sr),
+        [AudioSfx.FtlCharge] = FtlCharge(sr),
+        [AudioSfx.FtlJump] = FtlJump(sr),
+        [AudioSfx.PickupCredits] = PickupCredits(sr),
+        [AudioSfx.PickupItem] = PickupItem(sr),
+        [AudioSfx.MiningHit] = MiningHit(sr),
+        [AudioSfx.Landing] = LandingSound(sr),
+        [AudioSfx.Takeoff] = TakeoffSound(sr),
     };
 
     // ──────────────────────────────────────────────────────────────

@@ -113,7 +113,7 @@ public class InteriorState : GameState
             _dockingMenuOpenDelay = DockingMenuDelay;
 
         // Music
-        game.Audio.SetMusicTheme(MusicTheme.Interior);
+        game.Audio.SetMusicTheme(AudioThemes.Interior);
     }
 
     public override void Exit(Game game)

@@ -80,7 +80,7 @@ public class MainMenuState : GameState
     {
         game.Player.Reset();
         game.Coordinator.DestroyAll();
-        game.Audio.SetMusicTheme(MusicTheme.MainMenu);
+        game.Audio.SetMusicTheme(AudioThemes.MainMenu);
 
         if (_autoDebugLaunchRequest != DebugLaunchRequest.None)
         {
@@ -136,19 +136,19 @@ public class MainMenuState : GameState
             switch (_debugOverlay.TakePendingLaunchRequest())
             {
                 case DebugLaunchRequest.StarTypeShowcase:
-                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    game.Audio.PlaySfx(AudioSfx.MenuSelect);
                     LaunchStarTypeShowcase(game, _debugOverlay.SelectedStarType);
                     break;
                 case DebugLaunchRequest.PlanetTypeShowcase:
-                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    game.Audio.PlaySfx(AudioSfx.MenuSelect);
                     LaunchPlanetTypeShowcase(game);
                     break;
                 case DebugLaunchRequest.AsteroidShowcase:
-                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    game.Audio.PlaySfx(AudioSfx.MenuSelect);
                     LaunchAsteroidShowcase(game);
                     break;
                 case DebugLaunchRequest.SurfaceMiningShowcase:
-                    game.Audio.PlaySfx(SfxType.MenuSelect);
+                    game.Audio.PlaySfx(AudioSfx.MenuSelect);
                     LaunchSurfaceMiningShowcase(game);
                     break;
             }
@@ -160,7 +160,7 @@ public class MainMenuState : GameState
         if (_menuOverlay.DebugRequested)
         {
             _menuOverlay.DebugRequested = false;
-            game.Audio.PlaySfx(SfxType.MenuSelect);
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
             _debugOverlay.Open();
             return;
         }
@@ -171,7 +171,7 @@ public class MainMenuState : GameState
             game.RegenerateGalaxy(_menuOverlay.NewSeed.Value);
             _menuOverlay.NewSeed = null;
             _menuOverlay.CurrentSeed = game.Seeds.GalaxySeed;
-            game.Audio.PlaySfx(SfxType.MenuSelect);
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
             UpdateLocationPreview(game);
         }
 
@@ -181,7 +181,7 @@ public class MainMenuState : GameState
             game.RegenerateGalaxy(newSeed);
             _menuOverlay.RandomizeSeed = false;
             _menuOverlay.CurrentSeed = game.Seeds.GalaxySeed;
-            game.Audio.PlaySfx(SfxType.MenuSelect);
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
             UpdateLocationPreview(game);
         }
 
@@ -190,7 +190,7 @@ public class MainMenuState : GameState
         {
             _rerollCounter++;
             _menuOverlay.RandomizeLocation = false;
-            game.Audio.PlaySfx(SfxType.MenuSelect);
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
             UpdateLocationPreview(game);
         }
 
@@ -205,7 +205,7 @@ public class MainMenuState : GameState
         // Handle start game
         if (_menuOverlay.StartRequested)
         {
-            game.Audio.PlaySfx(SfxType.MenuSelect);
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
             _menuOverlay.StartRequested = false;
             LaunchGame(game, _menuOverlay.LocationType, _menuOverlay.DangerFilter);
         }

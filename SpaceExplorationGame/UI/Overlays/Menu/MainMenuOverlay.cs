@@ -1,3 +1,4 @@
+using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Platform;
 using SpaceExplorationGame.States;
@@ -279,23 +280,23 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         if (selected == MenuAction.DangerLevel)
         {
             if (input.IsActionPressed(InputAction.MenuLeft))
-            { CycleDanger(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleDanger(-1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
             if (input.IsActionPressed(InputAction.MenuRight))
-            { CycleDanger(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleDanger(1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
         }
         else if (selected == MenuAction.LocationType)
         {
             if (input.IsActionPressed(InputAction.MenuLeft))
-            { CycleLocation(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleLocation(-1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
             if (input.IsActionPressed(InputAction.MenuRight))
-            { CycleLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleLocation(1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
         }
         else if (selected == MenuAction.SubLocationType)
         {
             if (input.IsActionPressed(InputAction.MenuLeft))
-            { CycleSubLocation(-1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleSubLocation(-1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
             if (input.IsActionPressed(InputAction.MenuRight))
-            { CycleSubLocation(1); game.Audio.PlaySfx(Audio.SfxType.MenuSelect); return; }
+            { CycleSubLocation(1); game.Audio.PlaySfx(AudioSfx.MenuSelect); return; }
         }
 
         // Default menu input processing

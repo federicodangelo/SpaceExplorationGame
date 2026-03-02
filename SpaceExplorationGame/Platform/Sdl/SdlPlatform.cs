@@ -16,7 +16,7 @@ public class SdlPlatform : IPlatform
     public IInputManager InputManager { get; private set; }
     public IAudioManager AudioManager { get; private set; }
 
-    public SdlPlatform()
+    public SdlPlatform(IMusicProvider musicProvider, ISfxProvider sfxProvider)
     {
         // Init SDL
         if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
@@ -44,7 +44,7 @@ public class SdlPlatform : IPlatform
         Textures = new SdlTextureManager(renderer);
         SpriteRenderer = new SdlSpriteRenderer(window, renderer, (SdlTextureManager)Textures);
         InputManager = new SdlInputManager();
-        AudioManager = new SdlAudioManager(
+        AudioManager = new SdlAudioManager(musicProvider, sfxProvider,
             masterVolume: GameConfig.AudioMasterVolume,
             musicVolume: GameConfig.AudioMusicVolume,
             sfxVolume: GameConfig.AudioSfxVolume
