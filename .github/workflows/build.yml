@@ -10,7 +10,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  PROJECT_PATH: SpaceExplorationGame.Game.Sdl/SpaceExplorationGame.Game.Sdl.csproj
+  PROJECT_PATH: Game.Sdl/Game.Sdl.csproj
   SOLUTION_PATH: SpaceExplorationGame.slnx
 
 jobs:

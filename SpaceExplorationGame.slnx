@@ -1,6 +1,6 @@
 <Solution>
-  <Project Path="SpaceExplorationGame.Engine/SpaceExplorationGame.Engine.csproj" />
-  <Project Path="SpaceExplorationGame.Engine.Sdl/SpaceExplorationGame.Engine.Sdl.csproj" />
-  <Project Path="SpaceExplorationGame.Game/SpaceExplorationGame.Game.csproj" />
-  <Project Path="SpaceExplorationGame.Game.Sdl/SpaceExplorationGame.Game.Sdl.csproj" />
+  <Project Path="Engine/Engine.csproj" />
+  <Project Path="Engine.Sdl/Engine.Sdl.csproj" />
+  <Project Path="Game/Game.csproj" />
+  <Project Path="Game.Sdl/Game.Sdl.csproj" />
 </Solution>
