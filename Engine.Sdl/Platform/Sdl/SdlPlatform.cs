@@ -11,8 +11,8 @@ public class SdlPlatform : IPlatform
     private nint _renderer;
 
     public string WindowTitle { get; }
-    public int WindowWidth { get; private set; }
-    public int WindowHeight { get; private set; }
+    public int WindowWidth => SpriteRenderer.WindowWidth;
+    public int WindowHeight => SpriteRenderer.WindowHeight;
 
     public ISpriteRenderer SpriteRenderer { get; private set; }
     public ITextureManager Textures { get; private set; }
@@ -25,8 +25,6 @@ public class SdlPlatform : IPlatform
         float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
     {
         WindowTitle = windowTitle;
-        WindowWidth = windowWidth;
-        WindowHeight = windowHeight;
 
         // Init SDL
         if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
@@ -65,10 +63,7 @@ public class SdlPlatform : IPlatform
 
     public void Update()
     {
-        // Update window size in case of resize
-        SDL.GetWindowSize(_window, out var width, out var height);
-        WindowWidth = width;
-        WindowHeight = height;
+        SpriteRenderer.Update();
     }
 
     public void Dispose()

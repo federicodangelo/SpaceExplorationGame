@@ -15,11 +15,24 @@ public class WebSpriteRenderer : ISpriteRenderer
     private nint _cachedCircleTexture = nint.Zero;
     private const int CachedCircleSize = 64;
 
+    private int _windowWidth;
+    private int _windowHeight;
+    public int WindowWidth => _windowWidth;
+    public int WindowHeight => _windowHeight;
+
     public WebSpriteRenderer(WebTextureManager textures)
     {
         _textures = textures;
         _fontRenderer = new WebFontRenderer(textures);
         _cachedCircleTexture = CreateCachedCircleTexture();
+        _windowWidth = JsInput.GetCanvasWidth();
+        _windowHeight = JsInput.GetCanvasHeight();
+    }
+
+    public void Update()
+    {
+        _windowWidth = JsInput.GetCanvasWidth();
+        _windowHeight = JsInput.GetCanvasHeight();
     }
 
     // ── Clip ──────────────────────────────────────────────────────────

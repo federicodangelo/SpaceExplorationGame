@@ -79,10 +79,6 @@ public class Game : GameBase
         // Menu options persistence (uses platform settings)
         MenuOptions = new MenuOptionsPersistence(platform.Settings);
 
-        // Sync GameConfig with platform window dimensions
-        GameConfig.WindowWidth = Platform.WindowWidth;
-        GameConfig.WindowHeight = Platform.WindowHeight;
-
         // ECS world
         EcsWorld = World.Create();
 
@@ -184,10 +180,6 @@ public class Game : GameBase
 
         Platform.Update();
 
-        // Sync GameConfig with platform window dimensions
-        GameConfig.WindowWidth = Platform.WindowWidth;
-        GameConfig.WindowHeight = Platform.WindowHeight;
-
         var currentTime = _frameSw!.Elapsed.TotalSeconds;
         var elapsed = currentTime - _previousTime;
         _previousTime = currentTime;
@@ -275,8 +267,8 @@ public class Game : GameBase
             float padding = 8f;
             float tw = textW + padding * 2f;
             float th = 20f * scale + padding * 2f;
-            float tx = GameConfig.WindowWidth - tw - 10f;
-            float ty = GameConfig.WindowHeight - th - 10f;
+            float tx = SpriteRenderer.WindowWidth - tw - 10f;
+            float ty = SpriteRenderer.WindowHeight - th - 10f;
             SpriteRenderer.DrawRectScreen(tx, ty, tw, th, new Engine.Core.Color4(0, 0, 0, a));
             SpriteRenderer.DrawTextScreen(tx + padding, ty + padding, _screenshotToastMessage, new Engine.Core.Color4(255, 255, 255, a), scale);
         }

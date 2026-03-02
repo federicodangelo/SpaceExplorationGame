@@ -15,6 +15,8 @@ public abstract class PanelOverlayBase : OverlayBase
     private float _statusTimer;
     private bool _statusIsPositive;
     private IInputManager? _currentInput;
+    private int _windowW = GameConfig.DefaultWindowWidth;
+    private int _windowH = GameConfig.DefaultWindowHeight;
 
     protected IInputManager? CurrentInput => _currentInput;
 
@@ -47,10 +49,10 @@ public abstract class PanelOverlayBase : OverlayBase
     // ── Panel geometry (computed, shared by rendering and input) ──
 
     /// <summary>Left edge of the panel on screen.</summary>
-    protected float PanelX => GameConfig.WindowWidth / 2f - PanelWidth / 2f;
+    protected float PanelX => _windowW / 2f - PanelWidth / 2f;
 
     /// <summary>Top edge of the panel on screen. Override for non-centered panels.</summary>
-    protected virtual float PanelY => GameConfig.WindowHeight / 2f - PanelHeight / 2f;
+    protected virtual float PanelY => _windowH / 2f - PanelHeight / 2f;
 
     /// <summary>Bottom edge of the panel on screen.</summary>
     protected float PanelBottom => PanelY + PanelHeight;
@@ -96,6 +98,8 @@ public abstract class PanelOverlayBase : OverlayBase
     public sealed override bool UpdateInput(Game game)
     {
         if (!IsOpen) return false;
+        _windowW = game.SpriteRenderer.WindowWidth;
+        _windowH = game.SpriteRenderer.WindowHeight;
 
         // Sub-overlay input takes priority
         if (ProcessSubOverlayInput(game)) return true;
@@ -176,11 +180,13 @@ public abstract class PanelOverlayBase : OverlayBase
         if (!IsOpen) return;
 
         _currentInput = game.Input;
+        _windowW = game.SpriteRenderer.WindowWidth;
+        _windowH = game.SpriteRenderer.WindowHeight;
 
         var renderer = game.SpriteRenderer;
 
         // Dim background
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight,
+        renderer.DrawRectScreen(0, 0, _windowW, _windowH,
             new Color4(0, 0, 0, DimAlpha));
 
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;

@@ -19,6 +19,11 @@ public class SdlSpriteRenderer : ISpriteRenderer
     private nint _cachedCircleTexture = nint.Zero;
     private const int CachedCircleSize = 64; // max texture size (pixels)
 
+    private int _windowWidth;
+    private int _windowHeight;
+    public int WindowWidth => _windowWidth;
+    public int WindowHeight => _windowHeight;
+
     public SdlSpriteRenderer(nint window, nint renderer, SdlTextureManager textures)
     {
         _window = window;
@@ -29,6 +34,12 @@ public class SdlSpriteRenderer : ISpriteRenderer
         _fontRenderer = new SdlFontRenderer(renderer, textures);
         _tileMapRenderer = new SdlTileMapRenderer(renderer);
         _cachedCircleTexture = CreateCachedCircleTexture();
+        SDL.GetWindowSize(_window, out _windowWidth, out _windowHeight);
+    }
+
+    public void Update()
+    {
+        SDL.GetWindowSize(_window, out _windowWidth, out _windowHeight);
     }
 
     /// <summary>Set a clip rectangle — all subsequent draw calls are confined to this area.</summary>

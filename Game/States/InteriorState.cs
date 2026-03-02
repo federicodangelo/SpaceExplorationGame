@@ -46,7 +46,7 @@ public class InteriorState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
         GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
 
     // ── Dialogue state ──────────────────────────────────────────────
@@ -416,7 +416,7 @@ public class InteriorState : GameState
 
     public override void RenderGame(Game game)
     {
-        _camera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
+        _camera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
         var renderer = game.SpriteRenderer;
         var camera = _camera;
         var world = _sim.EcsWorld;
@@ -438,8 +438,8 @@ public class InteriorState : GameState
         if (!_playerInsideShip)
             InteriorRenderer.RenderPlayerAvatar(renderer, camera, avatarTf.Position, game.AvatarRenderer);
 
-        int w = GameConfig.WindowWidth;
-        int h = GameConfig.WindowHeight;
+        int w = renderer.WindowWidth;
+        int h = renderer.WindowHeight;
 
         // Atmospheric post-processing (vignette)
         InteriorRenderer.RenderAtmosphere(renderer, w, h);
@@ -456,8 +456,8 @@ public class InteriorState : GameState
         var world = _sim.EcsWorld;
         var avatarTf = world.Get<Transform>(_simPlayer.Entity);
 
-        int w = GameConfig.WindowWidth;
-        int h = GameConfig.WindowHeight;
+        int w = renderer.WindowWidth;
+        int h = renderer.WindowHeight;
 
         // HUD
         bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen

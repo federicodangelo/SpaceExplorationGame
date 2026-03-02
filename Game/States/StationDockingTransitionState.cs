@@ -37,9 +37,9 @@ public class StationDockingTransitionState : GameState
 
     // ── Cameras ───────────────────────────────────────────────────────
     /// <summary>Used to place the station exterior at screen-centre during the cinematic.</summary>
-    private readonly Camera _stationCamera = new(GameConfig.WindowWidth, GameConfig.WindowHeight, 0.01f, 100f);
+    private readonly Camera _stationCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight, 0.01f, 100f);
     /// <summary>Interior camera — zooms from wide-out to default over the Entry phase.</summary>
-    private readonly Camera _interiorCamera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+    private readonly Camera _interiorCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
         GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
 
     // ── Phase timing ─────────────────────────────────────────────────
@@ -59,10 +59,10 @@ public class StationDockingTransitionState : GameState
     private readonly List<StarParticle> _stars = [];
     private readonly Random _rng = new();
 
-    private static readonly float ScreenW = GameConfig.WindowWidth;
-    private static readonly float ScreenH = GameConfig.WindowHeight;
-    private static readonly float CX = ScreenW * 0.5f;
-    private static readonly float CY = ScreenH * 0.5f;
+    private float ScreenW;
+    private float ScreenH;
+    private float CX;
+    private float CY;
 
     private readonly record struct StarParticle(float X, float Y, byte Brightness);
 
@@ -101,8 +101,8 @@ public class StationDockingTransitionState : GameState
         _interiorData = interiorData;
         _stationWorldPos = stationWorldPos;
 
-        // Ship ends up hovering at screen centre (over the station) after launching
-        _shipScreenStart = new Vector2(CX, CY);
+        // Ship ends up hovering at screen centre (over the station) after launching.
+        // _shipScreenStart is initialised in Enter() once actual screen dims are known.
 
         _shipWorldStart = Vector2.Zero;
         _solarCameraStart = Vector2.Zero;
@@ -117,6 +117,12 @@ public class StationDockingTransitionState : GameState
     {
         _elapsed = 0f;
         _sfxPlayed = false;
+        _stationCamera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
+        _interiorCamera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
+        ScreenW = game.SpriteRenderer.WindowWidth;
+        ScreenH = game.SpriteRenderer.WindowHeight;
+        CX = ScreenW * 0.5f;
+        CY = ScreenH * 0.5f;
 
         if (_mode == TransitionMode.Docking)
         {
@@ -130,6 +136,8 @@ public class StationDockingTransitionState : GameState
         }
         else
         {
+            // Undocking: ship starts at screen centre (hovering over the station)
+            _shipScreenStart = new Vector2(CX, CY);
             game.Audio.PlaySfx(AudioSfx.Takeoff);
             game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
         }

@@ -7,8 +7,8 @@ namespace Engine.Platform.Web;
 public class WebPlatform : IPlatform
 {
     public string WindowTitle { get; }
-    public int WindowWidth { get; private set; }
-    public int WindowHeight { get; private set; }
+    public int WindowWidth => SpriteRenderer.WindowWidth;
+    public int WindowHeight => SpriteRenderer.WindowHeight;
 
     public ISpriteRenderer SpriteRenderer { get; }
     public ITextureManager Textures { get; }
@@ -21,8 +21,6 @@ public class WebPlatform : IPlatform
         float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
     {
         WindowTitle = windowTitle;
-        WindowWidth = windowWidth;
-        WindowHeight = windowHeight;
 
         var textures = new WebTextureManager();
         Textures = textures;
@@ -36,9 +34,7 @@ public class WebPlatform : IPlatform
 
     public void Update()
     {
-        // Sync canvas size from JavaScript
-        WindowWidth = JsInput.GetCanvasWidth();
-        WindowHeight = JsInput.GetCanvasHeight();
+        SpriteRenderer.Update();
     }
 
     public void Dispose()

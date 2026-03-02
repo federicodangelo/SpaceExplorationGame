@@ -108,7 +108,7 @@ public class CargoListOverlay : ListPanelOverlay
         {
             string empty = "CARGO HOLD EMPTY";
             float emptyW = renderer.MeasureText(empty, 2f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - emptyW / 2f, listY + 8,
+            renderer.DrawTextScreen(renderer.WindowWidth / 2f - emptyW / 2f, listY + 8,
                 empty, new Color3(120, 130, 150), 2f);
             return;
         }

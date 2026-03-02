@@ -37,7 +37,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
     {
         IsOpen = true;
 
-        ComputeLayout();
+        ComputeLayout(game.SpriteRenderer);
         ApplyLayoutToPanel(_panel);
 
         _panel.OpenWithData(game, starSystem, planet, surfaceData,
@@ -89,7 +89,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
         string title = $"SURFACE MAP - {_panel.PlanetName.ToUpper()}";
         float titleW = renderer.MeasureText(title, 2.5f);
         float titleBgW = titleW + 30;
-        DrawFrame(renderer, GameConfig.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
+        DrawFrame(renderer, renderer.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
+        renderer.DrawTextScreen(renderer.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
     }
 }

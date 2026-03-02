@@ -93,12 +93,12 @@ public class MissionsListOverlay : ListPanelOverlay
         {
             string empty = "NO ACTIVE MISSIONS";
             float emptyW = renderer.MeasureText(empty, 2f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - emptyW / 2f, contentY + 20, empty,
+            renderer.DrawTextScreen(renderer.WindowWidth / 2f - emptyW / 2f, contentY + 20, empty,
                 new Color3(120, 120, 140), 2f);
 
             string hint = "Accept missions from station mission boards.";
             float hintW = renderer.MeasureText(hint, 1.5f);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - hintW / 2f, contentY + 48, hint,
+            renderer.DrawTextScreen(renderer.WindowWidth / 2f - hintW / 2f, contentY + 48, hint,
                 new Color3(90, 90, 110), 1.5f);
             return;
         }

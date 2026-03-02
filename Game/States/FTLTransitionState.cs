@@ -34,10 +34,10 @@ public class FTLTransitionState : GameState
     private const int WaveCount = 5;
 
     // ── Screen dimensions ──
-    private static readonly float ScreenW = GameConfig.WindowWidth;
-    private static readonly float ScreenH = GameConfig.WindowHeight;
-    private static readonly float CX = ScreenW / 2f;
-    private static readonly float CY = ScreenH / 2f;
+    private float ScreenW;
+    private float ScreenH;
+    private float CX;
+    private float CY;
 
     // ── Ship rendering ──
     private float _shipShakeX;
@@ -56,6 +56,10 @@ public class FTLTransitionState : GameState
     public override void Enter(Game game)
     {
         _elapsed = 0f;
+        ScreenW = game.SpriteRenderer.WindowWidth;
+        ScreenH = game.SpriteRenderer.WindowHeight;
+        CX = ScreenW / 2f;
+        CY = ScreenH / 2f;
 
         // Audio: FTL theme + charge-up SFX
         game.Audio.SetMusicTheme(AudioThemes.FTL, instant: true);

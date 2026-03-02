@@ -57,7 +57,6 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                    $"{input.GetActionHelpText(InputAction.MenuBack)}: EXIT";
         }
     }
-    protected override float PanelY => 80;
 
     // ── Menu layout ──
 

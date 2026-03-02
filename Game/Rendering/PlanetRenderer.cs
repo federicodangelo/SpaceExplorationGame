@@ -16,11 +16,7 @@ public class PlanetRenderer
 
     public PlanetRenderer()
     {
-        _screenSpaceCamera = new Camera((int)GameConfig.WindowWidth, (int)GameConfig.WindowHeight, 1f, 1f)
-        {
-            Position = Vector2.Zero,
-            Zoom = 1f
-        };
+        _screenSpaceCamera = new Camera((int)GameConfig.DefaultWindowWidth, (int)GameConfig.DefaultWindowHeight, 1f, 1f);
     }
 
     /// <summary>
@@ -31,9 +27,7 @@ public class PlanetRenderer
         float screenX, float screenY, float radius,
         Color3 color, PlanetType type, bool isMoon, int seed, float globalTime)
     {
-        _screenSpaceCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
-        _screenSpaceCamera.Position = Vector2.Zero;
-        _screenSpaceCamera.Zoom = 1f;
+        _screenSpaceCamera.Update(renderer.WindowWidth, renderer.WindowHeight);
         _screenSpaceCamera.ViewportOffsetX = screenX - _screenSpaceCamera.ViewportWidth / 2f;
         _screenSpaceCamera.ViewportOffsetY = screenY - _screenSpaceCamera.ViewportHeight / 2f;
 

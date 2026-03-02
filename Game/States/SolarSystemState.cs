@@ -31,7 +31,7 @@ public class SolarSystemState : GameState
     private readonly StarSystemData _starSystem;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
         GameConfig.SolarSystemZoomMin, GameConfig.SolarSystemZoomMax);
 
     // ── Particle system (rendering-side, only updated when state is active) ──
@@ -94,6 +94,7 @@ public class SolarSystemState : GameState
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.08f);
         _starsBackground.Generate(0f, 0f, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xCAFEBABEuL,
+            spriteRenderer: game.SpriteRenderer,
             minDist: 2000f);
 
         _nebulaBackground = new NebulaBackgroundRenderer();
@@ -405,7 +406,7 @@ public class SolarSystemState : GameState
 
     public override void RenderGame(Game game)
     {
-        _camera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
+        _camera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
         var renderer = game.SpriteRenderer;
         var camera = _camera;
         var world = _sim.EcsWorld;

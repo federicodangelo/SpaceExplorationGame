@@ -294,8 +294,8 @@ public static class HudRenderer
         byte r = 100, byte g = 255, byte b = 200)
     {
         float tw = renderer.MeasureText(text, TitleScale);
-        float w = GameConfig.WindowWidth;
-        float h = GameConfig.WindowHeight;
+        float w = renderer.WindowWidth;
+        float h = renderer.WindowHeight;
         float panelW = tw + 20;
         float panelH = 35;
         float px = w / 2f - panelW / 2f;
@@ -308,8 +308,8 @@ public static class HudRenderer
     public static void RenderPromptPanel(ISpriteRenderer renderer, string[] lines,
         Color3[] colors)
     {
-        float w = GameConfig.WindowWidth;
-        float h = GameConfig.WindowHeight;
+        float w = renderer.WindowWidth;
+        float h = renderer.WindowHeight;
 
         // Measure widest line
         float maxW = 0;
@@ -462,8 +462,8 @@ public static class HudRenderer
         var resInfo = ResourceCatalog.Get(resource);
         float panelW = 280;
         float panelH = 72;
-        float px = GameConfig.WindowWidth / 2f - panelW / 2f;
-        float py = GameConfig.WindowHeight - panelH - HudMargin;
+        float px = renderer.WindowWidth / 2f - panelW / 2f;
+        float py = renderer.WindowHeight - panelH - HudMargin;
 
         OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
         renderer.DrawTextScreen(px + 10, py + 6, $"ASTEROID - {resInfo.Name.ToUpper()}", resInfo.Color, 2f);
@@ -486,8 +486,8 @@ public static class HudRenderer
         float textW = renderer.MeasureText(deathText, 3f);
         float panelW = textW + 40;
         float panelH = 50;
-        float px = GameConfig.WindowWidth / 2f - panelW / 2f;
-        float py = GameConfig.WindowHeight / 2f - panelH / 2f;
+        float px = renderer.WindowWidth / 2f - panelW / 2f;
+        float py = renderer.WindowHeight / 2f - panelH / 2f;
         OverlayBase.DrawFrame(renderer, px, py, panelW, panelH);
         renderer.DrawTextScreen(px + 20, py + 12, deathText, new Color3(255, 80, 80), 3f);
     }
@@ -497,7 +497,7 @@ public static class HudRenderer
         float yOffset, Color4 color, float scale)
     {
         float msgW = renderer.MeasureText(message, scale);
-        float msgX = GameConfig.WindowWidth / 2f - msgW / 2f;
-        renderer.DrawTextScreen(msgX, GameConfig.WindowHeight / 2f + yOffset, message, color, scale);
+        float msgX = renderer.WindowWidth / 2f - msgW / 2f;
+        renderer.DrawTextScreen(msgX, renderer.WindowHeight / 2f + yOffset, message, color, scale);
     }
 }

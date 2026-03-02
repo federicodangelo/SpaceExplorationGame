@@ -48,7 +48,7 @@ public class GalaxyMapOverlay : MapOverlayBase
         _justOpened = true;
         _toggleMapLabel = game.Input.GetActionHelpText(InputAction.ToggleMap).ToUpper();
 
-        ComputeLayout();
+        ComputeLayout(game.SpriteRenderer);
         ApplyLayoutToPanel(_solarPanel);
         ApplyLayoutToPanel(_galaxyPanel);
 

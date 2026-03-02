@@ -176,7 +176,7 @@ public static class HudMinimapRenderer
                 float bCenterY = (tH - 1) * 0.5f * GameConfig.TileSize;
                 float bRadius = (MathF.Min(tW, tH) * 0.5f - 2f) * GameConfig.TileSize;
 
-                float mmX = GameConfig.WindowWidth - MinimapSize - MinimapMargin;
+                float mmX = renderer.WindowWidth - MinimapSize - MinimapMargin;
                 float mmY = MinimapMargin;
                 float scaleX = MinimapSize / viewSize.X;
                 float scaleY = MinimapSize / viewSize.Y;
@@ -246,7 +246,7 @@ public static class HudMinimapRenderer
         ReadOnlySpan<MinimapArea> areas, ReadOnlySpan<MinimapMarker> markers,
         Vector2 playerWorldPos, bool centerOnPlayer, Action<ISpriteRenderer>? extraDrawing = null)
     {
-        float mmX = GameConfig.WindowWidth - MinimapSize - MinimapMargin;
+        float mmX = renderer.WindowWidth - MinimapSize - MinimapMargin;
         float mmY = MinimapMargin;
 
         // Border + background (sci-fi frame)

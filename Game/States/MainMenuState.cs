@@ -51,11 +51,7 @@ public class MainMenuState : GameState
     private readonly DebugLaunchRequest _autoDebugLaunchRequest;
     private readonly StarClass _autoDebugStarType;
 
-    private Camera _fakeCamera = new(GameConfig.WindowWidth, GameConfig.WindowHeight)
-    {
-        Position = new Vector2(GameConfig.WindowWidth / 2f, GameConfig.WindowHeight / 2f),
-        Zoom = 1f
-    };
+    private Camera _fakeCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight);
 
     // Preview state for the selected starting location
     private StarSystemData? _previewSystem;
@@ -120,13 +116,13 @@ public class MainMenuState : GameState
             _debugOverlay.Open();
         }
 
-        float cx = GameConfig.WindowWidth * 0.5f;
-        float cy = GameConfig.WindowHeight * 0.5f;
+        float cx = game.SpriteRenderer.WindowWidth * 0.5f;
+        float cy = game.SpriteRenderer.WindowHeight * 0.5f;
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 1.0f);
-        _starsBackground.Generate(cx, cy, cx, cy, seed: 42uL, minDist: 80f);
+        _starsBackground.Generate(cx, cy, cx, cy, seed: 42uL, spriteRenderer: game.SpriteRenderer, minDist: 80f);
 
         _nebulaBackground = new NebulaBackgroundRenderer();
-        _nebulaBackground.Generate(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, seed: 42uL, count: 5, minRadius: 200f, maxRadius: 600f);
+        _nebulaBackground.Generate(0, 0, game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight, seed: 42uL, count: 5, minRadius: 200f, maxRadius: 600f);
     }
 
     public override void Exit(Game game) { }
@@ -651,14 +647,15 @@ public class MainMenuState : GameState
 
     public override void RenderGame(Game game)
     {
-        _fakeCamera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
         var renderer = game.SpriteRenderer;
+        _fakeCamera.Update(renderer.WindowWidth, renderer.WindowHeight);
+        _fakeCamera.Position = new Vector2(renderer.WindowWidth / 2f, renderer.WindowHeight / 2f);
 
         _starsBackground?.RenderParallax(renderer, _fakeCamera, _animTimer);
         _nebulaBackground?.Render(renderer, _fakeCamera, _animTimer);
 
-        float centerX = GameConfig.WindowWidth / 2f;
-        float centerY = GameConfig.WindowHeight / 2f;
+        float centerX = renderer.WindowWidth / 2f;
+        float centerY = renderer.WindowHeight / 2f;
         game.SpaceStationRenderer.RenderSpaceStation(renderer, _fakeCamera,
             new Vector2(centerX - 600f, centerY - 180f), game.GlobalTime);
         game.SpaceStationRenderer.RenderSpaceStation(renderer, _fakeCamera,
@@ -673,7 +670,7 @@ public class MainMenuState : GameState
         string title = "SPACE EXPLORATION";
         float titleScale = 4f;
         float titleW = renderer.MeasureText(title, titleScale);
-        float titleX = GameConfig.WindowWidth / 2f - titleW / 2f;
+        float titleX = renderer.WindowWidth / 2f - titleW / 2f;
         float titleY = _menuOverlay.PanelTop - 80;
 
         byte glowR = (byte)(120 + 40 * MathF.Sin(_animTimer * 0.8f));

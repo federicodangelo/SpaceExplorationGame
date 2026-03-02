@@ -10,7 +10,7 @@ namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 /// </summary>
 public abstract class MapPanelBase
 {
-    protected readonly Camera Camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight, 0.01f, 10f);
+    protected readonly Camera Camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight, 0.01f, 10f);
     protected bool IsPanning;
     protected Vector2 LastMouseScreen;
     protected const float DoubleClickTime = 0.4f;
@@ -178,8 +178,8 @@ public abstract class MapPanelBase
         var iconPos = objectPos + new Vector2(0, -(objectRadius + 16));
         float diamondSize = 6f;
         var screenIcon = camera.WorldToScreen(iconPos);
-        if (screenIcon.X >= -20 && screenIcon.X < GameConfig.WindowWidth + 20 &&
-            screenIcon.Y >= -20 && screenIcon.Y < GameConfig.WindowHeight + 20)
+        if (screenIcon.X >= -20 && screenIcon.X < renderer.WindowWidth + 20 &&
+            screenIcon.Y >= -20 && screenIcon.Y < renderer.WindowHeight + 20)
         {
             float ds = diamondSize * Math.Max(1f, camera.Zoom * 0.5f);
             var c = new Color4(color.R, color.G, color.B, alpha);

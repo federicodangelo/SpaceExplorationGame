@@ -54,10 +54,10 @@ public class OrbitalSurfaceTransitionState : GameState
     private const float TouchdownDuration = 1.35f;
     private static float TotalDuration => AlignDuration + DescentDuration + TouchdownDuration;
 
-    private static readonly float ScreenW = GameConfig.WindowWidth;
-    private static readonly float ScreenH = GameConfig.WindowHeight;
-    private static readonly float CX = ScreenW * 0.5f;
-    private static readonly float CY = ScreenH * 0.5f;
+    private float ScreenW;
+    private float ScreenH;
+    private float CX;
+    private float CY;
 
     private readonly record struct StarParticle(float X, float Y, byte Brightness);
 
@@ -113,16 +113,16 @@ public class OrbitalSurfaceTransitionState : GameState
         _isMoon = isMoon;
         _moonPlanetIndex = moonPlanetIndex;
         _moonIndex = moonIndex;
-
-        _shipScreenStart = new Vector2(CX, CY);
-        _planetScreenStart = new Vector2(CX, CY);
-        _planetRadiusStartPx = MathF.Max(_planet.Radius * GameConfig.SolarSystemZoomDefault, 8f);
     }
 
     public override void Enter(Game game)
     {
         _elapsed = 0f;
         _landingSfxPlayed = false;
+        ScreenW = game.SpriteRenderer.WindowWidth;
+        ScreenH = game.SpriteRenderer.WindowHeight;
+        CX = ScreenW * 0.5f;
+        CY = ScreenH * 0.5f;
 
         if (_mode == TransitionMode.Landing)
         {
@@ -131,6 +131,12 @@ public class OrbitalSurfaceTransitionState : GameState
             _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
             _planetScreenStart = WorldToScreenFromSolarSnapshot(_targetBodyWorldStart);
             _planetRadiusStartPx = MathF.Max(_planet.Radius * _solarZoomStart, 8f);
+        }
+        else
+        {
+            _shipScreenStart = new Vector2(CX, CY);
+            _planetScreenStart = new Vector2(CX, CY);
+            _planetRadiusStartPx = MathF.Max(_planet.Radius * GameConfig.SolarSystemZoomDefault, 8f);
         }
 
         _terrainTexture = TerrainRenderer.CreateTerrainTexture(game.Textures, _surfaceData);
@@ -295,8 +301,8 @@ public class OrbitalSurfaceTransitionState : GameState
         float centerY = Lerp(mapH * 0.5f, _tileY, panP);
 
         // Camera zoom in texture-space: whole planet map -> approx surface gameplay view at default zoom.
-        float endViewTilesW = GameConfig.WindowWidth / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
-        float endViewTilesH = GameConfig.WindowHeight / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
+        float endViewTilesW = game.SpriteRenderer.WindowWidth / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
+        float endViewTilesH = game.SpriteRenderer.WindowHeight / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
 
         float srcW = Lerp(mapW, endViewTilesW, terrainBlend);
         float srcH = Lerp(mapH, endViewTilesH, terrainBlend);

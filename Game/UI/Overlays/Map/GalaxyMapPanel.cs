@@ -145,6 +145,7 @@ public class GalaxyMapPanel : MapPanelBase
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.02f);
         _starsBackground.Generate(0, 0, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xDEADBEEFuL,
+            spriteRenderer: game.SpriteRenderer,
             minDist: 6000f);
 
         _nebulaBackground = new NebulaBackgroundRenderer();

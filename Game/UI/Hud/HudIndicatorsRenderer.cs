@@ -219,8 +219,8 @@ public static class HudIndicatorsRenderer
         Vector2 worldPos, Color4 color, string? prefix = null, float arrowSize = 8f)
     {
         const float margin = 30f;
-        float screenW = GameConfig.WindowWidth;
-        float screenH = GameConfig.WindowHeight;
+        float screenW = renderer.WindowWidth;
+        float screenH = renderer.WindowHeight;
 
         var screenPos = camera.WorldToScreen(worldPos);
 

@@ -42,7 +42,7 @@ public class PlanetLandingOverlay : MapOverlayBase
     {
         IsOpen = true;
 
-        ComputeLayout();
+        ComputeLayout(game.SpriteRenderer);
         ApplyLayoutToPanel(_panel);
 
         _panel.OpenWithPlanet(game, starSystem, planet, isMoon, moonPlanetIndex, moonIndex);
@@ -93,8 +93,8 @@ public class PlanetLandingOverlay : MapOverlayBase
         string title = $"ORBITAL VIEW - {_panel.PlanetName.ToUpper()}";
         float titleW = renderer.MeasureText(title, 2.5f);
         float titleBgW = titleW + 30;
-        DrawFrame(renderer, GameConfig.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
-        renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
+        DrawFrame(renderer, renderer.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
+        renderer.DrawTextScreen(renderer.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
 
         // Landing prompt (bottom of screen)
         if (_panel.HasCursor)
@@ -111,10 +111,10 @@ public class PlanetLandingOverlay : MapOverlayBase
             byte pg = canLand ? (byte)255 : (byte)80;
             byte pb = canLand ? (byte)100 : (byte)80;
             float promptW = renderer.MeasureText(prompt, 2f);
-            DrawFrame(renderer, GameConfig.WindowWidth / 2f - promptW / 2f - 6,
-                GameConfig.WindowHeight - 50 - hudMargin, promptW + 12, 28, 200);
-            renderer.DrawTextScreen(GameConfig.WindowWidth / 2f - promptW / 2f,
-                GameConfig.WindowHeight - 45 - hudMargin, prompt, new Color3(pr, pg, pb), 2f);
+            DrawFrame(renderer, renderer.WindowWidth / 2f - promptW / 2f - 6,
+                renderer.WindowHeight - 50 - hudMargin, promptW + 12, 28, 200);
+            renderer.DrawTextScreen(renderer.WindowWidth / 2f - promptW / 2f,
+                renderer.WindowHeight - 45 - hudMargin, prompt, new Color3(pr, pg, pb), 2f);
         }
     }
 }

@@ -68,15 +68,15 @@ public class StarsBackgroundRenderer
     ///   <c>false</c> are discarded.  Use it to exclude stars inside a planet disc, etc.
     /// </param>
     public void Generate(float fromX, float fromY, float toX, float toY,
-        ulong seed, float minDist = 300f, Predicate<Vector2>? filter = null)
+        ulong seed, ISpriteRenderer spriteRenderer, float minDist = 300f, Predicate<Vector2>? filter = null)
     {
         // Expand the generation region so stars appear at screen edges even when the
         // camera is at the extremes of its roaming area.
         //   sx = screenCX + (wx - camX) * parallax
         //   Star visible when |wx - camX| * parallax <= screenHalf
         //   ⟹ wx ∈ [ camX - screenHalf/parallax,  camX + screenHalf/parallax ]
-        float screenHalfW = GameConfig.WindowWidth * 0.5f / _parallaxFactor;
-        float screenHalfH = GameConfig.WindowHeight * 0.5f / _parallaxFactor;
+        float screenHalfW = spriteRenderer.WindowWidth * 0.5f / _parallaxFactor;
+        float screenHalfH = spriteRenderer.WindowHeight * 0.5f / _parallaxFactor;
 
         float x0 = fromX - screenHalfW;
         float y0 = fromY - screenHalfH;

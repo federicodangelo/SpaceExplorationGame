@@ -8,8 +8,6 @@ public static class GameConfig
     // Window
     static public int DefaultWindowWidth = 1920;
     static public int DefaultWindowHeight = 1080;
-    static public int WindowWidth = DefaultWindowWidth;
-    static public int WindowHeight = DefaultWindowHeight;
     public const string WindowTitle = "Space Exploration Game";
 
     // Tiles

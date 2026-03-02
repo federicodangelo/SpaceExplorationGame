@@ -38,7 +38,7 @@ public class PlanetSurfaceState : GameState
     private readonly PlanetData _planet;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.WindowWidth, GameConfig.WindowHeight,
+    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
         GameConfig.PlanetSurfaceZoomMin, GameConfig.PlanetSurfaceZoomMax);
 
     // ── Input systems ───────────────────────────────────────────────
@@ -122,6 +122,7 @@ public class PlanetSurfaceState : GameState
             _starsBackground.Generate(
                 discCX - discR, discCY - discR, discCX + discR, discCY + discR,
                 seed: 0xC1A551C_5AFED1CuL,
+                spriteRenderer: game.SpriteRenderer,
                 minDist: 1200f,
                 filter: p => { float dx = p.X - discCX, dy = p.Y - discCY; return dx * dx + dy * dy > discRSq; });
         }
@@ -541,7 +542,7 @@ public class PlanetSurfaceState : GameState
 
     public override void RenderGame(Game game)
     {
-        _camera.Update(GameConfig.WindowWidth, GameConfig.WindowHeight);
+        _camera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
         var renderer = game.SpriteRenderer;
         var camera = _camera;
         var world = _sim.EcsWorld;
@@ -605,8 +606,8 @@ public class PlanetSurfaceState : GameState
         ProjectileRenderer.RenderExplosions(renderer, camera, _explosions);
 
         // Weather overlay based on planet biome
-        int screenW = GameConfig.WindowWidth;
-        int screenH = GameConfig.WindowHeight;
+        int screenW = renderer.WindowWidth;
+        int screenH = renderer.WindowHeight;
         WeatherRenderer.Render(renderer, screenW, screenH, _planet, game.GlobalTime,
             _camera.Position.X, _camera.Position.Y);
     }

@@ -8,6 +8,12 @@ namespace Engine.Platform;
 /// </summary>
 public interface ISpriteRenderer : IDisposable
 {
+    // ── Window dimensions ─────────────────────────────────────────────
+    int WindowWidth { get; }
+    int WindowHeight { get; }
+    /// <summary>Called once per frame by the platform to refresh cached window dimensions.</summary>
+    void Update();
+
     // ── Clip ──────────────────────────────────────────────────────────
     void SetClipRect(float x, float y, float w, float h);
     void ClearClipRect();

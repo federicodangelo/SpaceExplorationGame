@@ -41,7 +41,7 @@ public abstract class MapOverlayBase : OverlayBase
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>Compute frame, map-area, and info-panel positions from virtual dimension properties.</summary>
-    protected void ComputeLayout()
+    protected void ComputeLayout(ISpriteRenderer renderer)
     {
         float mapW = MapContentWidth;
         float mapH = MapContentHeight;
@@ -53,8 +53,8 @@ public abstract class MapOverlayBase : OverlayBase
         FrameW = mapW + pad * 2;
         FrameH = mapH + pad * 2 + headerH;
         float totalW = FrameW + ipGap + ipW;
-        FrameX = (GameConfig.WindowWidth - totalW) / 2f;
-        FrameY = (GameConfig.WindowHeight - FrameH) / 2f;
+        FrameX = (renderer.WindowWidth - totalW) / 2f;
+        FrameY = (renderer.WindowHeight - FrameH) / 2f;
         MapAreaX = FrameX + pad;
         MapAreaY = FrameY + pad + headerH;
         IpX = FrameX + FrameW + ipGap;
@@ -103,7 +103,7 @@ public abstract class MapOverlayBase : OverlayBase
         var panel = GetActivePanel();
 
         // Semi-transparent dark overlay
-        renderer.DrawRectScreen(0, 0, GameConfig.WindowWidth, GameConfig.WindowHeight, new Color4(0, 0, 0, 180));
+        renderer.DrawRectScreen(0, 0, renderer.WindowWidth, renderer.WindowHeight, new Color4(0, 0, 0, 180));
 
         // Frame + header
         DrawFrame(renderer, FrameX, FrameY, FrameW, FrameH, 230);
