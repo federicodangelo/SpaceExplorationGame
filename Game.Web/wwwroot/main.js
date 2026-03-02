@@ -76,6 +76,14 @@ gameCanvas.addEventListener('mouseup', e => { inputEvents.push(`MU:${e.button}`)
 gameCanvas.addEventListener('wheel', e => { mouseWheelAccum -= e.deltaY / 120; e.preventDefault(); }, { passive: false });
 gameCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+// ── Gamepad state ──────────────────────────────────────────────
+let gamepadConnected = false;
+window.addEventListener('gamepadconnected', () => { gamepadConnected = true; });
+window.addEventListener('gamepaddisconnected', () => {
+    const gps = navigator.getGamepads();
+    gamepadConnected = gps && Array.from(gps).some(g => g !== null);
+});
+
 document.addEventListener('keydown', e => {
     // Allow F12 for dev tools, F5 for refresh
     if (e.code === 'F12' || e.code === 'F5') return;
@@ -345,6 +353,28 @@ setModuleImports('game.js', {
             const result = textInputBuffer;
             textInputBuffer = '';
             return result;
+        },
+        // Returns: "connected|b0,b1,...|a0,a1,..." or "" if no gamepad
+        // b = button states (0/1), a = axis values (float)
+        pollGamepad() {
+            if (!gamepadConnected) return '';
+            const gamepads = navigator.getGamepads();
+            if (!gamepads) return '';
+            let gp = null;
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i] && gamepads[i].connected) { gp = gamepads[i]; break; }
+            }
+            if (!gp) return '';
+            resumeAudio();
+            const btns = [];
+            for (let i = 0; i < Math.min(gp.buttons.length, 17); i++) {
+                btns.push(gp.buttons[i].pressed ? '1' : '0');
+            }
+            const axes = [];
+            for (let i = 0; i < Math.min(gp.axes.length, 4); i++) {
+                axes.push(gp.axes[i].toFixed(5));
+            }
+            return `1|${btns.join(',')}|${axes.join(',')}`;
         },
     },
 

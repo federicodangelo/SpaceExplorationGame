@@ -108,6 +108,9 @@ internal static partial class JsInput
 
     [JSImport("input.getTextInput", "game.js")]
     internal static partial string GetTextInput();
+
+    [JSImport("input.pollGamepad", "game.js")]
+    internal static partial string PollGamepad();
 }
 
 /// <summary>

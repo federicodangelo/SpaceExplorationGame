@@ -5,56 +5,96 @@ namespace Engine.Platform.Web;
 /// <summary>
 /// Input manager that polls browser keyboard, mouse, and gamepad state via JavaScript interop.
 /// Events are accumulated in JS between frames and flushed per-frame as a packed string.
+/// Gamepad state is polled each frame via the browser Gamepad API.
 /// </summary>
 public class WebInputManager : IInputManager
 {
     private readonly Func<(int Width, int Height)> _getCanvasSize;
 
-    // Key state (using browser key codes like "KeyW", "ArrowUp", etc.)
+    // ── Constants ─────────────────────────────────────────────────
+    private const float GamepadDeadZone = 0.20f;
+    private const float GamepadTriggerThreshold = 0.35f;
+
+    // ── Key state (browser key codes: "KeyW", "ArrowUp", etc.) ───
     private readonly HashSet<string> _keysDown = [];
     private readonly HashSet<string> _keysPressed = [];
     private readonly HashSet<string> _keysReleased = [];
 
-    // Mouse state
+    // ── Mouse state ──────────────────────────────────────────────
     private readonly HashSet<int> _mouseDown = [];
     private readonly HashSet<int> _mousePressed = [];
     private readonly HashSet<int> _mouseReleased = [];
 
-    // Text input
+    // ── Gamepad state ────────────────────────────────────────────
+    // Standard Gamepad button indices (W3C standard mapping)
+    private const int GpBtnSouth = 0;       // A
+    private const int GpBtnEast = 1;        // B
+    private const int GpBtnWest = 2;        // X
+    private const int GpBtnNorth = 3;       // Y
+    private const int GpBtnLShoulder = 4;   // LB
+    private const int GpBtnRShoulder = 5;   // RB
+    private const int GpBtnLTrigger = 6;    // LT (analog as button)
+    private const int GpBtnRTrigger = 7;    // RT (analog as button)
+    private const int GpBtnBack = 8;        // Back / Select
+    private const int GpBtnStart = 9;       // Start
+    private const int GpBtnLStick = 10;     // Left stick click
+    private const int GpBtnRStick = 11;     // Right stick click
+    private const int GpBtnDPadUp = 12;
+    private const int GpBtnDPadDown = 13;
+    private const int GpBtnDPadLeft = 14;
+    private const int GpBtnDPadRight = 15;
+    private const int GpBtnHome = 16;
+    private const int GpMaxButtons = 17;
+
+    // Standard Gamepad axis indices
+    private const int GpAxisLeftX = 0;
+    private const int GpAxisLeftY = 1;
+    private const int GpAxisRightX = 2;
+    private const int GpAxisRightY = 3;
+
+    private readonly HashSet<int> _gpDown = [];
+    private readonly HashSet<int> _gpPressed = [];
+    private readonly HashSet<int> _gpReleased = [];
+    private float _leftStickX, _leftStickY;
+    private float _rightStickX, _rightStickY;
+    private bool _gamepadConnected;
+
+    // ── Text input ───────────────────────────────────────────────
     private string _textInputBuffer = "";
     private int _textInputBackspaceCount;
     private int _textInputReturnCount;
 
-    // Action bindings: map InputAction → browser key codes / mouse buttons
+    // ── Action bindings ──────────────────────────────────────────
     private readonly Dictionary<InputAction, List<InputBinding>> _bindings = new()
     {
         [InputAction.DebugToggle] = [InputBinding.Key("Digit1")],
-        [InputAction.MenuConfirm] = [InputBinding.Key("Enter"), InputBinding.Key("Space"), InputBinding.Key("NumpadEnter")],
-        [InputAction.MenuUp] = [InputBinding.Key("ArrowUp"), InputBinding.Key("KeyW")],
-        [InputAction.MenuDown] = [InputBinding.Key("ArrowDown"), InputBinding.Key("KeyS")],
-        [InputAction.MenuLeft] = [InputBinding.Key("ArrowLeft"), InputBinding.Key("KeyA")],
-        [InputAction.MenuRight] = [InputBinding.Key("ArrowRight"), InputBinding.Key("KeyD")],
-        [InputAction.MenuBack] = [InputBinding.Key("Escape")],
+        [InputAction.MenuConfirm] = [InputBinding.Key("Enter"), InputBinding.Key("Space"), InputBinding.Key("NumpadEnter"), InputBinding.Btn(GpBtnSouth)],
+        [InputAction.MenuUp] = [InputBinding.Key("ArrowUp"), InputBinding.Key("KeyW"), InputBinding.Btn(GpBtnDPadUp)],
+        [InputAction.MenuDown] = [InputBinding.Key("ArrowDown"), InputBinding.Key("KeyS"), InputBinding.Btn(GpBtnDPadDown)],
+        [InputAction.MenuLeft] = [InputBinding.Key("ArrowLeft"), InputBinding.Key("KeyA"), InputBinding.Btn(GpBtnDPadLeft)],
+        [InputAction.MenuRight] = [InputBinding.Key("ArrowRight"), InputBinding.Key("KeyD"), InputBinding.Btn(GpBtnDPadRight)],
+        [InputAction.MenuBack] = [InputBinding.Key("Escape"), InputBinding.Btn(GpBtnEast), InputBinding.Btn(GpBtnStart)],
         [InputAction.MenuSecondaryAction] = [InputBinding.Key("KeyX"), InputBinding.Key("Delete")],
 
         [InputAction.MoveUp] = [InputBinding.Key("KeyW"), InputBinding.Key("ArrowUp")],
         [InputAction.MoveDown] = [InputBinding.Key("KeyS"), InputBinding.Key("ArrowDown")],
         [InputAction.MoveLeft] = [InputBinding.Key("KeyA"), InputBinding.Key("ArrowLeft")],
         [InputAction.MoveRight] = [InputBinding.Key("KeyD"), InputBinding.Key("ArrowRight")],
-        [InputAction.FireWeapon] = [InputBinding.Key("Space"), InputBinding.Mouse(0)],
-        [InputAction.MapZoomOut] = [],
-        [InputAction.MapZoomIn] = [],
-        [InputAction.MapPreviousView] = [],
-        [InputAction.MapNextView] = [],
-        [InputAction.Interact] = [InputBinding.Key("KeyE")],
-        [InputAction.ToggleMap] = [InputBinding.Key("KeyM")],
+        [InputAction.FireWeapon] = [InputBinding.Key("Space"), InputBinding.Mouse(0), InputBinding.Btn(GpBtnWest), InputBinding.Btn(GpBtnLTrigger), InputBinding.Btn(GpBtnRTrigger)],
+        [InputAction.MapZoomOut] = [InputBinding.Btn(GpBtnLTrigger)],
+        [InputAction.MapZoomIn] = [InputBinding.Btn(GpBtnRTrigger)],
+        [InputAction.MapPreviousView] = [InputBinding.Btn(GpBtnLShoulder)],
+        [InputAction.MapNextView] = [InputBinding.Btn(GpBtnRShoulder)],
+        [InputAction.Interact] = [InputBinding.Key("KeyE"), InputBinding.Btn(GpBtnSouth)],
+        [InputAction.ToggleMap] = [InputBinding.Key("KeyM"), InputBinding.Btn(GpBtnBack)],
         [InputAction.Screenshot] = [InputBinding.Key("F12")],
     };
 
-    private readonly record struct InputBinding(string? KeyCode, int? MouseBtn)
+    private readonly record struct InputBinding(string? KeyCode, int? MouseBtn, int? GamepadBtn)
     {
-        public static InputBinding Key(string code) => new(code, null);
-        public static InputBinding Mouse(int button) => new(null, button);
+        public static InputBinding Key(string code) => new(code, null, null);
+        public static InputBinding Mouse(int button) => new(null, button, null);
+        public static InputBinding Btn(int gpButton) => new(null, null, gpButton);
     }
 
     public float MouseX { get; private set; }
@@ -64,8 +104,10 @@ public class WebInputManager : IInputManager
     public string TextInput => _textInputBuffer;
     public int TextInputBackspacesCount => _textInputBackspaceCount;
     public int TextInputReturnsCount => _textInputReturnCount;
-    public InputMethod ActiveInputMethod => InputMethod.MouseKeyboard;
-    public MovementInputMode MovementMode => MovementInputMode.HeadingRelative;
+    public InputMethod ActiveInputMethod { get; private set; } = InputMethod.MouseKeyboard;
+    public MovementInputMode MovementMode => ActiveInputMethod == InputMethod.Gamepad
+        ? MovementInputMode.Absolute
+        : MovementInputMode.HeadingRelative;
 
     public WebInputManager(Func<(int Width, int Height)> getCanvasSize)
     {
@@ -88,6 +130,8 @@ public class WebInputManager : IInputManager
         _keysReleased.Clear();
         _mousePressed.Clear();
         _mouseReleased.Clear();
+        _gpPressed.Clear();
+        _gpReleased.Clear();
         MouseWheelY = 0;
     }
 
@@ -99,8 +143,14 @@ public class WebInputManager : IInputManager
         _mouseDown.Clear();
         _mousePressed.Clear();
         _mouseReleased.Clear();
+        _gpDown.Clear();
+        _gpPressed.Clear();
+        _gpReleased.Clear();
+        _leftStickX = _leftStickY = 0;
+        _rightStickX = _rightStickY = 0;
         MouseWheelY = 0;
         _textInputBuffer = "";
+        ActiveInputMethod = InputMethod.MouseKeyboard;
     }
 
     public void ProcessEvents()
@@ -124,55 +174,136 @@ public class WebInputManager : IInputManager
             _textInputBuffer = sb.ToString();
         }
 
-        // Parse packed events from JS: "KD:KeyW|KU:KeyA|MD:0|MU:2|..."
+        // Parse packed keyboard/mouse events: "KD:KeyW|KU:KeyA|MD:0|MU:2|..."
         string events = JsInput.FlushEvents();
-        if (string.IsNullOrEmpty(events)) return;
-
-        foreach (var part in events.Split('|'))
+        if (!string.IsNullOrEmpty(events))
         {
-            if (part.Length < 3) continue;
-
-            var type = part[..2];
-            var value = part[3..];
-
-            switch (type)
+            foreach (var part in events.Split('|'))
             {
-                case "KD": // Key down
-                    if (_keysDown.Add(value))
-                        _keysPressed.Add(value);
-                    break;
-                case "KU": // Key up
-                    _keysDown.Remove(value);
-                    _keysReleased.Add(value);
-                    break;
-                case "MD": // Mouse down
-                    if (int.TryParse(value, out int mb))
-                    {
-                        if (_mouseDown.Add(mb))
-                            _mousePressed.Add(mb);
-                    }
-                    break;
-                case "MU": // Mouse up
-                    if (int.TryParse(value, out int mu))
-                    {
-                        _mouseDown.Remove(mu);
-                        _mouseReleased.Add(mu);
-                    }
-                    break;
+                if (part.Length < 3) continue;
+
+                var type = part[..2];
+                var value = part[3..];
+
+                switch (type)
+                {
+                    case "KD": // Key down
+                        ActiveInputMethod = InputMethod.MouseKeyboard;
+                        if (_keysDown.Add(value))
+                            _keysPressed.Add(value);
+                        break;
+                    case "KU": // Key up
+                        ActiveInputMethod = InputMethod.MouseKeyboard;
+                        _keysDown.Remove(value);
+                        _keysReleased.Add(value);
+                        break;
+                    case "MD": // Mouse down
+                        if (int.TryParse(value, out int mb))
+                        {
+                            if (_mouseDown.Add(mb))
+                                _mousePressed.Add(mb);
+                        }
+                        break;
+                    case "MU": // Mouse up
+                        if (int.TryParse(value, out int mu))
+                        {
+                            _mouseDown.Remove(mu);
+                            _mouseReleased.Add(mu);
+                        }
+                        break;
+                }
             }
+        }
+
+        // Poll gamepad
+        PollGamepad();
+    }
+
+    // ── Gamepad polling ──────────────────────────────────────────
+
+    private void PollGamepad()
+    {
+        string gpData = JsInput.PollGamepad();
+        if (string.IsNullOrEmpty(gpData))
+        {
+            // No gamepad connected — clear all state if we had one
+            if (_gamepadConnected)
+            {
+                _gamepadConnected = false;
+                _gpDown.Clear();
+                _leftStickX = _leftStickY = 0;
+                _rightStickX = _rightStickY = 0;
+            }
+            return;
+        }
+
+        _gamepadConnected = true;
+
+        // Format: "1|b0,b1,...|a0,a1,..."
+        var sections = gpData.Split('|');
+        if (sections.Length < 3) return;
+
+        // Parse buttons
+        var buttonParts = sections[1].Split(',');
+        for (int i = 0; i < buttonParts.Length && i < GpMaxButtons; i++)
+        {
+            bool pressed = buttonParts[i] == "1";
+            bool wasDown = _gpDown.Contains(i);
+
+            if (pressed && !wasDown)
+            {
+                _gpDown.Add(i);
+                _gpPressed.Add(i);
+                ActiveInputMethod = InputMethod.Gamepad;
+            }
+            else if (!pressed && wasDown)
+            {
+                _gpDown.Remove(i);
+                _gpReleased.Add(i);
+                ActiveInputMethod = InputMethod.Gamepad;
+            }
+        }
+
+        // Parse axes
+        var axisParts = sections[2].Split(',');
+        float lx = axisParts.Length > GpAxisLeftX ? ParseAxis(axisParts[GpAxisLeftX]) : 0;
+        float ly = axisParts.Length > GpAxisLeftY ? ParseAxis(axisParts[GpAxisLeftY]) : 0;
+        float rx = axisParts.Length > GpAxisRightX ? ParseAxis(axisParts[GpAxisRightX]) : 0;
+        float ry = axisParts.Length > GpAxisRightY ? ParseAxis(axisParts[GpAxisRightY]) : 0;
+
+        // Apply dead zone
+        _leftStickX = ApplyDeadZone(lx);
+        _leftStickY = ApplyDeadZone(ly);
+        _rightStickX = ApplyDeadZone(rx);
+        _rightStickY = ApplyDeadZone(ry);
+
+        // Switch to gamepad input if any stick is active
+        if (MathF.Abs(_leftStickX) > 0 || MathF.Abs(_leftStickY) > 0 ||
+            MathF.Abs(_rightStickX) > 0 || MathF.Abs(_rightStickY) > 0)
+        {
+            ActiveInputMethod = InputMethod.Gamepad;
         }
     }
 
-    public bool IsActionDown(InputAction action) => IsAnyBindingDown(action, _keysDown, _mouseDown);
-    public bool IsActionPressed(InputAction action) => IsAnyBindingDown(action, _keysPressed, _mousePressed);
-    public bool IsActionReleased(InputAction action) => IsAnyBindingDown(action, _keysReleased, _mouseReleased);
+    private static float ParseAxis(string s) =>
+        float.TryParse(s, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float v) ? v : 0;
+
+    private static float ApplyDeadZone(float value) =>
+        MathF.Abs(value) < GamepadDeadZone ? 0f : value;
+
+    // ── Action queries ───────────────────────────────────────────
+
+    public bool IsActionDown(InputAction action) => IsAnyBindingDown(action, _keysDown, _mouseDown, _gpDown);
+    public bool IsActionPressed(InputAction action) => IsAnyBindingDown(action, _keysPressed, _mousePressed, _gpPressed);
+    public bool IsActionReleased(InputAction action) => IsAnyBindingDown(action, _keysReleased, _mouseReleased, _gpReleased);
 
     public Vector2 GetActionAxisDirection(InputActionAxis axis)
     {
         return axis switch
         {
-            InputActionAxis.Movement => GetMovementDirection(),
-            InputActionAxis.Heading => GetHeadingDirection(),
+            InputActionAxis.Movement => GetCombinedMovementDirection(),
+            InputActionAxis.Heading => GetCombinedHeadingDirection(),
             _ => Vector2.Zero,
         };
     }
@@ -185,6 +316,7 @@ public class WebInputManager : IInputManager
         List<string> labels = [];
         foreach (var binding in bindingList)
         {
+            if (!ShouldIncludeBindingForActiveInput(binding)) continue;
             string label = GetBindingLabel(binding);
             if (!string.IsNullOrWhiteSpace(label) && !labels.Contains(label))
                 labels.Add(label);
@@ -212,7 +344,9 @@ public class WebInputManager : IInputManager
     public bool IsMousePressed(MouseButton button) => _mousePressed.Contains((int)button - 1);
     public bool IsMouseReleased(MouseButton button) => _mouseReleased.Contains((int)button - 1);
 
-    private bool IsAnyBindingDown(InputAction action, HashSet<string> keySet, HashSet<int> mouseSet)
+    // ── Binding checks ───────────────────────────────────────────
+
+    private bool IsAnyBindingDown(InputAction action, HashSet<string> keySet, HashSet<int> mouseSet, HashSet<int> gpSet)
     {
         if (!_bindings.TryGetValue(action, out var bindingList)) return false;
 
@@ -222,11 +356,50 @@ public class WebInputManager : IInputManager
                 return true;
             if (binding.MouseBtn.HasValue && mouseSet.Contains(binding.MouseBtn.Value))
                 return true;
+            if (binding.GamepadBtn.HasValue && gpSet.Contains(binding.GamepadBtn.Value))
+                return true;
         }
         return false;
     }
 
-    private Vector2 GetMovementDirection()
+    private bool ShouldIncludeBindingForActiveInput(InputBinding binding)
+    {
+        return ActiveInputMethod switch
+        {
+            InputMethod.Gamepad => binding.GamepadBtn.HasValue,
+            _ => binding.KeyCode != null || binding.MouseBtn.HasValue,
+        };
+    }
+
+    // ── Movement / heading ───────────────────────────────────────
+
+    private Vector2 GetCombinedMovementDirection()
+    {
+        return ActiveInputMethod == InputMethod.Gamepad
+            ? GetLeftStickDirection()
+            : GetKeyboardMovementDirection();
+    }
+
+    private Vector2 GetCombinedHeadingDirection()
+    {
+        return ActiveInputMethod == InputMethod.Gamepad
+            ? GetRightStickDirection()
+            : GetMouseHeadingDirection();
+    }
+
+    private Vector2 GetLeftStickDirection()
+    {
+        Vector2 dir = new(_leftStickX, _leftStickY);
+        return dir.LengthSquared() < 0.001f ? Vector2.Zero : Vector2.Normalize(dir);
+    }
+
+    private Vector2 GetRightStickDirection()
+    {
+        Vector2 dir = new(_rightStickX, _rightStickY);
+        return dir.LengthSquared() < 0.001f ? Vector2.Zero : Vector2.Normalize(dir);
+    }
+
+    private Vector2 GetKeyboardMovementDirection()
     {
         Vector2 dir = Vector2.Zero;
         if (IsActionDown(InputAction.MoveUp)) dir.Y -= 1f;
@@ -236,7 +409,7 @@ public class WebInputManager : IInputManager
         return dir == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(dir);
     }
 
-    private Vector2 GetHeadingDirection()
+    private Vector2 GetMouseHeadingDirection()
     {
         var (winW, winH) = _getCanvasSize();
         Vector2 screenCenter = new(winW / 2f, winH / 2f);
@@ -244,6 +417,8 @@ public class WebInputManager : IInputManager
         Vector2 direction = mousePosition - screenCenter;
         return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
     }
+
+    // ── Help text labels ─────────────────────────────────────────
 
     private static string GetBindingLabel(InputBinding binding)
     {
@@ -274,6 +449,28 @@ public class WebInputManager : IInputManager
                 1 => "MMB",
                 2 => "RMB",
                 _ => $"Mouse{binding.MouseBtn.Value}",
+            };
+        }
+
+        if (binding.GamepadBtn.HasValue)
+        {
+            return binding.GamepadBtn.Value switch
+            {
+                GpBtnSouth => "A",
+                GpBtnEast => "B",
+                GpBtnWest => "X",
+                GpBtnNorth => "Y",
+                GpBtnLShoulder => "LB",
+                GpBtnRShoulder => "RB",
+                GpBtnLTrigger => "LT",
+                GpBtnRTrigger => "RT",
+                GpBtnStart => "Start",
+                GpBtnBack => "Back",
+                GpBtnDPadUp => "D-Up",
+                GpBtnDPadDown => "D-Down",
+                GpBtnDPadLeft => "D-Left",
+                GpBtnDPadRight => "D-Right",
+                _ => $"Btn{binding.GamepadBtn.Value}",
             };
         }
 
