@@ -2,7 +2,7 @@ using System.Numerics;
 using System.Text;
 using SDL3;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// SDL3 input snapshot captured each frame. Provides current and previous state for edge detection.

@@ -1,7 +1,7 @@
 using SDL3;
-using SpaceExplorationGame.Core;
+using Engine.Core;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// SDL3 implementation of texture creation utilities.

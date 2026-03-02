@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace SpaceExplorationGame.Core;
+namespace Engine.Core;
 
 /// <summary>
 /// 2D camera with position, zoom, and viewport support.

@@ -1,4 +1,4 @@
-namespace SpaceExplorationGame.Rendering.Base;
+namespace Engine.Rendering.Base;
 
 /// <summary>
 /// Minimal 5x8 bitmap font for basic text rendering without SDL_TTF dependency.

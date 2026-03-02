@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Abstraction for audio playback — music themes and sound effects.

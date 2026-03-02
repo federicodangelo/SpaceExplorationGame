@@ -1,4 +1,4 @@
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Provides pre-generated mono PCM buffers for one-shot sound effects, keyed by name.

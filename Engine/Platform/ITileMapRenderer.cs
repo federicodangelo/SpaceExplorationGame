@@ -1,7 +1,7 @@
 using System.Numerics;
-using SpaceExplorationGame.Core;
+using Engine.Core;
 
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Abstraction for tile-based map rendering with per-tile color variation.

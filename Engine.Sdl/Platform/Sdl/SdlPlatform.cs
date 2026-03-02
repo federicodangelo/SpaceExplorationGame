@@ -1,6 +1,6 @@
 using SDL3;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// SDL3 implementation of the platform layer.

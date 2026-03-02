@@ -1,4 +1,4 @@
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 public enum InputAction
 {

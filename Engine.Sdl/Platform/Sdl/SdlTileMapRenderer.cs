@@ -1,8 +1,8 @@
 using SDL3;
 using System.Numerics;
-using SpaceExplorationGame.Core;
+using Engine.Core;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// Shared utility for rendering tile-based maps with per-tile color variation.

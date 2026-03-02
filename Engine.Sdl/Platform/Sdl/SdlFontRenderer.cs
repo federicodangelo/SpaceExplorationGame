@@ -1,9 +1,9 @@
 using SDL3;
-using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Rendering.Base;
+using Engine.Core;
+using Engine.Rendering.Base;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// Renders text using pre-built multi-scale font atlas textures.

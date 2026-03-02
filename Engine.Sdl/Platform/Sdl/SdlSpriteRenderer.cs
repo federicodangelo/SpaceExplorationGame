@@ -1,8 +1,8 @@
 using SDL3;
-using SpaceExplorationGame.Core;
+using Engine.Core;
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform.Sdl;
+namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// Handles rendering sprites, colored rectangles, and basic shapes using SDL3.

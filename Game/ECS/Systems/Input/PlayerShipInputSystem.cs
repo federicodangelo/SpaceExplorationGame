@@ -2,7 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.ECS.Components;
-using SpaceExplorationGame.Platform;
+using Engine.Platform;
 
 namespace SpaceExplorationGame.ECS.Systems.Input;
 

@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Abstraction over input handling — keyboard, mouse, and gamepad.

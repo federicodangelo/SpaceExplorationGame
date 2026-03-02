@@ -1,6 +1,6 @@
-using SpaceExplorationGame.Core;
+using Engine.Core;
 
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Abstraction for texture creation and lifecycle management.

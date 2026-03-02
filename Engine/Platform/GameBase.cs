@@ -1,4 +1,4 @@
-namespace SpaceExplorationGame.Platform;
+namespace Engine.Platform;
 
 /// <summary>
 /// Base class for the game, owned by the engine layer.

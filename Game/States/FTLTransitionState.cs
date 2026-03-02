@@ -1,7 +1,7 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
-using SpaceExplorationGame.Platform;
+using Engine.Platform;
 
 namespace SpaceExplorationGame.States;
 

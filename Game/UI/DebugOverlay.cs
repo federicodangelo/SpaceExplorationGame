@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Platform;
+using Engine.Platform;
 using SpaceExplorationGame.Simulation;
 
 namespace SpaceExplorationGame.UI;

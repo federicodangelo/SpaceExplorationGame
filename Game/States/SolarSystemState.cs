@@ -12,7 +12,7 @@ using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.UI.Overlays.Map;
-using SpaceExplorationGame.Platform;
+using Engine.Platform;
 
 namespace SpaceExplorationGame.States;
 

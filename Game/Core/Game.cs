@@ -3,7 +3,7 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI;
-using SpaceExplorationGame.Platform;
+using Engine.Platform;
 using System.Diagnostics;
 
 namespace SpaceExplorationGame.Core;

@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace SpaceExplorationGame.Core;
+namespace Engine.Core;
 
 // ── Engine-level types used by platform interfaces ───────────────
 
