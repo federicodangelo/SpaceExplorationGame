@@ -7,74 +7,43 @@ namespace Engine.Platform.Sdl;
 /// <summary>
 /// Handles rendering sprites, colored rectangles, and basic shapes using SDL3.
 /// </summary>
-public class SdlSpriteRenderer : ISpriteRenderer
+public class SdlSpriteRenderer : BaseSpriteRenderer
 {
     private readonly nint _renderer;
     private readonly nint _window;
-    private readonly SdlFontRenderer _fontRenderer;
-    private readonly SdlTextureManager _textures;
     private readonly SdlTileMapRenderer _tileMapRenderer;
 
-    // Cached circle texture (RGBA) used for drawing filled circles up to 256x256
-    private nint _cachedCircleTexture = nint.Zero;
-    private const int CachedCircleSize = 64; // max texture size (pixels)
-
-    private int _windowWidth;
-    private int _windowHeight;
-    public int WindowWidth => _windowWidth;
-    public int WindowHeight => _windowHeight;
-
     public SdlSpriteRenderer(nint window, nint renderer, SdlTextureManager textures)
+        : base(new SdlFontRenderer(renderer, textures), textures)
     {
         _window = window;
         _renderer = renderer;
-        _textures = textures;
         // Enable alpha blending so draw calls with a < 255 are translucent
         SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
-        _fontRenderer = new SdlFontRenderer(renderer, textures);
         _tileMapRenderer = new SdlTileMapRenderer(renderer);
-        _cachedCircleTexture = CreateCachedCircleTexture();
         SDL.GetWindowSize(_window, out _windowWidth, out _windowHeight);
     }
 
-    public void Update()
+    public override void Update()
     {
         SDL.GetWindowSize(_window, out _windowWidth, out _windowHeight);
     }
 
     /// <summary>Set a clip rectangle — all subsequent draw calls are confined to this area.</summary>
-    public void SetClipRect(float x, float y, float w, float h)
+    public override void SetClipRect(float x, float y, float w, float h)
     {
         var rect = new SDL.Rect { X = (int)x, Y = (int)y, W = (int)w, H = (int)h };
         SDL.SetRenderClipRect(_renderer, in rect);
     }
 
     /// <summary>Clear the clip rectangle so draw calls cover the full window again.</summary>
-    public void ClearClipRect()
+    public override void ClearClipRect()
     {
         SDL.SetRenderClipRect(_renderer, nint.Zero);
     }
 
-    /// <summary>Draw a filled rectangle in world space (transformed by camera).</summary>
-    public void DrawRect(Camera camera, Vector2 worldPos, int width, int height, Color4 color)
-    {
-        var screenPos = camera.WorldToScreen(worldPos);
-        var scaledW = width * camera.Zoom;
-        var scaledH = height * camera.Zoom;
-
-        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
-        var rect = new SDL.FRect
-        {
-            X = screenPos.X - scaledW / 2f,
-            Y = screenPos.Y - scaledH / 2f,
-            W = scaledW,
-            H = scaledH
-        };
-        SDL.RenderFillRect(_renderer, in rect);
-    }
-
     /// <summary>Draw a filled rectangle directly in screen space.</summary>
-    public void DrawRectScreen(float x, float y, float w, float h, Color4 color)
+    public override void DrawRectScreen(float x, float y, float w, float h, Color4 color)
     {
         SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         var rect = new SDL.FRect { X = x, Y = y, W = w, H = h };
@@ -82,7 +51,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     }
 
     /// <summary>Draw a circle outline in world space (using line segments).</summary>
-    public void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
+    public override void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
     {
         var center = camera.WorldToScreen(worldCenter);
         var radius = worldRadius * camera.Zoom;
@@ -102,137 +71,15 @@ public class SdlSpriteRenderer : ISpriteRenderer
         }
     }
 
-    /// <summary>Draw a filled circle in world space.</summary>
-    public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color)
-    {
-        var center = camera.WorldToScreen(worldCenter);
-        var radius = worldRadius * camera.Zoom;
-
-        DrawFilledCircleScreen(center.X, center.Y, radius, color);
-    }
-
-    /// <summary>Draw a solid ring (annulus) in world space.</summary>
-    public void DrawSolidRing(Camera camera, Vector2 worldCenter, float innerRadius, float outerRadius,
-        Color4 color, int segments = 48)
-    {
-        var center = camera.WorldToScreen(worldCenter);
-        float inner = innerRadius * camera.Zoom;
-        float outer = outerRadius * camera.Zoom;
-        DrawSolidRingScreen(center.X, center.Y, inner, outer, color, segments);
-    }
-
-    /// <summary>
-    /// Draw a filled circle in world space with a radial gradient.
-    /// Color remains <paramref name="innerColor"/> from center to <paramref name="transitionStartRadius"/>,
-    /// then transitions to <paramref name="outerColor"/> at <paramref name="worldRadius"/>.
-    /// </summary>
-    public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius,
-        Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32)
-    {
-        var center = camera.WorldToScreen(worldCenter);
-        var radius = worldRadius * camera.Zoom;
-        var transitionRadius = transitionStartRadius * camera.Zoom;
-
-        DrawFilledCircleScreen(center.X, center.Y, radius, innerColor, outerColor, transitionRadius, segments);
-    }
-
-    /// <summary>Draw a line in world space.</summary>
-    public void DrawLine(Camera camera, Vector2 worldStart, Vector2 worldEnd, Color4 color)
-    {
-        var start = camera.WorldToScreen(worldStart);
-        var end = camera.WorldToScreen(worldEnd);
-        SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
-        SDL.RenderLine(_renderer, start.X, start.Y, end.X, end.Y);
-    }
-
     /// <summary>Draw a line directly in screen space.</summary>
-    public void DrawLineScreen(float x1, float y1, float x2, float y2, Color4 color)
+    public override void DrawLineScreen(float x1, float y1, float x2, float y2, Color4 color)
     {
         SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         SDL.RenderLine(_renderer, x1, y1, x2, y2);
     }
 
-    /// <summary>Draw text in world space (delegates to FontRenderer).</summary>
-    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f)
-        => _fontRenderer.DrawText(camera, worldPos, text, color, scale);
-
-    /// <summary>Draw text in screen space (delegates to FontRenderer).</summary>
-    public void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f)
-        => _fontRenderer.DrawTextScreen(x, y, text, color, scale);
-
-    /// <summary>Measure the width of text in screen pixels.</summary>
-    public float MeasureText(string text, float scale = 1f)
-        => _fontRenderer.MeasureText(text, scale);
-
-    /// <summary>Draw a texture in world space, centered on the position, with rotation.</summary>
-    public void DrawTexture(Camera camera, nint texture, Vector2 worldPos, int width, int height, float rotationDeg = 0f, byte alpha = 255)
-    {
-        if (texture == nint.Zero) return;
-        var screenPos = camera.WorldToScreen(worldPos);
-        float scaledW = width * camera.Zoom;
-        float scaledH = height * camera.Zoom;
-
-        var dstRect = new SDL.FRect
-        {
-            X = screenPos.X - scaledW / 2f,
-            Y = screenPos.Y - scaledH / 2f,
-            W = scaledW,
-            H = scaledH
-        };
-
-        if (alpha < 255)
-            SDL.SetTextureAlphaMod(texture, alpha);
-
-        if (rotationDeg != 0f)
-        {
-            var center = new SDL.FPoint { X = scaledW / 2f, Y = scaledH / 2f };
-            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
-        }
-        else
-        {
-            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
-        }
-
-        if (alpha < 255)
-            SDL.SetTextureAlphaMod(texture, 255);
-    }
-
-    /// <summary>Draw a texture in world space with a color tint (RGBA).</summary>
-    public void DrawTexture(Camera camera, nint texture, Vector2 worldPos, int width, int height, Color4 color, float rotationDeg = 0f)
-    {
-        if (texture == nint.Zero) return;
-        var screenPos = camera.WorldToScreen(worldPos);
-        float scaledW = width * camera.Zoom;
-        float scaledH = height * camera.Zoom;
-
-        var dstRect = new SDL.FRect
-        {
-            X = screenPos.X - scaledW / 2f,
-            Y = screenPos.Y - scaledH / 2f,
-            W = scaledW,
-            H = scaledH
-        };
-
-        SDL.SetTextureColorMod(texture, color.R, color.G, color.B);
-        SDL.SetTextureAlphaMod(texture, color.A);
-
-        if (rotationDeg != 0f)
-        {
-            var center = new SDL.FPoint { X = scaledW / 2f, Y = scaledH / 2f };
-            SDL.RenderTextureRotated(_renderer, texture, nint.Zero, in dstRect, rotationDeg, in center, SDL.FlipMode.None);
-        }
-        else
-        {
-            SDL.RenderTexture(_renderer, texture, nint.Zero, in dstRect);
-        }
-
-        // Reset mods
-        SDL.SetTextureColorMod(texture, 255, 255, 255);
-        SDL.SetTextureAlphaMod(texture, 255);
-    }
-
     /// <summary>Draw a texture directly in screen space, centered on the position.</summary>
-    public void DrawTextureScreen(nint texture, float x, float y, float w, float h, float rotationDeg = 0f, byte alpha = 255)
+    public override void DrawTextureScreen(nint texture, float x, float y, float w, float h, float rotationDeg = 0f, byte alpha = 255)
     {
         if (texture == nint.Zero) return;
 
@@ -262,7 +109,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     }
 
     /// <summary>Draw a texture in screen space (dst rect only, no src rect).</summary>
-    public void DrawTextureScreen(nint texture, Rect dst, byte alpha = 255)
+    public override void DrawTextureScreen(nint texture, Rect dst, byte alpha = 255)
     {
         if (texture == nint.Zero) return;
 
@@ -278,7 +125,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     }
 
     /// <summary>Draw a texture in screen space (src + dst rects).</summary>
-    public void DrawTextureScreen(nint texture, Rect src, Rect dst, byte alpha = 255)
+    public override void DrawTextureScreen(nint texture, Rect src, Rect dst, byte alpha = 255)
     {
         if (texture == nint.Zero) return;
 
@@ -295,7 +142,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     }
 
     /// <summary>Draw a texture in screen space with a color tint (RGBA).</summary>
-    public void DrawTextureScreen(nint texture, float x, float y, float w, float h, Color4 color, float rotationDeg = 0f)
+    public override void DrawTextureScreen(nint texture, float x, float y, float w, float h, Color4 color, float rotationDeg = 0f)
     {
         if (texture == nint.Zero) return;
 
@@ -330,7 +177,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
         SDL.RenderGeometry(_renderer, texture ?? nint.Zero, vertices, numVertices, indices, numIndices);
     }
 
-    public void DrawTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
+    public override void DrawTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
     {
         SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
         SDL.RenderLine(_renderer, x1, y1, x2, y2);
@@ -342,7 +189,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     private static SDL.Vertex[] _triBuf = new SDL.Vertex[3];
     private static readonly int[] TriIndices = [0, 1, 2];
 
-    public void DrawFilledTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
+    public override void DrawFilledTriangleScreen(float x1, float y1, float x2, float y2, float x3, float y3, Color4 color)
     {
         var fcolor = new SDL.FColor
         {
@@ -379,7 +226,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
             _indexBuf = new int[requiredIndices];
     }
 
-    public void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
+    public override void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
     {
         if (segments < 3) segments = 3;
 
@@ -437,7 +284,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     }
 
     /// <summary>Draw a solid ring (annulus) in screen space.</summary>
-    public void DrawSolidRingScreen(float cx, float cy, float innerRadius, float outerRadius,
+    public override void DrawSolidRingScreen(float cx, float cy, float innerRadius, float outerRadius,
         Color4 color, int segments = 48)
     {
         if (segments < 3) segments = 3;
@@ -512,7 +359,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
     /// Color remains <paramref name="innerColor"/> from center to <paramref name="transitionStartRadius"/>,
     /// then transitions to <paramref name="outerColor"/> at <paramref name="radius"/>.
     /// </summary>
-    public void DrawFilledCircleScreen(float cx, float cy, float radius,
+    public override void DrawFilledCircleScreen(float cx, float cy, float radius,
         Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32)
     {
         if (radius <= 0f) return;
@@ -662,71 +509,28 @@ public class SdlSpriteRenderer : ISpriteRenderer
         DrawGeometryScreen(_vertexBuf, totalVerts, _indexBuf, totalIndices);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        _textures.DestroyTexture(_cachedCircleTexture);
-        _cachedCircleTexture = nint.Zero;
-
-        _fontRenderer.Dispose();
-        GC.SuppressFinalize(this);
+        base.Dispose();
     }
 
-    private nint CreateCachedCircleTexture()
-    {
-        int w = CachedCircleSize;
-        int h = CachedCircleSize;
-        byte[] pixels = new byte[w * h * 4];
-        float cx = w / 2f;
-        float cy = h / 2f;
-        float r = w / 2f;
-        float r2 = r * r;
-
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                float dx = x + 0.5f - cx;
-                float dy = y + 0.5f - cy;
-                float dist2 = dx * dx + dy * dy;
-                int idx = (y * w + x) * 4;
-                if (dist2 <= r2)
-                {
-                    pixels[idx + 0] = 255; // R
-                    pixels[idx + 1] = 255; // G
-                    pixels[idx + 2] = 255; // B
-                    pixels[idx + 3] = 255; // A
-                }
-                else
-                {
-                    pixels[idx + 0] = 0;
-                    pixels[idx + 1] = 0;
-                    pixels[idx + 2] = 0;
-                    pixels[idx + 3] = 0;
-                }
-            }
-        }
-
-        // Use TextureManager helper to create a texture from pixel data.
-        return _textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
-    }
-
-    public void BeginFrame()
+    public override void BeginFrame()
     {
         SDL.SetRenderDrawColor(_renderer, 0, 0, 0, 255);
         SDL.RenderClear(_renderer);
     }
 
-    public void EndFrame()
+    public override void EndFrame()
     {
         SDL.RenderPresent(_renderer);
     }
 
-    public void SetTitle(string title)
+    public override void SetTitle(string title)
     {
         SDL.SetWindowTitle(_window, title);
     }
 
-    public string? TakeScreenshot()
+    public override string? TakeScreenshot()
     {
         try
         {
@@ -758,7 +562,7 @@ public class SdlSpriteRenderer : ISpriteRenderer
         }
     }
 
-    public void RenderTiles(
+    public override void RenderTiles(
         Camera camera,
         int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor,

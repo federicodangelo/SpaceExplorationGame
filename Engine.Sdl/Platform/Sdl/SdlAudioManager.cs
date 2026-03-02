@@ -1,75 +1,32 @@
-using System.Numerics;
 using SDL3;
 
 namespace Engine.Platform.Sdl;
 
 /// <summary>
-/// Central audio manager — music and sound effects via SDL3.
-/// Uses a push-based model: the game loop calls <see cref="Update"/> each frame to keep
-/// the audio stream fed with mixed music + SFX samples.
-/// Music and SFX content is provided via <see cref="IMusicProvider"/> and <see cref="ISfxProvider"/>,
-/// so this class has no knowledge of which themes or effects exist.
+/// SDL3 implementation of the audio manager.
+/// Uses a push-based model: the base class calls <see cref="PushSamples"/> each frame
+/// to keep the SDL audio stream fed with mixed music + SFX samples.
 /// </summary>
-public sealed class SdlAudioManager : IAudioManager
+public sealed class SdlAudioManager : BaseAudioManager
 {
-    public const int SampleRate = 44100;
-    public const int ChannelCount = 2; // stereo, interleaved L/R
-
-    private const int GenerateFrames = 512;      // ~11.6 ms per chunk at 44100 Hz (low latency)
-    private const int MaxSimultaneousSfx = 16;
-    private const float CrossfadeSpeed = 2f;     // volume units / second
-
     // SDL audio stream (opened via OpenAudioDeviceStream — owns the device)
     private nint _stream;
-    private bool _initialized;
 
-    // Content providers (injected — no knowledge of specific themes/effects)
-    private readonly IMusicProvider _music;
-    private readonly ISfxProvider _sfx;
-
-    // Active one-shot SFX instances
-    private readonly List<ActiveSfx> _activeSfx = new(MaxSimultaneousSfx);
-
-    // Volume controls (0 – 1)
-    public float MasterVolume { get; set; }
-    public float MusicVolume { get; set; }
-    public float SfxVolume { get; set; }
-
-    // Crossfade state
-    private float _fadeGain = 1f;
-    private float _fadeTarget = 1f;
-    private string? _pendingTheme;
-
-    // Pre-allocated buffers to avoid per-frame allocation
-    private readonly float[] _genBuf = new float[GenerateFrames * ChannelCount];
+    // Pre-allocated byte buffer for SDL stream push (avoids per-frame allocation)
     private readonly byte[] _pushBuf = new byte[GenerateFrames * ChannelCount * sizeof(float)];
-
-    /// <summary>Active SFX instance — tracks playback position through a mono buffer.</summary>
-    private struct ActiveSfx
-    {
-        public float[] Buffer;   // mono samples
-        public int Position;     // current sample index
-        public float Volume;     // 0 – 1
-        public float Pan;        // –1 = left, 0 = center, +1 = right
-    }
 
     public SdlAudioManager(IMusicProvider music, ISfxProvider sfx,
         float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
+        : base(music, sfx, masterVolume, musicVolume, sfxVolume)
     {
-        MasterVolume = masterVolume;
-        MusicVolume = musicVolume;
-        SfxVolume = sfxVolume;
-
-        _music = music;
-        _sfx = sfx;
     }
 
     /// <summary>
-    /// Initialise the SDL audio device and stream.
+    /// Initialises the SDL audio device and stream.
     /// Must be called after <c>SDL.Init(SDL.InitFlags.Audio)</c>.
     /// Returns false (with a console warning) if the device cannot be opened — the game continues silently.
     /// </summary>
-    public bool Initialize()
+    public override bool Initialize()
     {
         var spec = new SDL.AudioSpec
         {
@@ -92,172 +49,19 @@ public sealed class SdlAudioManager : IAudioManager
         return true;
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Music theme control
-    // ────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Switch the background music theme. If <paramref name="instant"/> is false the current
-    /// theme fades out, the new one fades in (crossfade ≈ 0.5 s each way).
-    /// </summary>
-    public void SetMusicTheme(string theme, bool instant = false)
+    protected override double GetBufferedSeconds()
     {
-        if (!_initialized) return;
-
-        if (instant || _music.CurrentTheme.Length == 0)
-        {
-            _music.SetTheme(theme);
-            _fadeGain = 1f;
-            _fadeTarget = 1f;
-            _pendingTheme = null;
-        }
-        else if (theme != _music.CurrentTheme || _pendingTheme != null)
-        {
-            _pendingTheme = theme;
-            _fadeTarget = 0f;   // start fade-out
-        }
-    }
-
-    // ────────────────────────────────────────────────────────────────
-    // SFX playback
-    // ────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Play a one-shot sound effect with volume attenuated by distance from <paramref name="relativeToPos"/>.
-    /// <paramref name="maxRange"/>: distance beyond which the sound is inaudible.
-    /// </summary>
-    public void PlaySfxAtDistance(string sfx, Vector2 soundPos, Vector2 relativeToPos,
-        float volume = 1f, float maxRange = 800f)
-    {
-        float dist = Vector2.Distance(soundPos, relativeToPos);
-        if (dist >= maxRange) return;
-        float atten = 1f - (dist / maxRange);
-        atten *= atten; // quadratic falloff for more natural sound
-        float pan = Math.Clamp((soundPos.X - relativeToPos.X) / (maxRange * 0.5f), -1f, 1f);
-        PlaySfx(sfx, volume * atten, pan);
-    }
-
-    /// <summary>
-    /// Play a one-shot sound effect. <paramref name="pan"/>: –1 left, 0 center, +1 right.
-    /// </summary>
-    public void PlaySfx(string sfx, float volume = 1f, float pan = 0f)
-    {
-        if (!_initialized) return;
-        if (!_sfx.TryGetBuffer(sfx, out var buf)) return;
-        if (_activeSfx.Count >= MaxSimultaneousSfx) return;
-
-        _activeSfx.Add(new ActiveSfx
-        {
-            Buffer = buf,
-            Position = 0,
-            Volume = volume,
-            Pan = Math.Clamp(pan, -1f, 1f),
-        });
-    }
-
-    // ────────────────────────────────────────────────────────────────
-    // Per-frame update — generates & pushes audio chunks
-    // ────────────────────────────────────────────────────────────────
-
-    public void Update(float dt)
-    {
-        if (!_initialized) return;
-
-        UpdateFade(dt);
-
-        // Keep ≈ 80 ms of audio buffered (low latency for responsive SFX)
         int available = SDL.GetAudioStreamAvailable(_stream);
-        int targetBytes = SampleRate * ChannelCount * sizeof(float) * 80 / 1000;
-
-        while (available < targetBytes)
-        {
-            GenerateAndPushChunk();
-            available += _pushBuf.Length;
-        }
+        return available / (double)(SampleRate * ChannelCount * sizeof(float));
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // Internals
-    // ────────────────────────────────────────────────────────────────
-
-    private void UpdateFade(float dt)
+    protected override void PushSamples(float[] genBuf, int frames)
     {
-        // Interpolate fade gain toward target
-        if (MathF.Abs(_fadeGain - _fadeTarget) < 0.001f)
-        {
-            _fadeGain = _fadeTarget;
-        }
-        else
-        {
-            float step = CrossfadeSpeed * dt;
-            if (_fadeGain > _fadeTarget)
-                _fadeGain = MathF.Max(_fadeGain - step, 0f);
-            else
-                _fadeGain = MathF.Min(_fadeGain + step, _fadeTarget);
-        }
-
-        // When fade-out is complete and a new theme is waiting, switch and start fade-in
-        if (_fadeGain <= 0f && _pendingTheme != null)
-        {
-            _music.SetTheme(_pendingTheme);
-            _pendingTheme = null;
-            _fadeTarget = 1f;
-        }
-    }
-
-    private void GenerateAndPushChunk()
-    {
-        Array.Clear(_genBuf);
-
-        // 1) Music
-        _music.Generate(_genBuf, GenerateFrames);
-
-        float musicGain = MusicVolume * _fadeGain;
-        for (int i = 0; i < _genBuf.Length; i++)
-            _genBuf[i] *= musicGain;
-
-        // 2) SFX (mixed on top)
-        MixActiveSfx(_genBuf, GenerateFrames);
-
-        // 3) Master volume + clamp
-        for (int i = 0; i < _genBuf.Length; i++)
-            _genBuf[i] = Math.Clamp(_genBuf[i] * MasterVolume, -1f, 1f);
-
-        // 4) Push to SDL stream
-        Buffer.BlockCopy(_genBuf, 0, _pushBuf, 0, _pushBuf.Length);
+        Buffer.BlockCopy(genBuf, 0, _pushBuf, 0, _pushBuf.Length);
         SDL.PutAudioStreamData(_stream, _pushBuf, _pushBuf.Length);
     }
 
-    private void MixActiveSfx(float[] buffer, int frames)
-    {
-        for (int s = _activeSfx.Count - 1; s >= 0; s--)
-        {
-            var sfx = _activeSfx[s];
-            float vol = sfx.Volume * SfxVolume;
-
-            // Constant-power panning
-            float lGain = vol * MathF.Sqrt(0.5f * (1f - sfx.Pan));
-            float rGain = vol * MathF.Sqrt(0.5f * (1f + sfx.Pan));
-
-            int remaining = sfx.Buffer.Length - sfx.Position;
-            int count = Math.Min(frames, remaining);
-
-            for (int f = 0; f < count; f++)
-            {
-                float mono = sfx.Buffer[sfx.Position + f];
-                buffer[f * 2] += mono * lGain;
-                buffer[f * 2 + 1] += mono * rGain;
-            }
-
-            sfx.Position += count;
-            if (sfx.Position >= sfx.Buffer.Length)
-                _activeSfx.RemoveAt(s);
-            else
-                _activeSfx[s] = sfx;
-        }
-    }
-
-    public void Dispose()
+    public override void Dispose()
     {
         if (_initialized)
         {
