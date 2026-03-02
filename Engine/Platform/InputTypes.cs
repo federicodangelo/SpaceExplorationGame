@@ -22,6 +22,7 @@ public enum InputAction
     MapNextView,
     Interact,
     ToggleMap,
+    Screenshot,
 }
 
 public enum InputActionAxis

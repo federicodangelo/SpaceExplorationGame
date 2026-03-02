@@ -715,6 +715,38 @@ public class SdlSpriteRenderer : ISpriteRenderer
         SDL.SetWindowTitle(_window, title);
     }
 
+    public string? TakeScreenshot()
+    {
+        try
+        {
+            var surface = SDL.RenderReadPixels(_renderer, null);
+            if (surface == nint.Zero)
+                return null;
+
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                    "SpaceExplorationGame", "Screenshots");
+                Directory.CreateDirectory(dir);
+
+                var fileName = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                var path = Path.Combine(dir, fileName);
+
+                bool ok = SDL.SavePNG(surface, path);
+                return ok ? path : null;
+            }
+            finally
+            {
+                SDL.DestroySurface(surface);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public void RenderTiles(
         Camera camera,
         int mapWidth, int mapHeight, float tileSize,

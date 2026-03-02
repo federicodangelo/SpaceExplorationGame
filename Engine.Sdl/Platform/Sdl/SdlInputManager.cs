@@ -75,6 +75,7 @@ public class SdlInputManager : IInputManager
         [InputAction.MapNextView] = [InputBinding.Gamepad(SDL.GamepadButton.RightShoulder)],
         [InputAction.Interact] = [InputBinding.Key(SDL.Scancode.E), InputBinding.Gamepad(SDL.GamepadButton.South)],
         [InputAction.ToggleMap] = [InputBinding.Key(SDL.Scancode.M), InputBinding.Gamepad(SDL.GamepadButton.Back)],
+        [InputAction.Screenshot] = [InputBinding.Key(SDL.Scancode.F12)],
     };
 
     public float MouseX { get; private set; }

@@ -3,7 +3,6 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI;
-using Engine.Platform;
 using System.Diagnostics;
 
 namespace SpaceExplorationGame.Core;
@@ -62,6 +61,10 @@ public class Game : GameBase
     private readonly DebugOverlay _debugOverlay = new();
     private bool _debugOverlayVisible;
     private readonly DebugTimer _debugTimer = new();
+
+    // Screenshot toast
+    private string? _screenshotToastMessage;
+    private float _screenshotToastTimer;
 
     public void Initialize(IPlatform platform, ulong? galaxySeed = null)
     {
@@ -185,6 +188,16 @@ public class Game : GameBase
             if (Input.IsActionPressed(InputAction.DebugToggle))
                 _debugOverlayVisible = !_debugOverlayVisible;
 
+            // Screenshot
+            if (Input.IsActionPressed(InputAction.Screenshot))
+            {
+                var fileName = SpriteRenderer.TakeScreenshot();
+                _screenshotToastMessage = fileName != null
+                    ? $"Screenshot saved: {fileName}"
+                    : "Screenshot failed";
+                _screenshotToastTimer = 3f;
+            }
+
             // Apply pending state changes
             ApplyPendingState();
 
@@ -225,6 +238,23 @@ public class Game : GameBase
             if (_debugOverlayVisible)
             {
                 _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
+            }
+
+            // Screenshot toast
+            if (_screenshotToastTimer > 0f && _screenshotToastMessage != null)
+            {
+                _screenshotToastTimer -= DeltaTime;
+                float alpha = _screenshotToastTimer < 1f ? _screenshotToastTimer : 1f;
+                byte a = (byte)(alpha * 220);
+                float scale = 1.5f;
+                float textW = SpriteRenderer.MeasureText(_screenshotToastMessage, scale);
+                float padding = 8f;
+                float tw = textW + padding * 2f;
+                float th = 20f * scale + padding * 2f;
+                float tx = GameConfig.WindowWidth - tw - 10f;
+                float ty = GameConfig.WindowHeight - th - 10f;
+                SpriteRenderer.DrawRectScreen(tx, ty, tw, th, new Engine.Core.Color4(0, 0, 0, a));
+                SpriteRenderer.DrawTextScreen(tx + padding, ty + padding, _screenshotToastMessage, new Engine.Core.Color4(255, 255, 255, a), scale);
             }
 
             SpriteRenderer.EndFrame();

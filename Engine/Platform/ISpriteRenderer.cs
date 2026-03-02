@@ -55,6 +55,12 @@ public interface ISpriteRenderer : IDisposable
     void EndFrame();
     void SetTitle(string title);
 
+    /// <summary>
+    /// Captures the current frame and saves it to disk.
+    /// </summary>
+    /// <returns>The file path of the saved screenshot, or <c>null</c> if the capture failed.</returns>
+    string? TakeScreenshot();
+
     // ── Tile map ─────────────────────────────────────────────────────
     void RenderTiles(Camera camera, int mapWidth, int mapHeight, float tileSize,
         Func<int, int, Color3?> getColor,
