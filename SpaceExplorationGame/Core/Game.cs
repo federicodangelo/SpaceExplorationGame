@@ -1,30 +1,20 @@
 using Arch.Core;
-using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI;
 using SpaceExplorationGame.Platform;
-using SpaceExplorationGame.Platform.Sdl;
 using System.Diagnostics;
 
 namespace SpaceExplorationGame.Core;
 
 /// <summary>
-/// Main game class. Owns the SDL window/renderer, ECS world, and game state stack.
+/// Main game class. Owns the platform, ECS world, and game state stack.
 /// </summary>
-public class Game : IDisposable
+public class Game : GameBase
 {
-    // Platform specific bindings
-    public IPlatform Platform { get; private set; } = null!;
-
     // ECS
     public World EcsWorld { get; private set; } = null!;
-
-    // Core systems
-    public IInputManager Input { get; private set; } = null!;
-    public ISpriteRenderer SpriteRenderer { get; private set; } = null!;
-    public ITextureManager Textures { get; private set; } = null!;
 
     // Simulation coordinator — always ticked, manages all active simulations
     public SimulationCoordinator Coordinator { get; } = new();
@@ -38,9 +28,6 @@ public class Game : IDisposable
     public PlanetRenderer PlanetRenderer { get; private set; } = null!;
     public StarRenderer StarRenderer { get; private set; } = null!;
     public EnemyShipRenderer EnemyShipRenderer { get; private set; } = null!;
-
-    // Audio
-    public IAudioManager Audio { get; private set; } = null!;
 
     // Procedural generation
     public IUniverseGenerator UniverseGenerator { get; private set; } = null!;
@@ -73,16 +60,14 @@ public class Game : IDisposable
     private bool _debugOverlayVisible;
     private readonly DebugTimer _debugTimer = new();
 
-    public void Initialize(ulong? galaxySeed = null)
+    public void Initialize(IPlatform platform, ulong? galaxySeed = null)
     {
-        // Platform and rendering setup
-        var musicProvider = new GameMusicProvider(SdlAudioManager.SampleRate);
-        var sfxProvider = new GameSfxProvider(SdlAudioManager.SampleRate);
-        Platform = new SdlPlatform(musicProvider, sfxProvider);
-        Textures = Platform.Textures;
-        SpriteRenderer = Platform.SpriteRenderer;
-        Input = Platform.InputManager;
-        Audio = Platform.AudioManager;
+        // Platform
+        Platform = platform;
+
+        // Sync GameConfig with platform window dimensions
+        GameConfig.WindowWidth = Platform.WindowWidth;
+        GameConfig.WindowHeight = Platform.WindowHeight;
 
         // ECS world
         EcsWorld = World.Create();
@@ -160,11 +145,15 @@ public class Game : IDisposable
 
         _fpsTitleAccumTime = 0;
         _fpsTitleFrameCount = 0;
-        SpriteRenderer.SetTitle(GameConfig.WindowTitle);
+        SpriteRenderer.SetTitle(Platform.WindowTitle);
 
         while (IsRunning)
         {
             Platform.Update();
+
+            // Sync GameConfig with platform window dimensions
+            GameConfig.WindowWidth = Platform.WindowWidth;
+            GameConfig.WindowHeight = Platform.WindowHeight;
 
             var currentTime = sw.Elapsed.TotalSeconds;
             var elapsed = currentTime - previousTime;
@@ -239,18 +228,17 @@ public class Game : IDisposable
             if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
             {
                 double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
-                SpriteRenderer.SetTitle($"{GameConfig.WindowTitle} - AVG FPS: {avgFps:F1}");
+                SpriteRenderer.SetTitle($"{Platform.WindowTitle} - AVG FPS: {avgFps:F1}");
                 _fpsTitleAccumTime = 0;
                 _fpsTitleFrameCount = 0;
             }
         }
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         _currentState?.Exit(this);
         Coordinator.DestroyAll();
-        Audio.Dispose();
         EcsWorld.Dispose();
         Platform.Dispose();
         GC.SuppressFinalize(this);
