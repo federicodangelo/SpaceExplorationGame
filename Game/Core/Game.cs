@@ -66,6 +66,11 @@ public class Game : GameBase
     private string? _screenshotToastMessage;
     private float _screenshotToastTimer;
 
+    // Loop timing (instance fields so RunOneFrame can be called externally)
+    private Stopwatch? _frameSw;
+    private double _previousTime;
+    private double _accumulator;
+
     public void Initialize(IPlatform platform, ulong? galaxySeed = null)
     {
         // Platform
@@ -147,127 +152,145 @@ public class Game : GameBase
 
     public void Run()
     {
-        var sw = new Stopwatch();
-        sw.Start();
-        double previousTime = sw.Elapsed.TotalSeconds;
-        double accumulator = 0;
+        InitializeLoop();
+        while (IsRunning)
+        {
+            RunOneFrame();
+        }
+    }
 
+    /// <summary>
+    /// Initialize the game loop timing. Called once before the first frame.
+    /// </summary>
+    public void InitializeLoop()
+    {
+        _frameSw = new Stopwatch();
+        _frameSw.Start();
+        _previousTime = _frameSw.Elapsed.TotalSeconds;
+        _accumulator = 0;
         _fpsTitleAccumTime = 0;
         _fpsTitleFrameCount = 0;
         SpriteRenderer.SetTitle(Platform.WindowTitle);
+    }
 
-        while (IsRunning)
+    /// <summary>
+    /// Execute a single frame of the game loop (input, update, render).
+    /// Used by non-blocking hosts (e.g. browser requestAnimationFrame).
+    /// Call <see cref="InitializeLoop"/> once before the first call.
+    /// </summary>
+    public void RunOneFrame()
+    {
+        if (!IsRunning) return;
+
+        Platform.Update();
+
+        // Sync GameConfig with platform window dimensions
+        GameConfig.WindowWidth = Platform.WindowWidth;
+        GameConfig.WindowHeight = Platform.WindowHeight;
+
+        var currentTime = _frameSw!.Elapsed.TotalSeconds;
+        var elapsed = currentTime - _previousTime;
+        _previousTime = currentTime;
+
+        // Cap max elapsed to avoid spiral of death
+        if (elapsed > 0.25) elapsed = 0.25;
+        _accumulator += elapsed;
+
+        DeltaTime = (float)elapsed;
+
+        // Process events
+        Input.BeginFrame();
+        Input.ProcessEvents();
+
+        if (Input.QuitRequested)
         {
-            Platform.Update();
+            IsRunning = false;
+            return;
+        }
 
-            // Sync GameConfig with platform window dimensions
-            GameConfig.WindowWidth = Platform.WindowWidth;
-            GameConfig.WindowHeight = Platform.WindowHeight;
+        // Toggle debug overlay
+        if (Input.IsActionPressed(InputAction.DebugToggle))
+            _debugOverlayVisible = !_debugOverlayVisible;
 
-            var currentTime = sw.Elapsed.TotalSeconds;
-            var elapsed = currentTime - previousTime;
-            previousTime = currentTime;
+        // Screenshot
+        if (Input.IsActionPressed(InputAction.Screenshot))
+        {
+            var fileName = SpriteRenderer.TakeScreenshot();
+            _screenshotToastMessage = fileName != null
+                ? $"Screenshot saved: {fileName}"
+                : "Screenshot failed";
+            _screenshotToastTimer = 3f;
+        }
 
-            // Cap max elapsed to avoid spiral of death
-            if (elapsed > 0.25) elapsed = 0.25;
-            accumulator += elapsed;
+        // Apply pending state changes
+        ApplyPendingState();
 
-            DeltaTime = (float)elapsed;
+        // Process input once per frame
+        _currentState?.UpdateInput(this);
 
-            // Process events
-            Input.BeginFrame();
-            Input.ProcessEvents();
+        // Fixed timestep updates (may run multiple times per frame)
+        _debugTimer.Begin();
+        _debugTimer.PresetAccumulators("Simulation Update", "State Update");
+        int steps = 0;
+        while (_accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
+        {
+            GlobalTime += GameConfig.FixedTimeStep;
+            DeltaTime = GameConfig.FixedTimeStep;
 
-            if (Input.QuitRequested)
-            {
-                IsRunning = false;
-                break;
-            }
+            // Always tick all simulations first (physics, AI, combat)
+            _debugTimer.TimeAndAccumulate("Simulation Update", () =>
+                Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime)));
 
-            // Toggle debug overlay
-            if (Input.IsActionPressed(InputAction.DebugToggle))
-                _debugOverlayVisible = !_debugOverlayVisible;
+            // Then let the current state do per-tick post-processing (camera, effects)
+            _debugTimer.TimeAndAccumulate("State Update", () => _currentState?.Update(this));
 
-            // Screenshot
-            if (Input.IsActionPressed(InputAction.Screenshot))
-            {
-                var fileName = SpriteRenderer.TakeScreenshot();
-                _screenshotToastMessage = fileName != null
-                    ? $"Screenshot saved: {fileName}"
-                    : "Screenshot failed";
-                _screenshotToastTimer = 3f;
-            }
+            _accumulator -= GameConfig.FixedTimeStep;
+            steps++;
+        }
 
-            // Apply pending state changes
-            ApplyPendingState();
+        // Clear edge-detection input after UpdateInput/Update have consumed it.
+        Input.EndFrame();
 
-            // Process input once per frame
-            _currentState?.UpdateInput(this);
+        // Audio — keep playback buffer topped up
+        Audio.Update((float)elapsed);
 
-            // Fixed timestep updates (may run multiple times per frame)
-            _debugTimer.Begin();
-            _debugTimer.PresetAccumulators("Simulation Update", "State Update");
-            int steps = 0;
-            while (accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
-            {
-                GlobalTime += GameConfig.FixedTimeStep;
-                DeltaTime = GameConfig.FixedTimeStep;
+        // Render
+        SpriteRenderer.BeginFrame();
 
-                // Always tick all simulations first (physics, AI, combat)
-                _debugTimer.TimeAndAccumulate("Simulation Update", () =>
-                    Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime)));
+        _debugTimer.Time("State Render", () => _currentState?.Render(this));
 
-                // Then let the current state do per-tick post-processing (camera, effects)
-                _debugTimer.TimeAndAccumulate("State Update", () => _currentState?.Update(this));
+        if (_debugOverlayVisible)
+        {
+            _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
+        }
 
-                accumulator -= GameConfig.FixedTimeStep;
-                steps++;
-            }
+        // Screenshot toast
+        if (_screenshotToastTimer > 0f && _screenshotToastMessage != null)
+        {
+            _screenshotToastTimer -= DeltaTime;
+            float alpha = _screenshotToastTimer < 1f ? _screenshotToastTimer : 1f;
+            byte a = (byte)(alpha * 220);
+            float scale = 1.5f;
+            float textW = SpriteRenderer.MeasureText(_screenshotToastMessage, scale);
+            float padding = 8f;
+            float tw = textW + padding * 2f;
+            float th = 20f * scale + padding * 2f;
+            float tx = GameConfig.WindowWidth - tw - 10f;
+            float ty = GameConfig.WindowHeight - th - 10f;
+            SpriteRenderer.DrawRectScreen(tx, ty, tw, th, new Engine.Core.Color4(0, 0, 0, a));
+            SpriteRenderer.DrawTextScreen(tx + padding, ty + padding, _screenshotToastMessage, new Engine.Core.Color4(255, 255, 255, a), scale);
+        }
 
-            // Clear edge-detection input after UpdateInput/Update have consumed it.
-            Input.EndFrame();
+        SpriteRenderer.EndFrame();
 
-            // Audio — keep playback buffer topped up
-            Audio.Update((float)elapsed);
-
-            // Render
-            SpriteRenderer.BeginFrame();
-
-            _debugTimer.Time("State Render", () => _currentState?.Render(this));
-
-            if (_debugOverlayVisible)
-            {
-                _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
-            }
-
-            // Screenshot toast
-            if (_screenshotToastTimer > 0f && _screenshotToastMessage != null)
-            {
-                _screenshotToastTimer -= DeltaTime;
-                float alpha = _screenshotToastTimer < 1f ? _screenshotToastTimer : 1f;
-                byte a = (byte)(alpha * 220);
-                float scale = 1.5f;
-                float textW = SpriteRenderer.MeasureText(_screenshotToastMessage, scale);
-                float padding = 8f;
-                float tw = textW + padding * 2f;
-                float th = 20f * scale + padding * 2f;
-                float tx = GameConfig.WindowWidth - tw - 10f;
-                float ty = GameConfig.WindowHeight - th - 10f;
-                SpriteRenderer.DrawRectScreen(tx, ty, tw, th, new Engine.Core.Color4(0, 0, 0, a));
-                SpriteRenderer.DrawTextScreen(tx + padding, ty + padding, _screenshotToastMessage, new Engine.Core.Color4(255, 255, 255, a), scale);
-            }
-
-            SpriteRenderer.EndFrame();
-
-            _fpsTitleAccumTime += elapsed;
-            _fpsTitleFrameCount++;
-            if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
-            {
-                double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
-                SpriteRenderer.SetTitle($"{Platform.WindowTitle} - AVG FPS: {avgFps:F1}");
-                _fpsTitleAccumTime = 0;
-                _fpsTitleFrameCount = 0;
-            }
+        _fpsTitleAccumTime += elapsed;
+        _fpsTitleFrameCount++;
+        if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
+        {
+            double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
+            SpriteRenderer.SetTitle($"{Platform.WindowTitle} - AVG FPS: {avgFps:F1}");
+            _fpsTitleAccumTime = 0;
+            _fpsTitleFrameCount = 0;
         }
     }
 

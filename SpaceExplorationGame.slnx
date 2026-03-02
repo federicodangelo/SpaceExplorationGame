@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="Engine/Engine.csproj" />
   <Project Path="Engine.Sdl/Engine.Sdl.csproj" />
+  <Project Path="Engine.Web/Engine.Web.csproj" />
   <Project Path="Game/Game.csproj" />
   <Project Path="Game.Sdl/Game.Sdl.csproj" />
+  <Project Path="Game.Web/Game.Web.csproj" />
 </Solution>

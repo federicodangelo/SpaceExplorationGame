@@ -29,7 +29,7 @@ public sealed class DebugOverlay
     private static readonly Color4 MemColor = new(255, 180, 120, 255);
 
     // ── Memory tracking ─────────────────────────────────────────────
-    private readonly Process _process = Process.GetCurrentProcess();
+    private readonly Process? _process = OperatingSystem.IsBrowser() ? null : Process.GetCurrentProcess();
     private long _prevAllocatedBytes;
     private long _allocatedBytesPerFrame;
 
@@ -53,12 +53,15 @@ public sealed class DebugOverlay
 
         // Memory / GC info
         UpdateMemoryStats();
-        _process.Refresh();
         long managedBytes = GC.GetTotalMemory(false);
-        long workingSet = _process.WorkingSet64;
         lines.Add(("-- Memory --", HeaderColor, 0));
         lines.Add(($"Managed Heap : {FormatBytes(managedBytes)}", MemColor, 1));
-        lines.Add(($"Working Set  : {FormatBytes(workingSet)}", MemColor, 1));
+        if (_process is not null)
+        {
+            _process.Refresh();
+            long workingSet = _process.WorkingSet64;
+            lines.Add(($"Working Set  : {FormatBytes(workingSet)}", MemColor, 1));
+        }
         lines.Add(($"Alloc/Frame  : {FormatBytes(_allocatedBytesPerFrame)}", MemColor, 1));
         var gcParts = new System.Text.StringBuilder("GC Collections:");
         for (int g = 0; g <= GC.MaxGeneration; g++)
