@@ -10,7 +10,8 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  PROJECT_PATH: SpaceExplorationGame/SpaceExplorationGame.csproj
+  PROJECT_PATH: SpaceExplorationGame.Game.Sdl/SpaceExplorationGame.Game.Sdl.csproj
+  SOLUTION_PATH: SpaceExplorationGame.slnx
 
 jobs:
   format:
@@ -28,11 +29,11 @@ jobs:
           dotnet-quality: preview
 
       - name: Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_PATH }}
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
 
       - name: Verify formatting
         run: >
-          dotnet format ${{ env.PROJECT_PATH }} whitespace
+          dotnet format ${{ env.SOLUTION_PATH }} whitespace
           --verify-no-changes
 
   build:
