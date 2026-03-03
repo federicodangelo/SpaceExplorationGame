@@ -20,10 +20,10 @@ public sealed class MenuOptionsPersistence
         _settings = settings;
     }
 
-    public (int dangerIndex, int locationIndex, int subLocationIndex) GetMainMenuSelections()
+    public (int dangerIndex, int locationIndex, int subLocationIndex) GetMainMenuSelections(int defaultDangerIndex = 1)
     {
         return (
-            LoadInt(KeyDangerIndex),
+            LoadInt(KeyDangerIndex, defaultValue: defaultDangerIndex),
             LoadInt(KeyLocationIndex),
             LoadInt(KeySubLocationIndex));
     }
@@ -50,10 +50,10 @@ public sealed class MenuOptionsPersistence
         SaveInt(KeyDebugSelectedIndex, selectedIndex);
     }
 
-    private int LoadInt(string key)
+    private int LoadInt(string key, int defaultValue = 0)
     {
         var value = _settings.Load(key);
-        return value != null && int.TryParse(value, out int result) ? result : 0;
+        return value != null && int.TryParse(value, out int result) ? result : defaultValue;
     }
 
     private void SaveInt(string key, int value)
