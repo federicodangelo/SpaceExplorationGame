@@ -97,16 +97,16 @@ public class PlanetLandingOverlay : MapOverlayBase
         renderer.DrawTextScreen(renderer.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f, titleBgW - 20f);
 
         // Landing prompt (bottom of screen)
-        if (_panel.HasCursor)
+        if (_panel.HasSelection)
         {
-            bool canLand = _panel.CanLandAtCursor;
+            bool canLand = _panel.CanLandAtSelection;
             string confirmText = game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper();
             bool usingGamepad = game.Input.ActiveInputMethod == InputMethod.Gamepad;
             string prompt = canLand
                 ? usingGamepad
                     ? $"[{confirmText}] CONFIRM LANDING"
                     : $"[DBLCLICK/{confirmText}/{game.Input.GetMouseButtonHelpText(MouseButton.Left).ToUpper()}] CONFIRM LANDING"
-                : "CANNOT LAND ON " + _panel.CursorTerrainName;
+                : "CANNOT LAND ON " + _panel.SelectionTerrainName;
             byte pr = canLand ? (byte)100 : (byte)255;
             byte pg = canLand ? (byte)255 : (byte)80;
             byte pb = canLand ? (byte)100 : (byte)80;

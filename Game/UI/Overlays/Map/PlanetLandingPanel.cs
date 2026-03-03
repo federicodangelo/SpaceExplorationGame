@@ -25,9 +25,13 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     private const int SelectionBorderMarginTiles = 2;
     private const float InvalidSelectionHintDuration = 2.2f;
 
-    // Landing cursor
-    private TilePos _cursorTile;
-    private bool _hasCursor;
+    // Selected landing position (replaces the old cursor)
+    private TilePos _selectedTile;
+    private bool _hasSelection;
+
+    // Hovered tile (under mouse, or under screen-centre when using gamepad)
+    private TilePos _hoveredTile;
+    private bool _hasHoveredTile;
 
     // Double-click tracking
     private float _lastClickTime;
@@ -54,26 +58,26 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     // -- Public state for the overlay's HUD --
 
 
-    /// <summary>Whether a landing cursor has been placed.</summary>
-    public bool HasCursor => _hasCursor;
+    /// <summary>Whether a landing position has been selected.</summary>
+    public bool HasSelection => _hasSelection;
 
-    /// <summary>Whether the cursor is on terrain that allows landing.</summary>
-    public bool CanLandAtCursor
+    /// <summary>Whether the selected position is on terrain that allows landing.</summary>
+    public bool CanLandAtSelection
     {
         get
         {
-            if (!_hasCursor || _surfaceData == null) return false;
-            return SurfaceTerrainRules.IsTraversable(_surfaceData.Tiles[_cursorTile.X, _cursorTile.Y]);
+            if (!_hasSelection || _surfaceData == null) return false;
+            return SurfaceTerrainRules.IsTraversable(_surfaceData.Tiles[_selectedTile.X, _selectedTile.Y]);
         }
     }
 
-    /// <summary>Terrain type at cursor as uppercase string.</summary>
-    public string CursorTerrainName
+    /// <summary>Terrain type at selected position as uppercase string.</summary>
+    public string SelectionTerrainName
     {
         get
         {
-            if (!_hasCursor || _surfaceData == null) return "";
-            return _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y].ToString().ToUpper();
+            if (!_hasSelection || _surfaceData == null) return "";
+            return _surfaceData.Tiles[_selectedTile.X, _selectedTile.Y].ToString().ToUpper();
         }
     }
 
@@ -94,6 +98,8 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _selectionPulse = 0f;
         _lastClickTime = 0f;
         _lastClickTile = new TilePos(-1, -1);
+        _hasSelection = false;
+        _hasHoveredTile = false;
         _invalidSelectionHint = null;
         _invalidSelectionHintTimer = 0f;
 
@@ -102,10 +108,6 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
         // Create terrain overview texture
         CreateTerrainTexture(game);
-
-        // Default cursor at center
-        _cursorTile = new TilePos(_surfaceData.Width / 2, _surfaceData.Height / 2);
-        _hasCursor = true;
     }
 
     // -----------------------------------------------------------------
@@ -116,6 +118,9 @@ public class PlanetLandingPanel : PlanetMapPanelBase
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
+
         if (_invalidSelectionHintTimer > 0f)
         {
             _invalidSelectionHintTimer -= game.DeltaTime;
@@ -127,48 +132,49 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         }
 
         HandleZoomAndPan(input, currentMouse);
+        HandleGamepadTriggerZoom(input, game.DeltaTime);
         ClampCameraPosition();
 
-        // Click to select / double-click to land
+        // Compute hovered tile from selection point (mouse or screen centre for gamepad)
+        _hasHoveredTile = false;
+        if (usingGamepad || IsMouseInMap(currentMouse))
+        {
+            var worldPos = Camera.ScreenToWorld(selectionPoint);
+            int tx = (int)worldPos.X;
+            int ty = (int)worldPos.Y;
+            if (tx >= 0 && tx < _surfaceData.Width && ty >= 0 && ty < _surfaceData.Height)
+            {
+                if (_surfaceData.Tiles[tx, ty] == TerrainType.Settlement)
+                    (tx, ty) = GetTileBelowSettlement(tx, ty);
+                _hoveredTile = new TilePos(tx, ty);
+                _hasHoveredTile = true;
+            }
+        }
+
+        // Mouse: click to select, double-click to land
         if (input.IsMouseReleased(MouseButton.Left) && !IsPanning)
         {
-            if (IsMouseInMap(currentMouse))
+            if (IsMouseInMap(currentMouse) && _hasHoveredTile)
             {
-                var worldPos = Camera.ScreenToWorld(currentMouse);
-                int tileX = (int)worldPos.X;
-                int tileY = (int)worldPos.Y;
-
-                if (tileX >= 0 && tileX < _surfaceData.Width &&
-                    tileY >= 0 && tileY < _surfaceData.Height)
+                if (!IsTileSelectableWithMargin(_hoveredTile.X, _hoveredTile.Y, SelectionBorderMarginTiles, out var failureReason))
                 {
-                    // Clicking a settlement tile redirects cursor to the tile below it
-                    if (_surfaceData.Tiles[tileX, tileY] == TerrainType.Settlement)
-                    {
-                        (tileX, tileY) = GetTileBelowSettlement(tileX, tileY);
-                    }
+                    ShowInvalidSelectionHint(failureReason ?? "INVALID TARGET");
+                    IsPanning = false;
+                    return true;
+                }
 
-                    if (!IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out var failureReason))
-                    {
-                        ShowInvalidSelectionHint(failureReason ?? "INVALID TARGET");
-                        IsPanning = false;
-                        return true;
-                    }
-
-                    var tilePos = new TilePos(tileX, tileY);
-                    float now = (float)game.GlobalTime;
-
-                    if (tilePos == _lastClickTile && (now - _lastClickTime) < DoubleClickTime && _hasCursor)
-                    {
-                        TryLand(game);
-                        _lastClickTile = new TilePos(-1, -1);
-                    }
-                    else
-                    {
-                        _cursorTile = tilePos;
-                        _hasCursor = true;
-                        _lastClickTime = now;
-                        _lastClickTile = tilePos;
-                    }
+                float now = (float)game.GlobalTime;
+                if (_hoveredTile == _lastClickTile && (now - _lastClickTime) < DoubleClickTime && _hasSelection)
+                {
+                    TryLand(game);
+                    _lastClickTile = new TilePos(-1, -1);
+                }
+                else
+                {
+                    _selectedTile = _hoveredTile;
+                    _hasSelection = true;
+                    _lastClickTime = now;
+                    _lastClickTile = _hoveredTile;
                 }
             }
             IsPanning = false;
@@ -176,50 +182,29 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         else if (input.IsMouseReleased(MouseButton.Left))
             IsPanning = false;
 
-        // Arrow keys to nudge cursor
-        int nudgeX = 0, nudgeY = 0;
-        if (input.IsActionPressed(InputAction.MenuLeft)) nudgeX = -5;
-        if (input.IsActionPressed(InputAction.MenuRight)) nudgeX = 5;
-        if (input.IsActionPressed(InputAction.MenuUp)) nudgeY = -5;
-        if (input.IsActionPressed(InputAction.MenuDown)) nudgeY = 5;
-        if (nudgeX != 0 || nudgeY != 0)
+        // Gamepad: confirm selects hovered tile; confirm on already-selected tile = land
+        if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm))
         {
-            var candidate = new TilePos(
-                Math.Clamp(_cursorTile.X + nudgeX, 0, _surfaceData.Width - 1),
-                Math.Clamp(_cursorTile.Y + nudgeY, 0, _surfaceData.Height - 1));
-            if (IsTileSelectableWithMargin(candidate.X, candidate.Y, SelectionBorderMarginTiles, out var failureReason))
+            if (_hasHoveredTile)
             {
-                _cursorTile = candidate;
-                _hasCursor = true;
-            }
-            else if (failureReason != null)
-            {
-                ShowInvalidSelectionHint(failureReason);
+                if (!IsTileSelectableWithMargin(_hoveredTile.X, _hoveredTile.Y, SelectionBorderMarginTiles, out var failureReason))
+                    ShowInvalidSelectionHint(failureReason ?? "INVALID TARGET");
+                else if (_hasSelection && _hoveredTile == _selectedTile)
+                    TryLand(game);
+                else
+                {
+                    _selectedTile = _hoveredTile;
+                    _hasSelection = true;
+                }
             }
         }
 
-        // Confirm landing
-        if (_hasCursor && (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact)))
+        // Keyboard / non-gamepad confirm: land at selected position
+        if (!usingGamepad && _hasSelection &&
+            (input.IsActionPressed(InputAction.MenuConfirm) || input.IsActionPressed(InputAction.Interact)))
             TryLand(game);
 
         return true;
-    }
-
-    /// <summary>WASD for camera movement, arrow keys reserved for cursor nudge.</summary>
-    public override void Update(Game game)
-    {
-        float dt = game.DeltaTime;
-
-        _selectionPulse += dt * 3f;
-
-        var input = game.Input;
-        float camSpeed = 500f / Camera.Zoom;
-        if (input.IsActionDown(InputAction.MoveUp)) Camera.Position -= new Vector2(0, camSpeed * dt);
-        if (input.IsActionDown(InputAction.MoveDown)) Camera.Position += new Vector2(0, camSpeed * dt);
-        if (input.IsActionDown(InputAction.MoveLeft)) Camera.Position -= new Vector2(camSpeed * dt, 0);
-        if (input.IsActionDown(InputAction.MoveRight)) Camera.Position += new Vector2(camSpeed * dt, 0);
-
-        ClampCameraPosition();
     }
 
     // -----------------------------------------------------------------
@@ -228,8 +213,8 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
     private void TryLand(Game game)
     {
-        if (!_hasCursor) return;
-        var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
+        if (!_hasSelection) return;
+        var terrain = _surfaceData.Tiles[_selectedTile.X, _selectedTile.Y];
         if (!SurfaceTerrainRules.IsTraversable(terrain)) return;
 
         if (_isMoon)
@@ -252,8 +237,8 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             var landing = new LandingSelectionRequest(
                 StarSystem: _starSystem,
                 Planet: _planet,
-                TileX: _cursorTile.X,
-                TileY: _cursorTile.Y,
+                TileX: _selectedTile.X,
+                TileY: _selectedTile.Y,
                 IsMoon: _isMoon,
                 MoonPlanetIndex: _moonPlanetIndex,
                 MoonIndex: _moonIndex);
@@ -261,7 +246,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         }
         else
         {
-            game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _cursorTile.X, _cursorTile.Y));
+            game.ChangeState(new States.PlanetSurfaceState(_starSystem, _planet, _selectedTile.X, _selectedTile.Y));
         }
     }
 
@@ -308,15 +293,19 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 new Color4(255, 220, 100, 180));
         }
 
-        // Landing cursor
-        if (_hasCursor)
+        // Selected landing position
+        if (_hasSelection)
         {
-            float cx = _cursorTile.X + 0.5f;
-            float cy = _cursorTile.Y + 0.5f;
-            var cursorScreen = Camera.WorldToScreen(new Vector2(cx, cy));
-            RenderSelectionReticle(renderer, cursorScreen, _selectionPulse,
+            float cx = _selectedTile.X + 0.5f;
+            float cy = _selectedTile.Y + 0.5f;
+            var selScreen = Camera.WorldToScreen(new Vector2(cx, cy));
+            RenderSelectionReticle(renderer, selScreen, _selectionPulse,
                 new Color3(100, 255, 100), new Color3(200, 255, 200));
         }
+
+        // Gamepad: crosshair at screen centre to show what will be selected
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+            RenderCenterSelectionReticle(renderer, new Color4(255, 230, 120, 220));
     }
 
     // -----------------------------------------------------------------
@@ -334,7 +323,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         nextY = RenderSettlementList(renderer, px, nextY);
 
         // -- Landing site info --
-        if (_hasCursor)
+        if (_hasSelection)
         {
             renderer.DrawRectScreen(px, nextY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
             nextY += 10;
@@ -342,7 +331,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             renderer.DrawTextScreen(px, nextY, "LANDING SITE", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
             nextY += 18;
 
-            var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
+            var terrain = _surfaceData.Tiles[_selectedTile.X, _selectedTile.Y];
             string terrainName = terrain.ToString().ToUpper();
             bool canLand = SurfaceTerrainRules.IsTraversable(terrain);
 
@@ -352,7 +341,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             renderer.DrawTextScreen(px, nextY, $"TERRAIN: {terrainName}", new Color3(tr, tg, tb), 1.5f, InfoPanelW - 24);
             nextY += 18;
 
-            renderer.DrawTextScreen(px, nextY, $"POS: ({_cursorTile.X}, {_cursorTile.Y})", new Color3(150, 150, 150), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, nextY, $"POS: ({_selectedTile.X}, {_selectedTile.Y})", new Color3(150, 150, 150), 1.3f, InfoPanelW - 24);
             nextY += 18;
 
             if (terrain == TerrainType.Settlement)
@@ -372,18 +361,17 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         }
 
         // Controls
-        float ctrlStartY = IpY + IpH - 110;
-        string nudgeText =
-            $"{game.Input.GetActionHelpText(InputAction.MenuUp)}/{game.Input.GetActionHelpText(InputAction.MenuDown)}/{game.Input.GetActionHelpText(InputAction.MenuLeft)}/{game.Input.GetActionHelpText(InputAction.MenuRight)}: NUDGE CURSOR";
+        float ctrlStartY = IpY + IpH - 88;
         renderer.DrawRectScreen(px, ctrlStartY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
-            renderer.DrawTextScreen(px, ctrlStartY + 8, "MOUSE CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 24, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 40, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 72,
-                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
+            renderer.DrawTextScreen(px, ctrlStartY + 8, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 40,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: SELECT CENTRE TILE",
+                new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 56,
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()} AGAIN: LAND",
                 new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
         }
         else
@@ -395,12 +383,11 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
-            renderer.DrawTextScreen(px, ctrlStartY + 72,
+            renderer.DrawTextScreen(px, ctrlStartY + 56,
                 $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
                 new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
         }
-        renderer.DrawTextScreen(px, ctrlStartY + 88,
+        renderer.DrawTextScreen(px, ctrlStartY + 72,
             $"{game.Input.GetActionHelpText(InputAction.MenuBack)}: CANCEL",
             new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
     }

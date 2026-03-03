@@ -82,6 +82,9 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     {
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
+        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
+
         if (_invalidSelectionHintTimer > 0f)
         {
             _invalidSelectionHintTimer -= game.DeltaTime;
@@ -93,11 +96,12 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
 
         HandleZoomAndPan(input, currentMouse);
+        HandleGamepadTriggerZoom(input, game.DeltaTime);
         ClampCameraPosition();
 
         // Hover detection
         _hoveredObject = new(SurfaceMapObjectType.None);
-        if (IsMouseInMap(currentMouse))
+        if (usingGamepad || IsMouseInMap(currentMouse))
         {
             float bestDist = float.MaxValue;
 
@@ -110,7 +114,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 var screenPos = Camera.WorldToScreen(new Vector2(cx, cy));
                 float hitR = MathF.Max(
                     Math.Max(s.TileRect.Width, s.TileRect.Height) * Camera.Zoom / 2f, 12f);
-                float dist = (currentMouse - screenPos).LengthSquared();
+                float dist = (selectionPoint - screenPos).LengthSquared();
                 if (dist < hitR * hitR && dist < bestDist)
                 {
                     bestDist = dist;
@@ -121,45 +125,40 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             // Check ship
             var shipScreen = Camera.WorldToScreen(_shipTilePos);
             float shipHitR = MathF.Max(8f * Camera.Zoom, 12f);
-            float shipDist = (currentMouse - shipScreen).LengthSquared();
+            float shipDist = (selectionPoint - shipScreen).LengthSquared();
             if (shipDist < shipHitR * shipHitR && shipDist < bestDist)
             {
                 _hoveredObject = new(SurfaceMapObjectType.Ship);
             }
         }
 
+        // Helper: resolve what to select at the current selection point
+        SurfaceMapSelection ResolveClickTarget()
+        {
+            if (_hoveredObject.Type != SurfaceMapObjectType.None)
+                return _hoveredObject;
+
+            var worldPos = Camera.ScreenToWorld(selectionPoint);
+            int tileX = (int)worldPos.X;
+            int tileY = (int)worldPos.Y;
+            bool insideMap = tileX >= 0 && tileX < _surfaceData.Width && tileY >= 0 && tileY < _surfaceData.Height;
+            string? failureReason = null;
+            bool canSelectLocation = insideMap
+                && IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out failureReason);
+            if (canSelectLocation)
+                return new(SurfaceMapObjectType.Location, TileX: tileX, TileY: tileY);
+
+            if (insideMap && failureReason != null)
+                ShowInvalidSelectionHint(failureReason);
+            return new(SurfaceMapObjectType.None);
+        }
+
         // Click to select / click same selection again to set target and close
         if (input.IsMouseReleased(MouseButton.Left) && !IsPanning)
         {
-            // Determine what was clicked: settlement/ship take priority, otherwise any terrain location
-            SurfaceMapSelection clickTarget;
-            if (_hoveredObject.Type != SurfaceMapObjectType.None)
-            {
-                clickTarget = _hoveredObject;
-            }
-            else if (IsMouseInMap(currentMouse))
-            {
-                // Click on empty terrain - select that location
-                var worldPos = Camera.ScreenToWorld(currentMouse);
-                int tileX = (int)worldPos.X;
-                int tileY = (int)worldPos.Y;
-                bool insideMap = tileX >= 0 && tileX < _surfaceData.Width && tileY >= 0 && tileY < _surfaceData.Height;
-                string? failureReason = null;
-                bool canSelectLocation = insideMap
-                    && IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out failureReason);
-                if (canSelectLocation)
-                    clickTarget = new(SurfaceMapObjectType.Location, TileX: tileX, TileY: tileY);
-                else
-                {
-                    if (insideMap && failureReason != null)
-                        ShowInvalidSelectionHint(failureReason);
-                    clickTarget = new(SurfaceMapObjectType.None);
-                }
-            }
-            else
-            {
-                clickTarget = new(SurfaceMapObjectType.None);
-            }
+            SurfaceMapSelection clickTarget = IsMouseInMap(currentMouse)
+                ? ResolveClickTarget()
+                : new(SurfaceMapObjectType.None);
 
             if (clickTarget.Type != SurfaceMapObjectType.None)
             {
@@ -177,6 +176,22 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
         else if (input.IsMouseReleased(MouseButton.Left))
             IsPanning = false;
+
+        // Gamepad: confirm selects hovered object; confirm same selection sets nav target + close
+        if (usingGamepad && input.IsActionPressed(InputAction.MenuConfirm))
+        {
+            var confirmTarget = ResolveClickTarget();
+            if (confirmTarget.Type != SurfaceMapObjectType.None)
+            {
+                if (confirmTarget == _selectedObject)
+                {
+                    SetNavTarget(game.Player);
+                    OnRequestClose?.Invoke(game);
+                    return true;
+                }
+                _selectedObject = confirmTarget;
+            }
+        }
 
         return true;
     }
@@ -338,6 +353,10 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 DrawTargetBrackets(renderer, camera, new Vector2(lx, ly), 4f / camera.Zoom + 2, game);
         }
 
+        // Gamepad: crosshair at screen centre to show what will be selected
+        if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
+            RenderCenterSelectionReticle(renderer, new Color4(255, 230, 120, 220));
+
         // Active nav target marker (if it is a location not currently selected)
         if (game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
         {
@@ -449,7 +468,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             renderer.DrawTextScreen(px, ctrlY + 8, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 40,
-                "MOUSE CLICK: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
+                $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT CENTRE  /  SAME: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
@@ -529,7 +548,6 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             : $"[{confirmText}] SAME SELECTION: SET AS TARGET + CLOSE";
         var btnColor = new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
-        float btnW = renderer.MeasureText(btnText, 1.5f);
-        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
+        renderer.DrawTextScreen(px, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
     }
 }
