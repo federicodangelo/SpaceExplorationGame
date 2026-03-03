@@ -52,6 +52,7 @@ public class PlanetSurfaceState : GameState
     // ── Visual effects ──────────────────────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
+    private readonly TireMarkRenderer _tireMarkRenderer = new();
 
     // ── Player state (rendering/input only) ─────────────────────────
     private bool _inVehicle;
@@ -189,6 +190,7 @@ public class PlanetSurfaceState : GameState
             game.Player.Navigation.Clear();
 
         _surfaceMapOverlay.Cleanup();
+        _tireMarkRenderer.Clear();
 
         // Remove player from simulation
         if (_sim != null && _simPlayer != null)
@@ -305,6 +307,21 @@ public class PlanetSurfaceState : GameState
 
         // Visual effects
         t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
+
+        // Tire marks
+        if (_inVehicle && _sim.LocalVehicleDeployed &&
+            !_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        {
+            var vehicleTf = _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
+            float speed = _sim.EcsWorld.Has<Velocity>(_simPlayer.Entity)
+                ? _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity).Linear.Length()
+                : 0f;
+            _tireMarkRenderer.Update(dt, vehicleTf.Position, vehicleTf.Rotation, true, speed);
+        }
+        else
+        {
+            _tireMarkRenderer.Update(dt, Vector2.Zero, 0f, false, 0f);
+        }
 
         // Combat music
         if (_sim.CombatMusicTimer > 0)
@@ -593,6 +610,9 @@ public class PlanetSurfaceState : GameState
         var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
         game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
             game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+
+        // Tire marks (drawn above terrain, below vehicle)
+        _tireMarkRenderer.Render(renderer, camera);
 
         // Vehicle
         if (_sim.LocalVehicleDeployed)

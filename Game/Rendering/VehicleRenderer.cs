@@ -15,6 +15,14 @@ public class VehicleRenderer
 {
     private const float VehicleSize = 40f;
 
+    public const float VehicleScale = VehicleSize / 25f;
+
+    // ── Wheel local-space offsets (unscaled unit coords, +Y = rear) ──────────
+    public static readonly Vector2 WheelLocalFrontLeft = new(-8f, -7f);
+    public static readonly Vector2 WheelLocalFrontRight = new(8f, -7f);
+    public static readonly Vector2 WheelLocalRearLeft = new(-8f, 7f);
+    public static readonly Vector2 WheelLocalRearRight = new(8f, 7f);
+
     public VehicleRenderer()
     {
     }
@@ -32,7 +40,7 @@ public class VehicleRenderer
     private static void DrawVehiclePrimitives(ISpriteRenderer renderer, Camera camera,
         Vector2 pos, float rot, float steerAngle = 0f)
     {
-        float s = VehicleSize / 25f;   // = 2.0 world units per unit coord
+        float s = VehicleScale;
 
         // ── Palette ──────────────────────────────────────────────────────────
         var shadowCol = new Color4(0, 0, 0, 50);
@@ -185,10 +193,10 @@ public class VehicleRenderer
         Line(renderer, camera, pos, rot, s, (9.5f, 4.3f), (9.5f, 9.7f), fenderEdge);
 
         // ── Wheels (drawn over arches) ────────────────────────────────────
-        DrawWheel(renderer, camera, pos, rot, -8f, -7f, s, steerAngle);   // front-left  (steered)
-        DrawWheel(renderer, camera, pos, rot, 8f, -7f, s, steerAngle);   // front-right (steered)
-        DrawWheel(renderer, camera, pos, rot, -8f, 7f, s);               // rear-left
-        DrawWheel(renderer, camera, pos, rot, 8f, 7f, s);               // rear-right
+        DrawWheel(renderer, camera, pos, rot, WheelLocalFrontLeft.X, WheelLocalFrontLeft.Y, s, steerAngle);   // front-left  (steered)
+        DrawWheel(renderer, camera, pos, rot, WheelLocalFrontRight.X, WheelLocalFrontRight.Y, s, steerAngle);   // front-right (steered)
+        DrawWheel(renderer, camera, pos, rot, WheelLocalRearLeft.X, WheelLocalRearLeft.Y, s);               // rear-left
+        DrawWheel(renderer, camera, pos, rot, WheelLocalRearRight.X, WheelLocalRearRight.Y, s);               // rear-right
 
         // ── Headlights ────────────────────────────────────────────────────
         Circ(renderer, camera, pos, rot, s, (-5.1f, -11.8f), 2.3f * s, headGlow);
