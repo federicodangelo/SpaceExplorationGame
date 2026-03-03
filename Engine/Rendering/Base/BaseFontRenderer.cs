@@ -146,6 +146,38 @@ public abstract class BaseFontRenderer : IFontRenderer
 
     public abstract void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f);
 
+    /// <summary>
+    /// Computes the horizontal scroll offset (pixels) for text that overflows <paramref name="maxWidth"/>,
+    /// using a ping-pong animation driven by <see cref="DateTime.Now"/>.
+    /// Returns 0 if the text fits or <paramref name="maxWidth"/> is 0.
+    /// </summary>
+    protected static float ComputeScrollOffset(float totalTextWidth, float maxWidth)
+    {
+        if (maxWidth <= 0f) return 0f;
+        float overflow = totalTextWidth - maxWidth;
+        if (overflow <= 0f) return 0f;
+
+        const float scrollSpeed = 30f; // pixels per second
+        const float pauseTime = 1.0f;  // seconds to pause at each end
+
+        double now = DateTime.Now.Ticks / (double)TimeSpan.TicksPerSecond;
+        float timeToScroll = overflow / scrollSpeed;
+        float halfPeriod = pauseTime + timeToScroll;
+        float t = (float)(now % (halfPeriod * 2.0));
+
+        float offset;
+        if (t < pauseTime)
+            offset = 0f;
+        else if (t < halfPeriod)
+            offset = (t - pauseTime) * scrollSpeed;
+        else if (t < halfPeriod + pauseTime)
+            offset = overflow;
+        else
+            offset = overflow - (t - halfPeriod - pauseTime) * scrollSpeed;
+
+        return Math.Clamp(offset, 0f, overflow);
+    }
+
     /// <summary>Measure the width of text in screen pixels.</summary>
     public float MeasureText(string text, float scale = 1f) => text.Length * 6f * scale;
 

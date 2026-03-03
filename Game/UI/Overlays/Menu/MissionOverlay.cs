@@ -221,7 +221,7 @@ public class MissionOverlay : ListPanelOverlay
                     new Color3(35, 40, 65));
 
             // Type badge
-            renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 60f);
+            renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
             // Title
             float titleX = panelX + 15 + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 10;
@@ -230,7 +230,7 @@ public class MissionOverlay : ListPanelOverlay
 
             // Description
             renderer.DrawTextScreen(panelX + 25, y + 28, m.Description,
-                new Color3(140, 140, 160), 1.5f, panelW - 275f);
+                new Color3(140, 140, 160), 1.5f, panelW - 40f);
 
             // Reward and turn-in location
             renderer.DrawTextScreen(panelX + 25, y + 48,
@@ -278,10 +278,10 @@ public class MissionOverlay : ListPanelOverlay
 
             string statusTag = completed ? "[COMPLETE]" : "[IN PROGRESS]";
             var statusColor = completed ? new Color3(100, 255, 100) : new Color3(255, 200, 80);
-            renderer.DrawTextScreen(panelX + 15, y + 5, statusTag, statusColor, 1.5f, 80f);
+            renderer.DrawTextScreen(panelX + 15, y + 5, statusTag, statusColor, 1.5f);
 
             float afterStatus = panelX + 15 + renderer.MeasureText(statusTag, 1.5f) + 8;
-            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 60f);
+            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
             renderer.DrawTextScreen(panelX + 15, y + 24, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 215f);

@@ -15,6 +15,10 @@ public class WebFontRenderer : BaseFontRenderer
     {
     }
 
+    /// <summary>Draw text in screen space.
+    /// When <paramref name="maxWidth"/> is set and the text overflows, the text auto-scrolls
+    /// horizontally (ping-pong) driven by <see cref="DateTime.Now"/>. Partial glyphs at either
+    /// edge are rendered by adjusting the source atlas rect rather than hard clipping.</summary>
     public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
     {
         if (_fontAtlases.Length == 0 || text.Length == 0) return;
@@ -28,17 +32,30 @@ public class WebFontRenderer : BaseFontRenderer
         float drawW = gw * scale;
         float drawH = gh * scale;
 
-        float clipX = maxWidth > 0f ? x + maxWidth : float.MaxValue;
-
-        float cursorX = MathF.Round(x);
-        float snappedY = MathF.Round(y);
+        int snappedAdvance = (int)MathF.Round(charAdvance);
         int snappedDrawW = (int)MathF.Round(drawW);
         int snappedDrawH = (int)MathF.Round(drawH);
-        int snappedAdvance = (int)MathF.Round(charAdvance);
+        float snappedY = MathF.Round(y);
+        float startX = MathF.Round(x);
+        float clipRight = maxWidth > 0f ? startX + maxWidth : float.MaxValue;
+
+        // Scroll offset: ping-pong animation when text overflows maxWidth
+        float totalTextW = (text.Length - 1) * snappedAdvance + snappedDrawW;
+        float scrollOffset = ComputeScrollOffset(totalTextW, maxWidth);
+
+        float cursorX = startX - scrollOffset; // shift all glyphs by scroll
 
         foreach (char c in text)
         {
-            if (cursorX >= clipX) break;
+            float charLeft = MathF.Round(cursorX);
+            float charRight = charLeft + snappedDrawW;
+
+            // Outside visible window — advance and skip
+            if (charRight <= startX || charLeft >= clipRight)
+            {
+                cursorX += snappedAdvance;
+                continue;
+            }
 
             if (c == ' ')
             {
@@ -46,26 +63,31 @@ public class WebFontRenderer : BaseFontRenderer
                 continue;
             }
 
-            if (cursorX + snappedDrawW > clipX) break;
-
             if (!glyphUV.TryGetValue(c, out var uv))
             {
                 cursorX += snappedAdvance;
                 continue;
             }
 
-            float rx = MathF.Round(cursorX);
-
-            // Source rect in the atlas (pixel coordinates)
+            // Source atlas rect for this glyph (pixel coordinates)
+            float atlasGlyphW = (uv.U1 - uv.U0) * atlas.AtlasWidth;
+            float atlasGlyphH = (uv.V1 - uv.V0) * atlas.AtlasHeight;
             float sx = uv.U0 * atlas.AtlasWidth;
             float sy = uv.V0 * atlas.AtlasHeight;
-            float sw = (uv.U1 - uv.U0) * atlas.AtlasWidth;
-            float sh = (uv.V1 - uv.V0) * atlas.AtlasHeight;
 
-            // Draw the glyph sub-rect from the atlas, tinted with color
+            // Crop source and dest rects to the visible window so partial glyphs at
+            // the left/right edge render correctly without any hard clipping.
+            float visLeft = Math.Max(charLeft, startX);
+            float visRight = Math.Min(charRight, clipRight);
+            float cropLeftFrac = (visLeft - charLeft) / snappedDrawW;
+            float visWidthFrac = (visRight - visLeft) / snappedDrawW;
+            float srcX = sx + cropLeftFrac * atlasGlyphW;
+            float srcW = visWidthFrac * atlasGlyphW;
+            int dstW = (int)MathF.Round(visRight - visLeft);
+
             JsCanvas.DrawTextureSrcDstTinted((int)atlas.Texture,
-                sx, sy, sw, sh,
-                rx, snappedY, snappedDrawW, snappedDrawH,
+                srcX, sy, srcW, atlasGlyphH,
+                MathF.Round(visLeft), snappedY, dstW, snappedDrawH,
                 color.R, color.G, color.B, color.A);
 
             cursorX += snappedAdvance;

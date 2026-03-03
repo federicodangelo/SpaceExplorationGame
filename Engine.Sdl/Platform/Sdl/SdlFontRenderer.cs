@@ -24,7 +24,10 @@ public class SdlFontRenderer : BaseFontRenderer
         _renderer = renderer;
     }
 
-    /// <summary>Draw text in screen space using a pre-scaled font atlas and a single batched draw call.</summary>
+    /// <summary>Draw text in screen space using a pre-scaled font atlas and a single batched draw call.
+    /// When <paramref name="maxWidth"/> is set and the text overflows, the text auto-scrolls
+    /// horizontally (ping-pong) driven by <see cref="DateTime.Now"/>. Partial glyphs at either
+    /// edge are rendered using UV coordinate cropping rather than hard clipping.</summary>
     public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
     {
         if (_fontAtlases.Length == 0 || text.Length == 0) return;
@@ -38,36 +41,23 @@ public class SdlFontRenderer : BaseFontRenderer
         float drawW = gw * scale;
         float drawH = gh * scale;
 
-        float clipX = maxWidth > 0f ? x + maxWidth : float.MaxValue;
+        int snappedAdvance = (int)MathF.Round(charAdvance);
+        int snappedDrawW = (int)MathF.Round(drawW);
+        int snappedDrawH = (int)MathF.Round(drawH);
+        float snappedY = MathF.Round(y);
+        float startX = MathF.Round(x);
+        float clipRight = maxWidth > 0f ? startX + maxWidth : float.MaxValue;
 
-        // Count visible (non-space) characters that have glyphs and fit within maxWidth
-        int visibleCount = 0;
-        float countCursorX = MathF.Round(x);
-        int snappedAdvanceCount = (int)MathF.Round(charAdvance);
-        int snappedDrawWCount = (int)MathF.Round(drawW);
-        foreach (char c in text)
-        {
-            if (countCursorX >= clipX) break;
-            if (c == ' ')
-            {
-                countCursorX += snappedAdvanceCount;
-                continue;
-            }
-            if (countCursorX + snappedDrawWCount > clipX) break;
-            if (glyphUV.ContainsKey(c))
-                visibleCount++;
-            countCursorX += snappedAdvanceCount;
-        }
+        // Scroll offset: ping-pong animation when text overflows maxWidth
+        float totalTextW = (text.Length - 1) * snappedAdvance + snappedDrawW;
+        float scrollOffset = ComputeScrollOffset(totalTextW, maxWidth);
 
-        if (visibleCount == 0) return;
-
-        // Ensure buffers are large enough (4 verts + 6 indices per quad)
-        int requiredVerts = visibleCount * 4;
-        int requiredIndices = visibleCount * 6;
-        if (_vertexBuf.Length < requiredVerts)
-            _vertexBuf = new SDL.Vertex[requiredVerts];
-        if (_indexBuf.Length < requiredIndices)
-            _indexBuf = new int[requiredIndices];
+        // Pre-size buffers using text.Length as upper bound (partial edge glyphs each still one quad)
+        int maxQuads = text.Length;
+        if (_vertexBuf.Length < maxQuads * 4)
+            _vertexBuf = new SDL.Vertex[maxQuads * 4];
+        if (_indexBuf.Length < maxQuads * 6)
+            _indexBuf = new int[maxQuads * 6];
 
         // Vertex color (SDL.Vertex uses FColor: 0-1 floats)
         var fcolor = new SDL.FColor
@@ -78,18 +68,21 @@ public class SdlFontRenderer : BaseFontRenderer
             A = color.A / 255f
         };
 
-        // Snap starting position to integer pixels for crisp rendering
-        float cursorX = MathF.Round(x);
-        float snappedY = MathF.Round(y);
-        int snappedDrawW = (int)MathF.Round(drawW);
-        int snappedDrawH = (int)MathF.Round(drawH);
-        int snappedAdvance = (int)MathF.Round(charAdvance);
+        float cursorX = startX - scrollOffset; // shift all glyphs by scroll
         int vi = 0; // vertex write index
         int ii = 0; // index write index
 
         foreach (char c in text)
         {
-            if (cursorX >= clipX) break;
+            float charLeft = MathF.Round(cursorX);
+            float charRight = charLeft + snappedDrawW;
+
+            // Outside visible window — advance and skip (no drawing)
+            if (charRight <= startX || charLeft >= clipRight)
+            {
+                cursorX += snappedAdvance;
+                continue;
+            }
 
             if (c == ' ')
             {
@@ -97,59 +90,40 @@ public class SdlFontRenderer : BaseFontRenderer
                 continue;
             }
 
-            if (cursorX + snappedDrawW > clipX) break;
-
             if (!glyphUV.TryGetValue(c, out var uv))
             {
                 cursorX += snappedAdvance;
                 continue;
             }
 
+            // Crop screen rect to visible window; adjust UV proportionally so partial
+            // glyphs at the left/right edge show correctly without hard clipping.
+            float visLeft = Math.Max(charLeft, startX);
+            float visRight = Math.Min(charRight, clipRight);
+            float uvRange = uv.U1 - uv.U0;
+            float u0 = uv.U0 + (visLeft - charLeft) / snappedDrawW * uvRange;
+            float u1 = uv.U0 + (visRight - charLeft) / snappedDrawW * uvRange;
+
+            float rx0 = MathF.Round(visLeft);
+            float rx1 = MathF.Round(visRight);
+            float ry0 = snappedY;
+            float ry1 = snappedY + snappedDrawH;
+
             int baseVertex = vi;
-            float rx = MathF.Round(cursorX);
+            _vertexBuf[vi++] = new SDL.Vertex { Position = new SDL.FPoint { X = rx0, Y = ry0 }, Color = fcolor, TexCoord = new SDL.FPoint { X = u0, Y = uv.V0 } };
+            _vertexBuf[vi++] = new SDL.Vertex { Position = new SDL.FPoint { X = rx1, Y = ry0 }, Color = fcolor, TexCoord = new SDL.FPoint { X = u1, Y = uv.V0 } };
+            _vertexBuf[vi++] = new SDL.Vertex { Position = new SDL.FPoint { X = rx1, Y = ry1 }, Color = fcolor, TexCoord = new SDL.FPoint { X = u1, Y = uv.V1 } };
+            _vertexBuf[vi++] = new SDL.Vertex { Position = new SDL.FPoint { X = rx0, Y = ry1 }, Color = fcolor, TexCoord = new SDL.FPoint { X = u0, Y = uv.V1 } };
 
-            // Top-left
-            _vertexBuf[vi++] = new SDL.Vertex
-            {
-                Position = new SDL.FPoint { X = rx, Y = snappedY },
-                Color = fcolor,
-                TexCoord = new SDL.FPoint { X = uv.U0, Y = uv.V0 }
-            };
-            // Top-right
-            _vertexBuf[vi++] = new SDL.Vertex
-            {
-                Position = new SDL.FPoint { X = rx + snappedDrawW, Y = snappedY },
-                Color = fcolor,
-                TexCoord = new SDL.FPoint { X = uv.U1, Y = uv.V0 }
-            };
-            // Bottom-right
-            _vertexBuf[vi++] = new SDL.Vertex
-            {
-                Position = new SDL.FPoint { X = rx + snappedDrawW, Y = snappedY + snappedDrawH },
-                Color = fcolor,
-                TexCoord = new SDL.FPoint { X = uv.U1, Y = uv.V1 }
-            };
-            // Bottom-left
-            _vertexBuf[vi++] = new SDL.Vertex
-            {
-                Position = new SDL.FPoint { X = rx, Y = snappedY + snappedDrawH },
-                Color = fcolor,
-                TexCoord = new SDL.FPoint { X = uv.U0, Y = uv.V1 }
-            };
-
-            // Two triangles: 0-1-2, 0-2-3
-            _indexBuf[ii++] = baseVertex;
-            _indexBuf[ii++] = baseVertex + 1;
-            _indexBuf[ii++] = baseVertex + 2;
-            _indexBuf[ii++] = baseVertex;
-            _indexBuf[ii++] = baseVertex + 2;
-            _indexBuf[ii++] = baseVertex + 3;
+            _indexBuf[ii++] = baseVertex; _indexBuf[ii++] = baseVertex + 1; _indexBuf[ii++] = baseVertex + 2;
+            _indexBuf[ii++] = baseVertex; _indexBuf[ii++] = baseVertex + 2; _indexBuf[ii++] = baseVertex + 3;
 
             cursorX += snappedAdvance;
         }
 
         // Single draw call for the entire string
-        SDL.RenderGeometry(_renderer, atlas.Texture, _vertexBuf, vi, _indexBuf, ii);
+        if (vi > 0)
+            SDL.RenderGeometry(_renderer, atlas.Texture, _vertexBuf, vi, _indexBuf, ii);
     }
 
 }

@@ -124,16 +124,16 @@ public class MissionsListOverlay : ListPanelOverlay
                     completed ? new Color3(30, 50, 30) : new Color3(35, 40, 65));
 
             if (isTracked)
-                renderer.DrawTextScreen(panelX + 10, y + 5, ">>>", new Color3(100, 255, 200), 1.5f, 25f);
+                renderer.DrawTextScreen(panelX + 10, y + 5, ">>>", new Color3(100, 255, 200), 1.5f);
 
             float labelX = panelX + 40;
 
             string statusTag = completed ? "[COMPLETE]" : "[ACTIVE]";
             var statusColor = completed ? new Color3(100, 255, 100) : new Color3(255, 200, 80);
-            renderer.DrawTextScreen(labelX, y + 5, statusTag, statusColor, 1.5f, panelW - 55f);
+            renderer.DrawTextScreen(labelX, y + 5, statusTag, statusColor, 1.5f);
 
             float afterStatus = labelX + renderer.MeasureText(statusTag, 1.5f) + 8;
-            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 80f);
+            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
             renderer.DrawTextScreen(labelX, y + 24, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 255f);
