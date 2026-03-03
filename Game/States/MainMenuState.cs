@@ -74,7 +74,7 @@ public class MainMenuState : GameState
 
     public override void Enter(Game game)
     {
-        _menuOverlay = new MainMenuOverlay(game.MenuOptions);
+        _menuOverlay = new MainMenuOverlay(game.MenuOptions, game.Platform.CanQuit);
         _debugOverlay = new DebugMenuOverlay(game.MenuOptions);
 
         game.Player.Reset();
@@ -207,6 +207,13 @@ public class MainMenuState : GameState
             game.Audio.PlaySfx(AudioSfx.MenuSelect);
             _menuOverlay.StartRequested = false;
             LaunchGame(game, _menuOverlay.LocationType, _menuOverlay.DangerFilter);
+        }
+
+        // Handle quit
+        if (_menuOverlay.QuitRequested)
+        {
+            _menuOverlay.QuitRequested = false;
+            game.Quit();
         }
     }
 

@@ -52,6 +52,8 @@ public class Game : GameBase
 
     public bool IsRunning { get; private set; }
 
+    public void Quit() => IsRunning = false;
+
     // Window title FPS tracking
     private double _fpsTitleAccumTime;
     private int _fpsTitleFrameCount;

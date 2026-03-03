@@ -8,6 +8,7 @@ public interface IPlatform : IDisposable
     string WindowTitle { get; }
     int WindowWidth { get; }
     int WindowHeight { get; }
+    bool CanQuit { get; }
 
     ISpriteRenderer SpriteRenderer { get; }
     ITextureManager Textures { get; }

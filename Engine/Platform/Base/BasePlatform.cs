@@ -10,6 +10,7 @@ public abstract class BasePlatform : IPlatform
     public string WindowTitle { get; }
     public int WindowWidth => SpriteRenderer.WindowWidth;
     public int WindowHeight => SpriteRenderer.WindowHeight;
+    public virtual bool CanQuit => true;
 
     public ISpriteRenderer SpriteRenderer { get; protected set; } = null!;
     public ITextureManager Textures { get; protected set; } = null!;

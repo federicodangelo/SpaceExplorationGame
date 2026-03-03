@@ -18,6 +18,7 @@ public enum MenuAction
     RandomSeed,
     Debug,
     StartGame,
+    Quit,
 }
 
 /// <summary>
@@ -27,14 +28,15 @@ public enum MenuAction
 public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 {
     // Indices into the Options array for dynamic label updates
-    private const int DangerIdx = 0;
-    private const int LocationIdx = 1;
-    private const int SubLocationIdx = 2;
+    private const int LocationIdx = 0;
+    private const int SubLocationIdx = 1;
+    private const int DangerIdx = 2;
     private const int RandomizeIdx = 3;
     private const int EditSeedIdx = 4;
     private const int RandomSeedIdx = 5;
     private const int DebugIdx = 6;
     private const int StartGameIdx = 7;
+    private const int QuitIdx = 8;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
     private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
@@ -46,20 +48,27 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         [("ABOVE", StartOption.Settlement), ("INSIDE", StartOption.SettlementInside), ("ON FOOT", StartOption.SettlementOnFoot), ("ON VEHICLE", StartOption.SettlementOnVehicle)],
     ];
 
-    private static MenuOption<MenuAction>[] BuildOptions() =>
-    [
-        new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Adjust danger level filter"),
-        new(MenuAction.LocationType, $"LOCATION: {LocationLabels[0]}", "Adjust starting location"),
-        new(MenuAction.SubLocationType, $"SUB-LOCATION: {SubLocationOptions[0][0].Label}", "Adjust starting sub-location"),
-        new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
-        new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
-        new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
-        new(MenuAction.Debug, "DEBUG", "Open debug utilities"),
-        new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"),
-    ];
+    private static MenuOption<MenuAction>[] BuildOptions(bool canQuit)
+    {
+        var options = new List<MenuOption<MenuAction>>
+        {
+            new(MenuAction.LocationType, $"LOCATION: {LocationLabels[0]}", "Adjust starting location"),
+            new(MenuAction.SubLocationType, $"SUB-LOCATION: {SubLocationOptions[0][0].Label}", "Adjust starting sub-location"),
+            new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Adjust danger level filter"),
+            new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
+            new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
+            new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
+            new(MenuAction.Debug, "DEBUG", "Open debug utilities"),
+            new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"),
+        };
+        if (canQuit)
+            options.Add(new(MenuAction.Quit, "QUIT", "Exit the game"));
+        return [.. options];
+    }
 
     private readonly TextInputOverlay _seedInputOverlay = new();
     private readonly MenuOptionsPersistence _menuOptions;
+    private readonly bool _canQuit;
 
     // Current cycling state
     private int _dangerIndex;
@@ -82,6 +91,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     /// <summary>Fired when the debug overlay should be opened.</summary>
     public bool DebugRequested { get; set; }
+
+    /// <summary>Fired when the player wants to quit the game.</summary>
+    public bool QuitRequested { get; set; }
 
     /// <summary>Current danger filter: 0=ANY, 1-5=specific level.</summary>
     public int DangerFilter => _dangerIndex;
@@ -127,10 +139,11 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     // ── Constructor ──
 
-    public MainMenuOverlay(MenuOptionsPersistence menuOptions)
+    public MainMenuOverlay(MenuOptionsPersistence menuOptions, bool canQuit = false)
     {
         _menuOptions = menuOptions;
-        Menu = new MenuWidget<MenuAction>(BuildOptions())
+        _canQuit = canQuit;
+        Menu = new MenuWidget<MenuAction>(BuildOptions(canQuit))
         {
             CenterAlign = true,
             ItemHeight = 50f,
@@ -161,6 +174,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         RandomizeSeed = false;
         RandomizeLocation = false;
         DebugRequested = false;
+        QuitRequested = false;
         FiltersChanged = false;
         LocationPreview = null;
         StartingShipOverrideText = null;
@@ -201,6 +215,9 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
                 break;
             case MenuAction.StartGame:
                 StartRequested = true;
+                break;
+            case MenuAction.Quit:
+                QuitRequested = true;
                 break;
         }
     }
@@ -314,7 +331,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         renderer.DrawLineScreen(panelX + 15, sep1Y, panelX + panelW - 15, sep1Y, new Color3(60, 80, 140));
 
         // Separator before START GAME
-        float sep2Y = MenuY + (Menu.ItemCount - 1) * Menu.ItemHeight;
+        float sep2Y = MenuY + StartGameIdx * Menu.ItemHeight;
         renderer.DrawLineScreen(panelX + 15, sep2Y, panelX + panelW - 15, sep2Y, new Color3(60, 80, 140));
 
         // Compact info section below menu

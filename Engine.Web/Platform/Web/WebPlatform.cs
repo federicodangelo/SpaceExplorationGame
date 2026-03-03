@@ -8,6 +8,7 @@ namespace Engine.Platform.Web;
 /// </summary>
 public class WebPlatform : BasePlatform
 {
+    public override bool CanQuit => false;
 
     public WebPlatform(string windowTitle, int windowWidth, int windowHeight,
         IMusicProvider musicProvider, ISfxProvider sfxProvider,
