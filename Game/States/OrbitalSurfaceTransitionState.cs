@@ -293,54 +293,48 @@ public class OrbitalSurfaceTransitionState : GameState
     private Vector2 DrawTerrainLandingBlend(Game game, float planetX, float planetY, float planetRadius,
         float terrainBlend, float descentP)
     {
+        float ts = GameConfig.TileSize;
         float mapW = _surfaceData.Width;
         float mapH = _surfaceData.Height;
         float mapSize = MathF.Min(mapW, mapH);
 
-        // Camera pan in texture-space: world center -> selected landing tile.
+        // --- Camera zoom ---
+        // Start: planet disc diameter covers the terrain circle (circular texture inscribed in mapSize tiles).
+        // End:   gameplay zoom, matching the first frame of PlanetSurfaceState exactly.
+        float startZoom = (planetRadius * 2f * 0.95f) / (mapSize * ts);
+        float endZoom = GameConfig.PlanetSurfaceZoomDefault;
+        float zoom = Lerp(startZoom, endZoom, terrainBlend);
+
+        // --- Camera position (world space) ---
+        // Pan from the map centre toward the landing tile as we zoom in.
         float panP = EaseInOut01(Math.Clamp((descentP - 0.08f) / 0.92f, 0f, 1f));
-        float centerX = Lerp(mapW * 0.5f, _tileX, panP);
-        float centerY = Lerp(mapH * 0.5f, _tileY, panP);
+        Vector2 camPos = Vector2.Lerp(
+            new Vector2(mapW * 0.5f * ts, mapH * 0.5f * ts),
+            new Vector2(_tileX * ts, _tileY * ts),
+            panP);
 
-        // Uniform square src — terrain texture is already circular with alpha, no AR needed.
-        // Uniform square dst — large enough to cover the screen at full blend.
-        // endViewTiles is derived from screenSize (not ScreenW/H independently) so that at
-        // terrainBlend=1 the scale factor dstSize/srcSize gives exactly 1 tile = TileSize*zoom
-        // pixels — matching the first frame of PlanetSurfaceState exactly.
-        float screenSize = MathF.Max(ScreenW, ScreenH) * 1.42f; // diagonal covers any screen rotation
-        float endViewTiles = screenSize / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
-        float srcSize = Math.Clamp(Lerp(mapSize, endViewTiles, terrainBlend), 8f, mapSize);
+        // --- Viewport offset ---
+        // Start: the camera position (map centre) appears at (planetX, planetY).
+        // End:   it appears at screen centre (offset = 0).
+        float vpOffX = Lerp(planetX - CX, 0f, terrainBlend);
+        float vpOffY = Lerp(planetY - CY, 0f, terrainBlend);
 
-        float srcX = Math.Clamp(centerX - srcSize * 0.5f, 0f, mapW - srcSize);
-        float srcY = Math.Clamp(centerY - srcSize * 0.5f, 0f, mapH - srcSize);
+        // Configure the camera — atmosphere and settlements use it directly.
+        _terrainBlendCamera.Update((int)ScreenW, (int)ScreenH);
+        _terrainBlendCamera.Zoom = zoom;
+        _terrainBlendCamera.Position = camPos;
+        _terrainBlendCamera.ViewportOffsetX = vpOffX;
+        _terrainBlendCamera.ViewportOffsetY = vpOffY;
 
-        float dstSize = Lerp(planetRadius * 2f * 0.95f, screenSize, terrainBlend);
-        float dstCenterX = Lerp(planetX, CX, terrainBlend);
-        float dstCenterY = Lerp(planetY, CY, terrainBlend);
-
-        // Blend anchor: map center while planet disc is visible, tile when fully panned in.
-        float tileNormX = (centerX - srcX) / srcSize;
-        float tileNormY = (centerY - srcY) / srcSize;
-        float mapCenterNormX = (mapW * 0.5f - srcX) / srcSize;
-        float mapCenterNormY = (mapH * 0.5f - srcY) / srcSize;
-        float anchorNormX = Lerp(mapCenterNormX, tileNormX, panP);
-        float anchorNormY = Lerp(mapCenterNormY, tileNormY, panP);
-        float dstX = dstCenterX - anchorNormX * dstSize;
-        float dstY = dstCenterY - anchorNormY * dstSize;
-
+        // Draw the full terrain texture using camera-derived screen rect.
+        Vector2 texTopLeftScreen = _terrainBlendCamera.WorldToScreen(Vector2.Zero);
+        float dstW = mapW * ts * zoom;
+        float dstH = mapH * ts * zoom;
         byte a = (byte)Math.Clamp((int)(terrainBlend * 255), 0, 255);
         game.SpriteRenderer.DrawTextureScreen(_terrainTexture,
-            new Rect(srcX, srcY, srcSize, srcSize),
-            new Rect(dstX, dstY, dstSize, dstSize), a);
+            new Rect(0, 0, mapW, mapH),
+            new Rect(texTopLeftScreen.X, texTopLeftScreen.Y, dstW, dstH), a);
 
-        // Build a world-space camera that matches the current terrain projection so
-        // RenderAtmosphere draws its disc-boundary rings at exactly the right position/scale.
-        float ts = GameConfig.TileSize;
-        _terrainBlendCamera.Update((int)ScreenW, (int)ScreenH);
-        _terrainBlendCamera.Zoom = dstSize / (srcSize * ts);
-        _terrainBlendCamera.Position = new Vector2((srcX + srcSize * 0.5f) * ts, (srcY + srcSize * 0.5f) * ts);
-        _terrainBlendCamera.ViewportOffsetX = (dstX + dstSize * 0.5f) - ScreenW * 0.5f;
-        _terrainBlendCamera.ViewportOffsetY = (dstY + dstSize * 0.5f) - ScreenH * 0.5f;
         PlanetSurfaceRenderer.RenderAtmosphere(game.SpriteRenderer, _terrainBlendCamera,
             _surfaceData, _planet.Type, game.GlobalTime, alphaScale: terrainBlend);
 
@@ -351,38 +345,18 @@ public class OrbitalSurfaceTransitionState : GameState
             SettlementRenderer.RenderProjected(game.SpriteRenderer, _surfaceData,
                 (float worldCenterX, float worldCenterY, float worldW, float worldH) =>
                 {
-                    float tileSize = GameConfig.TileSize;
-                    float leftTile = (worldCenterX - worldW * 0.5f) / tileSize;
-                    float topTile = (worldCenterY - worldH * 0.5f) / tileSize;
-                    float rightTile = (worldCenterX + worldW * 0.5f) / tileSize;
-                    float bottomTile = (worldCenterY + worldH * 0.5f) / tileSize;
-
-                    float u0 = Math.Clamp((leftTile - srcX) / srcSize, 0f, 1f);
-                    float v0 = Math.Clamp((topTile - srcY) / srcSize, 0f, 1f);
-                    float u1 = Math.Clamp((rightTile - srcX) / srcSize, 0f, 1f);
-                    float v1 = Math.Clamp((bottomTile - srcY) / srcSize, 0f, 1f);
-
-                    float screenX = dstX + u0 * dstSize;
-                    float screenY = dstY + v0 * dstSize;
-                    float screenW = MathF.Max(1f, (u1 - u0) * dstSize);
-                    float screenH = MathF.Max(1f, (v1 - v0) * dstSize);
-                    return new Rect(screenX, screenY, screenW, screenH);
+                    Vector2 topLeft = _terrainBlendCamera.WorldToScreen(
+                        new Vector2(worldCenterX - worldW * 0.5f, worldCenterY - worldH * 0.5f));
+                    float screenW = MathF.Max(1f, worldW * zoom);
+                    float screenH = MathF.Max(1f, worldH * zoom);
+                    return new Rect(topLeft.X, topLeft.Y, screenW, screenH);
                 },
-                (Vector2 worldPos) =>
-                {
-                    float tileX = worldPos.X / GameConfig.TileSize;
-                    float tileY = worldPos.Y / GameConfig.TileSize;
-
-                    float u = Math.Clamp((tileX - srcX) / srcSize, 0f, 1f);
-                    float v = Math.Clamp((tileY - srcY) / srcSize, 0f, 1f);
-                    return new Vector2(dstX + u * dstSize, dstY + v * dstSize);
-                },
+                (Vector2 worldPos) => _terrainBlendCamera.WorldToScreen(worldPos),
                 markerAlpha);
         }
 
-        float targetU = Math.Clamp((_tileX - srcX) / srcSize, 0f, 1f);
-        float targetV = Math.Clamp((_tileY - srcY) / srcSize, 0f, 1f);
-        return new Vector2(dstX + targetU * dstSize, dstY + targetV * dstSize);
+        // Return the screen position of the landing tile for ship / touchdown ring placement.
+        return _terrainBlendCamera.WorldToScreen(new Vector2(_tileX * ts, _tileY * ts));
     }
 
     private static float Lerp(float a, float b, float t) => float.Lerp(a, b, Math.Clamp(t, 0f, 1f));
