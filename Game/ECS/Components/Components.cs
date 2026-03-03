@@ -58,15 +58,13 @@ public struct PlayerControlled;
 public struct Sprite
 {
     public int Width, Height;  // render size in world pixels
-    public Color4 Color;       // color tint (for procedural colored rects)
 
-    public static Sprite ColoredRect(int width, int height, Color4 color)
+    public static Sprite Build(int width, int height)
     {
         return new Sprite
         {
             Width = width,
             Height = height,
-            Color = color,
         };
     }
 }
@@ -95,13 +93,13 @@ public enum CelestialType
 [Component]
 public struct Orbit
 {
-    public Arch.Core.Entity Parent;    // entity being orbited
+    public Entity Parent;    // entity being orbited
     public float OrbitRadius;          // distance from parent center
     public float OrbitSpeed;           // radians per second
     public float BaseAngle;            // angle at globalTime=0 (for deterministic position)
     public float CurrentAngle;         // current computed angle in radians
 
-    public Orbit(Arch.Core.Entity parent, float radius, float speed, float startAngle)
+    public Orbit(Entity parent, float radius, float speed, float startAngle)
     {
         Parent = parent;
         OrbitRadius = radius;
@@ -115,9 +113,9 @@ public struct Orbit
 [Component]
 public struct OwnedBy
 {
-    public Arch.Core.Entity Owner;
+    public Entity Owner;
 
-    public OwnedBy(Arch.Core.Entity owner)
+    public OwnedBy(Entity owner)
     {
         Owner = owner;
     }
@@ -366,7 +364,7 @@ public struct ParticleEmitter
     public float SpawnInterval;
     public float SpawnAccumulator;
 
-    public Arch.Core.Entity CarrierEntity;
+    public Entity CarrierEntity;
     public Vector2 LocalOffset;
     public Vector2 LocalEjectDirection;
     public ThrusterActivation ActivationMask;

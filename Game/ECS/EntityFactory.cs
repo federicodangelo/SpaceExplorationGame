@@ -20,7 +20,7 @@ public static class EntityFactory
         float displayRadius = starSystem.StarRadius * 2f;
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(displayRadius * 2), (int)(displayRadius * 2), starSystem.StarColor),
+            Sprite.Build((int)(displayRadius * 2), (int)(displayRadius * 2)),
             new CelestialBody
             {
                 Type = CelestialType.Star,
@@ -37,7 +37,7 @@ public static class EntityFactory
     {
         var entity = world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(planet.Radius * 2), (int)(planet.Radius * 2), planet.Color),
+            Sprite.Build((int)(planet.Radius * 2), (int)(planet.Radius * 2)),
             new CelestialBody
             {
                 Type = CelestialType.Planet,
@@ -64,7 +64,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(moon.Radius * 2), (int)(moon.Radius * 2), moon.Color),
+            Sprite.Build((int)(moon.Radius * 2), (int)(moon.Radius * 2)),
             new CelestialBody
             {
                 Type = CelestialType.Moon,
@@ -88,7 +88,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(24, 24, new Color3(200, 200, 255)),
+            Sprite.Build(24, 24),
             new CelestialBody
             {
                 Type = CelestialType.SpaceStation,
@@ -115,7 +115,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(Vector2.Zero), // OrbitSystem will compute position
-            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), new Color3(140, 120, 100)),
+            Sprite.Build((int)(size + 4), (int)(size + 4)),
             new Orbit(starEntity, orbitRadius, orbitSpeed, baseAngle),
             new Health(hp, 0f, 0f, 0f),
             new AsteroidField
@@ -135,7 +135,7 @@ public static class EntityFactory
     {
         var ship = world.Create(
             new Transform(position),
-            Sprite.ColoredRect(spriteSize, spriteSize, new Color3(100, 255, 100)),
+            Sprite.Build(spriteSize, spriteSize),
             new Velocity(maxSpeed, rotationSpeed),
             new ShipComponent(Faction.Player, maxSpeed, rotationSpeed, acceleration, brakeMultiplier,
                 weapons),
@@ -159,7 +159,7 @@ public static class EntityFactory
     {
         var entity = world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(12, 12, new Color3(100, 255, 100)),
+            Sprite.Build(12, 12),
             new Velocity(speed) { CanMoveTo = canMoveTo },
             new PlayerControlled()
         );
@@ -178,7 +178,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(20, 16, new Color3(150, 150, 200)),
+            Sprite.Build(20, 16),
             new Label { Text = "SHIP", OffsetY = 14 }
         );
     }
@@ -188,7 +188,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(x, y),
-            Sprite.ColoredRect(16, 16, new Color3(180, 140, 80)),
+            Sprite.Build(16, 16),
             new Label { Text = "VEHICLE", OffsetY = 14 }
         );
     }
@@ -201,13 +201,10 @@ public static class EntityFactory
     {
         // Tint color based on resource type
         var resInfo = ResourceCatalog.Get(resource);
-        byte r = (byte)Math.Clamp(resInfo.Color.R * 0.6f + 50, 0, 255);
-        byte g = (byte)Math.Clamp(resInfo.Color.G * 0.6f + 40, 0, 255);
-        byte b = (byte)Math.Clamp(resInfo.Color.B * 0.6f + 30, 0, 255);
 
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect((int)(size + 4), (int)(size + 4), new Color3(r, g, b)),
+            Sprite.Build((int)(size + 4), (int)(size + 4)),
             new Health(hp, 0f, 0f, 0f),
             new AsteroidField
             {
@@ -224,11 +221,11 @@ public static class EntityFactory
     public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn)
     {
         var stats = spawn.Stats;
-        var (spriteColor, thrusterColor, aiConfig, shieldRegenRate) = GetNpcShipProfile(spawn);
+        var (thrusterColor, aiConfig, shieldRegenRate) = GetNpcShipProfile(spawn);
 
         var ship = world.Create(
             new Transform(spawn.Position, spawn.Rotation),
-            Sprite.ColoredRect(stats.SpriteSize, stats.SpriteSize, spriteColor),
+            Sprite.Build(stats.SpriteSize, stats.SpriteSize),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
             new ShipComponent(spawn.Faction, stats.MaxSpeed, stats.RotationSpeed,
                 stats.Acceleration, GameConfig.ShipBrakeMultiplier,
@@ -254,12 +251,11 @@ public static class EntityFactory
         return ship;
     }
 
-    private static (Color3 Sprite, Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen) GetNpcShipProfile(NpcShipSpawnData spawn)
+    private static (Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen) GetNpcShipProfile(NpcShipSpawnData spawn)
     {
         return spawn.Faction switch
         {
             Faction.Pirate => (
-                new Color3(255, 80, 80),
                 new Color3(255, 130, 110),
                 new EnemyAIConfig(
                     Faction: Faction.Pirate,
@@ -269,7 +265,6 @@ public static class EntityFactory
                     FleeHealthPercent: GameConfig.EnemyFleeHealthPercent),
                 GameConfig.BaseShieldRegenRate * 0.5f),
             Faction.Trader => (
-                new Color3(200, 160, 80),
                 new Color3(255, 210, 120),
                 new EnemyAIConfig(
                     Faction: Faction.Trader,
@@ -279,7 +274,6 @@ public static class EntityFactory
                     FleeHealthPercent: 0.5f),
                 GameConfig.BaseShieldRegenRate * 0.5f),
             Faction.Patrol => (
-                new Color3(80, 140, 220),
                 new Color3(130, 200, 255),
                 new EnemyAIConfig(
                     Faction: Faction.Patrol,
@@ -412,7 +406,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(14, 14, new Color3(180, 60, 60)),
+            Sprite.Build(14, 14),
             new Velocity(GameConfig.FaunaSpeed) { CanMoveTo = canMoveTo },
             new Health(GameConfig.FaunaBaseHull * hullMultiplier),
             new SurfaceAI
@@ -447,7 +441,7 @@ public static class EntityFactory
     {
         return world.Create(
             new Transform(position),
-            Sprite.ColoredRect(12, 12, new Color3(200, 100, 60)),
+            Sprite.Build(12, 12),
             new Velocity(GameConfig.BanditSpeed) { CanMoveTo = canMoveTo },
             new Health(GameConfig.BanditBaseHull * hullMultiplier),
             new SurfaceAI
