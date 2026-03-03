@@ -240,20 +240,20 @@ public class SdlInputManager : BaseInputManager
                     switch ((SDL.GamepadAxis)e.GAxis.Axis)
                     {
                         case SDL.GamepadAxis.LeftX:
-                            _leftStickX = normalized;
+                            _leftStickX = ApplyDeadZone(normalized);
                             break;
                         case SDL.GamepadAxis.LeftY:
-                            _leftStickY = normalized;
+                            _leftStickY = ApplyDeadZone(normalized);
                             break;
                         case SDL.GamepadAxis.RightX:
-                            _rightStickX = normalized;
+                            _rightStickX = ApplyDeadZone(normalized);
                             break;
                         case SDL.GamepadAxis.RightY:
-                            _rightStickY = normalized;
+                            _rightStickY = ApplyDeadZone(normalized);
                             break;
                     }
 
-                    if (Math.Abs(normalized) >= GamepadDeadZone)
+                    if (Math.Abs(normalized) > 0)
                     {
                         ActiveInputMethod = InputMethod.Gamepad;
                     }

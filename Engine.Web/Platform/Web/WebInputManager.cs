@@ -259,9 +259,6 @@ public class WebInputManager : BaseInputManager
         float.TryParse(s, System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out float v) ? v : 0;
 
-    private static float ApplyDeadZone(float value) =>
-        MathF.Abs(value) < GamepadDeadZone ? 0f : value;
-
     // ── Action queries ───────────────────────────────────────────
 
     public override bool IsActionDown(InputAction action) => IsAnyBindingDown(action, _keysDown, _mouseDown, _gpDown);

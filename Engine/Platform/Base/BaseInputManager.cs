@@ -140,4 +140,7 @@ public abstract class BaseInputManager : IInputManager
         Vector2 direction = mousePosition - screenCenter;
         return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
     }
+
+    protected static float ApplyDeadZone(float value) =>
+        MathF.Abs(value) < GamepadDeadZone ? 0f : value;
 }
