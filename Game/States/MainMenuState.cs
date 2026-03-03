@@ -262,17 +262,6 @@ public class MainMenuState : GameState
             }
 
             case StartOption.Planet:
-            {
-                var (system, planet) = _previewSystem != null && _previewPlanet != null
-                    ? new SystemPlanet(_previewSystem, _previewPlanet)
-                    : PickRandomPlanet(game, dangerFilter);
-                game.Player.CurrentStarSystemIndex = system.Index;
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = planet.Index;
-                game.ChangeState(new SolarSystemState(system));
-                break;
-            }
-
             case StartOption.PlanetSurface:
             case StartOption.PlanetSurfaceOnFoot:
             case StartOption.PlanetSurfaceOnVehicle:
@@ -281,7 +270,15 @@ public class MainMenuState : GameState
                     ? new SystemPlanet(_previewSystem, _previewPlanet)
                     : PickRandomPlanet(game, dangerFilter);
                 game.Player.CurrentStarSystemIndex = system.Index;
-                if (locationType == StartOption.PlanetSurface)
+                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
+                game.Player.ReturnPlanetIndex = planet.Index;
+
+                if (locationType == StartOption.Planet)
+                {
+                    game.ChangeState(new SolarSystemState(system));
+
+                }
+                else if (locationType == StartOption.PlanetSurface)
                 {
                     game.ChangeState(new SolarSystemState(system, autoOpenPlanet: planet));
                 }
@@ -296,29 +293,7 @@ public class MainMenuState : GameState
             }
 
             case StartOption.SpaceStation:
-            {
-                var (starSystem, spaceStation) = _previewSystem != null && _previewSpaceStation != null
-                    ? new SystemSpaceStation(_previewSystem, _previewSpaceStation)
-                    : PickRandomSpaceStation(game, dangerFilter);
-                game.Player.CurrentStarSystemIndex = starSystem.Index;
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
-                game.Player.ReturnSpaceStationIndex = spaceStation.Index;
-                game.ChangeState(new SolarSystemState(starSystem));
-                break;
-            }
-
             case StartOption.SpaceStationMenu:
-            {
-                var (starSystem, spaceStation) = _previewSystem != null && _previewSpaceStation != null
-                    ? new SystemSpaceStation(_previewSystem, _previewSpaceStation)
-                    : PickRandomSpaceStation(game, dangerFilter);
-                game.Player.CurrentStarSystemIndex = starSystem.Index;
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
-                game.Player.ReturnSpaceStationIndex = spaceStation.Index;
-                game.ChangeState(new SolarSystemState(starSystem, spaceStation));
-                break;
-            }
-
             case StartOption.SpaceStationInside:
             {
                 var (starSystem, spaceStation) = _previewSystem != null && _previewSpaceStation != null
@@ -327,43 +302,51 @@ public class MainMenuState : GameState
                 game.Player.CurrentStarSystemIndex = starSystem.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromSpaceStation;
                 game.Player.ReturnSpaceStationIndex = spaceStation.Index;
-                game.ChangeState(new InteriorState(InteriorOrigin.SpaceStation, starSystem, spaceStation: spaceStation));
+
+                if (locationType == StartOption.SpaceStation)
+                {
+                    game.ChangeState(new SolarSystemState(starSystem));
+                }
+                else if (locationType == StartOption.SpaceStationMenu)
+                {
+                    game.ChangeState(new SolarSystemState(starSystem, spaceStation));
+                }
+                else if (locationType == StartOption.SpaceStationInside)
+                {
+                    game.ChangeState(new InteriorState(InteriorOrigin.SpaceStation, starSystem, spaceStation: spaceStation));
+                }
                 break;
             }
 
             case StartOption.Settlement:
             case StartOption.SettlementOnFoot:
             case StartOption.SettlementOnVehicle:
-            {
-                var (starSystem, planet, settlement) = _previewSystem != null && _previewPlanet != null
-                    ? GetSettlementData(game, _previewSystem, _previewPlanet)
-                    : PickRandomSettlementWithData(game, dangerFilter);
-
-                int lx = settlement.TileRect.CenterX;
-                int ly = settlement.TileRect.CenterY;
-                game.Player.CurrentStarSystemIndex = starSystem.Index;
-                game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = planet.Index;
-                var startMode = locationType switch
-                {
-                    StartOption.SettlementOnFoot => PlanetSurfaceStartMode.OnFoot,
-                    StartOption.SettlementOnVehicle => PlanetSurfaceStartMode.OnVehicle,
-                    _ => PlanetSurfaceStartMode.InShip
-                };
-                game.ChangeState(new PlanetSurfaceState(starSystem, planet, lx, ly, landingDelay: 0, startMode: startMode));
-                break;
-            }
-
             case StartOption.SettlementInside:
             {
                 var (starSystem, planet, settlement) = _previewSystem != null && _previewPlanet != null
                     ? GetSettlementData(game, _previewSystem, _previewPlanet)
                     : PickRandomSettlementWithData(game, dangerFilter);
-
                 game.Player.CurrentStarSystemIndex = starSystem.Index;
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = planet.Index;
-                game.ChangeState(new InteriorState(InteriorOrigin.Settlement, starSystem, planet: planet, settlement: settlement));
+
+                if (locationType == StartOption.SettlementInside)
+                {
+                    game.ChangeState(new InteriorState(InteriorOrigin.Settlement, starSystem, planet: planet, settlement: settlement));
+                    break;
+                }
+                else
+                {
+                    var startMode = locationType switch
+                    {
+                        StartOption.SettlementOnFoot => PlanetSurfaceStartMode.OnFoot,
+                        StartOption.SettlementOnVehicle => PlanetSurfaceStartMode.OnVehicle,
+                        _ => PlanetSurfaceStartMode.InShip
+                    };
+                    int lx = settlement.TileRect.CenterX;
+                    int ly = settlement.TileRect.CenterY;
+                    game.ChangeState(new PlanetSurfaceState(starSystem, planet, lx, ly, landingDelay: 0, startMode: startMode));
+                }
                 break;
             }
 
@@ -457,20 +440,11 @@ public class MainMenuState : GameState
                 _previewSystem = PickRandomSystem(game, danger);
                 _previewPlanet = null;
                 _previewSpaceStation = null;
-                _menuOverlay.LocationPreview = $"System: {_previewSystem.Name} (Danger {_previewSystem.DangerLevel})\nCoords: ({_previewSystem.GalaxyPosition.X:F0}, {_previewSystem.GalaxyPosition.Y:F0})";
+                _menuOverlay.LocationPreview = $"System: {_previewSystem.Name} (Danger {_previewSystem.DangerLevel})";
                 break;
             }
 
             case StartOption.Planet:
-            {
-                var (system, planet) = PickRandomPlanet(game, danger);
-                _previewSystem = system;
-                _previewPlanet = planet;
-                _previewSpaceStation = null;
-                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}) [Orbit]";
-                break;
-            }
-
             case StartOption.PlanetSurface:
             case StartOption.PlanetSurfaceOnFoot:
             case StartOption.PlanetSurfaceOnVehicle:
@@ -481,9 +455,11 @@ public class MainMenuState : GameState
                 _previewSpaceStation = null;
                 string planetMode = locationType switch
                 {
+                    StartOption.Planet => " [Orbit]",
+                    StartOption.PlanetSurface => " [Landed]",
                     StartOption.PlanetSurfaceOnFoot => " [On Foot]",
                     StartOption.PlanetSurfaceOnVehicle => " [On Vehicle]",
-                    _ => " [Landed]"
+                    _ => ""
                 };
                 _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}){planetMode}";
                 break;
@@ -501,7 +477,8 @@ public class MainMenuState : GameState
                 {
                     StartOption.SpaceStation => " [Orbit]",
                     StartOption.SpaceStationMenu => " [Menu]",
-                    _ => " [Interior]"
+                    StartOption.SpaceStationInside => " [Inside]",
+                    _ => ""
                 };
                 _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nSpace Station: {station.Name}{stationMode}";
                 break;
@@ -519,9 +496,10 @@ public class MainMenuState : GameState
                 string settlementMode = locationType switch
                 {
                     StartOption.Settlement => " [Above]",
-                    StartOption.SettlementInside => " [Inside]",
                     StartOption.SettlementOnFoot => " [On Foot]",
-                    _ => " [On Vehicle]"
+                    StartOption.SettlementOnVehicle => " [On Vehicle]",
+                    StartOption.SettlementInside => " [Inside]",
+                    _ => ""
                 };
                 _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}) (Settlement){settlementMode}";
                 break;
