@@ -12,6 +12,8 @@
         <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
         <!-- Suppress CA1416: JSExport is browser-only, which is our target -->
         <NoWarn>$(NoWarn);CA1416</NoWarn>
+        <!-- Injected by CI via -p:GitHash=<sha> -->
+        <AssemblyInformationalVersion Condition="'$(GitHash)' != ''">$(GitHash)</AssemblyInformationalVersion>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Game\Game.csproj" />

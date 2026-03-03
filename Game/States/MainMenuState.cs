@@ -680,5 +680,19 @@ public class MainMenuState : GameState
 
         _menuOverlay.Render(game);
         _debugOverlay.Render(game);
+
+        // Build hash (bottom-right corner, web builds only)
+        string? buildHash = BuildInfo.ShortHash;
+        if (!string.IsNullOrEmpty(buildHash))
+        {
+            string buildText = $"build: {buildHash}";
+            float bw = renderer.MeasureText(buildText, 1f);
+            renderer.DrawTextScreen(
+                renderer.WindowWidth - bw - 8,
+                renderer.WindowHeight - 16,
+                buildText,
+                new Color3(60, 80, 110),
+                1f);
+        }
     }
 }
