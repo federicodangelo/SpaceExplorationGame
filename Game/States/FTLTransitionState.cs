@@ -405,7 +405,7 @@ public class FTLTransitionState : GameState
         float sx = CX + _shipShakeX;
         float sy = CY + _shipShakeY;
 
-        game.SpaceshipRenderer.RenderFlyingScreen(renderer, sx, sy, 0f, shipType.Id, (int)size);
+        game.SpaceshipRenderer.RenderScreen(renderer, sx, sy, 0f, shipType.Id, (int)size);
     }
 
     private void RenderEngineGlow(Game game, ISpriteRenderer renderer)

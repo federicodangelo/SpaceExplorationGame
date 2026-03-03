@@ -286,7 +286,7 @@ public class StationDockingTransitionState : GameState
             rotation = Lerp(90f, 0f, EaseInOut01(Math.Clamp((modeP - 0.65f) / 0.35f, 0f, 1f)));
         }
 
-        game.SpaceshipRenderer.RenderFlyingScreen(renderer,
+        game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, rotation,
             game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 

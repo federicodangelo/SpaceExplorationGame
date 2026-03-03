@@ -473,7 +473,7 @@ public class SolarSystemState : GameState
         {
             ref var shipTransform = ref world.Get<Transform>(_simPlayer.Entity);
             int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
-            game.SpaceshipRenderer.RenderFlying(renderer, camera, shipTransform.Position,
+            game.SpaceshipRenderer.Render(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize);
 
             // Damage smoke/sparks when HP is low

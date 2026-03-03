@@ -15,7 +15,7 @@ public class SpaceshipRenderer
     }
 
     /// <summary>Renders the ship in flight with optional engine flame effect.</summary>
-    public void RenderFlying(ISpriteRenderer renderer, Camera camera,
+    public void Render(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float rotation, string shipTypeId, int spriteSize)
     {
         var screen = camera.WorldToScreen(position);
@@ -23,19 +23,18 @@ public class SpaceshipRenderer
     }
 
     /// <summary>Renders the ship in flight directly in screen space.</summary>
-    public void RenderFlyingScreen(ISpriteRenderer renderer,
+    public void RenderScreen(ISpriteRenderer renderer,
         float screenX, float screenY, float rotation, string shipTypeId, int spriteSize)
     {
         DrawShipPrimitivesScreen(renderer, screenX, screenY, 1f, rotation, shipTypeId, spriteSize);
     }
 
-    /// <summary>Renders the landed ship on a planet surface with a label.</summary>
-    public void RenderLanded(ISpriteRenderer renderer, Camera camera,
-        Vector2 position, string shipTypeId, int spriteSize)
+    /// <summary>Renders the ship with a label below.</summary>
+    public void RenderWithLabel(ISpriteRenderer renderer, Camera camera,
+        Vector2 position, float rotation, string shipTypeId, int spriteSize)
     {
-        int landedSize = (int)(spriteSize * 1.5f);
         var screen = camera.WorldToScreen(position);
-        DrawShipPrimitivesScreen(renderer, screen.X, screen.Y, camera.Zoom, 0f, shipTypeId, landedSize);
+        DrawShipPrimitivesScreen(renderer, screen.X, screen.Y, camera.Zoom, rotation, shipTypeId, spriteSize);
         renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", new Color3(180, 180, 200));
     }
 

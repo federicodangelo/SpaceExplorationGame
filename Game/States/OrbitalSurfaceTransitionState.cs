@@ -270,7 +270,7 @@ public class OrbitalSurfaceTransitionState : GameState
         if (_mode == TransitionMode.Takeoff)
             shipRotation = Lerp(90f, 0f, EaseInOut01(Math.Clamp((modeP - 0.82f) / 0.18f, 0f, 1f)));
 
-        game.SpaceshipRenderer.RenderFlyingScreen(renderer,
+        game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, shipRotation, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 
         if (touchdownP > 0f)
