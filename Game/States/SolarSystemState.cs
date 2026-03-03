@@ -64,6 +64,9 @@ public class SolarSystemState : GameState
     private Entity _anchorEntity;
     private Vector2 _anchorOffset;
 
+    private bool AnyOverlayOpen =>
+        _inGameMenuOverlay.IsOpen || _spaceStationOverlay.IsOpen || _planetLandingOverlay.IsOpen || _galaxyMapOverlay.IsOpen;
+
     public SolarSystemState(StarSystemData starSystem, SpaceStationData? autoOpenStation = null,
         bool autoOpenGalaxyMap = false, PlanetData? autoOpenPlanet = null)
     {
@@ -157,6 +160,9 @@ public class SolarSystemState : GameState
     public override void UpdateInput(Game game)
     {
         var input = game.Input;
+
+        if (AnyOverlayOpen)
+            ZeroPlayerShipInput();
 
         // Overlays take priority
         if (_planetLandingOverlay.UpdateInput(game)) return;
@@ -367,6 +373,18 @@ public class SolarSystemState : GameState
     }
 
     // ── Anchor ──────────────────────────────────────────────────────
+
+    private void ZeroPlayerShipInput()
+    {
+        if (_sim == null || _simPlayer == null || !_sim.EcsWorld.IsAlive(_simPlayer.Entity)) return;
+        if (_sim.EcsWorld.Has<ShipInputComponent>(_simPlayer.Entity))
+        {
+            ref var shipInput = ref _sim.EcsWorld.Get<ShipInputComponent>(_simPlayer.Entity);
+            shipInput.AccelerationDirection = Vector2.Zero;
+            shipInput.RotationSpeed = 0f;
+            shipInput.Shoot = false;
+        }
+    }
 
     private void SetAnchor(Entity target)
     {

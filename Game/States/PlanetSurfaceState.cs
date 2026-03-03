@@ -76,6 +76,9 @@ public class PlanetSurfaceState : GameState
     private readonly PlanetSurfaceStartMode _startMode;
     private readonly float _landingDelay;
 
+    private bool AnyOverlayOpen =>
+        _inGameMenuOverlay.IsOpen || _surfaceMapOverlay.IsOpen || _starshipMenuOverlay.IsOpen;
+
     public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
         PlanetSurfaceData? preGeneratedSurfaceData = null, float landingDelay = 1.2f,
         PlanetSurfaceStartMode startMode = PlanetSurfaceStartMode.InShip)
@@ -196,6 +199,9 @@ public class PlanetSurfaceState : GameState
     {
         if (_waitingToOpenStarshipMenuAfterLanding) return;
 
+        if (AnyOverlayOpen)
+            ZeroPlayerMovementAcceleration();
+
         if (_starshipMenuOverlay.UpdateInput(game))
         {
             if (_starshipMenuOverlay.LastChoice.HasValue)
@@ -287,12 +293,9 @@ public class PlanetSurfaceState : GameState
             return;
         }
 
-        // Skip post-processing when overlays are active
-        if (_starshipMenuOverlay.IsOpen || _surfaceMapOverlay.IsOpen || _inGameMenuOverlay.IsOpen)
-        {
-            if (_surfaceMapOverlay.IsOpen) _surfaceMapOverlay.Update(game);
-            return;
-        }
+        _starshipMenuOverlay.Update(game);
+        _surfaceMapOverlay.Update(game);
+        _inGameMenuOverlay.Update(game);
 
         // Camera follows player
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
@@ -376,6 +379,17 @@ public class PlanetSurfaceState : GameState
                 weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
                 new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime, Vector2.Zero);
             game.Audio.PlaySfx(AudioSfx.LaserFire, 0.5f);
+        }
+    }
+
+    private void ZeroPlayerMovementAcceleration()
+    {
+        if (_sim == null || _simPlayer == null || !_sim.EcsWorld.IsAlive(_simPlayer.Entity)) return;
+        ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
+        vel.Acceleration = Vector2.Zero;
+        if (!_inVehicle)
+        {
+            vel.Linear = Vector2.Zero;
         }
     }
 

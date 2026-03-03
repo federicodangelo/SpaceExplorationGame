@@ -66,6 +66,11 @@ public class InteriorState : GameState
     private readonly HealthStationOverlay _healthStationOverlay = new();
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
 
+    private bool AnyOverlayOpen => _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
+            || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen
+            || _starshipMenuOverlay.IsOpen;
+
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null,
         bool startInShip = false)
@@ -126,6 +131,9 @@ public class InteriorState : GameState
     {
         var input = game.Input;
 
+        if (AnyOverlayOpen)
+            ZeroPlayerMovementAcceleration();
+
         if (_repairOverlay.UpdateInput(game)) return;
         if (_healthStationOverlay.UpdateInput(game)) return;
         if (_missionOverlay.UpdateInput(game)) return;
@@ -165,7 +173,7 @@ public class InteriorState : GameState
             return;
         }
 
-        if (_inGameMenuOverlay.UpdateInput(game)) return;
+        if (_inGameMenuOverlay.UpdateInput(game)) { ZeroPlayerMovementAcceleration(); return; }
         if (input.IsActionPressed(InputAction.MenuBack))
         {
             _inGameMenuOverlay.Open(game);
@@ -232,15 +240,16 @@ public class InteriorState : GameState
             _inGameMenuOverlay.Update(game);
         });
 
-        // Skip post-processing when overlays are active
-        if (_inGameMenuOverlay.IsOpen || _repairOverlay.IsOpen || _missionOverlay.IsOpen || _showingDialogue
-            || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen
-            || _starshipMenuOverlay.IsOpen)
-            return;
-
         // Camera
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
+    }
+
+    private void ZeroPlayerMovementAcceleration()
+    {
+        if (_sim == null || _simPlayer == null || !_sim.EcsWorld.IsAlive(_simPlayer.Entity)) return;
+        ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
+        vel.Acceleration = Vector2.Zero;
+        vel.Linear = Vector2.Zero;
     }
 
     private void OpenDockingMenu()
@@ -460,14 +469,9 @@ public class InteriorState : GameState
         int h = renderer.WindowHeight;
 
         // HUD
-        bool anyOverlayOpen = _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
-            || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen
-            || _starshipMenuOverlay.IsOpen;
-
         HudRenderer.RenderInteriorHud(renderer, game.Player, _sim.Interior, _starSystem);
 
-        if (!anyOverlayOpen)
+        if (!AnyOverlayOpen)
         {
             if (_playerInsideShip)
             {
