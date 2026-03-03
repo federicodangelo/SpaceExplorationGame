@@ -233,7 +233,19 @@ public class SolarSystemState : GameState
         t.Time("MenuOverlay", () => _inGameMenuOverlay.Update(game));
 
         // Apply anchor (keep ship at station/planet while overlay open)
-        ApplyAnchor();
+        if (AnyOverlayOpen)
+            ApplyAnchor();
+        else
+            ClearAnchor();
+
+        // Close any open overlay when the ship is destroyed
+        if (_sim.PlayerDead && AnyOverlayOpen)
+        {
+            _inGameMenuOverlay.Close();
+            _spaceStationOverlay.Close();
+            _planetLandingOverlay.Close();
+            _galaxyMapOverlay.Close();
+        }
 
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
 
@@ -256,18 +268,11 @@ public class SolarSystemState : GameState
             }
         }
 
-        // Overlays active — still process but don't do gameplay interaction
-        if (_inGameMenuOverlay.IsOpen)
-        {
-            _inGameMenuOverlay.Update(game);
-            return;
-        }
-        if (_planetLandingOverlay.IsOpen) { _planetLandingOverlay.Update(game); return; }
-        if (_galaxyMapOverlay.IsOpen) { _galaxyMapOverlay.Update(game); return; }
-        if (_spaceStationOverlay.IsOpen) { _spaceStationOverlay.Update(game); return; }
-
-        // Clear anchor when returning to normal gameplay
-        ClearAnchor();
+        // Process overlays (which may set anchor or block input)
+        _inGameMenuOverlay.Update(game);
+        _planetLandingOverlay.Update(game);
+        _galaxyMapOverlay.Update(game);
+        _spaceStationOverlay.Update(game);
 
         // Process simulation events for audio/visual effects
         t.Time("SimEvents", () => ProcessSimulationEvents(game));
