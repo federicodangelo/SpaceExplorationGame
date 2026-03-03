@@ -90,7 +90,9 @@ public class InteriorState : GameState
             () => new InteriorSimulation(game, _origin, _starSystem, _spaceStation, _planet, _settlement, parentSim));
 
         // Add player
-        _simPlayer = _sim.AddPlayer(game.Player);
+        int playerTileX = _sim.Interior.SpawnPoint.X;
+        int playerTileY = _sim.Interior.SpawnPoint.Y;
+        _simPlayer = _sim.AddPlayer(game.Player, new AddContext(playerTileX, playerTileY));
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
@@ -101,9 +103,7 @@ public class InteriorState : GameState
         _cameraFollowSystem.Initialize();
 
         // Camera
-        float spawnX = _sim.Interior.SpawnPoint.X * GameConfig.TileSize;
-        float spawnY = _sim.Interior.SpawnPoint.Y * GameConfig.TileSize;
-        _camera.Position = new Vector2(spawnX, spawnY);
+        _camera.Position = new Vector2(playerTileX * GameConfig.TileSize, playerTileY * GameConfig.TileSize);
         _camera.Zoom = GameConfig.InteriorZoomDefault;
         _camera.ClampZoom();
 
@@ -266,7 +266,7 @@ public class InteriorState : GameState
                     ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
                     float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
                     float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
-                    avatarTf.Position = new Vector2(shipX + GameConfig.TileSize * 2f, shipY);
+                    avatarTf.Position = new Vector2(shipX, shipY);
                 }
                 break;
         }

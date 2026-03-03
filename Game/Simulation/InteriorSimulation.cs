@@ -87,8 +87,8 @@ public class InteriorSimulation : SimulationBase
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
     {
-        float spawnX = Interior.SpawnPoint.X * GameConfig.TileSize;
-        float spawnY = Interior.SpawnPoint.Y * GameConfig.TileSize;
+        float spawnX = ctx.LandingTileX * GameConfig.TileSize;
+        float spawnY = ctx.LandingTileY * GameConfig.TileSize;
 
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, player.AvatarWalkSpeed, canMoveTo: pos =>
         {

@@ -509,7 +509,7 @@ public class PlanetSurfaceState : GameState
                 _playerInsideShip = false;
                 ref var shipTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
                 ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-                avatarTf.Position = shipTf.Position + new Vector2(30, 0);
+                avatarTf.Position = shipTf.Position;
                 avatarTf.Rotation = 0f;
                 break;
 

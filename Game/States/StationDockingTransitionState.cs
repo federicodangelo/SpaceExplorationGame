@@ -41,7 +41,7 @@ public class StationDockingTransitionState : GameState
     private readonly Camera _stationCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight, 0.01f, 100f);
     /// <summary>Interior camera — zooms from wide-out to default over the Entry phase.</summary>
     private readonly Camera _interiorCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
-        GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
+        0.01f, 100f);
 
     // ── Phase timing ─────────────────────────────────────────────────
     private const float ApproachDuration = 0.8f;   // stars + station + ship flies in
@@ -275,20 +275,19 @@ public class StationDockingTransitionState : GameState
         float shipX = Lerp(_shipScreenStart.X, padScreen.X, shipP);
         float shipY = Lerp(_shipScreenStart.Y, padScreen.Y, shipP);
 
-        // Touchdown settle — small downward nudge when landing
-        float settleY = EaseInOut01(touchdownP) * 10f;
-        if (_mode == TransitionMode.Docking) shipY += settleY;
-
         // Ship rotation: docking lerps from the in-space heading to 0° (horizontal/docked).
         // Undocking stays at 0° throughout (consistent with the docked orientation).
         float animP = Math.Clamp(animElapsed / TotalDuration, 0f, 1f);
         float rotation = _mode == TransitionMode.Docking
-            ? MathHelper.LerpRotation(_shipRotationStart, 0f, EaseInOut01(animP))
+            ? MathHelper.LerpRotation(_shipRotationStart, 0f, EaseInOut01(animP) * 4.0f) // faster easing for rotation so it settles sooner than the position
             : 0f;
+
+        // Lerp ship scale to match source/destination state camera zoom seamlessly.
+        float shipZoom = Lerp(_solarZoomStart, GameConfig.InteriorZoomDefault, animP);
 
         game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, rotation,
-            game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+            game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize, shipZoom);
 
         // ── 5. Touchdown ring pulse ───────────────────────────────────
         if (touchdownP > 0f && _interiorData.LandingPadTilePos.HasValue)
@@ -310,8 +309,8 @@ public class StationDockingTransitionState : GameState
     {
         if (_interiorData?.LandingPadTilePos.HasValue == true)
         {
-            float padWorldX = (_interiorData.LandingPadTilePos.Value.X + 0.5f) * GameConfig.TileSize;
-            float padWorldY = (_interiorData.LandingPadTilePos.Value.Y + 0.5f) * GameConfig.TileSize;
+            float padWorldX = _interiorData.LandingPadTilePos.Value.X * GameConfig.TileSize;
+            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * GameConfig.TileSize;
             _interiorCamera.Position = new Vector2(padWorldX, padWorldY);
         }
         _interiorCamera.Zoom = zoom;
@@ -323,8 +322,8 @@ public class StationDockingTransitionState : GameState
     {
         if (_interiorData?.LandingPadTilePos.HasValue == true)
         {
-            float padWorldX = (_interiorData.LandingPadTilePos.Value.X + 0.5f) * GameConfig.TileSize;
-            float padWorldY = (_interiorData.LandingPadTilePos.Value.Y + 0.5f) * GameConfig.TileSize;
+            float padWorldX = _interiorData.LandingPadTilePos.Value.X * GameConfig.TileSize;
+            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * GameConfig.TileSize;
             return _interiorCamera.WorldToScreen(new Vector2(padWorldX, padWorldY));
         }
         return new Vector2(CX, CY);
