@@ -75,9 +75,11 @@ public static class TerrainRenderer
             for (int x = 0; x < w; x++)
             {
                 var terrain = surface.Tiles[x, y];
+                if (terrain == TerrainType.Void) continue; // Leave transparent (alpha=0) for void tiles
+
                 var baseColor = PlanetSurfaceGenerator.GetTerrainColor(terrain);
                 var height = heights[x, y];
-                var tileColor = GetTileColor(baseColor, x, y, height); // height = 0.5 (neutral, no height-map here)
+                var tileColor = GetTileColor(baseColor, x, y, height);
 
                 int idx = (y * w + x) * 4;
                 pixels[idx + 0] = tileColor.R;

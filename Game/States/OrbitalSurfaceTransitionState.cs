@@ -39,6 +39,7 @@ public class OrbitalSurfaceTransitionState : GameState
 
     private PlanetSurfaceData _surfaceData = null!;
     private nint _terrainTexture;
+    private Camera _terrainBlendCamera = new Camera(1, 1, 0.0001f, 100000f);
     private float _elapsed;
     private bool _landingSfxPlayed;
 
@@ -243,12 +244,12 @@ public class OrbitalSurfaceTransitionState : GameState
         float planetRadius = Lerp(_planetRadiusStartPx, MathF.Max(ScreenW, ScreenH) * 1.08f, EaseInOut01(descentP));
 
         int planetSeed = _isMoon ? (_moonPlanetIndex * 101 + _moonIndex * 17 + 7) : _planet.Index;
+        float terrainBlend = EaseInOut01(Math.Clamp((descentP - 0.24f) / 0.76f, 0f, 1f));
         game.PlanetRenderer.RenderBodyScreen(renderer,
             planetX, planetY, planetRadius,
             _planet.Color, _planet.Type, _isMoon, planetSeed,
-            (float)game.GlobalTime);
+            (float)game.GlobalTime, alphaMultiplier: 1f - terrainBlend * terrainBlend);
 
-        float terrainBlend = EaseInOut01(Math.Clamp((descentP - 0.24f) / 0.76f, 0f, 1f));
         Vector2 landingScreenTarget = new(CX, CY + 4f);
         if (_terrainTexture != nint.Zero && terrainBlend > 0f)
         {
@@ -294,38 +295,54 @@ public class OrbitalSurfaceTransitionState : GameState
     {
         float mapW = _surfaceData.Width;
         float mapH = _surfaceData.Height;
+        float mapSize = MathF.Min(mapW, mapH);
 
         // Camera pan in texture-space: world center -> selected landing tile.
         float panP = EaseInOut01(Math.Clamp((descentP - 0.08f) / 0.92f, 0f, 1f));
         float centerX = Lerp(mapW * 0.5f, _tileX, panP);
         float centerY = Lerp(mapH * 0.5f, _tileY, panP);
 
-        // Camera zoom in texture-space: whole planet map -> approx surface gameplay view at default zoom.
-        float endViewTilesW = game.SpriteRenderer.WindowWidth / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
-        float endViewTilesH = game.SpriteRenderer.WindowHeight / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
+        // Uniform square src — terrain texture is already circular with alpha, no AR needed.
+        // Uniform square dst — large enough to cover the screen at full blend.
+        // endViewTiles is derived from screenSize (not ScreenW/H independently) so that at
+        // terrainBlend=1 the scale factor dstSize/srcSize gives exactly 1 tile = TileSize*zoom
+        // pixels — matching the first frame of PlanetSurfaceState exactly.
+        float screenSize = MathF.Max(ScreenW, ScreenH) * 1.42f; // diagonal covers any screen rotation
+        float endViewTiles = screenSize / (GameConfig.TileSize * GameConfig.PlanetSurfaceZoomDefault);
+        float srcSize = Math.Clamp(Lerp(mapSize, endViewTiles, terrainBlend), 8f, mapSize);
 
-        float srcW = Lerp(mapW, endViewTilesW, terrainBlend);
-        float srcH = Lerp(mapH, endViewTilesH, terrainBlend);
+        float srcX = Math.Clamp(centerX - srcSize * 0.5f, 0f, mapW - srcSize);
+        float srcY = Math.Clamp(centerY - srcSize * 0.5f, 0f, mapH - srcSize);
 
-        srcW = Math.Clamp(srcW, 8f, mapW);
-        srcH = Math.Clamp(srcH, 8f, mapH);
-
-        float srcX = Math.Clamp(centerX - srcW * 0.5f, 0f, mapW - srcW);
-        float srcY = Math.Clamp(centerY - srcH * 0.5f, 0f, mapH - srcH);
-
-        // Screen destination: starts near planet disc, expands to full-screen by touchdown.
-        float dstW = Lerp(planetRadius * 2f * 0.95f, ScreenW, terrainBlend);
-        float dstH = Lerp(planetRadius * 2f * 0.95f, ScreenH, terrainBlend);
+        float dstSize = Lerp(planetRadius * 2f * 0.95f, screenSize, terrainBlend);
         float dstCenterX = Lerp(planetX, CX, terrainBlend);
         float dstCenterY = Lerp(planetY, CY, terrainBlend);
 
-        float dstX = dstCenterX - dstW * 0.5f;
-        float dstY = dstCenterY - dstH * 0.5f;
+        // Blend anchor: map center while planet disc is visible, tile when fully panned in.
+        float tileNormX = (centerX - srcX) / srcSize;
+        float tileNormY = (centerY - srcY) / srcSize;
+        float mapCenterNormX = (mapW * 0.5f - srcX) / srcSize;
+        float mapCenterNormY = (mapH * 0.5f - srcY) / srcSize;
+        float anchorNormX = Lerp(mapCenterNormX, tileNormX, panP);
+        float anchorNormY = Lerp(mapCenterNormY, tileNormY, panP);
+        float dstX = dstCenterX - anchorNormX * dstSize;
+        float dstY = dstCenterY - anchorNormY * dstSize;
 
         byte a = (byte)Math.Clamp((int)(terrainBlend * 255), 0, 255);
         game.SpriteRenderer.DrawTextureScreen(_terrainTexture,
-            new Rect(srcX, srcY, srcW, srcH),
-            new Rect(dstX, dstY, dstW, dstH), a);
+            new Rect(srcX, srcY, srcSize, srcSize),
+            new Rect(dstX, dstY, dstSize, dstSize), a);
+
+        // Build a world-space camera that matches the current terrain projection so
+        // RenderAtmosphere draws its disc-boundary rings at exactly the right position/scale.
+        float ts = GameConfig.TileSize;
+        _terrainBlendCamera.Update((int)ScreenW, (int)ScreenH);
+        _terrainBlendCamera.Zoom = dstSize / (srcSize * ts);
+        _terrainBlendCamera.Position = new Vector2((srcX + srcSize * 0.5f) * ts, (srcY + srcSize * 0.5f) * ts);
+        _terrainBlendCamera.ViewportOffsetX = (dstX + dstSize * 0.5f) - ScreenW * 0.5f;
+        _terrainBlendCamera.ViewportOffsetY = (dstY + dstSize * 0.5f) - ScreenH * 0.5f;
+        PlanetSurfaceRenderer.RenderAtmosphere(game.SpriteRenderer, _terrainBlendCamera,
+            _surfaceData, _planet.Type, game.GlobalTime, alphaScale: terrainBlend);
 
         float markerP = EaseInOut01(Math.Clamp((descentP - 0.22f) / 0.78f, 0f, 1f)) * terrainBlend;
         byte markerAlpha = (byte)Math.Clamp((int)(markerP * 255f), 0, 255);
@@ -340,15 +357,15 @@ public class OrbitalSurfaceTransitionState : GameState
                     float rightTile = (worldCenterX + worldW * 0.5f) / tileSize;
                     float bottomTile = (worldCenterY + worldH * 0.5f) / tileSize;
 
-                    float u0 = Math.Clamp((leftTile - srcX) / srcW, 0f, 1f);
-                    float v0 = Math.Clamp((topTile - srcY) / srcH, 0f, 1f);
-                    float u1 = Math.Clamp((rightTile - srcX) / srcW, 0f, 1f);
-                    float v1 = Math.Clamp((bottomTile - srcY) / srcH, 0f, 1f);
+                    float u0 = Math.Clamp((leftTile - srcX) / srcSize, 0f, 1f);
+                    float v0 = Math.Clamp((topTile - srcY) / srcSize, 0f, 1f);
+                    float u1 = Math.Clamp((rightTile - srcX) / srcSize, 0f, 1f);
+                    float v1 = Math.Clamp((bottomTile - srcY) / srcSize, 0f, 1f);
 
-                    float screenX = dstX + u0 * dstW;
-                    float screenY = dstY + v0 * dstH;
-                    float screenW = MathF.Max(1f, (u1 - u0) * dstW);
-                    float screenH = MathF.Max(1f, (v1 - v0) * dstH);
+                    float screenX = dstX + u0 * dstSize;
+                    float screenY = dstY + v0 * dstSize;
+                    float screenW = MathF.Max(1f, (u1 - u0) * dstSize);
+                    float screenH = MathF.Max(1f, (v1 - v0) * dstSize);
                     return new Rect(screenX, screenY, screenW, screenH);
                 },
                 (Vector2 worldPos) =>
@@ -356,18 +373,16 @@ public class OrbitalSurfaceTransitionState : GameState
                     float tileX = worldPos.X / GameConfig.TileSize;
                     float tileY = worldPos.Y / GameConfig.TileSize;
 
-                    float u = Math.Clamp((tileX - srcX) / srcW, 0f, 1f);
-                    float v = Math.Clamp((tileY - srcY) / srcH, 0f, 1f);
-                    return new Vector2(dstX + u * dstW, dstY + v * dstH);
+                    float u = Math.Clamp((tileX - srcX) / srcSize, 0f, 1f);
+                    float v = Math.Clamp((tileY - srcY) / srcSize, 0f, 1f);
+                    return new Vector2(dstX + u * dstSize, dstY + v * dstSize);
                 },
                 markerAlpha);
         }
 
-        float targetU = (_tileX - srcX) / srcW;
-        float targetV = (_tileY - srcY) / srcH;
-        targetU = Math.Clamp(targetU, 0f, 1f);
-        targetV = Math.Clamp(targetV, 0f, 1f);
-        return new Vector2(dstX + targetU * dstW, dstY + targetV * dstH);
+        float targetU = Math.Clamp((_tileX - srcX) / srcSize, 0f, 1f);
+        float targetV = Math.Clamp((_tileY - srcY) / srcSize, 0f, 1f);
+        return new Vector2(dstX + targetU * dstSize, dstY + targetV * dstSize);
     }
 
     private static float Lerp(float a, float b, float t) => float.Lerp(a, b, Math.Clamp(t, 0f, 1f));

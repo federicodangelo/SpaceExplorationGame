@@ -88,8 +88,11 @@ public static class PlanetSurfaceRenderer
     /// jagged tile edge and providing a glow that fades into space.
     /// Call this <em>after</em> <see cref="RenderTerrain"/> so it overlays the terrain.
     /// </summary>
+    /// <param name="alphaScale">Multiplier applied to every layer's alpha (0–1). Use to fade the
+    /// atmosphere in/out when blending into or out of a transition animation.</param>
     public static void RenderAtmosphere(ISpriteRenderer renderer, Camera camera,
-        PlanetSurfaceData surfaceData, PlanetType planetType, double globalTime)
+        PlanetSurfaceData surfaceData, PlanetType planetType, double globalTime,
+        float alphaScale = 1f)
     {
         int w = surfaceData.Width;
         int h = surfaceData.Height;
@@ -100,13 +103,14 @@ public static class PlanetSurfaceRenderer
         float radius = (MathF.Min(w, h) * 0.5f - 2f) * ts;
 
         var atmColor = PlanetAtmosphereColors.Get(planetType).Inner.WithAlpha(255);
-        float pulse = 0.94f + 0.06f * MathF.Sin((float)globalTime * 0.7f);
+        float pulse = (0.94f + 0.06f * MathF.Sin((float)globalTime * 0.7f)) * alphaScale;
         int seg = 64;
 
         // Solid black ring to mask the jagged terrain edge.
+        byte blackAlpha = (byte)Math.Clamp((int)(255 * alphaScale * 4.0f), 0, 255);
         renderer.DrawSolidRing(camera, center,
             radius - GameConfig.TileSize, radius + GameConfig.TileSize,
-            new Color4(0, 0, 0, 255), 40);
+            new Color4(0, 0, 0, blackAlpha), 40);
 
         // Layer 1 – inner-edge tint: subtly darkens the outermost terrain tiles
         //           so the boundary row blends rather than hard-cuts.
