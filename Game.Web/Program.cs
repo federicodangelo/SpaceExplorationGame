@@ -159,7 +159,7 @@ public partial class WebMain
         sub switch
         {
             null or "orbit" => StartOption.SpaceStation,
-            "docked" => StartOption.SpaceStationDocked,
+            "menu" => StartOption.SpaceStationMenu,
             "inside" => StartOption.SpaceStationInside,
             _ => LogAndReturn($"Unknown ?sublocation '{sub}' for station. Valid: orbit, docked, inside. Using 'orbit'.", StartOption.SpaceStation),
         };

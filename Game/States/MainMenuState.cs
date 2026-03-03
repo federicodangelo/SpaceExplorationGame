@@ -19,7 +19,7 @@ public enum StartOption
     PlanetSurfaceOnFoot,
     PlanetSurfaceOnVehicle,
     SpaceStation,
-    SpaceStationDocked,
+    SpaceStationMenu,
     SpaceStationInside,
     Settlement,
     SettlementOnFoot,
@@ -300,7 +300,7 @@ public class MainMenuState : GameState
                 break;
             }
 
-            case StartOption.SpaceStationDocked:
+            case StartOption.SpaceStationMenu:
             {
                 var (starSystem, spaceStation) = _previewSystem != null && _previewSpaceStation != null
                     ? new SystemSpaceStation(_previewSystem, _previewSpaceStation)
@@ -483,7 +483,7 @@ public class MainMenuState : GameState
             }
 
             case StartOption.SpaceStation:
-            case StartOption.SpaceStationDocked:
+            case StartOption.SpaceStationMenu:
             case StartOption.SpaceStationInside:
             {
                 var (system, station) = PickRandomSpaceStation(game, danger);
@@ -493,7 +493,7 @@ public class MainMenuState : GameState
                 string stationMode = locationType switch
                 {
                     StartOption.SpaceStation => " [Orbit]",
-                    StartOption.SpaceStationDocked => " [Docked]",
+                    StartOption.SpaceStationMenu => " [Menu]",
                     _ => " [Interior]"
                 };
                 _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nSpace Station: {station.Name}{stationMode}";

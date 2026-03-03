@@ -41,7 +41,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private static readonly (string Label, StartOption Value)[][] SubLocationOptions =
     [
         [("-", StartOption.StarSystem)],
-        [("ORBIT", StartOption.SpaceStation), ("DOCKED", StartOption.SpaceStationDocked), ("INSIDE", StartOption.SpaceStationInside)],
+        [("ORBIT", StartOption.SpaceStation), ("MENU", StartOption.SpaceStationMenu), ("INSIDE", StartOption.SpaceStationInside)],
         [("ORBIT", StartOption.Planet), ("LANDED", StartOption.PlanetSurface), ("ON FOOT", StartOption.PlanetSurfaceOnFoot), ("ON VEHICLE", StartOption.PlanetSurfaceOnVehicle)],
         [("ABOVE", StartOption.Settlement), ("INSIDE", StartOption.SettlementInside), ("ON FOOT", StartOption.SettlementOnFoot), ("ON VEHICLE", StartOption.SettlementOnVehicle)],
     ];

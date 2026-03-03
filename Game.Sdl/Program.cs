@@ -185,7 +185,7 @@ internal static class Program
         return sub switch
         {
             null or "orbit" => StartOption.SpaceStation,
-            "docked" => StartOption.SpaceStationDocked,
+            "menu" => StartOption.SpaceStationMenu,
             "inside" => StartOption.SpaceStationInside,
             _ => throw new ArgumentException("Invalid --sublocation for station. Valid values: orbit, docked, inside")
         };
