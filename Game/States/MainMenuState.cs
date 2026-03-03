@@ -45,6 +45,7 @@ public class MainMenuState : GameState
 
     private MainMenuOverlay _menuOverlay = null!;
     private DebugMenuOverlay _debugOverlay = null!;
+    private readonly MainMenuControlsPanel _controlsPanel = new();
 
     // Auto-launch: if not None, skip menu and launch this option immediately
     private readonly StartOption _autoLaunchOption;
@@ -665,6 +666,7 @@ public class MainMenuState : GameState
 
         _menuOverlay.Render(game);
         _debugOverlay.Render(game);
+        _controlsPanel.Render(game, _menuOverlay.PanelRight, _menuOverlay.PanelCenterY);
 
         // Build hash (bottom-right corner, web builds only)
         string? buildHash = BuildInfo.ShortHash;

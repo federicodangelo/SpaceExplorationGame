@@ -109,6 +109,12 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     /// <summary>Top Y position of the panel, for external layout (e.g. title positioning).</summary>
     public float PanelTop => PanelY;
 
+    /// <summary>Right edge X of the panel, for positioning adjacent panels.</summary>
+    public float PanelRight => PanelX + PanelWidth;
+
+    /// <summary>Vertical center Y of the panel, for positioning adjacent panels.</summary>
+    public float PanelCenterY => PanelY + PanelHeight / 2f;
+
     /// <summary>Current seed to display.</summary>
     public ulong CurrentSeed { get; set; }
 
