@@ -11,17 +11,34 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public class AsteroidRenderer
 {
-    private static readonly Vector2[] BaseShape =
-    [
-        new Vector2(1.00f, 0.00f),
-        new Vector2(0.62f, 0.52f),
-        new Vector2(0.12f, 0.92f),
-        new Vector2(-0.55f, 0.72f),
-        new Vector2(-0.96f, 0.12f),
-        new Vector2(-0.72f, -0.56f),
-        new Vector2(-0.18f, -0.92f),
-        new Vector2(0.68f, -0.62f)
-    ];
+    // Cached shapes keyed by seed (entity id). Generated once, reused every frame.
+    // Max vertex count is 10; reuse this buffer every draw call to avoid per-frame allocs.
+    private readonly Vector2[] _pointsBuffer = new Vector2[10];
+    private readonly Vector2[] _shapeBuffer = new Vector2[10];
+
+    // Shapes are generated procedurally per entity so every asteroid looks unique.
+    // Fills the provided buffer and returns the vertex count.
+    private static int GenerateAsteroidShape(int seed, Vector2[] buffer)
+    {
+        uint rng = (uint)seed;
+        // Vary vertex count: 6–10
+        rng = rng * 1664525u + 1013904223u;
+        int vertexCount = 6 + (int)(rng % 5u);
+        float segAngle = MathF.Tau / vertexCount;
+        for (int i = 0; i < vertexCount; i++)
+        {
+            float baseAngle = i * segAngle;
+            // Angular jitter ±30 % of one segment
+            rng = rng * 1664525u + 1013904223u;
+            float angleJitter = ((rng & 0xFFFFu) / 65535f - 0.5f) * 0.6f * segAngle;
+            // Radius jitter: 0.55 – 1.0
+            rng = rng * 1664525u + 1013904223u;
+            float r = 0.55f + (rng & 0xFFFFu) / 65535f * 0.45f;
+            float a = baseAngle + angleJitter;
+            buffer[i] = new Vector2(MathF.Cos(a) * r, MathF.Sin(a) * r);
+        }
+        return vertexCount;
+    }
 
     public AsteroidRenderer()
     {
@@ -49,16 +66,20 @@ public class AsteroidRenderer
             // Scale down visual size as HP drops
             float hpRatio = health.HullPercent;
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
+
+            // Cull asteroids outside the camera viewport
+            if (!camera.DiskOverlapsCamera(transform.Position, visualSize * 0.5f)) continue;
+
             var resourceColor = ResourceCatalog.Get(asteroid.Resource).Color;
 
             DrawAsteroidPrimitives(renderer, camera, transform.Position, rot, visualSize,
-                hpRatio, resourceColor, globalTime);
+                hpRatio, resourceColor, globalTime, entity.Id);
         }
     }
 
-    private static void DrawAsteroidPrimitives(ISpriteRenderer renderer, Camera camera,
+    private void DrawAsteroidPrimitives(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float rotationDeg, float size, float hpRatio, Color3 resourceColor,
-        float globalTime)
+        float globalTime, int seed)
     {
         float radius = size * 0.5f;
         byte tone = (byte)(110 + 40 * hpRatio);
@@ -85,18 +106,15 @@ public class AsteroidRenderer
         var feedbackOutlineOuter = new Color4(12, 12, 16, 220);
         var feedbackOutlineInner = new Color4(235, 235, 245, 135);
 
-        Vector2[] points = new Vector2[BaseShape.Length];
-        for (int i = 0; i < BaseShape.Length; i++)
-        {
-            float localRot = rotationDeg + i * 6f;
-            points[i] = position + Rotate(BaseShape[i] * radius, localRot);
-        }
+        int vertexCount = GenerateAsteroidShape(seed, _shapeBuffer);
+        for (int i = 0; i < vertexCount; i++)
+            _pointsBuffer[i] = position + Rotate(_shapeBuffer[i] * radius, rotationDeg);
 
         var centerScreen = camera.WorldToScreen(position);
-        for (int i = 0; i < points.Length; i++)
+        for (int i = 0; i < vertexCount; i++)
         {
-            var p1 = camera.WorldToScreen(points[i]);
-            var p2 = camera.WorldToScreen(points[(i + 1) % points.Length]);
+            var p1 = camera.WorldToScreen(_pointsBuffer[i]);
+            var p2 = camera.WorldToScreen(_pointsBuffer[(i + 1) % vertexCount]);
             renderer.DrawFilledTriangleScreen(centerScreen.X, centerScreen.Y, p1.X, p1.Y, p2.X, p2.Y, fill);
             renderer.DrawLineScreen(p1.X, p1.Y, p2.X, p2.Y, edge);
         }
