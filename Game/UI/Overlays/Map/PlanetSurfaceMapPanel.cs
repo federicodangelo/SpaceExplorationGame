@@ -80,10 +80,11 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
     public override bool UpdateInput(Game game)
     {
+        base.UpdateInput(game);
         var input = game.Input;
-        Vector2 currentMouse = new(input.MouseX, input.MouseY);
-        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
-        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
+        bool usingGamepad = UsingGamepad;
+        Vector2 currentMouse = CurrentMouse;
+        Vector2 selectionPoint = SelectionPoint;
 
         if (_invalidSelectionHintTimer > 0f)
         {
@@ -94,10 +95,6 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 _invalidSelectionHint = null;
             }
         }
-
-        HandleZoomAndPan(input, currentMouse);
-        HandleGamepadTriggerZoom(input, game.DeltaTime);
-        ClampCameraPosition();
 
         // Hover detection
         _hoveredObject = new(SurfaceMapObjectType.None);

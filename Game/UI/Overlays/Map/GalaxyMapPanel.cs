@@ -74,15 +74,11 @@ public class GalaxyMapPanel : MapPanelBase
 
     public override bool UpdateInput(Game game)
     {
+        base.UpdateInput(game);
         var input = game.Input;
-        Vector2 currentMouse = new(input.MouseX, input.MouseY);
-        bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
-        UsingGamepad = usingGamepad;
-        Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
-
-        HandleZoomAndPan(input, currentMouse);
-        HandleGamepadTriggerZoom(input, game.DeltaTime);
-        ClampCameraPosition();
+        bool usingGamepad = UsingGamepad;
+        Vector2 currentMouse = CurrentMouse;
+        Vector2 selectionPoint = SelectionPoint;
 
         // Hover
         _hoveredSystemIndex = -1;

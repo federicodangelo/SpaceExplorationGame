@@ -15,8 +15,15 @@ public abstract class MapPanelBase
     protected Vector2 LastMouseScreen;
     protected const float DoubleClickTime = 0.4f;
 
-    /// <summary>True when the active input method is a gamepad. Updated every <see cref="Update"/> tick.</summary>
+    /// <summary>True when the active input method is a gamepad. Updated at the start of every <see cref="UpdateInput"/> tick.</summary>
     protected bool UsingGamepad;
+
+    /// <summary>Current mouse position in screen space. Updated at the start of every <see cref="UpdateInput"/> tick.</summary>
+    protected Vector2 CurrentMouse;
+
+    /// <summary>Effective selection point: screen-centre for gamepad, mouse position otherwise.
+    /// Updated at the start of every <see cref="UpdateInput"/> tick.</summary>
+    protected Vector2 SelectionPoint;
 
     /// <summary>Called when the panel wants the container overlay to close.</summary>
     public Action<Game>? OnRequestClose { get; set; }
@@ -48,8 +55,24 @@ public abstract class MapPanelBase
     /// <summary>Configure camera zoom limits and initial position for this panel.</summary>
     public abstract void SetupCamera(Game game);
 
-    /// <summary>Handle panel-specific input (zoom, pan, hover, click). Returns true if input was consumed.</summary>
-    public abstract bool UpdateInput(Game game);
+    /// <summary>
+    /// Handles the shared input preamble: updates <see cref="UsingGamepad"/>, <see cref="CurrentMouse"/>,
+    /// <see cref="SelectionPoint"/>, and processes zoom, pan, and camera clamping.
+    /// Subclasses should call <c>base.UpdateInput(game)</c> first, then use those fields.
+    /// Returns true if input was consumed.
+    /// </summary>
+    public virtual bool UpdateInput(Game game)
+    {
+        var input = game.Input;
+        CurrentMouse = new Vector2(input.MouseX, input.MouseY);
+        UsingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        SelectionPoint = UsingGamepad ? GetMapScreenCenter() : CurrentMouse;
+
+        HandleZoomAndPan(input, CurrentMouse);
+        HandleGamepadTriggerZoom(input, game.DeltaTime);
+        ClampCameraPosition();
+        return true;
+    }
 
     /// <summary>Render the map content inside the clipped map area.</summary>
     public abstract void RenderContent(Game game, ISpriteRenderer renderer);
