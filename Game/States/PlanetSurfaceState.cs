@@ -598,8 +598,17 @@ public class PlanetSurfaceState : GameState
         if (_sim.LocalVehicleDeployed)
         {
             var vehicleTf = world.Get<Transform>(_sim.LocalVehicleEntity);
+            // Derive visual steering angle from current rotation velocity (lives on player entity).
+            float steerAngle = 0f;
+            if (_inVehicle && world.IsAlive(_simPlayer.Entity) && world.Has<Velocity>(_simPlayer.Entity))
+            {
+                ref var vehicleVel = ref world.Get<Velocity>(_simPlayer.Entity);
+                float maxRot = vehicleVel.MaxRotationSpeed > 0f ? vehicleVel.MaxRotationSpeed : 1f;
+                float normalised = Math.Clamp(vehicleVel.RotationVelocity / maxRot, -1f, 1f);
+                steerAngle = normalised * 30f;   // ±30° max visual turn
+            }
             game.VehicleRenderer.Render(renderer, camera, vehicleTf.Position,
-                vehicleTf.Rotation, _inVehicle);
+                vehicleTf.Rotation, _inVehicle, steerAngle);
         }
 
         // Player avatar
