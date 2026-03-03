@@ -409,8 +409,8 @@ public class InteriorState : GameState
             case InteriorOrigin.Settlement:
                 game.Player.SolarSystemReturnContext = PlayerData.ReturnContext.FromPlanet;
                 game.Player.ReturnPlanetIndex = _planet!.Index;
-                int landX = _settlement!.TileRect.X + _settlement.TileRect.Width / 2;
-                int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height / 2;
+                int landX = _settlement!.TileRect.CenterX;
+                int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height; // one tile below settlement
                 if (!game.Player.HasSavedSurfacePositions)
                 {
                     float px = landX * GameConfig.TileSize;

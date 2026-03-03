@@ -59,6 +59,12 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             return false;
         }
 
+        if (_surfaceData.Tiles[tileX, tileY] == TerrainType.Settlement)
+        {
+            failureReason = "SETTLEMENT AREA";
+            return false;
+        }
+
         if (tileX < marginTiles || tileY < marginTiles
             || tileX >= _surfaceData.Width - marginTiles
             || tileY >= _surfaceData.Height - marginTiles)
@@ -79,6 +85,7 @@ public abstract class PlanetMapPanelBase : MapPanelBase
             }
         }
 
+        // Settlement tiles are intrinsically non-traversable; caught above by IsTraversable
         return true;
     }
 

@@ -15,7 +15,8 @@ public enum TerrainType
     Water,
     Ice,
     Lava,
-    Metal
+    Metal,
+    Settlement
 }
 
 /// <summary>
@@ -136,6 +137,11 @@ public static class PlanetSurfaceGenerator
                 // Ensure the settlement area and a 2-tile border are walkable
                 EnsureWalkableArea(tiles, width, height, settlement.TileRect.X, settlement.TileRect.Y,
                     settlement.TileRect.Width, settlement.TileRect.Height, margin: 2, planet.Type);
+
+                // Stamp settlement tiles so they are intrinsically non-traversable
+                for (int tx = settlement.TileRect.X; tx < settlement.TileRect.X + settlement.TileRect.Width; tx++)
+                    for (int ty = settlement.TileRect.Y; ty < settlement.TileRect.Y + settlement.TileRect.Height; ty++)
+                        tiles[tx, ty] = TerrainType.Settlement;
             }
         }
 
@@ -280,6 +286,7 @@ public static class PlanetSurfaceGenerator
             TerrainType.Ice => new(200, 220, 255),
             TerrainType.Lava => new(220, 80, 20),
             TerrainType.Metal => new(160, 160, 170),
+            TerrainType.Settlement => new(100, 100, 120),
             TerrainType.Void => new(0, 0, 0),
             _ => new(80, 80, 80)
         };

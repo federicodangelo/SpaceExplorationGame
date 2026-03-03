@@ -120,6 +120,19 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     {
         int lzTileX = ctx.LandingTileX >= 0 ? ctx.LandingTileX : SurfaceData.LandingZone.X;
         int lzTileY = ctx.LandingTileY >= 0 ? ctx.LandingTileY : SurfaceData.LandingZone.Y;
+
+        // If the landing tile falls inside a settlement, push spawn position below it
+        foreach (var s in SurfaceData.Settlements)
+        {
+            if (lzTileX >= s.TileRect.X && lzTileX < s.TileRect.X + s.TileRect.Width &&
+                lzTileY >= s.TileRect.Y && lzTileY < s.TileRect.Y + s.TileRect.Height)
+            {
+                lzTileX = s.TileRect.CenterX;
+                lzTileY = s.TileRect.Y + s.TileRect.Height;
+                break;
+            }
+        }
+
         float lzX = lzTileX * GameConfig.TileSize;
         float lzY = lzTileY * GameConfig.TileSize;
 
@@ -221,8 +234,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         int tileY = (int)(newPos.Y / GameConfig.TileSize);
         if (tileX < 0 || tileX >= SurfaceData.Width || tileY < 0 || tileY >= SurfaceData.Height)
             return false;
-        var terrain = SurfaceData.Tiles[tileX, tileY];
-        return SurfaceTerrainRules.IsTraversable(terrain);
+        return SurfaceTerrainRules.IsTraversable(SurfaceData.Tiles[tileX, tileY]);
     }
 
     // ── Proximity ───────────────────────────────────────────────────

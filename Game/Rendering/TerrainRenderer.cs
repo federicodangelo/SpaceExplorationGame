@@ -89,22 +89,6 @@ public static class TerrainRenderer
             }
         }
 
-        // Settlement tile overlay
-        foreach (var s in surface.Settlements)
-        {
-            for (int sx = s.TileRect.X; sx < s.TileRect.X + s.TileRect.Width && sx < w; sx++)
-            {
-                for (int sy = s.TileRect.Y; sy < s.TileRect.Y + s.TileRect.Height && sy < h; sy++)
-                {
-                    int idx = (sy * w + sx) * 4;
-                    pixels[idx + 0] = 100;
-                    pixels[idx + 1] = 100;
-                    pixels[idx + 2] = 120;
-                    pixels[idx + 3] = 255;
-                }
-            }
-        }
-
         return textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
     }
 }

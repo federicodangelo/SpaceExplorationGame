@@ -10,7 +10,7 @@ public static class SurfaceTerrainRules
 
     /// <summary>Tiles the player/NPC cannot traverse on the surface.</summary>
     public static bool IsBlockedForTraversal(TerrainType terrain) =>
-        terrain is TerrainType.Water or TerrainType.Lava or TerrainType.Void;
+        terrain is TerrainType.Water or TerrainType.Lava or TerrainType.Void or TerrainType.Settlement;
 
     /// <summary>Tiles valid for movement, landing, and generic surface targeting.</summary>
     public static bool IsTraversable(TerrainType terrain) => !IsBlockedForTraversal(terrain);

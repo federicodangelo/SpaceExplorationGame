@@ -63,8 +63,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         get
         {
             if (!_hasCursor || _surfaceData == null) return false;
-            var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
-            return SurfaceTerrainRules.IsTraversable(terrain);
+            return SurfaceTerrainRules.IsTraversable(_surfaceData.Tiles[_cursorTile.X, _cursorTile.Y]);
         }
     }
 
@@ -142,6 +141,12 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 if (tileX >= 0 && tileX < _surfaceData.Width &&
                     tileY >= 0 && tileY < _surfaceData.Height)
                 {
+                    // Clicking a settlement tile redirects cursor to the tile below it
+                    if (_surfaceData.Tiles[tileX, tileY] == TerrainType.Settlement)
+                    {
+                        (tileX, tileY) = GetTileBelowSettlement(tileX, tileY);
+                    }
+
                     if (!IsTileSelectableWithMargin(tileX, tileY, SelectionBorderMarginTiles, out var failureReason))
                     {
                         ShowInvalidSelectionHint(failureReason ?? "INVALID TARGET");
@@ -266,6 +271,25 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         _invalidSelectionHintTimer = InvalidSelectionHintDuration;
     }
 
+    /// <summary>
+    /// Given a tile known to be inside a settlement, returns the tile immediately
+    /// below the settlement's bottom edge at the nearest X within the settlement's width.
+    /// </summary>
+    private (int x, int y) GetTileBelowSettlement(int tileX, int tileY)
+    {
+        foreach (var s in _surfaceData.Settlements)
+        {
+            if (tileX >= s.TileRect.X && tileX < s.TileRect.X + s.TileRect.Width &&
+                tileY >= s.TileRect.Y && tileY < s.TileRect.Y + s.TileRect.Height)
+            {
+                int clampedX = Math.Clamp(tileX, s.TileRect.X, s.TileRect.X + s.TileRect.Width - 1);
+                int belowY = Math.Min(s.TileRect.Y + s.TileRect.Height, _surfaceData.Height - 1);
+                return (clampedX, belowY);
+            }
+        }
+        return (tileX, tileY);
+    }
+
     // -----------------------------------------------------------------
     //  RENDERING
     // -----------------------------------------------------------------
@@ -331,16 +355,10 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             renderer.DrawTextScreen(px, nextY, $"POS: ({_cursorTile.X}, {_cursorTile.Y})", new Color3(150, 150, 150), 1.3f, InfoPanelW - 24);
             nextY += 18;
 
-            // Check if cursor is inside a settlement
-            foreach (var s in _surfaceData.Settlements)
+            if (terrain == TerrainType.Settlement)
             {
-                if (_cursorTile.X >= s.TileRect.X && _cursorTile.X < s.TileRect.X + s.TileRect.Width &&
-                    _cursorTile.Y >= s.TileRect.Y && _cursorTile.Y < s.TileRect.Y + s.TileRect.Height)
-                {
-                    renderer.DrawTextScreen(px, nextY, s.Name, new Color3(255, 220, 100), 1.5f, InfoPanelW - 24);
-                    nextY += 18;
-                    break;
-                }
+                renderer.DrawTextScreen(px, nextY, "NO LANDING IN SETTLEMENT", new Color3(255, 100, 80), 1.3f, InfoPanelW - 24);
+                nextY += 18;
             }
         }
 
