@@ -648,7 +648,6 @@ public class SolarSystemMapPanel : MapPanelBase
             : $"[{confirmText}] SAME OBJECT: SET AS TARGET + CLOSE";
         var btnColor = isTarget ? new Color3(255, 200, 100) : new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
-        float btnW = renderer.MeasureText(btnText, 1.5f);
-        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
+        renderer.DrawTextScreen(px, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
     }
 }
