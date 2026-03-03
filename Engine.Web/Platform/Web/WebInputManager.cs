@@ -1,4 +1,5 @@
 using System.Numerics;
+using Engine.Platform.Base;
 
 namespace Engine.Platform.Web;
 
@@ -7,23 +8,14 @@ namespace Engine.Platform.Web;
 /// Events are accumulated in JS between frames and flushed per-frame as a packed string.
 /// Gamepad state is polled each frame via the browser Gamepad API.
 /// </summary>
-public class WebInputManager : IInputManager
+public class WebInputManager : BaseInputManager
 {
-    private readonly Func<(int Width, int Height)> _getCanvasSize;
-
-    // ── Constants ─────────────────────────────────────────────────
-    private const float GamepadDeadZone = 0.20f;
     private const float GamepadTriggerThreshold = 0.35f;
 
     // ── Key state (browser key codes: "KeyW", "ArrowUp", etc.) ───
     private readonly HashSet<string> _keysDown = [];
     private readonly HashSet<string> _keysPressed = [];
     private readonly HashSet<string> _keysReleased = [];
-
-    // ── Mouse state ──────────────────────────────────────────────
-    private readonly HashSet<int> _mouseDown = [];
-    private readonly HashSet<int> _mousePressed = [];
-    private readonly HashSet<int> _mouseReleased = [];
 
     // ── Gamepad state ────────────────────────────────────────────
     // Standard Gamepad button indices (W3C standard mapping)
@@ -55,14 +47,10 @@ public class WebInputManager : IInputManager
     private readonly HashSet<int> _gpDown = [];
     private readonly HashSet<int> _gpPressed = [];
     private readonly HashSet<int> _gpReleased = [];
-    private float _leftStickX, _leftStickY;
-    private float _rightStickX, _rightStickY;
     private bool _gamepadConnected;
 
     // ── Text input ───────────────────────────────────────────────
     private string _textInputBuffer = "";
-    private int _textInputBackspaceCount;
-    private int _textInputReturnCount;
 
     // ── Action bindings ──────────────────────────────────────────
     private readonly Dictionary<InputAction, List<InputBinding>> _bindings = new()
@@ -97,24 +85,14 @@ public class WebInputManager : IInputManager
         public static InputBinding Btn(int gpButton) => new(null, null, gpButton);
     }
 
-    public float MouseX { get; private set; }
-    public float MouseY { get; private set; }
-    public float MouseWheelY { get; private set; }
-    public bool QuitRequested => false; // Browser never quits
-    public string TextInput => _textInputBuffer;
-    public int TextInputBackspacesCount => _textInputBackspaceCount;
-    public int TextInputReturnsCount => _textInputReturnCount;
-    public InputMethod ActiveInputMethod { get; private set; } = InputMethod.MouseKeyboard;
-    public MovementInputMode MovementMode => ActiveInputMethod == InputMethod.Gamepad
-        ? MovementInputMode.Absolute
-        : MovementInputMode.HeadingRelative;
+    public override bool QuitRequested => false; // Browser never quits
+    public override string TextInput => _textInputBuffer;
 
-    public WebInputManager(Func<(int Width, int Height)> getCanvasSize)
+    public WebInputManager(Func<(int Width, int Height)> getCanvasSize) : base(getCanvasSize)
     {
-        _getCanvasSize = getCanvasSize;
     }
 
-    public void BeginFrame()
+    public override void BeginFrame()
     {
         MouseX = JsInput.GetMouseX();
         MouseY = JsInput.GetMouseY();
@@ -124,36 +102,28 @@ public class WebInputManager : IInputManager
         _textInputReturnCount = 0;
     }
 
-    public void EndFrame()
+    public override void EndFrame()
     {
+        base.EndFrame(); // clears _mousePressed, _mouseReleased, MouseWheelY
         _keysPressed.Clear();
         _keysReleased.Clear();
-        _mousePressed.Clear();
-        _mouseReleased.Clear();
         _gpPressed.Clear();
         _gpReleased.Clear();
-        MouseWheelY = 0;
     }
 
-    public void Reset()
+    public override void Reset()
     {
+        base.Reset(); // clears mouse, sticks, MouseWheelY, ActiveInputMethod
         _keysDown.Clear();
         _keysPressed.Clear();
         _keysReleased.Clear();
-        _mouseDown.Clear();
-        _mousePressed.Clear();
-        _mouseReleased.Clear();
         _gpDown.Clear();
         _gpPressed.Clear();
         _gpReleased.Clear();
-        _leftStickX = _leftStickY = 0;
-        _rightStickX = _rightStickY = 0;
-        MouseWheelY = 0;
         _textInputBuffer = "";
-        ActiveInputMethod = InputMethod.MouseKeyboard;
     }
 
-    public void ProcessEvents()
+    public override void ProcessEvents()
     {
         MouseWheelY = JsInput.GetMouseWheel();
 
@@ -294,21 +264,11 @@ public class WebInputManager : IInputManager
 
     // ── Action queries ───────────────────────────────────────────
 
-    public bool IsActionDown(InputAction action) => IsAnyBindingDown(action, _keysDown, _mouseDown, _gpDown);
-    public bool IsActionPressed(InputAction action) => IsAnyBindingDown(action, _keysPressed, _mousePressed, _gpPressed);
-    public bool IsActionReleased(InputAction action) => IsAnyBindingDown(action, _keysReleased, _mouseReleased, _gpReleased);
+    public override bool IsActionDown(InputAction action) => IsAnyBindingDown(action, _keysDown, _mouseDown, _gpDown);
+    public override bool IsActionPressed(InputAction action) => IsAnyBindingDown(action, _keysPressed, _mousePressed, _gpPressed);
+    public override bool IsActionReleased(InputAction action) => IsAnyBindingDown(action, _keysReleased, _mouseReleased, _gpReleased);
 
-    public Vector2 GetActionAxisDirection(InputActionAxis axis)
-    {
-        return axis switch
-        {
-            InputActionAxis.Movement => GetCombinedMovementDirection(),
-            InputActionAxis.Heading => GetCombinedHeadingDirection(),
-            _ => Vector2.Zero,
-        };
-    }
-
-    public string GetActionHelpText(InputAction action, bool includeSecondary = false)
+    public override string GetActionHelpText(InputAction action, bool includeSecondary = false)
     {
         if (!_bindings.TryGetValue(action, out var bindingList) || bindingList.Count == 0)
             return string.Empty;
@@ -327,9 +287,7 @@ public class WebInputManager : IInputManager
         return string.Join("/", labels);
     }
 
-    public string GetActionHelpTextFull(InputAction action) => GetActionHelpText(action, true);
-
-    public string GetMouseButtonHelpText(MouseButton button)
+    public override string GetMouseButtonHelpText(MouseButton button)
     {
         return button switch
         {
@@ -340,9 +298,9 @@ public class WebInputManager : IInputManager
         };
     }
 
-    public bool IsMouseDown(MouseButton button) => _mouseDown.Contains((int)button - 1);
-    public bool IsMousePressed(MouseButton button) => _mousePressed.Contains((int)button - 1);
-    public bool IsMouseReleased(MouseButton button) => _mouseReleased.Contains((int)button - 1);
+    public override bool IsMouseDown(MouseButton button) => _mouseDown.Contains((int)button - 1);
+    public override bool IsMousePressed(MouseButton button) => _mousePressed.Contains((int)button - 1);
+    public override bool IsMouseReleased(MouseButton button) => _mouseReleased.Contains((int)button - 1);
 
     // ── Binding checks ───────────────────────────────────────────
 
@@ -369,53 +327,6 @@ public class WebInputManager : IInputManager
             InputMethod.Gamepad => binding.GamepadBtn.HasValue,
             _ => binding.KeyCode != null || binding.MouseBtn.HasValue,
         };
-    }
-
-    // ── Movement / heading ───────────────────────────────────────
-
-    private Vector2 GetCombinedMovementDirection()
-    {
-        return ActiveInputMethod == InputMethod.Gamepad
-            ? GetLeftStickDirection()
-            : GetKeyboardMovementDirection();
-    }
-
-    private Vector2 GetCombinedHeadingDirection()
-    {
-        return ActiveInputMethod == InputMethod.Gamepad
-            ? GetRightStickDirection()
-            : GetMouseHeadingDirection();
-    }
-
-    private Vector2 GetLeftStickDirection()
-    {
-        Vector2 dir = new(_leftStickX, _leftStickY);
-        return dir.LengthSquared() < 0.001f ? Vector2.Zero : Vector2.Normalize(dir);
-    }
-
-    private Vector2 GetRightStickDirection()
-    {
-        Vector2 dir = new(_rightStickX, _rightStickY);
-        return dir.LengthSquared() < 0.001f ? Vector2.Zero : Vector2.Normalize(dir);
-    }
-
-    private Vector2 GetKeyboardMovementDirection()
-    {
-        Vector2 dir = Vector2.Zero;
-        if (IsActionDown(InputAction.MoveUp)) dir.Y -= 1f;
-        if (IsActionDown(InputAction.MoveDown)) dir.Y += 1f;
-        if (IsActionDown(InputAction.MoveLeft)) dir.X -= 1f;
-        if (IsActionDown(InputAction.MoveRight)) dir.X += 1f;
-        return dir == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(dir);
-    }
-
-    private Vector2 GetMouseHeadingDirection()
-    {
-        var (winW, winH) = _getCanvasSize();
-        Vector2 screenCenter = new(winW / 2f, winH / 2f);
-        Vector2 mousePosition = new(MouseX, MouseY);
-        Vector2 direction = mousePosition - screenCenter;
-        return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
     }
 
     // ── Help text labels ─────────────────────────────────────────

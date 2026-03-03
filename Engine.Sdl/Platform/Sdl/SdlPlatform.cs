@@ -1,30 +1,21 @@
 using SDL3;
+using Engine.Platform.Base;
 
 namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// SDL3 implementation of the platform layer.
 /// </summary>
-public class SdlPlatform : IPlatform
+public class SdlPlatform : BasePlatform
 {
     private nint _window;
     private nint _renderer;
 
-    public string WindowTitle { get; }
-    public int WindowWidth => SpriteRenderer.WindowWidth;
-    public int WindowHeight => SpriteRenderer.WindowHeight;
-
-    public ISpriteRenderer SpriteRenderer { get; private set; }
-    public ITextureManager Textures { get; private set; }
-    public IInputManager InputManager { get; private set; }
-    public IAudioManager AudioManager { get; private set; }
-    public ISettings Settings { get; private set; }
-
     public SdlPlatform(string windowTitle, int windowWidth, int windowHeight,
         IMusicProvider musicProvider, ISfxProvider sfxProvider,
         float masterVolume = 0.5f, float musicVolume = 0.4f, float sfxVolume = 0.7f)
+        : base(windowTitle)
     {
-        WindowTitle = windowTitle;
 
         // Init SDL
         if (!SDL.Init(SDL.InitFlags.Video | SDL.InitFlags.Audio | SDL.InitFlags.Gamepad))
@@ -61,15 +52,9 @@ public class SdlPlatform : IPlatform
         Settings = new SdlSettings();
     }
 
-    public void Update()
+    public override void Dispose()
     {
-        SpriteRenderer.Update();
-    }
-
-    public void Dispose()
-    {
-        SpriteRenderer.Dispose();
-        AudioManager.Dispose();
+        base.Dispose();
         SDL.DestroyRenderer(_renderer);
         SDL.DestroyWindow(_window);
         SDL.Quit();

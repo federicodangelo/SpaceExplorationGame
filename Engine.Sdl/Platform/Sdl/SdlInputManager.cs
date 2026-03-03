@@ -1,15 +1,15 @@
 using System.Numerics;
 using System.Text;
 using SDL3;
+using Engine.Platform.Base;
 
 namespace Engine.Platform.Sdl;
 
 /// <summary>
 /// SDL3 input snapshot captured each frame. Provides current and previous state for edge detection.
 /// </summary>
-public class SdlInputManager : IInputManager
+public class SdlInputManager : BaseInputManager
 {
-    private readonly Func<(int Width, int Height)> _getWindowSize;
     private readonly record struct InputBinding(SDL.Scancode? Scancode, int? MouseButton, SDL.GamepadButton? GamepadButton, SDL.GamepadAxis? GamepadAxis)
     {
         public static InputBinding Key(SDL.Scancode scancode) => new(scancode, null, null, null);
@@ -23,12 +23,6 @@ public class SdlInputManager : IInputManager
     private readonly HashSet<SDL.Scancode> _keysReleased = []; // just released this frame
 
     private readonly StringBuilder _textInputBuffer = new();
-    private int _textInputBackspaceCount; // counts backspaces in the current frame that were not yet applied to the TextInput buffer, so we can report it separately if needed
-    private int _textInputReturnCount; // counts how many times Return was pressed in the current frame, so we can report it separately if needed (e.g. for confirming text input even if the Return key event was consumed by the UI)
-
-    private readonly HashSet<int> _mouseDown = [];
-    private readonly HashSet<int> _mousePressed = [];
-    private readonly HashSet<int> _mouseReleased = [];
 
     private readonly HashSet<SDL.GamepadButton> _gamepadDown = [];
     private readonly HashSet<SDL.GamepadButton> _gamepadPressed = [];
@@ -39,12 +33,7 @@ public class SdlInputManager : IInputManager
     private readonly HashSet<SDL.GamepadAxis> _gamepadAxesReleased = [];
 
     private uint _activeGamepadId;
-    private float _leftStickX;
-    private float _leftStickY;
-    private float _rightStickX;
-    private float _rightStickY;
 
-    private const float GamepadDeadZone = 0.20f;
     private const float GamepadTriggerThreshold = 0.35f;
 
     private readonly Dictionary<InputAction, List<InputBinding>> _bindings = new()
@@ -78,26 +67,18 @@ public class SdlInputManager : IInputManager
         [InputAction.Screenshot] = [InputBinding.Key(SDL.Scancode.F12)],
     };
 
-    public float MouseX { get; private set; }
-    public float MouseY { get; private set; }
-    public float MouseWheelY { get; private set; }
-    public bool QuitRequested { get; private set; }
+    private bool _quitRequested;
+    public override bool QuitRequested => _quitRequested;
 
     /// <summary>Text typed this frame, accumulated from SDL TextInput events. Reset each BeginFrame.</summary>
-    public string TextInput => _textInputBuffer.ToString();
-    public int TextInputBackspacesCount => _textInputBackspaceCount;
-    public int TextInputReturnsCount => _textInputReturnCount;
-    public InputMethod ActiveInputMethod { get; private set; } = InputMethod.MouseKeyboard;
-    public MovementInputMode MovementMode =>
-        ActiveInputMethod == InputMethod.Gamepad ? MovementInputMode.Absolute : MovementInputMode.HeadingRelative;
+    public override string TextInput => _textInputBuffer.ToString();
 
-    public SdlInputManager(Func<(int Width, int Height)> getWindowSize)
+    public SdlInputManager(Func<(int Width, int Height)> getWindowSize) : base(getWindowSize)
     {
-        _getWindowSize = getWindowSize;
     }
 
     /// <summary>Call at the start of each frame before processing events.</summary>
-    public void BeginFrame()
+    public override void BeginFrame()
     {
         // Only poll mouse position here.
         // Edge-detection sets (pressed/released) are NOT cleared here —
@@ -114,31 +95,27 @@ public class SdlInputManager : IInputManager
     /// Call after the fixed-timestep update loop has run at least once.
     /// Clears edge-detection state so the next frame starts fresh.
     /// </summary>
-    public void EndFrame()
+    public override void EndFrame()
     {
+        base.EndFrame(); // clears _mousePressed, _mouseReleased, MouseWheelY
         _keysPressed.Clear();
         _keysReleased.Clear();
-        _mousePressed.Clear();
-        _mouseReleased.Clear();
         _gamepadPressed.Clear();
         _gamepadReleased.Clear();
         _gamepadAxesPressed.Clear();
         _gamepadAxesReleased.Clear();
-        MouseWheelY = 0;
     }
 
     /// <summary>
     /// Full reset: clears ALL input state (pressed, released, down, wheel).
     /// Use on state transitions so the new state starts with a completely clean slate.
     /// </summary>
-    public void Reset()
+    public override void Reset()
     {
+        base.Reset(); // clears mouse, sticks, MouseWheelY, ActiveInputMethod
         _keysDown.Clear();
         _keysPressed.Clear();
         _keysReleased.Clear();
-        _mouseDown.Clear();
-        _mousePressed.Clear();
-        _mouseReleased.Clear();
         _gamepadDown.Clear();
         _gamepadPressed.Clear();
         _gamepadReleased.Clear();
@@ -146,16 +123,10 @@ public class SdlInputManager : IInputManager
         _gamepadAxesPressed.Clear();
         _gamepadAxesReleased.Clear();
         _activeGamepadId = 0;
-        _leftStickX = 0;
-        _leftStickY = 0;
-        _rightStickX = 0;
-        _rightStickY = 0;
-        MouseWheelY = 0;
         _textInputBuffer.Clear();
-        ActiveInputMethod = InputMethod.MouseKeyboard;
     }
 
-    public void ProcessEvents()
+    public override void ProcessEvents()
     {
         while (SDL.PollEvent(out var e))
         {
@@ -169,7 +140,7 @@ public class SdlInputManager : IInputManager
         switch ((SDL.EventType)e.Type)
         {
             case SDL.EventType.Quit:
-                QuitRequested = true;
+                _quitRequested = true;
                 break;
 
             case SDL.EventType.KeyDown:
@@ -293,21 +264,11 @@ public class SdlInputManager : IInputManager
         }
     }
 
-    public bool IsActionDown(InputAction action) => IsAnyBindingActive(action, _keysDown, _mouseDown, _gamepadDown, _gamepadAxesDown);
-    public bool IsActionPressed(InputAction action) => IsAnyBindingActive(action, _keysPressed, _mousePressed, _gamepadPressed, _gamepadAxesPressed);
-    public bool IsActionReleased(InputAction action) => IsAnyBindingActive(action, _keysReleased, _mouseReleased, _gamepadReleased, _gamepadAxesReleased);
+    public override bool IsActionDown(InputAction action) => IsAnyBindingActive(action, _keysDown, _mouseDown, _gamepadDown, _gamepadAxesDown);
+    public override bool IsActionPressed(InputAction action) => IsAnyBindingActive(action, _keysPressed, _mousePressed, _gamepadPressed, _gamepadAxesPressed);
+    public override bool IsActionReleased(InputAction action) => IsAnyBindingActive(action, _keysReleased, _mouseReleased, _gamepadReleased, _gamepadAxesReleased);
 
-    public Vector2 GetActionAxisDirection(InputActionAxis axis)
-    {
-        return axis switch
-        {
-            InputActionAxis.Movement => GetCombinedMovementDirection(),
-            InputActionAxis.Heading => GetCombinedHeadingDirection(),
-            _ => Vector2.Zero,
-        };
-    }
-
-    public string GetActionHelpText(InputAction action, bool includeSecondary = false)
+    public override string GetActionHelpText(InputAction action, bool includeSecondary = false)
     {
         if (!_bindings.TryGetValue(action, out List<InputBinding>? bindingList) || bindingList.Count == 0)
             return string.Empty;
@@ -332,21 +293,12 @@ public class SdlInputManager : IInputManager
         return string.Join("/", labels);
     }
 
-    public string GetActionHelpTextFull(InputAction action)
-    {
-        return GetActionHelpText(action, includeSecondary: true);
-    }
-
-    public string GetMouseButtonHelpText(MouseButton button)
+    public override string GetMouseButtonHelpText(MouseButton button)
     {
         return ActiveInputMethod == InputMethod.MouseKeyboard
             ? GetBindingLabel(InputBinding.Mouse((int)button))
             : string.Empty;
     }
-
-    public bool IsMouseDown(MouseButton button) => _mouseDown.Contains((int)button);
-    public bool IsMousePressed(MouseButton button) => _mousePressed.Contains((int)button);
-    public bool IsMouseReleased(MouseButton button) => _mouseReleased.Contains((int)button);
 
     private bool IsAnyBindingActive(
         InputAction action,
@@ -374,37 +326,6 @@ public class SdlInputManager : IInputManager
         }
 
         return false;
-    }
-
-    private Vector2 GetDirectionFromActions(InputAction upAction, InputAction downAction, InputAction leftAction, InputAction rightAction)
-    {
-        Vector2 direction = Vector2.Zero;
-        if (IsActionDown(upAction)) direction.Y -= 1f;
-        if (IsActionDown(downAction)) direction.Y += 1f;
-        if (IsActionDown(leftAction)) direction.X -= 1f;
-        if (IsActionDown(rightAction)) direction.X += 1f;
-        return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
-    }
-
-    private Vector2 GetLeftStickDirection()
-    {
-        Vector2 direction = new(_leftStickX, _leftStickY);
-        return ApplyDeadZone(direction);
-    }
-
-    private Vector2 GetRightStickDirection()
-    {
-        Vector2 direction = new(_rightStickX, _rightStickY);
-        return ApplyDeadZone(direction);
-    }
-
-    private static Vector2 ApplyDeadZone(Vector2 direction)
-    {
-        float length = direction.Length();
-        if (length < GamepadDeadZone)
-            return Vector2.Zero;
-
-        return Vector2.Normalize(direction);
     }
 
     private static float NormalizeGamepadAxis(short value)
@@ -548,29 +469,6 @@ public class SdlInputManager : IInputManager
         {
             _textInputBuffer.Append(ch);
         }
-    }
-
-    private Vector2 GetDirectionFromScreenCenterToMouse()
-    {
-        var (winW, winH) = _getWindowSize();
-        Vector2 screenCenter = new(winW / 2f, winH / 2f);
-        Vector2 mousePosition = new(MouseX, MouseY);
-        Vector2 direction = mousePosition - screenCenter;
-        return direction == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(direction);
-    }
-
-    private Vector2 GetCombinedMovementDirection()
-    {
-        return ActiveInputMethod == InputMethod.Gamepad
-            ? GetLeftStickDirection()
-            : GetDirectionFromActions(InputAction.MoveUp, InputAction.MoveDown, InputAction.MoveLeft, InputAction.MoveRight);
-    }
-
-    private Vector2 GetCombinedHeadingDirection()
-    {
-        return ActiveInputMethod == InputMethod.Gamepad
-            ? GetRightStickDirection()
-            : GetDirectionFromScreenCenterToMouse();
     }
 
     private bool ShouldIncludeBindingForActiveInput(InputBinding binding)

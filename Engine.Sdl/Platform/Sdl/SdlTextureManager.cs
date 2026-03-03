@@ -1,5 +1,6 @@
 using SDL3;
 using Engine.Core;
+using Engine.Platform.Base;
 
 namespace Engine.Platform.Sdl;
 
@@ -7,7 +8,7 @@ namespace Engine.Platform.Sdl;
 /// SDL3 implementation of texture creation utilities.
 /// Each renderer owns its own textures; this class only wraps the SDL renderer handle.
 /// </summary>
-public class SdlTextureManager : ITextureManager
+public class SdlTextureManager : BaseTextureManager
 {
     private readonly nint _renderer;
 
@@ -17,7 +18,7 @@ public class SdlTextureManager : ITextureManager
     }
 
     /// <summary>Creates an SDL texture from a raw RGBA pixel array. Used by entity renderers to generate their own textures.</summary>
-    public nint CreateTextureFromPixels(byte[] pixels, int width, int height,
+    public override nint CreateTextureFromPixels(byte[] pixels, int width, int height,
         TextureScaleMode scaleMode = TextureScaleMode.Linear)
     {
         unsafe
@@ -45,28 +46,8 @@ public class SdlTextureManager : ITextureManager
         }
     }
 
-    /// <summary>Fills a rectangular block of pixels in a pixel array.</summary>
-    public static void SetPixelBlock(byte[] pixels, int stride, int x, int y, int w, int h,
-        Color4 color)
-    {
-        for (int py = y; py < y + h; py++)
-        {
-            for (int px = x; px < x + w; px++)
-            {
-                if (px >= 0 && px < stride && py >= 0 && py < stride)
-                {
-                    int idx = (py * stride + px) * 4;
-                    pixels[idx + 0] = color.R;
-                    pixels[idx + 1] = color.G;
-                    pixels[idx + 2] = color.B;
-                    pixels[idx + 3] = color.A;
-                }
-            }
-        }
-    }
-
     /// <summary>Destroys an SDL texture. Safe to call with <see cref="nint.Zero"/>.</summary>
-    public void DestroyTexture(nint texture)
+    public override void DestroyTexture(nint texture)
     {
         if (texture != nint.Zero)
             SDL.DestroyTexture(texture);

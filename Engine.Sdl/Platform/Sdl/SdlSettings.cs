@@ -1,13 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Engine.Platform.Base;
 
 namespace Engine.Platform.Sdl;
 
 /// <summary>
-/// File-based <see cref="ISettings"/> implementation.
+/// File-based settings implementation.
 /// Stores all key/value pairs in a single JSON file next to the executable.
 /// </summary>
-public sealed class SdlSettings : ISettings
+public sealed class SdlSettings : BaseSettings
 {
     private static readonly object Sync = new();
     private readonly string _filePath;
@@ -18,7 +19,7 @@ public sealed class SdlSettings : ISettings
         _filePath = Path.Combine(AppContext.BaseDirectory, fileName);
     }
 
-    public void Save(string key, string value)
+    public override void Save(string key, string value)
     {
         lock (Sync)
         {
@@ -28,7 +29,7 @@ public sealed class SdlSettings : ISettings
         }
     }
 
-    public string? Load(string key)
+    public override string? Load(string key)
     {
         lock (Sync)
         {
