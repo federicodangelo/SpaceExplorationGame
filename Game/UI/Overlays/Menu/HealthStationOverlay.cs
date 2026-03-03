@@ -46,7 +46,7 @@ public class HealthStationOverlay : PanelOverlayBase
 
         renderer.DrawTextScreen(panelX + 20, contentY + 5,
             $"HEALTH: {game.Player.AvatarHealth:F0} / {game.Player.AvatarMaxHealth:F0}",
-            new Color3(200, 200, 200), 2f);
+            new Color3(200, 200, 200), 2f, panelW - 40f);
 
         // Health bar
         float barX = panelX + 20;
@@ -59,25 +59,25 @@ public class HealthStationOverlay : PanelOverlayBase
         if (damage > 0)
         {
             renderer.DrawTextScreen(panelX + 20, contentY + 75, $"INJURIES: {damage:F0} POINTS",
-                new Color3(255, 150, 100), 2f);
+                new Color3(255, 150, 100), 2f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, contentY + 105, $"TREATMENT COST: {cost} CREDITS",
-                new Color3(255, 220, 80), 2f);
+                new Color3(255, 220, 80), 2f, panelW - 40f);
 
             bool canAfford = game.Player.Credits >= cost;
             if (canAfford)
                 renderer.DrawTextScreen(panelX + 20, contentY + 145,
                     $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] HEAL ALL",
-                    new Color3(100, 200, 255), 2f);
+                    new Color3(100, 200, 255), 2f, panelW - 40f);
             else
                 renderer.DrawTextScreen(panelX + 20, contentY + 145, "INSUFFICIENT CREDITS",
-                    new Color3(255, 80, 80), 2f);
+                    new Color3(255, 80, 80), 2f, panelW - 40f);
         }
         else
         {
             renderer.DrawTextScreen(panelX + 20, contentY + 75, "HEALTH STATUS: 100%",
-                new Color3(100, 200, 255), 2.5f);
+                new Color3(100, 200, 255), 2.5f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, contentY + 110, "NO TREATMENT NEEDED",
-                new Color3(150, 200, 200), 2f);
+                new Color3(150, 200, 200), 2f, panelW - 40f);
         }
     }
 }

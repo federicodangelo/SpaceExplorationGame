@@ -195,12 +195,12 @@ public abstract class PanelOverlayBase : OverlayBase
         DrawFrame(renderer, px, py, pw, ph, 245);
 
         // Title
-        renderer.DrawTextScreen(px + 15, py + 10, Title, TitleColor, 2.5f);
+        renderer.DrawTextScreen(px + 15, py + 10, Title, TitleColor, 2.5f, ShowCredits ? pw - 215f : pw - 30f);
 
         // Credits (if enabled)
         if (ShowCredits)
             renderer.DrawTextScreen(px + pw - 200, py + 10,
-                $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f);
+                $"CREDITS: {game.Player.Credits}", new Color3(255, 220, 80), 2f, 185f);
 
         // Separator
         renderer.DrawLineScreen(px + 15, py + 45, px + pw - 15, py + 45, new Color3(60, 80, 140));
@@ -216,13 +216,13 @@ public abstract class PanelOverlayBase : OverlayBase
                 new Color3(
                     _statusIsPositive ? (byte)100 : (byte)255,
                     _statusIsPositive ? (byte)255 : (byte)150,
-                    _statusIsPositive ? (byte)100 : (byte)80), 1.5f);
+                    _statusIsPositive ? (byte)100 : (byte)80), 1.5f, pw - 40f);
         }
 
         // Controls hint
         if (ControlsHint != null)
             renderer.DrawTextScreen(px + 15, py + ph - 28, ControlsHint,
-                new Color3(100, 100, 130), 1.3f);
+                new Color3(100, 100, 130), 1.3f, pw - 30f);
 
         // Sub-overlays on top
         RenderSubOverlays(game);

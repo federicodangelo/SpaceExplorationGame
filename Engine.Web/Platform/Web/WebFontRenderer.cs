@@ -15,7 +15,7 @@ public class WebFontRenderer : BaseFontRenderer
     {
     }
 
-    public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f)
+    public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
     {
         if (_fontAtlases.Length == 0 || text.Length == 0) return;
 
@@ -28,6 +28,8 @@ public class WebFontRenderer : BaseFontRenderer
         float drawW = gw * scale;
         float drawH = gh * scale;
 
+        float clipX = maxWidth > 0f ? x + maxWidth : float.MaxValue;
+
         float cursorX = MathF.Round(x);
         float snappedY = MathF.Round(y);
         int snappedDrawW = (int)MathF.Round(drawW);
@@ -36,11 +38,15 @@ public class WebFontRenderer : BaseFontRenderer
 
         foreach (char c in text)
         {
+            if (cursorX >= clipX) break;
+
             if (c == ' ')
             {
                 cursorX += snappedAdvance;
                 continue;
             }
+
+            if (cursorX + snappedDrawW > clipX) break;
 
             if (!glyphUV.TryGetValue(c, out var uv))
             {

@@ -98,7 +98,7 @@ public class CargoListOverlay : ListPanelOverlay
         RefreshCargoKeys(game);
 
         renderer.DrawTextScreen(panelX + 15, contentY + 6,
-            $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(180, 200, 240), 1.5f);
+            $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(180, 200, 240), 1.5f, panelW - 30f);
         renderer.DrawLineScreen(panelX + 15, contentY + 25, panelX + panelW - 15, contentY + 25,
             new Color3(60, 60, 100));
 
@@ -109,7 +109,7 @@ public class CargoListOverlay : ListPanelOverlay
             string empty = "CARGO HOLD EMPTY";
             float emptyW = renderer.MeasureText(empty, 2f);
             renderer.DrawTextScreen(renderer.WindowWidth / 2f - emptyW / 2f, listY + 8,
-                empty, new Color3(120, 130, 150), 2f);
+                empty, new Color3(120, 130, 150), 2f, panelW - 30f);
             return;
         }
 
@@ -128,11 +128,11 @@ public class CargoListOverlay : ListPanelOverlay
             byte g = selected ? (byte)255 : info.Color.G;
             byte b = selected ? (byte)255 : info.Color.B;
 
-            renderer.DrawTextScreen(panelX + 20, listY + 3, info.Name.ToUpper(), new Color3(r, g, b), 1.8f);
-            renderer.DrawTextScreen(panelX + 220, listY + 3, $"x{amount}", new Color3(220, 220, 220), 1.8f);
+            renderer.DrawTextScreen(panelX + 20, listY + 3, info.Name.ToUpper(), new Color3(r, g, b), 1.8f, 180f);
+            renderer.DrawTextScreen(panelX + 220, listY + 3, $"x{amount}", new Color3(220, 220, 220), 1.8f, 60f);
 
             if (selected)
-                renderer.DrawTextScreen(panelX + panelW - 170, listY + 3, "[DISCARD 1]", new Color3(255, 160, 160), 1.5f);
+                renderer.DrawTextScreen(panelX + panelW - 170, listY + 3, "[DISCARD 1]", new Color3(255, 160, 160), 1.5f, 160f);
 
             listY += ItemHeight;
         }
@@ -145,7 +145,7 @@ public class CargoListOverlay : ListPanelOverlay
         byte ar = discardAllSelected ? (byte)255 : (byte)210;
         byte ag = discardAllSelected ? (byte)150 : (byte)110;
         byte ab = discardAllSelected ? (byte)150 : (byte)110;
-        renderer.DrawTextScreen(panelX + 20, listY + 3, "DISCARD ALL CARGO", new Color3(ar, ag, ab), 1.9f);
+        renderer.DrawTextScreen(panelX + 20, listY + 3, "DISCARD ALL CARGO", new Color3(ar, ag, ab), 1.9f, panelW - 35f);
     }
 
     private void RefreshCargoKeys(Game game)

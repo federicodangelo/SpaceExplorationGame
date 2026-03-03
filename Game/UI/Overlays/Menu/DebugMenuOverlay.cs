@@ -232,6 +232,6 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         renderer.DrawLineScreen(panelX + 15, y - 4, panelX + panelW - 15, y - 4, new Color3(90, 70, 30));
         renderer.DrawTextScreen(panelX + 15, y + 6,
             "Use this menu to launch debug test scenarios.",
-            new Color3(200, 180, 140), 1.4f);
+            new Color3(200, 180, 140), 1.4f, panelW - 30f);
     }
 }

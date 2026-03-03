@@ -198,17 +198,17 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         float px = PanelX, py = PanelY, pw = PanelWidth, ph = PanelHeight;
 
         // Station info header
-        renderer.DrawTextScreen(px + 20, py + 55, _spaceStation.Name.ToUpper(), new Color3(200, 200, 200), 2f);
-        renderer.DrawTextScreen(px + 20, py + 80, $"IN SYSTEM: {_starSystem.Name}", new Color3(120, 120, 150), 1.5f);
+        renderer.DrawTextScreen(px + 20, py + 55, _spaceStation.Name.ToUpper(), new Color3(200, 200, 200), 2f, pw - 40f);
+        renderer.DrawTextScreen(px + 20, py + 80, $"IN SYSTEM: {_starSystem.Name}", new Color3(120, 120, 150), 1.5f, pw - 40f);
         renderer.DrawLineScreen(px + 20, py + 105, px + pw - 20, py + 105, new Color3(60, 80, 140));
 
         // Ship status section
         float statusY = MenuY + menuHeight + 4;
         renderer.DrawLineScreen(px + 20, statusY, px + pw - 20, statusY, new Color3(60, 60, 100));
-        renderer.DrawTextScreen(px + 20, statusY + 10, $"SHIP: {game.Player.CurrentShipType.Name.ToUpper()}", new Color3(150, 150, 200), 2f);
-        renderer.DrawTextScreen(px + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", new Color3(100, 255, 100), 1.5f);
-        renderer.DrawTextScreen(px + 20, statusY + 60, $"FUEL: {game.Player.ShipFuel:F0}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f);
-        renderer.DrawTextScreen(px + 20, statusY + 80, $"[FULLY REFUELED]", new Color3(80, 200, 120), 1.5f);
+        renderer.DrawTextScreen(px + 20, statusY + 10, $"SHIP: {game.Player.CurrentShipType.Name.ToUpper()}", new Color3(150, 150, 200), 2f, pw - 40f);
+        renderer.DrawTextScreen(px + 20, statusY + 40, $"HULL: {game.Player.ShipHealth:F0}/{game.Player.ShipMaxHealth:F0}", new Color3(100, 255, 100), 1.5f, pw - 40f);
+        renderer.DrawTextScreen(px + 20, statusY + 60, $"FUEL: {game.Player.ShipFuel:F0}/{game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.5f, pw - 40f);
+        renderer.DrawTextScreen(px + 20, statusY + 80, $"[FULLY REFUELED]", new Color3(80, 200, 120), 1.5f, pw - 40f);
 
         float barX = px + 250;
         float barW = 200;

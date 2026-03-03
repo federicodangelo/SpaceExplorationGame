@@ -47,7 +47,7 @@ public class RepairOverlay : PanelOverlayBase
 
         renderer.DrawTextScreen(panelX + 20, contentY + 5,
             $"SHIP HULL: {game.Player.ShipHealth:F0} / {game.Player.ShipMaxHealth:F0}",
-            new Color3(200, 200, 200), 2f);
+            new Color3(200, 200, 200), 2f, panelW - 40f);
 
         // Health bar
         float barX = panelX + 20;
@@ -60,25 +60,25 @@ public class RepairOverlay : PanelOverlayBase
         if (damage > 0)
         {
             renderer.DrawTextScreen(panelX + 20, contentY + 75, $"DAMAGE: {damage:F0} POINTS",
-                new Color3(255, 150, 100), 2f);
+                new Color3(255, 150, 100), 2f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, contentY + 105, $"REPAIR COST: {cost} CREDITS",
-                new Color3(255, 220, 80), 2f);
+                new Color3(255, 220, 80), 2f, panelW - 40f);
 
             bool canAfford = game.Player.Credits >= cost;
             if (canAfford)
                 renderer.DrawTextScreen(panelX + 20, contentY + 145,
                     $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] REPAIR ALL",
-                    new Color3(100, 255, 100), 2f);
+                    new Color3(100, 255, 100), 2f, panelW - 40f);
             else
                 renderer.DrawTextScreen(panelX + 20, contentY + 145, "INSUFFICIENT CREDITS",
-                    new Color3(255, 80, 80), 2f);
+                    new Color3(255, 80, 80), 2f, panelW - 40f);
         }
         else
         {
             renderer.DrawTextScreen(panelX + 20, contentY + 75, "HULL INTEGRITY: 100%",
-                new Color3(100, 255, 100), 2.5f);
+                new Color3(100, 255, 100), 2.5f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, contentY + 110, "NO REPAIRS NEEDED",
-                new Color3(150, 200, 150), 2f);
+                new Color3(150, 200, 150), 2f, panelW - 40f);
         }
     }
 }

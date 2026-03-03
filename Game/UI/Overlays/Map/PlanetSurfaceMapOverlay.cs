@@ -78,7 +78,7 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
         renderer.DrawRectScreen(FrameX, FrameY, FrameW, HeaderHeight, new Color4(30, 40, 70, 240));
         renderer.DrawRectScreen(FrameX, FrameY + HeaderHeight - 1, FrameW, 1, new Color4(60, 80, 140, 200));
         float labelW = renderer.MeasureText(title, 1.8f);
-        renderer.DrawTextScreen(FrameX + FrameW / 2f - labelW / 2f, FrameY + 6, title, new Color3(140, 170, 220), 1.8f);
+        renderer.DrawTextScreen(FrameX + FrameW / 2f - labelW / 2f, FrameY + 6, title, new Color3(140, 170, 220), 1.8f, FrameW - 12f);
     }
 
     protected override void RenderHud(Game game, ISpriteRenderer renderer)
@@ -90,6 +90,6 @@ public class PlanetSurfaceMapOverlay : MapOverlayBase
         float titleW = renderer.MeasureText(title, 2.5f);
         float titleBgW = titleW + 30;
         DrawFrame(renderer, renderer.WindowWidth / 2f - titleBgW / 2f, hudMargin + 3, titleBgW, 32, 200);
-        renderer.DrawTextScreen(renderer.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f);
+        renderer.DrawTextScreen(renderer.WindowWidth / 2f - titleW / 2f, hudMargin + 9, title, new Color3(180, 200, 255), 2.5f, titleBgW - 20f);
     }
 }

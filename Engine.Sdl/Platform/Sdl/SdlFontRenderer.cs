@@ -25,7 +25,7 @@ public class SdlFontRenderer : BaseFontRenderer
     }
 
     /// <summary>Draw text in screen space using a pre-scaled font atlas and a single batched draw call.</summary>
-    public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f)
+    public override void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
     {
         if (_fontAtlases.Length == 0 || text.Length == 0) return;
 
@@ -38,12 +38,25 @@ public class SdlFontRenderer : BaseFontRenderer
         float drawW = gw * scale;
         float drawH = gh * scale;
 
-        // Count visible (non-space) characters that have glyphs
+        float clipX = maxWidth > 0f ? x + maxWidth : float.MaxValue;
+
+        // Count visible (non-space) characters that have glyphs and fit within maxWidth
         int visibleCount = 0;
+        float countCursorX = MathF.Round(x);
+        int snappedAdvanceCount = (int)MathF.Round(charAdvance);
+        int snappedDrawWCount = (int)MathF.Round(drawW);
         foreach (char c in text)
         {
-            if (c != ' ' && glyphUV.ContainsKey(c))
+            if (countCursorX >= clipX) break;
+            if (c == ' ')
+            {
+                countCursorX += snappedAdvanceCount;
+                continue;
+            }
+            if (countCursorX + snappedDrawWCount > clipX) break;
+            if (glyphUV.ContainsKey(c))
                 visibleCount++;
+            countCursorX += snappedAdvanceCount;
         }
 
         if (visibleCount == 0) return;
@@ -76,11 +89,15 @@ public class SdlFontRenderer : BaseFontRenderer
 
         foreach (char c in text)
         {
+            if (cursorX >= clipX) break;
+
             if (c == ' ')
             {
                 cursorX += snappedAdvance;
                 continue;
             }
+
+            if (cursorX + snappedDrawW > clipX) break;
 
             if (!glyphUV.TryGetValue(c, out var uv))
             {

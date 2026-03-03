@@ -322,12 +322,12 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         renderer.DrawLineScreen(panelX + 15, infoY - 4, panelX + panelW - 15, infoY - 4, new Color3(60, 80, 140));
 
         // Seed line
-        renderer.DrawTextScreen(panelX + 15, infoY + 4, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f);
+        renderer.DrawTextScreen(panelX + 15, infoY + 4, $"Seed: {CurrentSeed}", new Color3(120, 160, 200), 1.5f, panelW - 30f);
 
         float previewStartY = infoY + 24;
         if (!string.IsNullOrWhiteSpace(StartingShipOverrideText))
         {
-            renderer.DrawTextScreen(panelX + 15, previewStartY, StartingShipOverrideText, new Color3(140, 190, 220), 1.5f);
+            renderer.DrawTextScreen(panelX + 15, previewStartY, StartingShipOverrideText, new Color3(140, 190, 220), 1.5f, panelW - 30f);
             previewStartY += 18;
         }
 
@@ -338,7 +338,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             float lineY = previewStartY;
             foreach (var line in lines)
             {
-                renderer.DrawTextScreen(panelX + 15, lineY, line, new Color3(160, 180, 210), 1.5f);
+                renderer.DrawTextScreen(panelX + 15, lineY, line, new Color3(160, 180, 210), 1.5f, panelW - 30f);
                 lineY += 18;
             }
         }

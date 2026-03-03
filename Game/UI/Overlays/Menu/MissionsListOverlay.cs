@@ -87,19 +87,19 @@ public class MissionsListOverlay : ListPanelOverlay
         string countText = $"{active.Count}/{MissionTracker.MaxActive}";
         float countW = renderer.MeasureText(countText, 1.5f);
         renderer.DrawTextScreen(panelX + panelW - countW - 15, PanelY + 17, countText,
-            new Color3(180, 180, 200), 1.5f);
+            new Color3(180, 180, 200), 1.5f, countW + 10f);
 
         if (active.Count == 0)
         {
             string empty = "NO ACTIVE MISSIONS";
             float emptyW = renderer.MeasureText(empty, 2f);
             renderer.DrawTextScreen(renderer.WindowWidth / 2f - emptyW / 2f, contentY + 20, empty,
-                new Color3(120, 120, 140), 2f);
+                new Color3(120, 120, 140), 2f, panelW - 30f);
 
             string hint = "Accept missions from station mission boards.";
             float hintW = renderer.MeasureText(hint, 1.5f);
             renderer.DrawTextScreen(renderer.WindowWidth / 2f - hintW / 2f, contentY + 48, hint,
-                new Color3(90, 90, 110), 1.5f);
+                new Color3(90, 90, 110), 1.5f, panelW - 30f);
             return;
         }
 
@@ -124,25 +124,25 @@ public class MissionsListOverlay : ListPanelOverlay
                     completed ? new Color3(30, 50, 30) : new Color3(35, 40, 65));
 
             if (isTracked)
-                renderer.DrawTextScreen(panelX + 10, y + 5, ">>>", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(panelX + 10, y + 5, ">>>", new Color3(100, 255, 200), 1.5f, 25f);
 
             float labelX = panelX + 40;
 
             string statusTag = completed ? "[COMPLETE]" : "[ACTIVE]";
             var statusColor = completed ? new Color3(100, 255, 100) : new Color3(255, 200, 80);
-            renderer.DrawTextScreen(labelX, y + 5, statusTag, statusColor, 1.5f);
+            renderer.DrawTextScreen(labelX, y + 5, statusTag, statusColor, 1.5f, panelW - 55f);
 
             float afterStatus = labelX + renderer.MeasureText(statusTag, 1.5f) + 8;
-            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
+            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 80f);
 
             renderer.DrawTextScreen(labelX, y + 24, m.Title,
-                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f);
+                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 255f);
 
             renderer.DrawTextScreen(labelX + 10, y + 46, m.ProgressText,
-                completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), 1.5f);
+                completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), 1.5f, panelW - 265f);
 
             renderer.DrawTextScreen(panelX + panelW - 200, y + 46,
-                $"REWARD: {m.CreditReward} CR", new Color3(255, 220, 80), 1.5f);
+                $"REWARD: {m.CreditReward} CR", new Color3(255, 220, 80), 1.5f, 185f);
         }
     }
 }

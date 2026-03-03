@@ -386,13 +386,13 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         float py = IpY + 40;
 
         // Planet summary
-        renderer.DrawTextScreen(px, py, _planet.Name.ToUpper(), _planet.Color, 1.8f);
+        renderer.DrawTextScreen(px, py, _planet.Name.ToUpper(), _planet.Color, 1.8f, InfoPanelW - 24);
         py += 24;
-        renderer.DrawTextScreen(px, py, $"TYPE: {_planet.Type.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f);
+        renderer.DrawTextScreen(px, py, $"TYPE: {_planet.Type.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
         py += 16;
-        renderer.DrawTextScreen(px, py, $"SIZE: {_surfaceData.Width} x {_surfaceData.Height} TILES", new Color3(180, 180, 200), 1.3f);
+        renderer.DrawTextScreen(px, py, $"SIZE: {_surfaceData.Width} x {_surfaceData.Height} TILES", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
         py += 16;
-        renderer.DrawTextScreen(px, py, $"SETTLEMENTS: {_surfaceData.Settlements.Count}", new Color3(180, 180, 200), 1.3f);
+        renderer.DrawTextScreen(px, py, $"SETTLEMENTS: {_surfaceData.Settlements.Count}", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
         py += 20;
 
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
@@ -405,11 +405,11 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         }
         else
         {
-            renderer.DrawTextScreen(px, py, "NO SELECTION", new Color3(100, 120, 160), 1.5f);
+            renderer.DrawTextScreen(px, py, "NO SELECTION", new Color3(100, 120, 160), 1.5f, InfoPanelW - 24);
             py += 20;
-            renderer.DrawTextScreen(px, py, "CLICK ANYWHERE ON THE", new Color3(140, 140, 160), 1.3f);
+            renderer.DrawTextScreen(px, py, "CLICK ANYWHERE ON THE", new Color3(140, 140, 160), 1.3f, InfoPanelW - 24);
             py += 16;
-            renderer.DrawTextScreen(px, py, "MAP TO SET A TARGET", new Color3(140, 140, 160), 1.3f);
+            renderer.DrawTextScreen(px, py, "MAP TO SET A TARGET", new Color3(140, 140, 160), 1.3f, InfoPanelW - 24);
         }
 
         if (_invalidSelectionHintTimer > 0f && !string.IsNullOrWhiteSpace(_invalidSelectionHint))
@@ -418,27 +418,27 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             renderer.DrawRectScreen(px, hintY, InfoPanelW - 24, 20, new Color4(70, 30, 30, 200));
             float hintW = renderer.MeasureText(_invalidSelectionHint, 1.3f);
             renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - hintW / 2f, hintY + 3,
-                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f);
+                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f, InfoPanelW - 24);
         }
 
         // Nav target display
         py = IpY + IpH - 160;
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         py += 8;
-        renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
         py += 18;
         if (game.Player.Navigation.HasTarget)
         {
             renderer.DrawTextScreen(px, py, game.Player.Navigation.Name.ToUpper(),
-                game.Player.Navigation.Color, 1.8f);
+                game.Player.Navigation.Color, 1.8f, InfoPanelW - 24);
             py += 22;
             renderer.DrawTextScreen(px, py,
                 $"TYPE: {game.Player.Navigation.Type.ToString().ToUpper()}",
-                new Color3(180, 180, 200), 1.3f);
+                new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
         }
         else
         {
-            renderer.DrawTextScreen(px, py, "NONE", new Color3(80, 80, 100), 1.5f);
+            renderer.DrawTextScreen(px, py, "NONE", new Color3(80, 80, 100), 1.5f, InfoPanelW - 24);
         }
 
         // Controls
@@ -446,27 +446,27 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         renderer.DrawRectScreen(px, ctrlY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
-            renderer.DrawTextScreen(px, ctrlY + 8, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 8, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 40,
                 "MOUSE CLICK: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
-                new Color3(255, 200, 100), 1.3f);
+                new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
         else
         {
             string panText =
                 $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
-            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 40,
                 $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT  /  SAME SELECTION: SET TARGET + CLOSE",
-                new Color3(255, 200, 100), 1.3f);
+                new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}/{game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
     }
 
@@ -481,25 +481,25 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
             case SurfaceMapObjectType.Settlement when sel.SettlementIndex >= 0
                 && sel.SettlementIndex < _surfaceData.Settlements.Count:
                 var settlement = _surfaceData.Settlements[sel.SettlementIndex];
-                renderer.DrawTextScreen(px, py, "SELECTED: SETTLEMENT", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: SETTLEMENT", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, settlement.Name.ToUpper() + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(255, 220, 100), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(255, 220, 100), 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, $"SIZE: {settlement.TileRect.Width}x{settlement.TileRect.Height}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SurfaceMapObjectType.Ship:
-                renderer.DrawTextScreen(px, py, "SELECTED: SHIP", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: SHIP", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, "YOUR SPACESHIP" + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(120, 200, 255), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(120, 200, 255), 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, "BOARD TO FLY TO SPACE",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
@@ -508,13 +508,13 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                 && sel.TileX < _surfaceData.Width && sel.TileY < _surfaceData.Height:
                 var locTerrain = _surfaceData.Tiles[sel.TileX, sel.TileY];
                 string locTerrainName = locTerrain.ToString().ToUpper();
-                renderer.DrawTextScreen(px, py, "SELECTED: LOCATION", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: LOCATION", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, $"({sel.TileX}, {sel.TileY})" + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(200, 200, 100), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(200, 200, 100), 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, $"TERRAIN: {locTerrainName}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
@@ -530,6 +530,6 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         var btnColor = new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
         float btnW = renderer.MeasureText(btnText, 1.5f);
-        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f);
+        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
     }
 }

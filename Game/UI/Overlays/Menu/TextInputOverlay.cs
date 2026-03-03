@@ -103,7 +103,7 @@ public class TextInputOverlay : PanelOverlayBase
         // Instruction
         string instruction = _numericOnly ? "Enter a number:" : "Enter text:";
         float instrW = renderer.MeasureText(instruction, 2f);
-        renderer.DrawTextScreen(centerX - instrW / 2f, centerY - 40, instruction, new Color3(180, 180, 200), 2f);
+        renderer.DrawTextScreen(centerX - instrW / 2f, centerY - 40, instruction, new Color3(180, 180, 200), 2f, panelW - 30f);
 
         // Input box background
         float boxW = 500;
@@ -122,23 +122,23 @@ public class TextInputOverlay : PanelOverlayBase
             float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
             if (cursorBlink > 0)
                 displayText += "|";
-            renderer.DrawTextScreen(boxX + 10, boxY + 10, displayText, new Color3(220, 240, 255), 2f);
+            renderer.DrawTextScreen(boxX + 10, boxY + 10, displayText, new Color3(220, 240, 255), 2f, boxW - 20f);
         }
         else if (!string.IsNullOrEmpty(_defaultValue))
         {
             // Show default value as placeholder
-            renderer.DrawTextScreen(boxX + 10, boxY + 10, _defaultValue, new Color3(0, 0, 100), 2f);
+            renderer.DrawTextScreen(boxX + 10, boxY + 10, _defaultValue, new Color3(0, 0, 100), 2f, boxW - 20f);
             // Blinking cursor at start
             float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
             if (cursorBlink > 0)
-                renderer.DrawTextScreen(boxX + 6, boxY + 10, "|", new Color3(220, 240, 255), 2f);
+                renderer.DrawTextScreen(boxX + 6, boxY + 10, "|", new Color3(220, 240, 255), 2f, 10f);
         }
         else
         {
             // Show blinking cursor when empty
             float cursorBlink = MathF.Sin((float)game.GlobalTime * 3f);
             if (cursorBlink > 0)
-                renderer.DrawTextScreen(boxX + 10, boxY + 10, "|", new Color3(220, 240, 255), 2f);
+                renderer.DrawTextScreen(boxX + 10, boxY + 10, "|", new Color3(220, 240, 255), 2f, 10f);
         }
 
         // Hint text below the input box
@@ -146,7 +146,7 @@ public class TextInputOverlay : PanelOverlayBase
         {
             string hint = "Type to replace, or ENTER to keep current";
             float hintW = renderer.MeasureText(hint, 1.5f);
-            renderer.DrawTextScreen(centerX - hintW / 2f, centerY + 50, hint, new Color3(120, 140, 160), 1.5f);
+            renderer.DrawTextScreen(centerX - hintW / 2f, centerY + 50, hint, new Color3(120, 140, 160), 1.5f, panelW - 30f);
         }
     }
 }

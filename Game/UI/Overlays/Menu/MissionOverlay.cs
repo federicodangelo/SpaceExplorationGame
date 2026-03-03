@@ -160,7 +160,7 @@ public class MissionOverlay : ListPanelOverlay
         string countText = $"ACTIVE: {activeCount}/{MissionTracker.MaxActive}";
         if (completedCount > 0) countText += $"  READY: {completedCount}";
         renderer.DrawTextScreen(panelX + panelW - 300, PanelY + 17, countText,
-            new Color3(180, 180, 200), 1.5f);
+            new Color3(180, 180, 200), 1.5f, 285f);
 
         // Tab bar
         float tabY = contentY - 7;
@@ -171,7 +171,7 @@ public class MissionOverlay : ListPanelOverlay
             availSel ? new Color3(40, 50, 80) : new Color3(20, 20, 40));
         renderer.DrawTextScreen(panelX + 15, tabY + 5,
             $"< AVAILABLE ({_availableMissions.Count}) >",
-            availSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f);
+            availSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f, tabW - 20f);
 
         bool activeSel = _currentTab == Tab.Active;
         renderer.DrawRectScreen(panelX + 10 + tabW + 20, tabY, tabW, 28,
@@ -181,7 +181,7 @@ public class MissionOverlay : ListPanelOverlay
             : $"< ACTIVE ({activeCount}) >";
         renderer.DrawTextScreen(panelX + 15 + tabW + 20, tabY + 5,
             activeLabel,
-            activeSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f);
+            activeSel ? new Color3(100, 255, 200) : new Color3(100, 100, 130), 2f, tabW - 20f);
 
         renderer.DrawLineScreen(panelX + 15, tabY + 32, panelX + panelW - 15, tabY + 32,
             new Color3(60, 60, 100));
@@ -202,9 +202,9 @@ public class MissionOverlay : ListPanelOverlay
         if (_availableMissions.Count == 0)
         {
             renderer.DrawTextScreen(panelX + 20, startY + 20, "NO MISSIONS AVAILABLE",
-                new Color3(120, 120, 140), 2f);
+                new Color3(120, 120, 140), 2f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, startY + 45, "Check other stations for missions.",
-                new Color3(90, 90, 110), 1.5f);
+                new Color3(90, 90, 110), 1.5f, panelW - 40f);
             return;
         }
 
@@ -221,22 +221,22 @@ public class MissionOverlay : ListPanelOverlay
                     new Color3(35, 40, 65));
 
             // Type badge
-            renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
+            renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 60f);
 
             // Title
             float titleX = panelX + 15 + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 10;
             renderer.DrawTextScreen(titleX, y + 5, m.Title,
-                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f);
+                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 100f);
 
             // Description
             renderer.DrawTextScreen(panelX + 25, y + 28, m.Description,
-                new Color3(140, 140, 160), 1.5f);
+                new Color3(140, 140, 160), 1.5f, panelW - 275f);
 
             // Reward and turn-in location
             renderer.DrawTextScreen(panelX + 25, y + 48,
-                $"REWARD: {m.CreditReward} CREDITS", new Color3(255, 220, 80), 1.5f);
+                $"REWARD: {m.CreditReward} CREDITS", new Color3(255, 220, 80), 1.5f, panelW - 265f);
             renderer.DrawTextScreen(panelX + panelW - 250, y + 48,
-                $"TURN IN: {m.TurnIn.SystemName.ToUpper()}", new Color3(160, 140, 200), 1.2f);
+                $"TURN IN: {m.TurnIn.SystemName.ToUpper()}", new Color3(160, 140, 200), 1.2f, 235f);
 
             // Target info
             if (m.Target.HasSystem)
@@ -245,7 +245,7 @@ public class MissionOverlay : ListPanelOverlay
                     ? $"TARGET: {m.Target.PlanetName?.ToUpper()} IN {m.Target.SystemName.ToUpper()}"
                     : $"TARGET: {m.Target.SystemName.ToUpper()}";
                 renderer.DrawTextScreen(panelX + 25, y + 63, targetInfo,
-                    new Color3(120, 160, 200), 1.2f);
+                    new Color3(120, 160, 200), 1.2f, panelW - 40f);
             }
         }
     }
@@ -257,9 +257,9 @@ public class MissionOverlay : ListPanelOverlay
         if (active.Count == 0)
         {
             renderer.DrawTextScreen(panelX + 20, startY + 20, "NO ACTIVE MISSIONS",
-                new Color3(120, 120, 140), 2f);
+                new Color3(120, 120, 140), 2f, panelW - 40f);
             renderer.DrawTextScreen(panelX + 20, startY + 45, "Accept missions from the Available tab.",
-                new Color3(90, 90, 110), 1.5f);
+                new Color3(90, 90, 110), 1.5f, panelW - 40f);
             return;
         }
 
@@ -278,29 +278,29 @@ public class MissionOverlay : ListPanelOverlay
 
             string statusTag = completed ? "[COMPLETE]" : "[IN PROGRESS]";
             var statusColor = completed ? new Color3(100, 255, 100) : new Color3(255, 200, 80);
-            renderer.DrawTextScreen(panelX + 15, y + 5, statusTag, statusColor, 1.5f);
+            renderer.DrawTextScreen(panelX + 15, y + 5, statusTag, statusColor, 1.5f, 80f);
 
             float afterStatus = panelX + 15 + renderer.MeasureText(statusTag, 1.5f) + 8;
-            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
+            renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f, 60f);
 
             renderer.DrawTextScreen(panelX + 15, y + 24, m.Title,
-                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f);
+                selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 215f);
 
             renderer.DrawTextScreen(panelX + 25, y + 46, m.ProgressText,
-                completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), 1.5f);
+                completed ? new Color3(100, 255, 100) : new Color3(180, 180, 200), 1.5f, panelW - 225f);
 
             renderer.DrawTextScreen(panelX + panelW - 200, y + 46,
-                $"REWARD: {m.CreditReward} CR", new Color3(255, 220, 80), 1.5f);
+                $"REWARD: {m.CreditReward} CR", new Color3(255, 220, 80), 1.5f, 185f);
 
             if (completed && selected)
             {
                 bool canTurnIn = _currentSystem != null && m.TurnIn.IsSystem(_currentSystem.Index);
                 if (canTurnIn)
                     renderer.DrawTextScreen(panelX + 25, y + 62,
-                        $"PRESS {game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()} TO TURN IN", new Color3(100, 255, 100), 1.2f);
+                        $"PRESS {game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()} TO TURN IN", new Color3(100, 255, 100), 1.2f, panelW - 40f);
                 else
                     renderer.DrawTextScreen(panelX + 25, y + 62,
-                        $"TURN IN AT {m.TurnIn.SystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f);
+                        $"TURN IN AT {m.TurnIn.SystemName.ToUpper()}", new Color3(255, 180, 80), 1.2f, panelW - 40f);
             }
         }
     }

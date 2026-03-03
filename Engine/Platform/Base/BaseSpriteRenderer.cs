@@ -109,12 +109,12 @@ public abstract class BaseSpriteRenderer : ISpriteRenderer
     // ── Text ─────────────────────────────────────────────────────────
 
     /// <summary>Draw text in world space (delegates to FontRenderer).</summary>
-    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f)
-        => _fontRenderer.DrawText(camera, worldPos, text, color, scale);
+    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
+        => _fontRenderer.DrawText(camera, worldPos, text, color, scale, maxWidth);
 
     /// <summary>Draw text in screen space (delegates to FontRenderer).</summary>
-    public void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f)
-        => _fontRenderer.DrawTextScreen(x, y, text, color, scale);
+    public void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
+        => _fontRenderer.DrawTextScreen(x, y, text, color, scale, maxWidth);
 
     /// <summary>Measure the width of text in screen pixels.</summary>
     public float MeasureText(string text, float scale = 1f)

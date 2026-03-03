@@ -445,11 +445,11 @@ public class SolarSystemMapPanel : MapPanelBase
         // System summary
         if (_currentStarSystem != null)
         {
-            renderer.DrawTextScreen(px, py, _currentStarSystem.Name.ToUpper(), new Color3(255, 220, 80), 1.8f);
+            renderer.DrawTextScreen(px, py, _currentStarSystem.Name.ToUpper(), new Color3(255, 220, 80), 1.8f, InfoPanelW - 24);
             py += 24;
-            renderer.DrawTextScreen(px, py, $"CLASS {_currentStarSystem.StarClass} STAR", new Color3(180, 180, 200), 1.3f);
+            renderer.DrawTextScreen(px, py, $"CLASS {_currentStarSystem.StarClass} STAR", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
             py += 16;
-            renderer.DrawTextScreen(px, py, $"PLANETS: {_planets.Count}  SPACE STATIONS: {_spaceStations.Count}", new Color3(180, 180, 200), 1.3f);
+            renderer.DrawTextScreen(px, py, $"PLANETS: {_planets.Count}  SPACE STATIONS: {_spaceStations.Count}", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
             py += 20;
         }
 
@@ -463,29 +463,29 @@ public class SolarSystemMapPanel : MapPanelBase
         }
         else
         {
-            renderer.DrawTextScreen(px, py, "NO OBJECT SELECTED", new Color3(100, 120, 160), 1.5f);
+            renderer.DrawTextScreen(px, py, "NO OBJECT SELECTED", new Color3(100, 120, 160), 1.5f, InfoPanelW - 24);
             py += 20;
-            renderer.DrawTextScreen(px, py, "CLICK AN OBJECT", new Color3(140, 140, 160), 1.3f);
+            renderer.DrawTextScreen(px, py, "CLICK AN OBJECT", new Color3(140, 140, 160), 1.3f, InfoPanelW - 24);
             py += 16;
-            renderer.DrawTextScreen(px, py, "TO VIEW DETAILS", new Color3(140, 140, 160), 1.3f);
+            renderer.DrawTextScreen(px, py, "TO VIEW DETAILS", new Color3(140, 140, 160), 1.3f, InfoPanelW - 24);
         }
 
         // Nav target display
         py = IpY + IpH - 160;
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         py += 8;
-        renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f);
+        renderer.DrawTextScreen(px, py, "NAV TARGET", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
         py += 18;
         if (game.Player.Navigation.HasTarget)
         {
             renderer.DrawTextScreen(px, py, game.Player.Navigation.Name.ToUpper(),
-                game.Player.Navigation.Color, 1.8f);
+                game.Player.Navigation.Color, 1.8f, InfoPanelW - 24);
             py += 22;
-            renderer.DrawTextScreen(px, py, $"TYPE: {game.Player.Navigation.Type.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f);
+            renderer.DrawTextScreen(px, py, $"TYPE: {game.Player.Navigation.Type.ToString().ToUpper()}", new Color3(180, 180, 200), 1.3f, InfoPanelW - 24);
         }
         else
         {
-            renderer.DrawTextScreen(px, py, "NONE", new Color3(80, 80, 100), 1.5f);
+            renderer.DrawTextScreen(px, py, "NONE", new Color3(80, 80, 100), 1.5f, InfoPanelW - 24);
         }
 
         // Controls
@@ -494,27 +494,27 @@ public class SolarSystemMapPanel : MapPanelBase
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
             string panText = "LEFT STICK: PAN";
-            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 40,
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
-                new Color3(255, 200, 100), 1.3f);
+                new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
         else
         {
             string panText =
                 $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
-            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 40,
                 $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
-                new Color3(255, 200, 100), 1.3f);
+                new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: STAR CHART  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
     }
 
@@ -527,49 +527,49 @@ public class SolarSystemMapPanel : MapPanelBase
         switch (sel.Type)
         {
             case SolarMapObjectType.Star when _currentStarSystem != null:
-                renderer.DrawTextScreen(px, py, "SELECTED: STAR", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: STAR", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, _currentStarSystem.Name.ToUpper() + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(255, 220, 80), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(255, 220, 80), 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, $"CLASS: {_currentStarSystem.StarClass}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, $"RADIUS: {_currentStarSystem.StarRadius:F0}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SolarMapObjectType.Planet when sel.PlanetIndex >= 0 && sel.PlanetIndex < _planets.Count:
                 var planet = _planets[sel.PlanetIndex];
-                renderer.DrawTextScreen(px, py, "SELECTED: PLANET", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: PLANET", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, planet.Name.ToUpper() + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : planet.Color, 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : planet.Color, 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, $"TYPE: {planet.Type.ToString().ToUpper()}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, $"MOONS: {planet.MoonCount}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, $"RINGS: {(planet.HasRings ? "YES" : "NO")}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 if (planet.HasSolidSurface)
                 {
                     renderer.DrawTextScreen(px, py, "LANDABLE: YES",
-                        new Color3(100, 255, 100), 1.5f);
+                        new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
                     py += 20;
                     renderer.DrawTextScreen(px, py,
                         $"SETTLEMENTS: {(planet.HasSettlement ? "YES" : "NO")}",
-                        planet.HasSettlement ? new Color3(255, 220, 100) : new Color3(120, 120, 120), 1.5f);
+                        planet.HasSettlement ? new Color3(255, 220, 100) : new Color3(120, 120, 120), 1.5f, InfoPanelW - 24);
                 }
                 else
                 {
                     renderer.DrawTextScreen(px, py, "LANDABLE: NO (GAS GIANT)",
-                        new Color3(255, 80, 80), 1.5f);
+                        new Color3(255, 80, 80), 1.5f, InfoPanelW - 24);
                 }
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
@@ -579,38 +579,38 @@ public class SolarSystemMapPanel : MapPanelBase
                                           && sel.MoonIndex >= 0 && sel.MoonIndex < _planets[sel.PlanetIndex].Moons.Count:
                 var moonPlanet = _planets[sel.PlanetIndex];
                 var moon = moonPlanet.Moons[sel.MoonIndex];
-                renderer.DrawTextScreen(px, py, "SELECTED: MOON", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: MOON", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, moon.Name.ToUpper() + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(180, 180, 210), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(180, 180, 210), 1.8f, InfoPanelW - 24);
                 py += 26;
                 renderer.DrawTextScreen(px, py, $"TYPE: {moon.Type.ToString().ToUpper()}",
-                    new Color3(200, 200, 200), 1.5f);
+                    new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, $"ORBITS: {moonPlanet.Name.ToUpper()}",
-                    new Color3(180, 180, 200), 1.5f);
+                    new Color3(180, 180, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, "LANDABLE: YES",
-                    new Color3(100, 255, 100), 1.5f);
+                    new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
             case SolarMapObjectType.SpaceStation when sel.SpaceStationIndex >= 0 && sel.SpaceStationIndex < _spaceStations.Count:
                 var spaceStation = _spaceStations[sel.SpaceStationIndex];
-                renderer.DrawTextScreen(px, py, "SELECTED: SPACE STATION", new Color3(100, 120, 160), 1.3f);
+                renderer.DrawTextScreen(px, py, "SELECTED: SPACE STATION", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, spaceStation.Name.ToUpper() + targetTag,
-                    isTarget ? new Color3(255, 200, 50) : new Color3(100, 200, 255), 1.8f);
+                    isTarget ? new Color3(255, 200, 50) : new Color3(100, 200, 255), 1.8f, InfoPanelW - 24);
                 py += 26;
                 string orbitLabel = spaceStation.OrbitParentPlanetIndex >= 0 && spaceStation.OrbitParentPlanetIndex < _planets.Count
                     ? $"ORBITS: {_planets[spaceStation.OrbitParentPlanetIndex].Name.ToUpper()}"
                     : "ORBITS: STAR";
-                renderer.DrawTextScreen(px, py, orbitLabel, new Color3(200, 200, 200), 1.5f);
+                renderer.DrawTextScreen(px, py, orbitLabel, new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py,
                     $"DOCK: FLY NEAR & PRESS {game.Input.GetActionHelpText(InputAction.Interact).ToUpper()}",
-                    new Color3(100, 200, 255), 1.5f);
+                    new Color3(100, 200, 255), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
@@ -648,6 +648,6 @@ public class SolarSystemMapPanel : MapPanelBase
         var btnColor = isTarget ? new Color3(255, 200, 100) : new Color3(255, 200, 100);
         renderer.DrawRectScreen(px, py, InfoPanelW - 24, 20, new Color4(40, 50, 80, 180));
         float btnW = renderer.MeasureText(btnText, 1.5f);
-        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f);
+        renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - btnW / 2f, py + 2, btnText, btnColor, 1.5f, InfoPanelW - 24);
     }
 }

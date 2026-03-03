@@ -138,13 +138,13 @@ public abstract class BaseFontRenderer : IFontRenderer
     // ── IFontRenderer ─────────────────────────────────────────────────
 
     /// <summary>Draw text in world space (transformed by camera).</summary>
-    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f)
+    public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
     {
         var screenPos = camera.WorldToScreen(worldPos);
-        DrawTextScreen(screenPos.X, screenPos.Y, text, color, scale);
+        DrawTextScreen(screenPos.X, screenPos.Y, text, color, scale, maxWidth);
     }
 
-    public abstract void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f);
+    public abstract void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f);
 
     /// <summary>Measure the width of text in screen pixels.</summary>
     public float MeasureText(string text, float scale = 1f) => text.Length * 6f * scale;

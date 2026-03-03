@@ -77,7 +77,7 @@ public class SellCargoOverlay : ListPanelOverlay
 
         // Cargo info
         renderer.DrawTextScreen(panelX + 15, contentY + 5,
-            $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(200, 180, 100), 1.5f);
+            $"CARGO: {game.Player.CargoUsed}/{game.Player.MaxCargo}", new Color3(200, 180, 100), 1.5f, panelW - 30f);
         renderer.DrawLineScreen(panelX + 15, contentY + 25, panelX + panelW - 15, contentY + 25,
             new Color3(60, 60, 100));
 
@@ -86,7 +86,7 @@ public class SellCargoOverlay : ListPanelOverlay
         if (_cargoKeys.Length == 0)
         {
             renderer.DrawTextScreen(panelX + 20, listY, "CARGO HOLD EMPTY",
-                new Color3(120, 120, 150), 2f);
+                new Color3(120, 120, 150), 2f, panelW - 35f);
             return;
         }
 
@@ -107,15 +107,15 @@ public class SellCargoOverlay : ListPanelOverlay
             byte tb = selected ? (byte)255 : resInfo.Color.B;
 
             renderer.DrawTextScreen(panelX + 20, listY + 2, resInfo.Name.ToUpper(),
-                new Color3(tr, tg, tb), 1.8f);
+                new Color3(tr, tg, tb), 1.8f, panelW - 35f);
             renderer.DrawTextScreen(panelX + 180, listY + 2, $"x{amount}",
-                new Color3(200, 200, 200), 1.8f);
+                new Color3(200, 200, 200), 1.8f, 90f);
             renderer.DrawTextScreen(panelX + 280, listY + 2, $"= {value} CR",
-                new Color3(255, 220, 80), 1.8f);
+                new Color3(255, 220, 80), 1.8f, panelW - 375f);
 
             if (selected)
                 renderer.DrawTextScreen(panelX + panelW - 80, listY + 2, "[SELL]",
-                    new Color3(100, 255, 100), 1.5f);
+                    new Color3(100, 255, 100), 1.5f, 70f);
 
             listY += ItemHeight;
         }
@@ -135,7 +135,7 @@ public class SellCargoOverlay : ListPanelOverlay
         byte sg = sellAllSelected ? (byte)255 : (byte)180;
         byte sb = sellAllSelected ? (byte)100 : (byte)180;
         renderer.DrawTextScreen(panelX + 20, listY + 2, $"SELL ALL ({totalValue} CREDITS)",
-            new Color3(sr, sg, sb), 2f);
+            new Color3(sr, sg, sb), 2f, panelW - 35f);
     }
 
     private void RefreshCargoKeys(Game game)

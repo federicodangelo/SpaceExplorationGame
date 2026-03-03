@@ -334,13 +334,13 @@ public class GalaxyMapPanel : MapPanelBase
         float cx = IpX + 12;
         float cy = IpY + 40;
 
-        renderer.DrawTextScreen(cx, cy, "SYSTEMS", new Color3(100, 120, 160), 1.3f);
-        renderer.DrawTextScreen(cx, cy + 16, _starSystems.Count.ToString(), new Color3(200, 220, 255), 1.8f);
+        renderer.DrawTextScreen(cx, cy, "SYSTEMS", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
+        renderer.DrawTextScreen(cx, cy + 16, _starSystems.Count.ToString(), new Color3(200, 220, 255), 1.8f, InfoPanelW - 24);
         renderer.DrawRectScreen(cx, cy + 42, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
 
         // Fuel
-        renderer.DrawTextScreen(cx, cy + 52, "FUEL", new Color3(100, 120, 160), 1.3f);
-        renderer.DrawTextScreen(cx, cy + 68, $"{game.Player.ShipFuel:F1} / {game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.8f);
+        renderer.DrawTextScreen(cx, cy + 52, "FUEL", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
+        renderer.DrawTextScreen(cx, cy + 68, $"{game.Player.ShipFuel:F1} / {game.Player.ShipMaxFuel:F0}", new Color3(100, 200, 255), 1.8f, InfoPanelW - 24);
         float fuelBarW = InfoPanelW - 24;
         renderer.DrawRectScreen(cx, cy + 94, fuelBarW, 10, new Color3(40, 40, 40));
         float fuelPct = game.Player.ShipMaxFuel > 0 ? game.Player.ShipFuel / game.Player.ShipMaxFuel : 0;
@@ -374,21 +374,21 @@ public class GalaxyMapPanel : MapPanelBase
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 
-            renderer.DrawTextScreen(cx, selY, "SELECTED", new Color3(100, 120, 160), 1.3f);
-            renderer.DrawTextScreen(cx, selY + 16, sys.Name.ToUpper(), new Color3(200, 220, 255), 1.8f);
+            renderer.DrawTextScreen(cx, selY, "SELECTED", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, selY + 16, sys.Name.ToUpper(), new Color3(200, 220, 255), 1.8f, InfoPanelW - 24);
             renderer.DrawRectScreen(cx, selY + 42, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
 
-            renderer.DrawTextScreen(cx, selY + 52, $"CLASS {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f);
-            renderer.DrawTextScreen(cx, selY + 72, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 52, $"CLASS {sys.StarClass} STAR", new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, selY + 72, $"PLANETS: {sys.PlanetCount}", new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, selY + 92,
                 $"SPACE STATION: {(sys.HasSpaceStation ? "YES" : "NO")}",
-                sys.HasSpaceStation ? new Color3(100, 255, 200) : new Color3(120, 120, 120), 1.5f);
+                sys.HasSpaceStation ? new Color3(100, 255, 200) : new Color3(120, 120, 120), 1.5f, InfoPanelW - 24);
 
             string dangerText = $"DANGER: {new string('*', sys.DangerLevel)}{new string('.', 5 - sys.DangerLevel)}";
             byte dangerR = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)255 : (byte)255;
             byte dangerG = sys.DangerLevel <= 2 ? (byte)255 : sys.DangerLevel <= 3 ? (byte)200 : (byte)80;
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
-            renderer.DrawTextScreen(cx, selY + 112, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f);
+            renderer.DrawTextScreen(cx, selY + 112, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f, InfoPanelW - 24);
 
             var missionsHere = game.Player.Missions.Active.Where(m =>
                 m.Target.IsSystem(_selectedSystemIndex) ||
@@ -402,7 +402,7 @@ public class GalaxyMapPanel : MapPanelBase
                 {
                     var mc = m.TypeColor;
                     string statusTag = m.Status == MissionStatus.Completed ? " [DONE]" : "";
-                    renderer.DrawTextScreen(cx, missionY, $"[!] {m.TypeLabel}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.3f);
+                    renderer.DrawTextScreen(cx, missionY, $"[!] {m.TypeLabel}{statusTag}", new Color3(mc.R, mc.G, mc.B), 1.3f, InfoPanelW - 24);
                     missionY += 16;
                 }
                 missionY += 4;
@@ -413,33 +413,33 @@ public class GalaxyMapPanel : MapPanelBase
 
             if (isCurrentSystem)
             {
-                renderer.DrawTextScreen(cx, missionY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f);
+                renderer.DrawTextScreen(cx, missionY, "YOU ARE HERE", new Color3(100, 255, 200), 1.5f, InfoPanelW - 24);
                 renderer.DrawTextScreen(cx, missionY + 20,
                     $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] CLOSE MAP",
-                    new Color3(100, 255, 100), 1.5f);
+                    new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
             }
             else
             {
-                renderer.DrawTextScreen(cx, missionY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f);
+                renderer.DrawTextScreen(cx, missionY, $"DISTANCE: {distance:F0}", new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
                 byte fuelR = canAfford ? (byte)100 : (byte)255;
                 byte fuelG = canAfford ? (byte)200 : (byte)80;
                 byte fuelB = canAfford ? (byte)255 : (byte)80;
-                renderer.DrawTextScreen(cx, missionY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f);
+                renderer.DrawTextScreen(cx, missionY + 20, $"FUEL COST: {fuelCost:F1}", new Color3(fuelR, fuelG, fuelB), 1.5f, InfoPanelW - 24);
 
                 if (!inRange)
-                    renderer.DrawTextScreen(cx, missionY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40, "OUT OF FTL RANGE", new Color3(255, 80, 80), 1.5f, InfoPanelW - 24);
                 else if (!canAfford)
-                    renderer.DrawTextScreen(cx, missionY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f);
+                    renderer.DrawTextScreen(cx, missionY + 40, "NOT ENOUGH FUEL", new Color3(255, 80, 80), 1.5f, InfoPanelW - 24);
                 else
                     renderer.DrawTextScreen(cx, missionY + 40,
                         $"[{game.Input.GetActionHelpText(InputAction.MenuConfirm)}] TRAVEL",
-                        new Color3(100, 255, 100), 1.5f);
+                        new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
             }
         }
         else
         {
-            renderer.DrawTextScreen(cx, selY, "NO SYSTEM SELECTED", new Color3(100, 120, 160), 1.5f);
-            renderer.DrawTextScreen(cx, selY + 20, "CLICK A STAR TO SELECT", new Color3(140, 140, 160), 1.3f);
+            renderer.DrawTextScreen(cx, selY, "NO SYSTEM SELECTED", new Color3(100, 120, 160), 1.5f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, selY + 20, "CLICK A STAR TO SELECT", new Color3(140, 140, 160), 1.3f, InfoPanelW - 24);
         }
 
         // Controls
@@ -448,31 +448,31 @@ public class GalaxyMapPanel : MapPanelBase
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
             string panText = "LEFT STICK: PAN";
-            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(cx, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, ctrlY + 24, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 40,
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT CENTER",
-                new Color3(180, 180, 180), 1.3f);
+                new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 56,
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
-                new Color3(100, 255, 100), 1.3f);
+                new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 72,
                 $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
         else
         {
             string panText =
                 $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
-            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(cx, ctrlY + 8, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, ctrlY + 24, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(cx, ctrlY + 40, "CLICK: SELECT SYSTEM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 56,
                 $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
-                new Color3(100, 255, 100), 1.3f);
+                new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 72,
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: SOLAR SYSTEM  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
-                new Color3(255, 150, 150), 1.3f);
+                new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
     }
 }

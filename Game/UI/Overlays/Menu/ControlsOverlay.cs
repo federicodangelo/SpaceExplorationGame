@@ -54,7 +54,7 @@ public class ControlsOverlay : PanelOverlayBase
         {
             float lw = renderer.MeasureText(line, 1.5f);
             renderer.DrawTextScreen(centerX - lw / 2f, cy, line,
-                new Color3(180, 180, 200), 1.5f);
+                new Color3(180, 180, 200), 1.5f, panelW - 30f);
             cy += 22f;
         }
     }

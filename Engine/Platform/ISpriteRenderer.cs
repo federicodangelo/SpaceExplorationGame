@@ -38,8 +38,8 @@ public interface ISpriteRenderer : IDisposable
     void DrawLineScreen(float x1, float y1, float x2, float y2, Color4 color);
 
     // ── Text ─────────────────────────────────────────────────────────
-    void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f);
-    void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f);
+    void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f, float maxWidth = 0f);
+    void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f);
     float MeasureText(string text, float scale = 1f);
 
     // ── Textures (world) ─────────────────────────────────────────────

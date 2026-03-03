@@ -315,7 +315,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             renderer.DrawRectScreen(px, nextY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
             nextY += 10;
 
-            renderer.DrawTextScreen(px, nextY, "LANDING SITE", new Color3(100, 120, 160), 1.3f);
+            renderer.DrawTextScreen(px, nextY, "LANDING SITE", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
             nextY += 18;
 
             var terrain = _surfaceData.Tiles[_cursorTile.X, _cursorTile.Y];
@@ -325,10 +325,10 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             byte tr = canLand ? (byte)100 : (byte)255;
             byte tg = canLand ? (byte)255 : (byte)80;
             byte tb = canLand ? (byte)100 : (byte)80;
-            renderer.DrawTextScreen(px, nextY, $"TERRAIN: {terrainName}", new Color3(tr, tg, tb), 1.5f);
+            renderer.DrawTextScreen(px, nextY, $"TERRAIN: {terrainName}", new Color3(tr, tg, tb), 1.5f, InfoPanelW - 24);
             nextY += 18;
 
-            renderer.DrawTextScreen(px, nextY, $"POS: ({_cursorTile.X}, {_cursorTile.Y})", new Color3(150, 150, 150), 1.3f);
+            renderer.DrawTextScreen(px, nextY, $"POS: ({_cursorTile.X}, {_cursorTile.Y})", new Color3(150, 150, 150), 1.3f, InfoPanelW - 24);
             nextY += 18;
 
             // Check if cursor is inside a settlement
@@ -337,7 +337,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 if (_cursorTile.X >= s.TileRect.X && _cursorTile.X < s.TileRect.X + s.TileRect.Width &&
                     _cursorTile.Y >= s.TileRect.Y && _cursorTile.Y < s.TileRect.Y + s.TileRect.Height)
                 {
-                    renderer.DrawTextScreen(px, nextY, s.Name, new Color3(255, 220, 100), 1.5f);
+                    renderer.DrawTextScreen(px, nextY, s.Name, new Color3(255, 220, 100), 1.5f, InfoPanelW - 24);
                     nextY += 18;
                     break;
                 }
@@ -349,7 +349,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
             renderer.DrawRectScreen(px, nextY, InfoPanelW - 24, 20, new Color4(70, 30, 30, 200));
             float hintW = renderer.MeasureText(_invalidSelectionHint, 1.3f);
             renderer.DrawTextScreen(px + (InfoPanelW - 24) / 2f - hintW / 2f, nextY + 3,
-                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f);
+                _invalidSelectionHint, new Color3(255, 140, 120), 1.3f, InfoPanelW - 24);
             nextY += 24;
         }
 
@@ -360,13 +360,13 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         renderer.DrawRectScreen(px, ctrlStartY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)
         {
-            renderer.DrawTextScreen(px, ctrlStartY + 8, "MOUSE CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 24, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 40, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
+            renderer.DrawTextScreen(px, ctrlStartY + 8, "MOUSE CLICK: SELECT SITE", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 24, "LEFT STICK: PAN", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 40, "LT/RT: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlStartY + 72,
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
-                new Color3(100, 255, 100), 1.3f);
+                new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
         }
         else
         {
@@ -374,16 +374,16 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 $"{game.Input.GetActionHelpText(InputAction.MoveUp)}/{game.Input.GetActionHelpText(InputAction.MoveDown)}/{game.Input.GetActionHelpText(InputAction.MoveLeft)}/{game.Input.GetActionHelpText(InputAction.MoveRight)}/{game.Input.GetMouseButtonHelpText(MouseButton.Left)}-DRAG: PAN";
             renderer.DrawTextScreen(px, ctrlStartY + 8,
                 $"{game.Input.GetMouseButtonHelpText(MouseButton.Left)}: SELECT SITE",
-                new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f);
-            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f);
+                new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 24, panText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 40, "SCROLL: ZOOM", new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
+            renderer.DrawTextScreen(px, ctrlStartY + 56, nudgeText, new Color3(180, 180, 180), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlStartY + 72,
                 $"DBLCLICK/{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: LAND",
-                new Color3(100, 255, 100), 1.3f);
+                new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
         }
         renderer.DrawTextScreen(px, ctrlStartY + 88,
             $"{game.Input.GetActionHelpText(InputAction.MenuBack)}: CANCEL",
-            new Color3(255, 150, 150), 1.3f);
+            new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
     }
 }
