@@ -180,6 +180,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         StartingShipOverrideText = null;
         // Keep _dangerIndex and _locationIndex from previous session
         UpdateCyclingLabels();
+        Menu.SelectedIndex = StartGameIdx;
     }
 
     // ── Escape does nothing on main menu ──

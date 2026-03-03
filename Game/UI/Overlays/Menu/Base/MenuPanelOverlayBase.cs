@@ -97,4 +97,13 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     protected virtual void RenderAdditionalContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     { }
+
+    // ── Open/Close ──
+    public override void Close()
+    {
+        base.Close();
+        // Close all sub-overlays when closing this panel
+        foreach (var sub in _subOverlays)
+            sub.Close();
+    }
 }

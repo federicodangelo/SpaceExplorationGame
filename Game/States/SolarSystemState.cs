@@ -414,7 +414,7 @@ public class SolarSystemState : GameState
 
     private void ApplyAnchor()
     {
-        if (_anchorEntity == default || !_sim.EcsWorld.IsAlive(_anchorEntity))
+        if (_anchorEntity == default || !_sim.EcsWorld.IsAlive(_anchorEntity) || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
             return;
         var targetPos = _sim.EcsWorld.Get<Transform>(_anchorEntity).Position;
         ref var shipTransform = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
@@ -423,10 +423,11 @@ public class SolarSystemState : GameState
 
     private void ClearAnchor()
     {
-        if (_anchorEntity != default && _sim.EcsWorld.IsAlive(_anchorEntity))
-            ApplyAnchor();
-        _anchorEntity = default;
-        _anchorOffset = Vector2.Zero;
+        if (_anchorEntity != default)
+        {
+            _anchorEntity = default;
+            _anchorOffset = Vector2.Zero;
+        }
     }
 
     // ── Render ──────────────────────────────────────────────────────
