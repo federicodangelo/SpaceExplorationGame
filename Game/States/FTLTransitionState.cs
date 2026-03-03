@@ -401,7 +401,7 @@ public class FTLTransitionState : GameState
     private void RenderShip(Game game, ISpriteRenderer renderer)
     {
         var shipType = game.Player.CurrentShipType;
-        float size = shipType.SpriteSize * 2f; // render larger for the cutscene
+        float size = shipType.SpriteSize;
         float sx = CX + _shipShakeX;
         float sy = CY + _shipShakeY;
 

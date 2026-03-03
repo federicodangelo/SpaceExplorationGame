@@ -32,6 +32,8 @@ public class StarRenderer
     private const float CoronaRadiusMultiplier = 1.8f;
     private const int ProminenceCount = 4;
 
+    private const int StarSegments = 64;
+
     public StarRenderer()
     {
     }
@@ -58,17 +60,109 @@ public class StarRenderer
         float radius = displaySize * 0.5f;
         float flicker = ComputeFlicker(color, globalTime);
 
+        RenderCoronaAndRaysScreen(renderer, x, y, radius, color, globalTime);
+
         // Surrounding glow
         renderer.DrawFilledCircleScreen(x, y, radius * GlowRadiusMultiplier,
             new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(GlowBaseAlphaScreen, flicker))),
             new Color4(color.R, color.G, color.B, 0),
-            radius * GlowTransitionRatio);
+            radius * GlowTransitionRatio, segments: StarSegments);
 
         // Core circle (bright center -> star color)
         renderer.DrawFilledCircleScreen(x, y, radius * CoreRadiusMultiplier,
             RenderColors.StarCoreHighlight.WithAlpha(alpha),
             new Color4(color.R, color.G, color.B, alpha),
-            0f);
+            0f, segments: StarSegments);
+
+        RenderProminencesScreen(renderer, x, y, radius, color, globalTime);
+    }
+
+    /// <summary>Renders animated corona halo and light rays in screen space.</summary>
+    private static void RenderCoronaAndRaysScreen(ISpriteRenderer renderer,
+        float x, float y, float radius, Color3 color, float globalTime)
+    {
+        float flicker = ComputeFlicker(color, globalTime);
+
+        // Outer corona halo
+        float coronaR = radius * CoronaRadiusMultiplier;
+        byte coronaAlpha = MulByte(18, flicker);
+        renderer.DrawFilledCircleScreen(x, y, coronaR,
+            new Color4(color.R, color.G, color.B, coronaAlpha),
+            new Color4(color.R, color.G, color.B, 0),
+            coronaR * 0.3f);
+
+        // Second corona layer, slightly offset
+        float breathe = 1.0f + 0.05f * MathF.Sin(globalTime * 0.6f);
+        renderer.DrawFilledCircleScreen(x, y, coronaR * 0.85f * breathe,
+            new Color4(color.R, color.G, color.B, (byte)(coronaAlpha * 0.7f)),
+            new Color4(color.R, color.G, color.B, 0),
+            coronaR * 0.25f);
+
+        // Light rays
+        for (int i = 0; i < RayCount; i++)
+        {
+            float baseAngle = i * MathF.PI * 2f / RayCount;
+            float wobble = MathF.Sin(globalTime * 0.4f + i * 2.1f) * 0.08f;
+            float angle = baseAngle + globalTime * 0.02f + wobble;
+
+            float lenPulse = 0.7f + 0.3f * MathF.Sin(globalTime * 0.8f + i * 1.7f);
+            float rayLen = radius * (0.8f + lenPulse * 0.6f);
+            byte rayAlpha = (byte)(12 + lenPulse * 8);
+
+            float cosA = MathF.Cos(angle);
+            float sinA = MathF.Sin(angle);
+            float sx = x + cosA * radius * 0.9f;
+            float sy = y + sinA * radius * 0.9f;
+            float ex = x + cosA * (radius + rayLen);
+            float ey = y + sinA * (radius + rayLen);
+
+            renderer.DrawLineScreen(sx, sy, ex, ey,
+                new Color4(color.R, color.G, color.B, rayAlpha));
+
+            float perpX = -sinA * 2f;
+            float perpY = cosA * 2f;
+            byte halfAlpha = (byte)(rayAlpha / 2);
+            renderer.DrawLineScreen(sx + perpX, sy + perpY, ex + perpX, ey + perpY,
+                new Color4(color.R, color.G, color.B, halfAlpha));
+            renderer.DrawLineScreen(sx - perpX, sy - perpY, ex - perpX, ey - perpY,
+                new Color4(color.R, color.G, color.B, halfAlpha));
+        }
+    }
+
+    /// <summary>Renders animated solar prominences in screen space.</summary>
+    private static void RenderProminencesScreen(ISpriteRenderer renderer,
+        float x, float y, float radius, Color3 color, float globalTime)
+    {
+        for (int i = 0; i < ProminenceCount; i++)
+        {
+            float baseAngle = i * MathF.PI * 2f / ProminenceCount + 0.3f;
+            float phase = globalTime * 0.3f + i * 1.5f;
+
+            float visibility = (MathF.Sin(phase) + 1f) * 0.5f;
+            if (visibility < 0.2f) continue;
+
+            float angle = baseAngle + MathF.Sin(globalTime * 0.15f + i) * 0.3f;
+            float arcHeight = radius * (0.2f + visibility * 0.25f);
+
+            int segments = 6;
+            for (int s = 0; s < segments; s++)
+            {
+                float t = s / (float)(segments - 1);
+                float arcAngle = angle + (t - 0.5f) * 0.4f;
+                float dist = radius * 1.05f + MathF.Sin(t * MathF.PI) * arcHeight;
+
+                float px = x + MathF.Cos(arcAngle) * dist;
+                float py = y + MathF.Sin(arcAngle) * dist;
+                byte promAlpha = (byte)(visibility * 35 * MathF.Sin(t * MathF.PI));
+
+                byte warmR = (byte)Math.Min(color.R + 60, 255);
+                byte warmG = (byte)Math.Min(color.G / 2 + 40, 255);
+                renderer.DrawFilledCircleScreen(px, py, 3f + visibility * 3f,
+                    new Color4(warmR, warmG, 30, promAlpha),
+                    new Color4(warmR, warmG, 30, 0),
+                    0f);
+            }
+        }
     }
 
     /// <summary>Renders animated corona halo and light rays around the star.</summary>
@@ -83,14 +177,14 @@ public class StarRenderer
         renderer.DrawFilledCircle(camera, center, coronaR,
             new Color4(color.R, color.G, color.B, coronaAlpha),
             new Color4(color.R, color.G, color.B, 0),
-            coronaR * 0.3f);
+            coronaR * 0.3f, segments: StarSegments);
 
         // Second corona layer, slightly offset
         float breathe = 1.0f + 0.05f * MathF.Sin(globalTime * 0.6f);
         renderer.DrawFilledCircle(camera, center, coronaR * 0.85f * breathe,
             new Color4(color.R, color.G, color.B, (byte)(coronaAlpha * 0.7f)),
             new Color4(color.R, color.G, color.B, 0),
-            coronaR * 0.25f);
+            coronaR * 0.25f, segments: StarSegments);
 
         // Light rays - soft lines radiating outward
         for (int i = 0; i < RayCount; i++)
@@ -181,12 +275,12 @@ public class StarRenderer
         renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * GlowRadiusMultiplier,
             new Color4(color.R, color.G, color.B, ScaleAlpha(alpha, MulByte(GlowBaseAlphaWorld, flicker))),
             new Color4(color.R, color.G, color.B, 0),
-            starDisplayRadius * GlowTransitionRatio);
+            starDisplayRadius * GlowTransitionRatio, segments: StarSegments);
 
         // Core circle (bright center -> star color)
         renderer.DrawFilledCircle(camera, starCenter, starDisplayRadius * CoreRadiusMultiplier,
             RenderColors.StarCoreHighlight.WithAlpha(alpha),
             new Color4(color.R, color.G, color.B, alpha),
-            0f);
+            0f, segments: StarSegments);
     }
 }
