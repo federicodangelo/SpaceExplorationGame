@@ -30,9 +30,9 @@ public class MainMenuControlsPanel
         string[] spaceControls = BuildSpaceControls(input, usingGamepad);
         string[] surfaceControls = BuildSurfaceControls(input, usingGamepad);
 
-        // Layout: title + separator (55px), two sections with headers + lines
+        // Layout: title + separator (55px), two sections with headers + lines + gamepad badge
         int totalLines = 1 + spaceControls.Length + 1 + surfaceControls.Length;
-        float panelH = 55f + totalLines * LineH + 20f;
+        float panelH = 55f + totalLines * LineH + 20f + LineH + 10f;
 
         float px = mainMenuRightEdge + Gap;
         float py = mainMenuCenterY - panelH / 2f;
@@ -84,6 +84,15 @@ public class MainMenuControlsPanel
                 new Color3(155, 165, 195), 1.5f, PanelWidth - 35f);
             cy += LineH;
         }
+
+        // ── Gamepad badge ──
+        cy += 8f;
+        renderer.DrawLineScreen(px + 15, cy - 3, px + PanelWidth - 15, cy - 3,
+            new Color3(40, 60, 100));
+        string badge = usingGamepad ? "\u25cf GAMEPAD ACTIVE" : "\u25cf GAMEPAD SUPPORTED AND RECOMMENDED";
+        var badgeColor = usingGamepad ? new Color3(100, 220, 130) : new Color3(100, 160, 100);
+        float badgeW = renderer.MeasureText(badge, 1.5f);
+        renderer.DrawTextScreen(px + PanelWidth / 2f - badgeW / 2f, cy, badge, badgeColor, 1.5f);
     }
 
     private static string[] BuildSpaceControls(IInputManager input, bool usingGamepad)

@@ -673,13 +673,14 @@ public class MainMenuState : GameState
         if (!string.IsNullOrEmpty(buildHash))
         {
             string buildText = $"build: {buildHash}";
-            float bw = renderer.MeasureText(buildText, 1f);
+            float scale = 2f;
+            float bw = renderer.MeasureText(buildText, scale);
             renderer.DrawTextScreen(
                 renderer.WindowWidth - bw - 8,
                 renderer.WindowHeight - 16,
                 buildText,
                 new Color3(60, 80, 110),
-                1f);
+                scale);
         }
     }
 }
