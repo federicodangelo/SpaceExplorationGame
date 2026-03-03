@@ -48,6 +48,9 @@ public class WebInputManager : BaseInputManager
     private readonly HashSet<int> _gpPressed = [];
     private readonly HashSet<int> _gpReleased = [];
     private bool _gamepadConnected;
+    // After Reset(), the first PollGamepad() must not generate "pressed" events for
+    // still-held buttons — the physical state hasn't changed, only our tracking was wiped.
+    private bool _suppressGpPressedOnce;
 
     // ── Text input ───────────────────────────────────────────────
     private string _textInputBuffer = "";
@@ -121,6 +124,11 @@ public class WebInputManager : BaseInputManager
         _gpPressed.Clear();
         _gpReleased.Clear();
         _textInputBuffer = "";
+        // Suppress the spurious "pressed" events that would fire on the next PollGamepad()
+        // call for any buttons that are still physically held after the state transition.
+        // (The browser Gamepad API is polled, not event-driven, so clearing _gpDown while a
+        // button is held makes the next poll see pressed=true / wasDown=false — a false edge.)
+        _suppressGpPressedOnce = true;
     }
 
     public override void ProcessEvents()
@@ -204,6 +212,8 @@ public class WebInputManager : BaseInputManager
                 _leftStickX = _leftStickY = 0;
                 _rightStickX = _rightStickY = 0;
             }
+            // Still consume the suppress flag so it doesn't bleed into a future reconnect.
+            _suppressGpPressedOnce = false;
             return;
         }
 
@@ -223,8 +233,13 @@ public class WebInputManager : BaseInputManager
             if (pressed && !wasDown)
             {
                 _gpDown.Add(i);
-                _gpPressed.Add(i);
-                ActiveInputMethod = InputMethod.Gamepad;
+                // Skip generating a "pressed" event when suppressed after a Reset() —
+                // the button was already held before the state transition.
+                if (!_suppressGpPressedOnce)
+                {
+                    _gpPressed.Add(i);
+                    ActiveInputMethod = InputMethod.Gamepad;
+                }
             }
             else if (!pressed && wasDown)
             {
@@ -233,6 +248,8 @@ public class WebInputManager : BaseInputManager
                 ActiveInputMethod = InputMethod.Gamepad;
             }
         }
+
+        _suppressGpPressedOnce = false;
 
         // Parse axes
         var axisParts = sections[2].Split(',');
