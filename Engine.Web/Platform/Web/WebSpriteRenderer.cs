@@ -180,11 +180,15 @@ public class WebSpriteRenderer : BaseSpriteRenderer
                 var worldPos = new Vector2(x * tileSize + halfTile, y * tileSize + halfTile);
                 var screenPos = camera.WorldToScreen(worldPos);
 
-                float left = screenPos.X - scaledSize / 2f;
-                float top = screenPos.Y - scaledSize / 2f;
+                // Floor both edges independently so adjacent tiles share the same
+                // boundary pixel and leave no sub-pixel gaps (black lines).
+                float left = MathF.Floor(screenPos.X - scaledSize / 2f);
+                float top = MathF.Floor(screenPos.Y - scaledSize / 2f);
+                float right = MathF.Floor(screenPos.X + scaledSize / 2f);
+                float bottom = MathF.Floor(screenPos.Y + scaledSize / 2f);
 
                 var c = color.Value;
-                JsCanvas.FillRect(left, top, scaledSize, scaledSize, c.R, c.G, c.B, 255);
+                JsCanvas.FillRect(left, top, right - left, bottom - top, c.R, c.G, c.B, 255);
             }
         }
 

@@ -71,10 +71,12 @@ public class SdlTileMapRenderer
                     y * tileSize + halfTile);
                 var screenPos = camera.WorldToScreen(worldPos);
 
-                float left = screenPos.X - halfScaled;
-                float top = screenPos.Y - halfScaled;
-                float right = left + scaledSize;
-                float bottom = top + scaledSize;
+                // Floor both edges independently so adjacent tiles share the same
+                // boundary pixel and leave no sub-pixel gaps (black lines).
+                float left = MathF.Floor(screenPos.X - halfScaled);
+                float top = MathF.Floor(screenPos.Y - halfScaled);
+                float right = MathF.Floor(screenPos.X + halfScaled);
+                float bottom = MathF.Floor(screenPos.Y + halfScaled);
 
                 var c = color.Value;
                 var fcolor = new SDL.FColor
