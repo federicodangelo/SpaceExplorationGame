@@ -461,6 +461,20 @@ setModuleImports('game.js', {
             try { return localStorage.getItem('seg_' + key); } catch { return null; }
         },
     },
+
+    // ── Launch options ────────────────────────────────────────────
+    // Mirrors the SDL CLI argument parser: read named URL query parameters so
+    // the web build can be launched with e.g. ?seed=42&location=planet&sublocation=on-foot
+    launchOptions: {
+        getUrlParam(name) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.get(name);
+            } catch {
+                return null;
+            }
+        },
+    },
 });
 
 // ────────────────────────────────────────────────────────────────

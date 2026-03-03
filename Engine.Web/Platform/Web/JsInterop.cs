@@ -139,3 +139,16 @@ internal static partial class JsSettings
     [JSImport("settings.load", "game.js")]
     internal static partial string? Load(string key);
 }
+
+/// <summary>
+/// Launch-options interop — reads URL query parameters passed at startup.
+/// </summary>
+public static partial class JsLaunchOptions
+{
+    /// <summary>
+    /// Returns the value of the named URL query parameter, or <c>null</c> if absent.
+    /// Example: for <c>?seed=42&amp;location=planet</c>, GetUrlParam("seed") returns "42".
+    /// </summary>
+    [JSImport("launchOptions.getUrlParam", "game.js")]
+    public static partial string? GetUrlParam(string name);
+}
