@@ -177,7 +177,7 @@ public static class EntityFactory
     public static Entity CreateLandedShip(World world, float x, float y)
     {
         return world.Create(
-            new Transform(x, y),
+            new Transform(x, y), // 0° = horizontal (nose right), matching the landing animation's touchdown orientation
             Sprite.Build(20, 16),
             new Label { Text = "SHIP", OffsetY = 14 }
         );

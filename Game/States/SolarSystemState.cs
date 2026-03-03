@@ -328,9 +328,11 @@ public class SolarSystemState : GameState
 
     private void BeginSeamlessLanding(Game game, LandingSelectionRequest landing)
     {
-        Vector2 shipWorldPos = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
-            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position
-            : game.Player.ShipWorldPosition;
+        var shipTransformAtLanding = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
+            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity)
+            : new Transform(game.Player.ShipWorldPosition);
+        Vector2 shipWorldPos = shipTransformAtLanding.Position;
+        float shipRotationAtLanding = shipTransformAtLanding.Rotation;
 
         Vector2 targetBodyPos = shipWorldPos;
         if (landing.IsMoon)
@@ -357,7 +359,7 @@ public class SolarSystemState : GameState
         game.ChangeState(new OrbitalSurfaceTransitionState(
             landing.StarSystem, landing.Planet,
             landing.TileX, landing.TileY,
-            shipWorldPos, targetBodyPos,
+            shipWorldPos, shipRotationAtLanding, targetBodyPos,
             _camera.Position, _camera.Zoom,
             landing.IsMoon, landing.MoonPlanetIndex, landing.MoonIndex));
     }

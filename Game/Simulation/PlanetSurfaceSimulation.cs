@@ -141,7 +141,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         }
         else
         {
-            shipX = lzX + 30;
+            shipX = lzX;
             shipY = lzY;
             playerStartX = lzX;
             playerStartY = lzY;

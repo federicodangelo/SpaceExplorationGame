@@ -24,9 +24,9 @@ public class SpaceshipRenderer
 
     /// <summary>Renders the ship in flight directly in screen space.</summary>
     public void RenderScreen(ISpriteRenderer renderer,
-        float screenX, float screenY, float rotation, string shipTypeId, int spriteSize)
+        float screenX, float screenY, float rotation, string shipTypeId, int spriteSize, float zoom = 1f)
     {
-        DrawShipPrimitivesScreen(renderer, screenX, screenY, 1f, rotation, shipTypeId, spriteSize);
+        DrawShipPrimitivesScreen(renderer, screenX, screenY, zoom, rotation, shipTypeId, spriteSize);
     }
 
     /// <summary>Renders the ship with a label below.</summary>

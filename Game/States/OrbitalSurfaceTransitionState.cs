@@ -33,6 +33,7 @@ public class OrbitalSurfaceTransitionState : GameState
     private readonly Vector2 _targetBodyWorldStart;
     private readonly Vector2 _solarCameraStart;
     private readonly float _solarZoomStart;
+    private readonly float _shipRotationStart;
     private readonly bool _isMoon;
     private readonly int _moonPlanetIndex;
     private readonly int _moonIndex;
@@ -68,6 +69,7 @@ public class OrbitalSurfaceTransitionState : GameState
         int landingTileX,
         int landingTileY,
         Vector2 shipWorldStart,
+        float shipRotationStart,
         Vector2 targetBodyWorldStart,
         Vector2 solarCameraStart,
         float solarZoomStart,
@@ -81,6 +83,7 @@ public class OrbitalSurfaceTransitionState : GameState
         _tileX = landingTileX;
         _tileY = landingTileY;
         _shipWorldStart = shipWorldStart;
+        _shipRotationStart = shipRotationStart;
         _targetBodyWorldStart = targetBodyWorldStart;
         _solarCameraStart = solarCameraStart;
         _solarZoomStart = MathF.Max(0.01f, solarZoomStart);
@@ -232,7 +235,6 @@ public class OrbitalSurfaceTransitionState : GameState
             renderer.DrawRectScreen(s.X, s.Y, 1.4f, 1.4f, new Color3(s.Brightness, s.Brightness, s.Brightness));
 
         float animElapsed = _mode == TransitionMode.Landing ? _elapsed : (TotalDuration - _elapsed);
-        float modeP = Math.Clamp(_elapsed / TotalDuration, 0f, 1f);
         float p = Math.Clamp(animElapsed / TotalDuration, 0f, 1f);
         float descentP = Math.Clamp((animElapsed - AlignDuration) / DescentDuration, 0f, 1f);
         float touchdownP = Math.Clamp((animElapsed - AlignDuration - DescentDuration) / TouchdownDuration, 0f, 1f);
@@ -266,12 +268,21 @@ public class OrbitalSurfaceTransitionState : GameState
         float descendOffset = EaseInOut01(touchdownP) * 18f;
         float shipY = shipBaseY + descendOffset;
 
-        float shipRotation = 90f;
-        if (_mode == TransitionMode.Takeoff)
-            shipRotation = Lerp(90f, 0f, EaseInOut01(Math.Clamp((modeP - 0.82f) / 0.18f, 0f, 1f)));
+        // Landing: lerp from the in-space rotation to 0° (horizontal/landed) over the whole descent.
+        // Takeoff: ship is already at 0° and stays there (no rotation needed).
+        float shipRotation = _mode == TransitionMode.Landing
+            ? MathHelper.LerpRotation(_shipRotationStart, 0f, p * 4.0f) // faster easing for rotation so it settles sooner than the position
+            : 0f;
+
+        // Lerp the rendered ship scale so it seamlessly matches the camera zoom in the
+        // source and destination states.  p==0 corresponds to the solar-system view
+        // (zoom = _solarZoomStart) and p==1 corresponds to the planet-surface view
+        // (zoom = PlanetSurfaceZoomDefault).  Using `p` (the forward-direction progress)
+        // works for both landing (p 0→1) and takeoff (p 1→0).
+        float shipZoom = Lerp(_solarZoomStart, GameConfig.PlanetSurfaceZoomDefault, p);
 
         game.SpaceshipRenderer.RenderScreen(renderer,
-            shipX, shipY, shipRotation, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+            shipX, shipY, shipRotation, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize, shipZoom);
 
         if (touchdownP > 0f)
         {

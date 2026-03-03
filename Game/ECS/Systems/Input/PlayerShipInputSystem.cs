@@ -3,6 +3,7 @@ using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.ECS.Components;
 using Engine.Platform;
+using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Systems.Input;
 
@@ -42,8 +43,7 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
         if (headingDirection != Vector2.Zero && dt > 0f)
         {
             float targetRotation = MathF.Atan2(headingDirection.Y, headingDirection.X) * 180f / MathF.PI;
-            float delta = targetRotation - transform.Rotation;
-            delta = ((delta % 360f) + 540f) % 360f - 180f;
+            float delta = MathHelper.DiffRotation(transform.Rotation, targetRotation);
             float requiredRotationSpeed = delta / dt;
             shipInput.RotationSpeed = Math.Clamp(requiredRotationSpeed, -ship.MaxRotationSpeed, ship.MaxRotationSpeed);
         }
