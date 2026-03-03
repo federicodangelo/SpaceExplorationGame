@@ -135,8 +135,17 @@ public static class GalaxyGenerator
                 _ => rng.NextInt(2, 6)
             };
 
-            // Danger level: seeded per-system (1-5)
-            int dangerLevel = rng.NextInt(Core.GameConfig.MinDangerLevel, Core.GameConfig.MaxDangerLevel + 1);
+            // Danger level: increases with distance from galaxy center (center = safer, edge = more dangerous)
+            float dx = x - centerX;
+            float dy = y - centerY;
+            float normalizedDist = MathF.Sqrt(dx * dx + dy * dy) / galaxyRadius; // 0 = center, 1 = edge
+            float baseDanger = Core.GameConfig.MinDangerLevel
+                + normalizedDist * (Core.GameConfig.MaxDangerLevel - Core.GameConfig.MinDangerLevel);
+            // Add a small random variation (±1) so nearby systems aren't identical
+            int dangerLevel = Math.Clamp(
+                (int)MathF.Round(baseDanger + rng.NextFloat(-1f, 1f)),
+                Core.GameConfig.MinDangerLevel,
+                Core.GameConfig.MaxDangerLevel);
 
             systems.Add(new StarSystemData
             {

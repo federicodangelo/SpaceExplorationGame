@@ -41,7 +41,7 @@ public static class GameConfig
     // Galaxy
     public const int GalaxyWidth = 2000;   // in tiles
     public const int GalaxyHeight = 2000;
-    public const int MinStarSystems = 40;
+    public const int MinStarSystems = 80;
     public const int MaxStarSystems = 80;
 
     // Solar System
