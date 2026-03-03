@@ -168,11 +168,12 @@ public abstract class PlanetMapPanelBase : MapPanelBase
         var scale = Camera.Zoom;
         float radiusScreenBlack = (MathF.Min(w, h) * 0.5f - 3f) * tileScreenW;
         float radiusScreen = (MathF.Min(w, h) * 0.5f - 3f) * tileScreenW;
+        int segments = 128;
 
         // Solid black ring to mask the jagged terrain edge.
         renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
             radiusScreenBlack, radiusScreenBlack + 2 * scale,
-            new Color4(0, 0, 0, 255), 40);
+            new Color4(0, 0, 0, 255), segments);
 
         // Disc-map halos are subtler than the in-game atmospheric shell; scale alphas down.
         const float innerScale = 0.70f;
@@ -180,10 +181,10 @@ public abstract class PlanetMapPanelBase : MapPanelBase
         float pulse = 0.92f + 0.08f * MathF.Sin((float)(Camera.Zoom * 0.1f));
         renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
             radiusScreen * 1.00f, radiusScreen * 1.18f,
-            c.Inner.WithAlpha((byte)Math.Clamp((int)(c.Inner.A * innerScale * pulse), 0, 255)), 40);
+            c.Inner.WithAlpha((byte)Math.Clamp((int)(c.Inner.A * innerScale * pulse), 0, 255)), segments);
         renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
             radiusScreen * 1.18f, radiusScreen * 1.40f,
-            c.Outer.WithAlpha((byte)Math.Clamp((int)(c.Outer.A * outerScale * pulse), 0, 255)), 40);
+            c.Outer.WithAlpha((byte)Math.Clamp((int)(c.Outer.A * outerScale * pulse), 0, 255)), segments);
     }
 
     /// <summary>Blit the terrain texture to the map area. Returns tile-screen scale factors

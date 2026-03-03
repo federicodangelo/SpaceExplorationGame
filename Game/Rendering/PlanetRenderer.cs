@@ -118,7 +118,7 @@ public class PlanetRenderer
         renderer.DrawFilledCircle(camera, center, radius,
             new Color4(inner.R, inner.G, inner.B, ScaleAlpha(255, alphaMultiplier)),
             new Color4(outer.R, outer.G, outer.B, ScaleAlpha(255, alphaMultiplier)),
-            radius * 0.18f);
+            radius * 0.18f, segments: 64);
 
         // Atmospheric shell for larger planets (helps match transition visuals).
         if (!isMoon && type is PlanetType.Terrestrial or PlanetType.Ocean or PlanetType.GasGiant or PlanetType.IceGiant or PlanetType.Frozen)
@@ -211,9 +211,9 @@ public class PlanetRenderer
         if (!c.HasInGameAtmosphere) return;
 
         float pulse = 0.92f + 0.08f * MathF.Sin(globalTime * 0.9f + seed * 0.21f);
-        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.05f, c.Inner.WithAlpha(ScaleAlpha((byte)(c.Inner.A * pulse), alphaMultiplier)), 40);
-        renderer.DrawSolidRing(camera, center, radius * 1.05f, radius * 1.11f, c.Mid.WithAlpha(ScaleAlpha((byte)(c.Mid.A * pulse), alphaMultiplier)), 40);
-        renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, c.Outer.WithAlpha(ScaleAlpha((byte)(c.Outer.A * pulse), alphaMultiplier)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.05f, c.Inner.WithAlpha(ScaleAlpha((byte)(c.Inner.A * pulse), alphaMultiplier)), 64);
+        renderer.DrawSolidRing(camera, center, radius * 1.05f, radius * 1.11f, c.Mid.WithAlpha(ScaleAlpha((byte)(c.Mid.A * pulse), alphaMultiplier)), 64);
+        renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, c.Outer.WithAlpha(ScaleAlpha((byte)(c.Outer.A * pulse), alphaMultiplier)), 64);
     }
 
     private static void DrawCloudLayer(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,

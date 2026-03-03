@@ -104,13 +104,13 @@ public static class PlanetSurfaceRenderer
 
         var atmColor = PlanetAtmosphereColors.Get(planetType).Inner.WithAlpha(255);
         float pulse = (0.94f + 0.06f * MathF.Sin((float)globalTime * 0.7f)) * alphaScale;
-        int seg = 64;
+        int seg = 128;
 
         // Solid black ring to mask the jagged terrain edge.
         byte blackAlpha = (byte)Math.Clamp((int)(255 * alphaScale * 4.0f), 0, 255);
         renderer.DrawSolidRing(camera, center,
             radius - GameConfig.TileSize, radius + GameConfig.TileSize,
-            new Color4(0, 0, 0, blackAlpha), 40);
+            new Color4(0, 0, 0, blackAlpha), seg);
 
         // Layer 1 – inner-edge tint: subtly darkens the outermost terrain tiles
         //           so the boundary row blends rather than hard-cuts.
