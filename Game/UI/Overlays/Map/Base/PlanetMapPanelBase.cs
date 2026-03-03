@@ -153,6 +153,39 @@ public abstract class PlanetMapPanelBase : MapPanelBase
     //  SHARED RENDERING HELPERS
     // ─────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Renders a soft atmosphere halo around the planet disc in the terrain overview map.
+    /// Call this after <see cref="RenderTerrainTexture"/> so it overlays the terrain edge.
+    /// </summary>
+    protected void RenderPlanetDiscHalo(ISpriteRenderer renderer, float tileScreenW)
+    {
+        var c = PlanetAtmosphereColors.Get(_planet.Type);
+        if (c.IsEmpty) return;
+
+        int w = _surfaceData.Width;
+        int h = _surfaceData.Height;
+        var centerScreen = Camera.WorldToScreen(new Vector2(w / 2f, h / 2f));
+        var scale = Camera.Zoom;
+        float radiusScreenBlack = (MathF.Min(w, h) * 0.5f - 3f) * tileScreenW;
+        float radiusScreen = (MathF.Min(w, h) * 0.5f - 3f) * tileScreenW;
+
+        // Solid black ring to mask the jagged terrain edge.
+        renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
+            radiusScreenBlack, radiusScreenBlack + 2 * scale,
+            new Color4(0, 0, 0, 255), 40);
+
+        // Disc-map halos are subtler than the in-game atmospheric shell; scale alphas down.
+        const float innerScale = 0.70f;
+        const float outerScale = 0.80f;
+        float pulse = 0.92f + 0.08f * MathF.Sin((float)(Camera.Zoom * 0.1f));
+        renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
+            radiusScreen * 1.00f, radiusScreen * 1.18f,
+            c.Inner.WithAlpha((byte)Math.Clamp((int)(c.Inner.A * innerScale * pulse), 0, 255)), 40);
+        renderer.DrawSolidRingScreen(centerScreen.X, centerScreen.Y,
+            radiusScreen * 1.18f, radiusScreen * 1.40f,
+            c.Outer.WithAlpha((byte)Math.Clamp((int)(c.Outer.A * outerScale * pulse), 0, 255)), 40);
+    }
+
     /// <summary>Blit the terrain texture to the map area. Returns tile-screen scale factors
     /// needed for subsequent marker positioning.</summary>
     protected (float tileScreenW, float tileScreenH) RenderTerrainTexture(Game game)

@@ -246,6 +246,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
 
         var camera = Camera;
         var (tileScreenW, tileScreenH) = RenderTerrainTexture(game);
+        RenderPlanetDiscHalo(renderer, tileScreenW);
 
         // Settlement markers
         for (int i = 0; i < _surfaceData.Settlements.Count; i++)

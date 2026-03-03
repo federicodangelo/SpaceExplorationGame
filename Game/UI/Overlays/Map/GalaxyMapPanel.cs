@@ -253,6 +253,16 @@ public class GalaxyMapPanel : MapPanelBase
             // Star body
             renderer.DrawFilledCircle(camera, sys.GalaxyPosition, displayRadius,
                 new Color4(sys.StarColor.R, sys.StarColor.G, sys.StarColor.B, alpha));
+            // Star corona halo
+            {
+                float corPulse = 0.92f + 0.08f * MathF.Sin((float)game.GlobalTime * 0.7f + i * 0.31f);
+                byte ca1 = (byte)Math.Clamp((int)(55 * (alpha / 255f) * corPulse), 0, 255);
+                byte ca2 = (byte)Math.Clamp((int)(30 * (alpha / 255f) * corPulse), 0, 255);
+                byte ca3 = (byte)Math.Clamp((int)(14 * (alpha / 255f) * corPulse), 0, 255);
+                renderer.DrawSolidRing(camera, sys.GalaxyPosition, displayRadius, displayRadius * 1.08f, new Color4(sys.StarColor.R, sys.StarColor.G, sys.StarColor.B, ca1), 48);
+                renderer.DrawSolidRing(camera, sys.GalaxyPosition, displayRadius * 1.08f, displayRadius * 1.22f, new Color4(sys.StarColor.R, sys.StarColor.G, sys.StarColor.B, ca2), 48);
+                renderer.DrawSolidRing(camera, sys.GalaxyPosition, displayRadius * 1.22f, displayRadius * 1.45f, new Color4(sys.StarColor.R, sys.StarColor.G, sys.StarColor.B, ca3), 48);
+            }
 
             if (inRange && !reachable && !isCurrentSystem)
                 renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f, new Color4(255, 40, 40, 60));

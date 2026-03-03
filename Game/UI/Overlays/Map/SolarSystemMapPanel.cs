@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
+using SpaceExplorationGame.Rendering;
 using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
 
@@ -282,6 +283,12 @@ public class SolarSystemMapPanel : MapPanelBase
         renderer.DrawFilledCircle(camera, starCenter, starDisplay, new Color4(255, 220, 80, 200));
         renderer.DrawCircle(camera, starCenter, starDisplay + 2, new Color4(255, 240, 150, 80));
 
+        // Star corona / halo – three rings of warm light that pulse outward
+        float corPulse = 0.92f + 0.08f * MathF.Sin(time * 0.7f);
+        renderer.DrawSolidRing(camera, starCenter, starDisplay, starDisplay * 1.08f, new Color4(255, 240, 150, (byte)Math.Clamp((int)(55 * corPulse), 0, 255)), 48);
+        renderer.DrawSolidRing(camera, starCenter, starDisplay * 1.08f, starDisplay * 1.22f, new Color4(255, 200, 80, (byte)Math.Clamp((int)(30 * corPulse), 0, 255)), 48);
+        renderer.DrawSolidRing(camera, starCenter, starDisplay * 1.22f, starDisplay * 1.45f, new Color4(255, 160, 50, (byte)Math.Clamp((int)(14 * corPulse), 0, 255)), 48);
+
         bool isStarHovered = _hoveredObject.Type == SolarMapObjectType.Star;
         bool isStarSelected = _selectedObject.Type == SolarMapObjectType.Star;
         bool isStarTarget = game.Player.Navigation.Type == NavigationTargetType.Star;
@@ -301,6 +308,7 @@ public class SolarSystemMapPanel : MapPanelBase
             float pRadius = Math.Max(planet.Radius, 4f);
 
             renderer.DrawFilledCircle(camera, pPos, pRadius, planet.Color.WithAlpha(220));
+            DrawPlanetHalo(renderer, camera, pPos, pRadius, planet.Type, planet.Index, time);
 
             bool isPHovered = _hoveredObject.Type == SolarMapObjectType.Planet && _hoveredObject.PlanetIndex == planet.Index;
             bool isPSelected = _selectedObject.Type == SolarMapObjectType.Planet && _selectedObject.PlanetIndex == planet.Index;
@@ -607,6 +615,26 @@ public class SolarSystemMapPanel : MapPanelBase
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Draws a soft atmosphere halo around a planet in the solar-system map.
+    /// Uses type-specific colours that match the in-game <see cref="PlanetRenderer"/> atmosphere shell.
+    /// </summary>
+    private static void DrawPlanetHalo(ISpriteRenderer renderer, Camera camera,
+        Vector2 center, float radius, PlanetType type, int seed, float time)
+    {
+        var c = PlanetAtmosphereColors.Get(type);
+        if (c.IsEmpty) return;
+
+        // Map halos are subtler than the in-game atmospheric shell; scale alphas down.
+        const float innerScale = 0.75f;
+        const float outerScale = 0.85f;
+        float pulse = 0.92f + 0.08f * MathF.Sin(time * 0.9f + seed * 0.21f);
+        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.18f,
+            c.Inner.WithAlpha((byte)Math.Clamp((int)(c.Inner.A * innerScale * pulse), 0, 255)), 36);
+        renderer.DrawSolidRing(camera, center, radius * 1.18f, radius * 1.40f,
+            c.Outer.WithAlpha((byte)Math.Clamp((int)(c.Outer.A * outerScale * pulse), 0, 255)), 36);
     }
 
     private void RenderTargetButton(Game game, ISpriteRenderer renderer, float px, float py, bool isTarget)

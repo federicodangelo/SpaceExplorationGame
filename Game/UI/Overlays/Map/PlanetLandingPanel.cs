@@ -275,6 +275,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
         if (_surfaceData == null || _terrainTexture == nint.Zero) return;
 
         var (tileScreenW, tileScreenH) = RenderTerrainTexture(game);
+        RenderPlanetDiscHalo(renderer, tileScreenW);
 
         // Settlement markers
         foreach (var settlement in _surfaceData.Settlements)

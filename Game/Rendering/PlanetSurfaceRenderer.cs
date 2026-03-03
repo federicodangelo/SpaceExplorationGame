@@ -99,9 +99,14 @@ public static class PlanetSurfaceRenderer
         var center = new Vector2(w * ts * 0.5f, h * ts * 0.5f);
         float radius = (MathF.Min(w, h) * 0.5f - 2f) * ts;
 
-        var atmColor = GetAtmosphereBaseColor(planetType);
+        var atmColor = PlanetAtmosphereColors.Get(planetType).Inner.WithAlpha(255);
         float pulse = 0.94f + 0.06f * MathF.Sin((float)globalTime * 0.7f);
         int seg = 64;
+
+        // Solid black ring to mask the jagged terrain edge.
+        renderer.DrawSolidRing(camera, center,
+            radius - GameConfig.TileSize, radius + GameConfig.TileSize,
+            new Color4(0, 0, 0, 255), 40);
 
         // Layer 1 – inner-edge tint: subtly darkens the outermost terrain tiles
         //           so the boundary row blends rather than hard-cuts.
@@ -125,19 +130,6 @@ public static class PlanetSurfaceRenderer
             radius + ts * 3.2f, radius + ts * 5.8f,
             atmColor.WithAlpha((byte)Math.Clamp((int)(32 * pulse), 0, 255)), seg);
     }
-
-    private static Color4 GetAtmosphereBaseColor(PlanetType type) => type switch
-    {
-        PlanetType.Terrestrial => new Color4(115, 185, 255, 255),
-        PlanetType.Ocean => new Color4(75, 155, 255, 255),
-        PlanetType.Desert => new Color4(215, 175, 100, 255),
-        PlanetType.Volcanic => new Color4(255, 105, 40, 255),
-        PlanetType.Frozen => new Color4(195, 225, 255, 255),
-        PlanetType.Rocky => new Color4(165, 155, 148, 255),
-        PlanetType.GasGiant => new Color4(230, 200, 140, 255),
-        PlanetType.IceGiant => new Color4(160, 210, 255, 255),
-        _ => new Color4(160, 160, 175, 255),
-    };
 
     #region Terrain Details
 

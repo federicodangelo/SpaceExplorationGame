@@ -204,45 +204,13 @@ public class PlanetRenderer
     private static void DrawAtmosphereShell(ISpriteRenderer renderer, Camera camera,
         Vector2 center, float radius, PlanetType type, float globalTime, int seed)
     {
-        Color4 inner;
-        Color4 mid;
-        Color4 outer;
-
-        switch (type)
-        {
-            case PlanetType.Terrestrial:
-                inner = new Color4(170, 215, 255, 80);
-                mid = new Color4(120, 180, 245, 48);
-                outer = new Color4(90, 145, 220, 24);
-                break;
-            case PlanetType.Ocean:
-                inner = new Color4(150, 210, 255, 86);
-                mid = new Color4(110, 175, 245, 54);
-                outer = new Color4(85, 140, 220, 28);
-                break;
-            case PlanetType.Frozen:
-                inner = new Color4(200, 235, 255, 70);
-                mid = new Color4(160, 210, 245, 45);
-                outer = new Color4(120, 180, 225, 24);
-                break;
-            case PlanetType.GasGiant:
-                inner = new Color4(235, 215, 170, 48);
-                mid = new Color4(220, 190, 135, 34);
-                outer = new Color4(190, 150, 95, 22);
-                break;
-            case PlanetType.IceGiant:
-                inner = new Color4(170, 220, 255, 52);
-                mid = new Color4(130, 185, 245, 36);
-                outer = new Color4(95, 150, 220, 22);
-                break;
-            default:
-                return;
-        }
+        var c = PlanetAtmosphereColors.Get(type);
+        if (!c.HasInGameAtmosphere) return;
 
         float pulse = 0.92f + 0.08f * MathF.Sin(globalTime * 0.9f + seed * 0.21f);
-        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.05f, inner.WithAlpha((byte)(inner.A * pulse)), 40);
-        renderer.DrawSolidRing(camera, center, radius * 1.05f, radius * 1.11f, mid.WithAlpha((byte)(mid.A * pulse)), 40);
-        renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, outer.WithAlpha((byte)(outer.A * pulse)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.00f, radius * 1.05f, c.Inner.WithAlpha((byte)(c.Inner.A * pulse)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.05f, radius * 1.11f, c.Mid.WithAlpha((byte)(c.Mid.A * pulse)), 40);
+        renderer.DrawSolidRing(camera, center, radius * 1.11f, radius * 1.18f, c.Outer.WithAlpha((byte)(c.Outer.A * pulse)), 40);
     }
 
     private static void DrawCloudLayer(ISpriteRenderer renderer, Camera camera, Vector2 center, float radius,
