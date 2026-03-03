@@ -290,9 +290,14 @@ public static class EntityFactory
     {
         Vector2 shipPos = world.Get<Transform>(shipEntity).Position;
         float half = shipSize * 0.5f;
-        float side = shipSize * 0.42f;
-        float sideFrontX = shipSize * 0.22f;
-        float sideRearX = -shipSize * 0.22f;
+
+        // Ships taper toward the nose, so the forward fuselage is much narrower than the wing root.
+        // Use separate Y offsets for front vs rear side thrusters so they sit on the visible hull edge
+        // rather than floating out in empty space beyond the wings.
+        float sideYFront = shipSize * 0.18f;   // forward hull edge (cockpit / canard region)
+        float sideYRear = shipSize * 0.30f;   // rearward hull / wing-root junction
+        float sideFrontX = shipSize * 0.15f;   // slightly ahead of centre
+        float sideRearX = -shipSize * 0.22f;  // behind centre, at the wing-root band
 
         world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateMainThrusterEmitter(shipEntity, color,
             localOffset: new Vector2(-half * 1.1f, 0f),
@@ -305,22 +310,22 @@ public static class EntityFactory
             activation: ThrusterActivation.Backward));
 
         world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
-            localOffset: new Vector2(sideFrontX, -side),
+            localOffset: new Vector2(sideFrontX, -sideYFront),
             localEjectDirection: new Vector2(0f, -1f),
             activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateRight));
 
         world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
-            localOffset: new Vector2(sideRearX, -side),
+            localOffset: new Vector2(sideRearX, -sideYRear),
             localEjectDirection: new Vector2(0f, -1f),
             activation: ThrusterActivation.StrafeRight | ThrusterActivation.RotateLeft));
 
         world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
-            localOffset: new Vector2(sideFrontX, side),
+            localOffset: new Vector2(sideFrontX, sideYFront),
             localEjectDirection: new Vector2(0f, 1f),
             activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateLeft));
 
         world.Create(new Transform(shipPos), new OwnedBy(shipEntity), CreateRcsThrusterEmitter(shipEntity, color,
-            localOffset: new Vector2(sideRearX, side),
+            localOffset: new Vector2(sideRearX, sideYRear),
             localEjectDirection: new Vector2(0f, 1f),
             activation: ThrusterActivation.StrafeLeft | ThrusterActivation.RotateRight));
     }
