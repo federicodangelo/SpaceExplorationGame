@@ -31,7 +31,13 @@ public class MissionOverlay : ListPanelOverlay
             var input = CurrentInput;
             if (input == null) return "";
 
-            string tabs = $"{input.GetActionHelpText(InputAction.MenuLeft)}/{input.GetActionHelpText(InputAction.MenuRight)}";
+            // Gamepad uses shoulder buttons (LB/RB) for tabs; keyboard/mouse uses Left/Right arrows
+            string tabPrev = input.GetActionHelpText(InputAction.PreviousPanelView);
+            string tabNext = input.GetActionHelpText(InputAction.NextPanelView);
+            bool hasShoulderHint = !string.IsNullOrEmpty(tabPrev) && !string.IsNullOrEmpty(tabNext);
+            string tabs = hasShoulderHint
+                ? $"{tabPrev}/{tabNext}"
+                : $"{input.GetActionHelpText(InputAction.MenuLeft)}/{input.GetActionHelpText(InputAction.MenuRight)}";
             string nav = $"{input.GetActionHelpText(InputAction.MenuUp)}/{input.GetActionHelpText(InputAction.MenuDown)}";
             string confirm = input.GetActionHelpText(InputAction.MenuConfirm);
             string back = input.GetActionHelpText(InputAction.MenuBack);

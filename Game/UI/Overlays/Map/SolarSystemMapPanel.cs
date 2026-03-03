@@ -500,7 +500,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm)}: SELECT  /  SAME OBJECT: SET TARGET + CLOSE",
                 new Color3(255, 200, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(px, ctrlY + 56,
-                $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                $"{game.Input.GetActionHelpText(InputAction.PreviousPanelView)}/{game.Input.GetActionHelpText(InputAction.NextPanelView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
                 new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
         else

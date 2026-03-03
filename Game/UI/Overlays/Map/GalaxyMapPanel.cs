@@ -457,7 +457,7 @@ public class GalaxyMapPanel : MapPanelBase
                 $"{game.Input.GetActionHelpText(InputAction.MenuConfirm).ToUpper()}: TRAVEL",
                 new Color3(100, 255, 100), 1.3f, InfoPanelW - 24);
             renderer.DrawTextScreen(cx, ctrlY + 72,
-                $"{game.Input.GetActionHelpText(InputAction.MapPreviousView)}/{game.Input.GetActionHelpText(InputAction.MapNextView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
+                $"{game.Input.GetActionHelpText(InputAction.PreviousPanelView)}/{game.Input.GetActionHelpText(InputAction.NextPanelView)}: SWITCH MAP  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
                 new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
         else

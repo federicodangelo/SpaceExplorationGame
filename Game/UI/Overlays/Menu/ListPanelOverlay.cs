@@ -53,10 +53,12 @@ public abstract class ListPanelOverlay : PanelOverlayBase
     protected override void ProcessInput(Game game, IInputManager input)
     {
         // Tab / column navigation (always available, even with empty lists)
-        if (input.IsActionPressed(InputAction.MenuLeft))
+        // D-Pad Left / Left Arrow or gamepad LB shoulder button
+        if (input.IsActionPressed(InputAction.MenuLeft) || input.IsActionPressed(InputAction.PreviousPanelView))
             OnNavigateLeft(game);
 
-        if (input.IsActionPressed(InputAction.MenuRight))
+        // D-Pad Right / Right Arrow or gamepad RB shoulder button
+        if (input.IsActionPressed(InputAction.MenuRight) || input.IsActionPressed(InputAction.NextPanelView))
             OnNavigateRight(game);
 
         int count = ItemCount;

@@ -112,13 +112,13 @@ public class GalaxyMapOverlay : MapOverlayBase
         }
 
         // Shoulder buttons switch map views directly
-        if (input.IsActionPressed(InputAction.MapPreviousView))
+        if (input.IsActionPressed(InputAction.PreviousPanelView))
         {
             SetMode(game, MapViewMode.SolarSystem);
             return true;
         }
 
-        if (input.IsActionPressed(InputAction.MapNextView))
+        if (input.IsActionPressed(InputAction.NextPanelView))
         {
             SetMode(game, MapViewMode.Galaxy);
             return true;
