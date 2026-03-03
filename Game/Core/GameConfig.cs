@@ -84,9 +84,8 @@ public static class GameConfig
     public const int MaxTradersPerSystem = 40;
     public const int MinPatrolsPerSystem = 0;
     public const int MaxPatrolsPerSystem = 20;
-    public const float EnemyDetectRange = 300f;        // range to notice targets
+    public const float EnemyDetectRange = 500f;        // range to notice targets
     public const float EnemyEngageDistance = 200f;      // preferred combat distance
-    public const float EnemyFleeHealthPercent = 0.2f;   // flee below 20% hull
 
     // Shields
     public const float BaseShieldRegenRate = 5f;        // shield points per second

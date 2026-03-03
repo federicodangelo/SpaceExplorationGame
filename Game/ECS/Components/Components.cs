@@ -284,7 +284,9 @@ public sealed record EnemyAIConfig(
     float DetectRange,
     int LootCredits,
     float EngageDistance,
-    float FleeHealthPercent);
+    float FleeHealthPercent,
+    float AimInaccuracyRadius
+);
 
 /// <summary>AI-controlled ship with combat behavior. Config holds immutable stats; mutable state lives here.</summary>
 [Component]

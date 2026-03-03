@@ -221,7 +221,7 @@ public static class EntityFactory
     public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn)
     {
         var stats = spawn.Stats;
-        var (thrusterColor, aiConfig, shieldRegenRate) = GetNpcShipProfile(spawn);
+        var (thrusterColor, aiConfig, shieldRegenRate, healthMultiplier) = GetNpcShipProfile(spawn);
 
         var ship = world.Create(
             new Transform(spawn.Position, spawn.Rotation),
@@ -231,7 +231,7 @@ public static class EntityFactory
                 stats.Acceleration, GameConfig.ShipBrakeMultiplier,
                 spawn.Weapons),
             ShipInputComponent.Default(),
-            new Health(stats.MaxHull, stats.MaxShield, shieldRegenRate, GameConfig.ShieldRegenDelay),
+            new Health(stats.MaxHull * healthMultiplier, stats.MaxShield * healthMultiplier, shieldRegenRate, GameConfig.ShieldRegenDelay),
             new EnemyAI { Config = aiConfig, State = AIState.Patrol }
         );
 
@@ -251,8 +251,30 @@ public static class EntityFactory
         return ship;
     }
 
-    private static (Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen) GetNpcShipProfile(NpcShipSpawnData spawn)
+    private static (Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen, float HealthMultiplier) GetNpcShipProfile(NpcShipSpawnData spawn)
     {
+        // Higher danger level  → more accurate enemy (smaller inaccuracy radius).
+        // DangerLevel: 0=any(default), 1=safe … 5=extreme
+        float baseInaccuracy = spawn.DangerLevel switch
+        {
+            1 => 200f,   // SAFE     – enemies spray widely
+            2 => 150f,    // LOW      – noticeably inaccurate
+            3 => 100f,    // MEDIUM   – moderate challenge
+            4 => 80f,    // HIGH     – mostly on-target
+            5 => 50f,    // EXTREME  – near-perfect aim
+            _ => 60f,    // fallback (0 = ANY)
+        };
+
+        float healthMultiplier = spawn.DangerLevel switch
+        {
+            1 => 0.4f,   // SAFE     – weaker hull
+            2 => 0.5f,    // LOW      – slightly weaker
+            3 => 0.6f,    // MEDIUM   – baseline
+            4 => 0.8f,    // HIGH     – tougher hull
+            5 => 1.0f,    // EXTREME  – significantly tougher
+            _ => 1f,    // fallback (0 = ANY)
+        };
+
         return spawn.Faction switch
         {
             Faction.Pirate => (
@@ -262,8 +284,10 @@ public static class EntityFactory
                     DetectRange: GameConfig.EnemyDetectRange,
                     LootCredits: spawn.LootCredits,
                     EngageDistance: GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent: GameConfig.EnemyFleeHealthPercent),
-                GameConfig.BaseShieldRegenRate * 0.5f),
+                    FleeHealthPercent: 0.0f,   // pirates fight to the death
+                    AimInaccuracyRadius: baseInaccuracy),
+                GameConfig.BaseShieldRegenRate * 0.5f,
+                healthMultiplier),
             Faction.Trader => (
                 new Color3(255, 210, 120),
                 new EnemyAIConfig(
@@ -271,8 +295,10 @@ public static class EntityFactory
                     DetectRange: 300f,
                     LootCredits: 0,
                     EngageDistance: 0f,
-                    FleeHealthPercent: 0.5f),
-                GameConfig.BaseShieldRegenRate * 0.5f),
+                    FleeHealthPercent: 0.25f, // traders flee when hull drops below 25%
+                    AimInaccuracyRadius: 0f),   // traders don't shoot
+                GameConfig.BaseShieldRegenRate * 0.5f,
+                healthMultiplier),
             Faction.Patrol => (
                 new Color3(130, 200, 255),
                 new EnemyAIConfig(
@@ -280,8 +306,10 @@ public static class EntityFactory
                     DetectRange: GameConfig.EnemyDetectRange * 1.5f,
                     LootCredits: 0,
                     EngageDistance: GameConfig.EnemyEngageDistance,
-                    FleeHealthPercent: 0f),
-                GameConfig.BaseShieldRegenRate),
+                    FleeHealthPercent: 0f, // patrols are disciplined – fight to the death, no fleeing
+                    AimInaccuracyRadius: baseInaccuracy * 0.6f),  // patrols are trained – tighter spread
+                GameConfig.BaseShieldRegenRate,
+                healthMultiplier),
             _ => throw new ArgumentException($"Unsupported NPC faction: {spawn.Faction}")
         };
     }

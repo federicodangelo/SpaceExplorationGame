@@ -287,7 +287,19 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         if (inAttackRange)
         {
             SetState(ref ai, AIState.Attack);
-            var aimDir = ComputeAimDirection(transform.Position, targetPos, targetVelocity, selfVelocity,
+
+            // Apply sinusoidal aim wobble to simulate imperfect accuracy.
+            // Two slightly-incommensurate frequencies create a lissajous-like drift pattern
+            // so the inaccuracy never repeats predictably and feels organic.
+            var aimTarget = targetPos;
+            if (ai.Config.AimInaccuracyRadius > 0f)
+            {
+                float wobbleX = MathF.Sin(ai.StateTimer * 2.3f) * ai.Config.AimInaccuracyRadius;
+                float wobbleY = MathF.Cos(ai.StateTimer * 1.7f) * ai.Config.AimInaccuracyRadius;
+                aimTarget += new Vector2(wobbleX, wobbleY);
+            }
+
+            var aimDir = ComputeAimDirection(transform.Position, aimTarget, targetVelocity, selfVelocity,
                 GetFastestProjectileSpeed(ship.Weapons), dirToTarget);
             shipInput.RotationSpeed = ComputeWantedRotationSpeed(transform.Rotation, aimDir, dt, ship.MaxRotationSpeed);
 
