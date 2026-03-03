@@ -308,9 +308,10 @@ public class SolarSystemState : GameState
 
     private void BeginDocking(Game game, SpaceStationData station)
     {
-        Vector2 shipWorldPos = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
-            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position
-            : game.Player.ShipWorldPosition;
+        var shipTransformAtDocking = _sim.EcsWorld.IsAlive(_simPlayer.Entity)
+            ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity)
+            : new Transform(game.Player.ShipWorldPosition);
+        Vector2 shipWorldPos = shipTransformAtDocking.Position;
 
         int stIdx = _sim.SpaceStations.FindIndex(s => s.Index == station.Index);
         Vector2 stationWorldPos = stIdx >= 0 && stIdx < _sim.SpaceStationEntities.Count
@@ -321,6 +322,7 @@ public class SolarSystemState : GameState
         game.ChangeState(new StationDockingTransitionState(
             _starSystem, station,
             shipWorldStart: shipWorldPos,
+            shipRotationStart: shipTransformAtDocking.Rotation,
             stationWorldPos: stationWorldPos,
             solarCameraStart: _camera.Position,
             solarZoomStart: _camera.Zoom));

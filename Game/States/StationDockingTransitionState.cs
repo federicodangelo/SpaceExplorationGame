@@ -31,6 +31,7 @@ public class StationDockingTransitionState : GameState
 
     // Docking-mode: solar snapshot for ship/station screen-position math
     private readonly Vector2 _shipWorldStart;
+    private readonly float _shipRotationStart;
     private readonly Vector2 _stationWorldPos;
     private readonly Vector2 _solarCameraStart;
     private readonly float _solarZoomStart;
@@ -75,6 +76,7 @@ public class StationDockingTransitionState : GameState
         StarSystemData starSystem,
         SpaceStationData spaceStation,
         Vector2 shipWorldStart,
+        float shipRotationStart,
         Vector2 stationWorldPos,
         Vector2 solarCameraStart,
         float solarZoomStart)
@@ -83,6 +85,7 @@ public class StationDockingTransitionState : GameState
         _starSystem = starSystem;
         _spaceStation = spaceStation;
         _shipWorldStart = shipWorldStart;
+        _shipRotationStart = shipRotationStart;
         _stationWorldPos = stationWorldPos;
         _solarCameraStart = solarCameraStart;
         _solarZoomStart = MathF.Max(0.01f, solarZoomStart);
@@ -230,7 +233,6 @@ public class StationDockingTransitionState : GameState
             {
                 // Full screen — no clip rect needed
                 InteriorRenderer.RenderWorld(renderer, _interiorCamera, _interiorData, game.GlobalTime, null);
-                RenderLandedShip(renderer);
             }
             else
             {
@@ -244,7 +246,6 @@ public class StationDockingTransitionState : GameState
 
                 renderer.SetClipRect(clipX, clipY, clipW, clipH);
                 InteriorRenderer.RenderWorld(renderer, _interiorCamera, _interiorData, game.GlobalTime, null);
-                RenderLandedShip(renderer);
                 renderer.ClearClipRect();
             }
         }
@@ -278,13 +279,12 @@ public class StationDockingTransitionState : GameState
         float settleY = EaseInOut01(touchdownP) * 10f;
         if (_mode == TransitionMode.Docking) shipY += settleY;
 
-        // Ship rotation: faces down (90°) throughout, rotates to face up (0°) while launching
-        float rotation = 90f;
-        if (_mode == TransitionMode.Undocking)
-        {
-            float modeP = Math.Clamp(_elapsed / TotalDuration, 0f, 1f);
-            rotation = Lerp(90f, 0f, EaseInOut01(Math.Clamp((modeP - 0.65f) / 0.35f, 0f, 1f)));
-        }
+        // Ship rotation: docking lerps from the in-space heading to 0° (horizontal/docked).
+        // Undocking stays at 0° throughout (consistent with the docked orientation).
+        float animP = Math.Clamp(animElapsed / TotalDuration, 0f, 1f);
+        float rotation = _mode == TransitionMode.Docking
+            ? MathHelper.LerpRotation(_shipRotationStart, 0f, EaseInOut01(animP))
+            : 0f;
 
         game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, rotation,
@@ -316,17 +316,6 @@ public class StationDockingTransitionState : GameState
         }
         _interiorCamera.Zoom = zoom;
         _interiorCamera.ClampZoom();
-    }
-
-    private void RenderLandedShip(ISpriteRenderer renderer)
-    {
-        if (!_interiorData.LandingPadTilePos.HasValue) return;
-        float padWorldX = (_interiorData.LandingPadTilePos.Value.X + 0.5f) * GameConfig.TileSize;
-        float padWorldY = (_interiorData.LandingPadTilePos.Value.Y + 0.5f) * GameConfig.TileSize;
-        // Note: during the Entry phase the ship is still flying (outside), so we skip the landed
-        // sprite — it will only be shown in the full interior (handled by the caller already inside
-        // the clip-rect block).  We keep it here for the touchdown full-screen phase.
-        // The flying ship overlay will cover it near the pad anyway.
     }
 
     /// <summary>Screen position of the landing pad using the current interior camera.</summary>
