@@ -15,7 +15,7 @@ A 2D procedural space exploration game built entirely using AI coding agents —
 
 This project was created as an experiment to push the boundaries of what's possible when using **AI coding agents** for game development. The entire codebase — rendering, procedural generation, ECS architecture, audio synthesis, UI, and gameplay — was written by [Claude](https://www.anthropic.com/claude) (Opus 4.6 and Sonnet 4.6) through iterative prompting.
 
-### v1.1.0 (current)
+### v1.1.0
 - **AI Models:** Claude Opus 4.6 and Claude Sonnet 4.6
 - **Total Development Time:** ~8 days of on-and-off work
 - **Lines of Code:** ~28,000 (all AI-generated)
@@ -42,9 +42,10 @@ This project was created as an experiment to push the boundaries of what's possi
 ## Tech Stack
 
 - **Language:** C# / .NET 10
-- **Rendering:** [SDL3](https://www.libsdl.org/) via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS)
+- **Desktop Platform:** [SDL3](https://www.libsdl.org/) via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS)
+- **Browser Platform:** WebAssembly (.NET 10 WASM + Canvas 2D API via JS interop)
 - **ECS:** [Arch ECS](https://github.com/genaray/Arch) with Arch.System extensions
-- **Audio:** SDL3 built-in audio API with fully procedural synthesis (no external audio files or SDL_mixer)
+- **Audio:** SDL3 built-in audio API (desktop) / Web Audio API (browser) — fully procedural synthesis (no external audio files)
 
 ## Screenshots (v1.1.0)
 
@@ -99,16 +100,29 @@ See [docs/SCREENSHOTS_V1.0.0.md](docs/SCREENSHOTS_V1.0.0.md) (includes video dem
 
 ## Building & Running
 
+### Desktop (SDL3)
+
 ```bash
 # Requires .NET 10 SDK
-dotnet run --project SpaceExplorationGame
+dotnet run --project Game.Sdl
+# or use the convenience script:
+run-sdl.bat
+```
+
+### Browser (WebAssembly)
+
+```bash
+# Requires .NET 10 SDK + dotnet-serve
+dotnet tool install -g dotnet-serve
+run-web.bat         # build and serve at http://localhost:8080
+watch-web.bat       # build + watch mode with auto-rebuild
 ```
 
 ### Command line options
 
 ```bash
-dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
-dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <showcase> [--star-type <type>]]
+dotnet run --project Game.Sdl -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]]
+dotnet run --project Game.Sdl -- [--seed|-s <seed>] [--location|-l <location> [--sublocation|-sl <sublocation>]] [--showcase|-sc <showcase> [--star-type <type>]]
 ```
 
 | Argument                                           | Description                                                                                   |
@@ -132,27 +146,27 @@ dotnet run --project SpaceExplorationGame -- [--seed|-s <seed>] [--location|-l <
 **Examples**
 
 ```bash
-dotnet run --project SpaceExplorationGame
-dotnet run --project SpaceExplorationGame -- --help
-dotnet run --project SpaceExplorationGame -- --seed 12345
-dotnet run --project SpaceExplorationGame -- -s 12345
-dotnet run --project SpaceExplorationGame -- --location system
-dotnet run --project SpaceExplorationGame -- -l station -sl docked
-dotnet run --project SpaceExplorationGame -- --location station --sublocation docked
-dotnet run --project SpaceExplorationGame -- --seed 42 --location planet --sublocation on-foot
-dotnet run --project SpaceExplorationGame -- --location settlement --sublocation on-vehicle
-dotnet run --project SpaceExplorationGame -- --showcase planet-type
-dotnet run --project SpaceExplorationGame -- --showcase star-type --star-type K
+dotnet run --project Game.Sdl
+dotnet run --project Game.Sdl -- --help
+dotnet run --project Game.Sdl -- --seed 12345
+dotnet run --project Game.Sdl -- -s 12345
+dotnet run --project Game.Sdl -- --location system
+dotnet run --project Game.Sdl -- -l station -sl docked
+dotnet run --project Game.Sdl -- --location station --sublocation docked
+dotnet run --project Game.Sdl -- --seed 42 --location planet --sublocation on-foot
+dotnet run --project Game.Sdl -- --location settlement --sublocation on-vehicle
+dotnet run --project Game.Sdl -- --showcase planet-type
+dotnet run --project Game.Sdl -- --showcase star-type --star-type K
 ```
 
 ## Code Formatting
 
 ```bash
 # Check and apply formatting locally
-dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace
+dotnet format SpaceExplorationGame.slnx whitespace
 
 # CI-style check (fails if formatting changes are needed)
-dotnet format SpaceExplorationGame/SpaceExplorationGame.csproj whitespace --verify-no-changes
+dotnet format SpaceExplorationGame.slnx whitespace --verify-no-changes
 ```
 
 ### Pre-commit hook

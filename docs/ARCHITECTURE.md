@@ -1,38 +1,44 @@
 # Space Exploration Game - Architecture Documentation
 
 ## Overview
-A 2D procedural space exploration game built with C# (.NET 10), SDL3 (via SDL3-CS), and Arch ECS.
+A 2D procedural space exploration game built with C# (.NET 10), SDL3 (via SDL3-CS), WebAssembly, and Arch ECS.
 
 ## Tech Stack
 - **Runtime**: .NET 10
-- **Rendering**: SDL3 via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS) NuGet package
+- **Desktop Rendering**: SDL3 via [SDL3-CS](https://github.com/edwardgushchin/SDL3-CS) NuGet package
+- **Browser Rendering**: WebAssembly (.NET 10 WASM) + Canvas 2D API via JS interop (`JsInterop.cs`)
 - **ECS**: [Arch ECS](https://github.com/genaray/Arch) v2.0.0 with [Arch.System](https://github.com/genaray/Arch.Extended) v1.1.0 and Arch.System.SourceGenerator v2.0.0
-- **Graphics**: Procedural pixel art textures generated at runtime (sphere-shaded planets, glow-gradient stars, pixel-art ship/avatar/station sprites) plus SDL3 draw primitives and a minimal bitmap font.
-- **Audio**: SDL3 built-in audio API (push-based streaming) — fully procedural synthesis, no external audio files or SDL_mixer
+- **Graphics**: Procedural pixel art textures generated at runtime (sphere-shaded planets, glow-gradient stars, pixel-art ship/avatar/station sprites) plus draw primitives and a minimal bitmap font.
+- **Desktop Audio**: SDL3 built-in audio API (push-based streaming) — fully procedural synthesis, no external audio files or SDL_mixer
+- **Browser Audio**: Web Audio API via JS interop — same procedural synthesis pipeline
 
 ## Solution Structure
 
-The solution is split into four projects with clear dependency boundaries:
+The solution is split into six projects with clear dependency boundaries:
 
 ```
 SpaceExplorationGame.slnx
-├── Engine/Engine.csproj            # Core engine library (interfaces, base types)
-├── Engine.Sdl/Engine.Sdl.csproj    # SDL3 platform implementation
-├── Game/Game.csproj                # Game logic (ECS, states, rendering, UI)
-└── Game.Sdl/Game.Sdl.csproj        # Executable entry point (wires platform to game)
+├── Engine/Engine.csproj            # Core engine library (interfaces, base types, platform abstractions)
+├── Engine.Sdl/Engine.Sdl.csproj    # SDL3 desktop platform implementation
+├── Engine.Web/Engine.Web.csproj    # WebAssembly browser platform implementation
+├── Game/Game.csproj                # Game logic (ECS, states, rendering, UI) — platform-agnostic
+├── Game.Sdl/Game.Sdl.csproj        # Desktop (SDL3) executable entry point
+└── Game.Web/Game.Web.csproj        # WebAssembly (browser) entry point
 ```
 
 **Dependency graph** (→ = "depends on"):
 ```
-Game.Sdl → Game + Engine.Sdl
-Game     → Engine
+Game.Sdl  → Game + Engine.Sdl
+Game.Web  → Game + Engine.Web
+Game      → Engine
 Engine.Sdl → Engine
-Engine   → (nothing)
+Engine.Web → Engine
+Engine    → (nothing)
 ```
 
 **Namespace mapping**:
-- `Engine/` and `Engine.Sdl/` use `RootNamespace = Engine` → namespaces: `Engine.Core`, `Engine.Platform`, `Engine.Platform.Sdl`, `Engine.Rendering.Base`
-- `Game/` and `Game.Sdl/` use `RootNamespace = SpaceExplorationGame` → namespaces: `SpaceExplorationGame.Core`, `SpaceExplorationGame.States`, etc.
+- `Engine/`, `Engine.Sdl/`, and `Engine.Web/` use `RootNamespace = Engine` → namespaces: `Engine.Core`, `Engine.Platform`, `Engine.Platform.Sdl`, `Engine.Platform.Web`, `Engine.Rendering.Base`
+- `Game/`, `Game.Sdl/`, and `Game.Web/` use `RootNamespace = SpaceExplorationGame` → namespaces: `SpaceExplorationGame.Core`, `SpaceExplorationGame.States`, etc.
 - `Game/GlobalUsings.cs` provides `global using Engine.Core;` and `global using Engine.Platform;` so game code can access engine types without per-file usings
 
 ### Engine (Engine/Engine.csproj)
@@ -62,7 +68,7 @@ Engine/
 ```
 
 ### Engine.Sdl (Engine.Sdl/Engine.Sdl.csproj)
-SDL3 platform implementation. References Engine + SDL3-CS NuGet packages.
+SDL3 desktop platform implementation. References Engine + SDL3-CS NuGet packages.
 
 ```
 Engine.Sdl/
@@ -77,6 +83,34 @@ Engine.Sdl/
         ├── SdlInputManager.cs     # SDL3 IInputManager implementation (keyboard, mouse, gamepad)
         ├── SdlAudioManager.cs     # SDL3 IAudioManager implementation (push-streaming audio)
         └── SdlSettings.cs         # File-based ISettings implementation (JSON key/value store)
+```
+
+**Shared abstract base classes** live in `Engine/Platform/Base/` and are extended by both SDL and Web implementations to avoid code duplication:
+| Base Class           | Extends | Purpose                                                   |
+| -------------------- | ------- | --------------------------------------------------------- |
+| `BasePlatform`       | —       | Common lifecycle helpers; `Quit` state management         |
+| `BaseInputManager`   | —       | Dead-zone application, action-axis mapping logic          |
+| `BaseAudioManager`   | —       | Music/SFX volume state, crossfade tracking                |
+| `BaseSpriteRenderer` | —       | Shared viewport helpers and coordinate transforms         |
+| `BaseTextureManager` | —       | `SetPixelBlock` shared pixel-fill helper                  |
+| `BaseSettings`       | —       | In-memory key/value store backing used by file-based impl |
+
+### Engine.Web (Engine.Web/Engine.Web.csproj)
+WebAssembly browser platform implementation. References Engine only (no SDL or NuGet rendering libraries). Renders via Canvas 2D API through JS interop.
+
+```
+Engine.Web/
+├── Engine.Web.csproj
+└── Platform/
+    └── Web/
+        ├── WebPlatform.cs         # IPlatform implementation for WASM (mirrors SdlPlatform lifecycle)
+        ├── WebSpriteRenderer.cs   # ISpriteRenderer implementation via Canvas 2D JS interop
+        ├── WebTextureManager.cs   # ITextureManager implementation (pixel buffers via JS interop)
+        ├── WebFontRenderer.cs     # IFontRenderer implementation (wraps MiniBitmapFont)
+        ├── WebInputManager.cs     # IInputManager implementation (keyboard + pointer events via JS)
+        ├── WebAudioManager.cs     # IAudioManager implementation (Web Audio API via JS interop)
+        ├── WebSettings.cs         # ISettings implementation (in-memory; localStorage support via JS)
+        └── JsInterop.cs           # [JSExport] / [JSImport] bridge between .NET WASM and the JS host page
 ```
 
 ### Game (Game/Game.csproj)
@@ -98,6 +132,8 @@ Game/
 │   ├── ICustomizablePart.cs       # Common interface for all equipment parts
 │   ├── IDebugInfoProvider.cs      # DebugTimer / DebugTimingEntry — lightweight timing infrastructure
 │   ├── MenuOptionsPersistence.cs  # Persists menu selections using ISettings (instance class)
+│   ├── BuildInfo.cs               # Reads embedded git commit hash from AssemblyInformationalVersion
+│   ├── MathHelper.cs              # Shared math utilities (angle wrap, lerp, etc.)
 │   ├── NpcShipLoadoutHelper.cs    # NPC ship type/loadout/weapon selection and stat derivation by danger tier
 │   ├── Missions.cs                # Mission data model (MissionType, MissionStatus, Mission class)
 │   ├── MissionTracker.cs          # Active/completed mission state + Notify* callbacks
@@ -173,13 +209,20 @@ Game/
 │   ├── VehicleRenderer.cs         # Player vehicle texture & rendering (IDisposable, owns texture)
 │   ├── SpaceshipRenderer.cs       # Player ship textures & rendering (IDisposable, owns textures per type)
 │   ├── EnemyShipRenderer.cs       # NPC faction ship textures & rendering (IDisposable, pirate/trader/patrol)
-│   ├── StationRenderer.cs         # Space station texture & rendering (IDisposable, owns texture)
-│   ├── AsteroidRenderer.cs        # Asteroid texture & rendering (IDisposable, owns texture)
+│   ├── SpaceStationRenderer.cs    # Space station geometry rendering (IDisposable; primitive-based, no texture)
+│   ├── AsteroidRenderer.cs        # Asteroid rendering (IDisposable; unique procedural shape per asteroid)
 │   ├── PlanetRenderer.cs          # Planet/moon texture factory & rendering (IDisposable, tracks textures)
+│   ├── PlanetAtmosphereColors.cs  # Atmosphere color lookup table per planet type
 │   ├── StarRenderer.cs            # Star texture factory & rendering (IDisposable, tracks textures)
-│   ├── SolarSystemRenderer.cs     # Solar system static helpers (background stars, orbits, panels)
-│   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, settlements)
+│   ├── StarsBackgroundRenderer.cs # Parallax-scrolling background stars with Poisson disk sampling
+│   ├── NebulaBackgroundRenderer.cs# Parallax-scrolling nebula cloud layer (solar system + main menu)
+│   ├── TerrainRenderer.cs         # Terrain tile color logic extracted from PlanetSurfaceRenderer
+│   ├── SolarSystemRenderer.cs     # Solar system static helpers (orbit lines, interaction panels)
+│   ├── PlanetSurfaceRenderer.cs   # Planet surface static helpers (terrain, biome decoration, settlements)
 │   ├── ProjectileRenderer.cs      # Projectile trail rendering, damage popups, explosion effects (static)
+│   ├── ParticleRenderer.cs        # ECS particle rendering (queries Transform + Particle; static)
+│   ├── TireMarkRenderer.cs        # Vehicle tire mark trails on planet surface (instance, per-state)
+│   ├── WeatherRenderer.cs         # Biome-based weather particle effects (planet surface + interiors; static)
 │   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars)
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels)
 │   ├── SettlementRenderer.cs      # Settlement rendering helper
@@ -195,7 +238,8 @@ Game/
 └── UI/
     ├── MenuWidget.cs              # Reusable scrollable menu widget (generic over enum)
     ├── Hud/
-    │   ├── HudRenderer.cs             # Unified HUD: location info, stats, health bars, prompts, offscreen indicators
+    │   ├── HudRenderer.cs             # Unified HUD: location info, stats, health bars, prompts
+    │   ├── HudIndicatorsRenderer.cs   # Partial-class split: offscreen edge indicators, mission markers
     │   └── HudMinimapRenderer.cs      # Unified minimap: data-driven renderer with markers, areas, player dot
     └── Overlays/
         ├── Base/
@@ -240,13 +284,27 @@ Game/
 ```
 
 ### Game.Sdl (Game.Sdl/Game.Sdl.csproj)
-Executable entry point. Wires the SDL platform to the game. AOT-enabled. References Game + Engine.Sdl.
+Desktop SDL3 executable entry point. Wires the SDL platform to the game. AOT-enabled. References Game + Engine.Sdl.
 
 ```
 Game.Sdl/
 ├── Game.Sdl.csproj
-└── Program.cs                     # Entry point (creates SdlPlatform, Game, runs game loop)
+└── Program.cs                     # Entry point (creates SdlPlatform, Game, runs fixed-timestep game loop)
 ```
+
+### Game.Web (Game.Web/Game.Web.csproj)
+WebAssembly browser entry point. Exposes a `[JSExport]` per-frame step function called from the host page's `requestAnimationFrame` loop. References Game + Engine.Web. Targets `browser-wasm` RuntimeIdentifier.
+
+```
+Game.Web/
+├── Game.Web.csproj                # RuntimeIdentifier=browser-wasm; builds to AppBundle
+├── Program.cs                     # WebMain: parses URL query params, creates WebPlatform + Game, exposes Step()
+└── wwwroot/
+    ├── index.html                   # Single-page host (canvas element, loads main.js)
+    └── main.js                      # Bootstraps .NET WASM runtime, calls WebMain.Step() via rAF loop
+```
+
+URL query parameter support mirrors the SDL CLI flags (`?seed=42&location=planet&sublocation=on-foot`, `?showcase=star-type&star-type=K`, etc.).
 
 ## Command Line Options
 
@@ -388,6 +446,17 @@ IPlatform
 | `ISettings`       | `SdlSettings`       | File-based JSON key/value store (`settings.json`)      |
 
 `SdlTileMapRenderer` is an internal implementation detail of `SdlSpriteRenderer` — it handles visible-tile culling and batched tile rendering. It has no corresponding engine interface.
+
+**WebAssembly Implementations** (`Engine.Web/Platform/Web/`):
+| Interface         | Web Implementation  | Notes                                                                          |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------ |
+| `IPlatform`       | `WebPlatform`       | Lifecycle management; canvas resize events; exposes `Step()` for rAF loop      |
+| `ISpriteRenderer` | `WebSpriteRenderer` | Canvas 2D draw calls via `JsInterop`; same API surface as `SdlSpriteRenderer`  |
+| `ITextureManager` | `WebTextureManager` | Pixel buffer management; image data sent to JS canvas                          |
+| `IFontRenderer`   | `WebFontRenderer`   | Wraps `MiniBitmapFont` (same font, different drawing backend)                  |
+| `IInputManager`   | `WebInputManager`   | Keyboard + pointer events via `[JSImport]`; gamepad API via JS                 |
+| `IAudioManager`   | `WebAudioManager`   | Web Audio API oscillators/buffer sources via `JsInterop`; same crossfade logic |
+| `ISettings`       | `WebSettings`       | In-memory store with optional `localStorage` persistence via JS                |
 
 **Generation abstraction: `IUniverseGenerator`** (`Generation/IUniverseGenerator.cs`) — a parallel platform abstraction for world content. Defines `GenerateGalaxy()`, `GenerateSolarSystem()`, `GeneratePlanetSurface()`, `GenerateStationInterior()`, `GenerateSettlementInterior()`, and `GenerateBoardMissions()`. The default implementation is `ProceduralUniverseGenerator` (`Generation/Procedural/`), which delegates to the individual static generator classes. Showcase modes use dedicated `IUniverseGenerator` subclasses (`Generation/Showcase/`) that override specific methods to return curated content.
 
@@ -601,29 +670,36 @@ The `ISpriteRenderer` interface (implemented by `SdlSpriteRenderer`) provides bo
 
 **Entity Renderers** follow a consistent pattern: each is an `IDisposable` class that receives an `ITextureManager` in its constructor, generates its own textures procedurally, owns them for their lifetime, and provides `Render()`/rendering methods. They are all owned by `Game` and disposed on shutdown.
 
-| Renderer              | Texture Ownership                                 | Key Methods                                                                                               |
-| --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **AvatarRenderer**    | Singleton texture (16×16 humanoid)                | `Render(renderer, camera, position)`                                                                      |
-| **VehicleRenderer**   | Singleton texture (20×20 rover)                   | `Render(renderer, camera, position, rotation, isMounted)`                                                 |
-| **SpaceshipRenderer** | Per-type solar + landed textures, flame texture   | `RenderFlying(...)`, `RenderLanded(...)`                                                                  |
-| **EnemyShipRenderer** | 3 faction textures (pirate/trader/patrol) + flame | `Render(renderer, camera, position, rotation, faction, isThrusting)`, `RenderHealthBar(...)`              |
-| **StationRenderer**   | Singleton texture (32×32 station)                 | `RenderStations(renderer, camera, ecsWorld, entities, globalTime)`                                        |
-| **AsteroidRenderer**  | Singleton texture (12×12 rock)                    | `RenderAsteroids(renderer, camera, asteroids, center, globalTime)`                                        |
-| **PlanetRenderer**    | Factory — tracks all created textures             | `CreateTexture(size, r, g, b, seed)`, `RenderPlanetsAndMoons(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
-| **StarRenderer**      | Factory — tracks all created textures             | `CreateTexture(size, r, g, b)`, `Render(...)`, `DestroyTexture(tex)`, `DestroyAll()`                      |
+| Renderer                 | Texture Ownership                                     | Key Methods                                                                                               |
+| ------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **AvatarRenderer**       | Singleton texture (16×16 humanoid)                    | `Render(renderer, camera, position)`                                                                      |
+| **VehicleRenderer**      | Singleton texture (20×20 rover)                       | `Render(renderer, camera, position, rotation, isMounted)`                                                 |
+| **SpaceshipRenderer**    | Per-type solar + landed textures, flame texture       | `RenderFlying(...)`, `RenderLanded(...)`                                                                  |
+| **EnemyShipRenderer**    | 3 faction textures (pirate/trader/patrol) + flame     | `Render(renderer, camera, position, rotation, faction, isThrusting)`, `RenderHealthBar(...)`              |
+| **SpaceStationRenderer** | No texture — renders entirely via draw primitives     | `RenderSpaceStation(renderer, camera, position, globalTime)`                                              |
+| **AsteroidRenderer**     | Unique procedural texture per asteroid (shape varies) | `RenderAsteroids(renderer, camera, asteroids, center, globalTime)`                                        |
+| **PlanetRenderer**       | Factory — tracks all created textures                 | `CreateTexture(size, r, g, b, seed)`, `RenderPlanetsAndMoons(...)`, `DestroyTexture(tex)`, `DestroyAll()` |
+| **StarRenderer**         | Factory — tracks all created textures                 | `CreateTexture(size, r, g, b)`, `Render(...)`, `DestroyTexture(tex)`, `DestroyAll()`                      |
 
 **HUD Renderers** are static helper classes providing a unified HUD shared across all game states:
-- **HudRenderer** — unified top-left HUD (location info, credits/cargo, health/shield bars, danger level), bottom-center interaction prompts (planet/station panels, board ship, enter settlement, NPC dialogue), and offscreen edge indicators (NPC ships, star, settlements). Used by SolarSystemState, PlanetSurfaceState, and InteriorState.
+- **HudRenderer** — unified top-left HUD (location info, credits/cargo, health/shield bars, danger level), bottom-center interaction prompts (planet/station panels, board ship, enter settlement, NPC dialogue). Used by SolarSystemState, PlanetSurfaceState, and InteriorState. Split into partial classes with `HudIndicatorsRenderer`.
+- **HudIndicatorsRenderer** — partial-class offscreen edge indicators (NPC ships, star, settlements with distance labels) and world-space mission target markers. Extracted to a separate file for size management.
 - **HudMinimapRenderer** — unified data-driven minimap renderer (top-right). Accepts `MinimapMarker[]` (point entities) and `MinimapArea[]` (rectangular regions) in world coordinates. Supports player-centered scrolling view (solar system, planet surface) and full-map view (interiors). Types: `MinimapMarkerShape` (Rect/Circle), `MinimapMarker` record struct (WorldPos, RGBA, Size, Shape), `MinimapArea` record struct (WorldX/Y/W/H, RGBA). Three public entry points: `RenderSolarSystemMinimap`, `RenderPlanetSurfaceMinimap`, `RenderInteriorMinimap`.
 
-**Scene Renderers** are static helper classes that handle non-entity rendering (panels, background elements):
-- **SolarSystemRenderer** — background stars (parallax), orbit lines, interaction panels (planet/moon/station)
+**Scene Renderers** are static helper classes that handle non-entity rendering (background layers, geometry, effects):
+- **StarsBackgroundRenderer** — parallax-scrolling background star field using Poisson disk sampling for natural distribution. Used by SolarSystemState, PlanetSurfaceState, and MainMenuState.
+- **NebulaBackgroundRenderer** — parallax-scrolling nebula cloud layer painted behind the star field. Used by SolarSystemState and MainMenuState.
+- **SolarSystemRenderer** — orbit lines, interaction panels (planet/moon/station), asteroid belt dust ring
 - **ProjectileRenderer** — projectile trail rendering (colored elongated lines), floating damage numbers (blue=shield, yellow=hull), expanding explosion circles with particle sparks
+- **ParticleRenderer** — ECS particle rendering pass; queries `Transform + Particle` and draws colored dots/quads
+- **TireMarkRenderer** — instance class (per `PlanetSurfaceState`) that records four-wheel contact patches each frame and renders fading quad-strip tire marks under the vehicle
+- **WeatherRenderer** — biome-based weather particle effects (snow, rain, sand, embers) rendered in screen space over planet surface and interior views
+- **TerrainRenderer** — terrain tile color logic extracted from `PlanetSurfaceRenderer`; maps `TerrainType` × biome to RGBA with height-based shading
 - **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead
 - **SurfaceRockRenderer** — mineable rock rendering on planet surfaces (body, highlight, resource vein, health bar)
-- **PlanetSurfaceRenderer** — terrain details, settlement markers
+- **PlanetSurfaceRenderer** — terrain tiles (delegates color logic to TerrainRenderer), height-based shading, biome decoration sprites (trees, cacti, boulders, ice crystals, etc.), settlement markers
 - **InteriorRenderer** — tiles, room labels, NPCs, interactable markers
-- **SettlementRenderer** — settlement-specific rendering
+- **SettlementRenderer** — settlement-specific terrain rendering
 
 **Procedural texture descriptions:**
 - **Ship (solar)**: 4 variants (Scout/Fighter/Freighter/Explorer) — triangular/angular pixel-art with cockpit highlights and engine pods
@@ -631,8 +707,8 @@ The `ISpriteRenderer` interface (implemented by `SdlSpriteRenderer`) provides bo
 - **Engine flame**: Orange-yellow gradient cone rendered behind the ship when thrusting
 - **Planets/moons**: Sphere-shaded textures with diffuse + specular lighting, surface noise, and edge darkening — unique per body
 - **Stars**: Radial gradient glow from white core to star color
-- **Stations**: Cross-shaped design with central hub, outer ring, solar panels, and docking indicators; slowly rotates
-- **Asteroids**: Irregular rocky blobs with angular distortion
+- **Space Stations**: Drawn entirely with draw primitives (no pre-baked texture) — cross-shaped hub with rotating solar panels, outer ring, and pulsing docking markers
+- **Asteroids**: Irregular rocky blobs with unique per-asteroid shape generated procedurally by `AsteroidRenderer`
 - **Avatar**: Tiny humanoid in green suit with blue visor
 - **Vehicle**: Top-down 4-wheel rover with roll cage, cockpit windshield, headlights, and tail lights
 - **Pirate ship**: 28px red/dark angular hull with spiky aggressive silhouette
@@ -1048,7 +1124,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Arch ECS integration
 - [x] Camera with zoom and scrolling
 - [x] Deterministic procedural generation (seed system)
-- [x] Galaxy map with 40-80 star systems (mouse panning, double-click travel, nebula clouds)
+- [x] Galaxy map with 80+ star systems (mouse panning, double-click travel, nebula clouds)
 - [x] Solar system with orbiting planets, moons, asteroids, stations
 - [x] Player ship flight with physics
 - [x] Space station docking (menu UI, auto-refuel)
@@ -1101,7 +1177,7 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Combat music tracking (auto-switch to combat theme on damage, fade back after 5s)
 - [x] Sound effects and music (procedural synthesis via SDL3 built-in audio)
 - [x] Main menu debug overlay and showcase launchers
-- [x] Platform abstraction layer (IPlatform / ISpriteRenderer / ITextureManager / IInputManager / IAudioManager / ISettings + SDL3 implementations; IMusicProvider / ISfxProvider for audio content injection; GameBase convenience base class)
+- [x] Platform abstraction layer (IPlatform / ISpriteRenderer / ITextureManager / IInputManager / IAudioManager / ISettings + SDL3 and WebAssembly implementations; IMusicProvider / ISfxProvider for audio content injection; GameBase convenience base class)
 - [x] Universe generation interface (IUniverseGenerator / ProceduralUniverseGenerator) with showcase subclass overrides
 - [x] Centralized faction rules (FactionRules.CanHit)
 - [x] Centralized surface terrain rules (SurfaceTerrainRules)
@@ -1109,6 +1185,20 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Settings persistence abstraction (ISettings / SdlSettings — file-based JSON key/value store)
 - [x] 4-project solution split (Engine, Engine.Sdl, Game, Game.Sdl — clear dependency boundaries)
 - [x] Debug timing infrastructure (DebugTimer / DebugTimingEntry / IDebugInfoProvider)
+- [x] Build info injection (BuildInfo reads git commit hash from AssemblyInformationalVersion; displayed in main menu)
+- [x] WebAssembly support (Engine.Web + Game.Web; full game runs in browser via .NET WASM + Canvas 2D API)
+- [x] Shared platform base classes (Engine/Platform/Base/: BasePlatform, BaseInputManager, BaseAudioManager, BaseSpriteRenderer, BaseTextureManager, BaseSettings)
+- [x] Background star field (StarsBackgroundRenderer: Poisson disk sampling, parallax layers; solar system, planet surface, main menu)
+- [x] Nebula background layer (NebulaBackgroundRenderer: parallax cloud textures; solar system, main menu)
+- [x] Weather effects (WeatherRenderer: biome-based snow/rain/sand/embers on planet surface and interiors)
+- [x] Tire mark trails (TireMarkRenderer: four-wheel contact patch recording, fading quad-strip marks under vehicle)
+- [x] Primitive-based station rendering (SpaceStationRenderer: cross-shaped hub, rotating solar panels, pulsing docking markers — no pre-baked texture)
+- [x] Unique asteroid shapes (AsteroidRenderer generates a distinct procedural rocky shape per asteroid)
+- [x] Aim inaccuracy mechanic for NPC ships (angle randomization based on danger level and target distance)
+- [x] Danger level scaling from galaxy distance (higher danger toward galaxy edges in addition to explicit per-system assignments)
+- [x] Gamepad support in map panels and main menu
+- [x] Controls panel on main menu (key/gamepad bindings overview)
+- [x] Quit functionality (IPlatform.QuitRequested; supported in both SDL and Web builds)
 
 ## TODO / Next Steps
 - [ ] Save/load game
