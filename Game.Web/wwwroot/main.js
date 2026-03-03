@@ -2,6 +2,38 @@
 import { dotnet } from './_framework/dotnet.js';
 
 // ────────────────────────────────────────────────────────────────
+// Auto-update: fetch version.json (written at CI publish time)
+// with no-cache so the browser always hits the network. If the
+// build hash changed since the last visit, flush all browser
+// caches and reload — completely transparent to the user.
+// version.json is absent in local dev builds, so errors are silently ignored.
+// ────────────────────────────────────────────────────────────────
+async function checkForUpdate() {
+    try {
+        const res = await fetch('./version.json', { cache: 'no-cache' });
+        if (!res.ok) return;
+        const { hash } = await res.json();
+        const stored = localStorage.getItem('seg_buildHash');
+        if (stored && stored !== hash) {
+            // New version detected — flush all caches and force a fresh load.
+            // Store the new hash first to avoid an infinite reload loop if
+            // something goes wrong after the page comes back.
+            localStorage.setItem('seg_buildHash', hash);
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(k => caches.delete(k)));
+            }
+            location.reload();
+            return;
+        }
+        localStorage.setItem('seg_buildHash', hash);
+    } catch {
+        // version.json absent (local dev build) or network error — proceed normally.
+    }
+}
+await checkForUpdate();
+
+// ────────────────────────────────────────────────────────────────
 // Canvas state
 // ────────────────────────────────────────────────────────────────
 const gameCanvas = document.getElementById('gameCanvas');
