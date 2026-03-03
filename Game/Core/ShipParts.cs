@@ -8,7 +8,7 @@ public record ShipType(
     string Name,
     string Description,
     ShipSlotType[] AvailableSlots,
-    int SpriteSize,       // pixels (32 = small, 40 = medium, 48 = large)
+    int SpriteSize,       // pixels
     float Weight,         // multiplier on acceleration/maxSpeed (1.0 = baseline)
     float BaseHull,       // base hull points before armor parts
     float BaseFuel,       // base fuel capacity before FTL drive parts
@@ -25,21 +25,21 @@ public static class ShipTypeCatalog
     public static readonly ShipType Scout = new(
         "scout", "Scout", "Light reconnaissance craft. Fast and nimble but limited.",
         [ShipSlotType.Engine, ShipSlotType.Shield, ShipSlotType.FtlDrive, ShipSlotType.Utility, ShipSlotType.Weapon1],
-        SpriteSize: 32, Weight: 1.0f, BaseHull: 80f, BaseFuel: 80f,
+        SpriteSize: 64, Weight: 1.0f, BaseHull: 80f, BaseFuel: 80f,
         BuyCost: 0, SellValue: 200, BaseCargo: 40f
     );
 
     public static readonly ShipType Fighter = new(
         "fighter", "Fighter", "Combat vessel with dual weapon mounts. Tough but short-range.",
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.Weapon1, ShipSlotType.Weapon2],
-        SpriteSize: 32, Weight: 1.1f, BaseHull: 120f, BaseFuel: 60f,
+        SpriteSize: 64, Weight: 1.1f, BaseHull: 120f, BaseFuel: 60f,
         BuyCost: 1500, SellValue: 750, BaseCargo: 30f
     );
 
     public static readonly ShipType Freighter = new(
         "freighter", "Freighter", "Heavy hauler with extra cargo space. Slow but durable.",
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.FtlDrive, ShipSlotType.Utility, ShipSlotType.Utility2, ShipSlotType.Weapon1],
-        SpriteSize: 48, Weight: 1.4f, BaseHull: 200f, BaseFuel: 160f,
+        SpriteSize: 64, Weight: 1.4f, BaseHull: 200f, BaseFuel: 160f,
         BuyCost: 3000, SellValue: 1500, BaseCargo: 120f
     );
 
@@ -47,7 +47,7 @@ public static class ShipTypeCatalog
         "explorer", "Explorer", "Versatile deep-space vessel. All slots, balanced performance.",
         [ShipSlotType.Engine, ShipSlotType.Armor, ShipSlotType.Shield, ShipSlotType.FtlDrive,
          ShipSlotType.Weapon1, ShipSlotType.Weapon2, ShipSlotType.Utility],
-        SpriteSize: 40, Weight: 1.2f, BaseHull: 150f, BaseFuel: 140f,
+        SpriteSize: 64, Weight: 1.2f, BaseHull: 150f, BaseFuel: 140f,
         BuyCost: 5000, SellValue: 2500, BaseCargo: 80f
     );
 

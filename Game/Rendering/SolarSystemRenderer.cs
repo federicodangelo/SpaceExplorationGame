@@ -164,15 +164,10 @@ public static class SolarSystemRenderer
             if (health.IsDead) continue;
 
             ref var transform = ref ecsWorld.Get<Transform>(entity);
+            ref var sprite = ref ecsWorld.Get<Sprite>(entity);
             var ai = ecsWorld.Get<EnemyAI>(entity);
             var velocity = ecsWorld.Get<Velocity>(entity);
-            int shipSize = ai.Config.Faction switch
-            {
-                Faction.Pirate => 28,
-                Faction.Trader => 32,
-                Faction.Patrol => 30,
-                _ => 28
-            };
+            int shipSize = Math.Max(sprite.Width, sprite.Height);
 
             // ── Warp effect: render stretched/fading ship with flash ──
             bool isWarping = ecsWorld.Has<WarpEffect>(entity);

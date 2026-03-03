@@ -19,7 +19,7 @@ public class EnemyShipRenderer
     public void Render(ISpriteRenderer renderer, Camera camera, Vector2 position, float rotation,
         Faction faction, int size)
     {
-        float scale = size / 30f;
+        float scale = size / 44f;
 
         switch (faction)
         {

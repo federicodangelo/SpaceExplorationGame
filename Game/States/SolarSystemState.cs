@@ -476,7 +476,8 @@ public class SolarSystemState : GameState
         if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
         {
             ref var shipTransform = ref world.Get<Transform>(_simPlayer.Entity);
-            int shipSpriteSize = game.Player.CurrentShipType.SpriteSize;
+            ref var shipSprite = ref world.Get<Sprite>(_simPlayer.Entity);
+            var shipSpriteSize = Math.Max(shipSprite.Width, shipSprite.Height);
             game.SpaceshipRenderer.Render(renderer, camera, shipTransform.Position,
                 shipTransform.Rotation, game.Player.CurrentShipType.Id, shipSpriteSize);
 
