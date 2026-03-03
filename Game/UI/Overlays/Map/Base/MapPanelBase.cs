@@ -15,6 +15,9 @@ public abstract class MapPanelBase
     protected Vector2 LastMouseScreen;
     protected const float DoubleClickTime = 0.4f;
 
+    /// <summary>True when the active input method is a gamepad. Updated every <see cref="Update"/> tick.</summary>
+    protected bool UsingGamepad;
+
     /// <summary>Called when the panel wants the container overlay to close.</summary>
     public Action<Game>? OnRequestClose { get; set; }
 
@@ -58,6 +61,7 @@ public abstract class MapPanelBase
     public virtual void Update(Game game)
     {
         var input = game.Input;
+        UsingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
         float camSpeed = 500f / Camera.Zoom;
         Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
         Camera.Position += moveDir * camSpeed * game.DeltaTime;
@@ -77,15 +81,30 @@ public abstract class MapPanelBase
     /// [0, worldW] × [0, worldH].  When fully zoomed out past the world size the camera
     /// is centred instead of clamped.
     /// </summary>
+    /// <param name="worldW">Total world width in world units.</param>
+    /// <param name="worldH">Total world height in world units.</param>
+    /// <remarks>
+    /// When <see cref="UsingGamepad"/> is true the clamp bounds are extended by one
+    /// half-viewport so the screen-centre cursor can reach every point in the world,
+    /// including elements near the edges.  The trade-off is that the far edge of the
+    /// viewport may show a small strip of empty space when the camera is pushed to an
+    /// extreme corner.
+    /// </remarks>
     protected void ClampCameraToWorldBounds(float worldW, float worldH)
     {
         float halfViewW = MapW / (2f * Camera.Zoom);
         float halfViewH = MapH / (2f * Camera.Zoom);
 
-        float minX = halfViewW;
-        float maxX = worldW - halfViewW;
-        float minY = halfViewH;
-        float maxY = worldH - halfViewH;
+        // When using a gamepad the selection point is always the screen centre, so we
+        // need the camera to be able to place any world position under that centre.
+        // Relaxing each bound by one half-view achieves exactly that.
+        float extraX = UsingGamepad ? halfViewW : 0f;
+        float extraY = UsingGamepad ? halfViewH : 0f;
+
+        float minX = halfViewW - extraX;
+        float maxX = worldW - halfViewW + extraX;
+        float minY = halfViewH - extraY;
+        float maxY = worldH - halfViewH + extraY;
 
         float cx = (minX <= maxX) ? Math.Clamp(Camera.Position.X, minX, maxX) : worldW / 2f;
         float cy = (minY <= maxY) ? Math.Clamp(Camera.Position.Y, minY, maxY) : worldH / 2f;

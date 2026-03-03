@@ -77,6 +77,7 @@ public class GalaxyMapPanel : MapPanelBase
         var input = game.Input;
         Vector2 currentMouse = new(input.MouseX, input.MouseY);
         bool usingGamepad = input.ActiveInputMethod == InputMethod.Gamepad;
+        UsingGamepad = usingGamepad;
         Vector2 selectionPoint = usingGamepad ? GetMapScreenCenter() : currentMouse;
 
         HandleZoomAndPan(input, currentMouse);
