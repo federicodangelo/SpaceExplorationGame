@@ -17,7 +17,6 @@ public enum StationMenuOption
     AvatarCustomization,
     VehicleCustomization,
     Disembark,
-    ExitSpaceStation
 }
 
 /// <summary>
@@ -88,7 +87,6 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
         new(StationMenuOption.VehicleCustomization, "VEHICLE CUSTOMIZATION"),
         new(StationMenuOption.Disembark, "DOCK"),
-        new(StationMenuOption.ExitSpaceStation, "LAUNCH"),
     ])
     {
         ItemHeight = 50f,
@@ -158,9 +156,6 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 Close();
                 // Let SolarSystemState handle the transition so it can supply solar-camera data.
                 OnDisembarkRequested?.Invoke(game, _spaceStation);
-                break;
-            case StationMenuOption.ExitSpaceStation:
-                Close();
                 break;
         }
     }

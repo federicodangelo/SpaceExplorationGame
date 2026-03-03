@@ -394,7 +394,7 @@ public static class HudRenderer
         }
         else if (nearbySpaceStationIndex >= 0)
         {
-            RenderPrompt(renderer, $"[{interactHelpText}] DOCK AT {stations[nearbySpaceStationIndex].Name.ToUpper()}",
+            RenderPrompt(renderer, $"[{interactHelpText}] {stations[nearbySpaceStationIndex].Name.ToUpper()} MENU",
                 100, 200, 255);
         }
     }

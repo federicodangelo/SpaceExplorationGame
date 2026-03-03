@@ -27,7 +27,7 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     /// <summary>
     /// Bottom padding below the menu, for spacing or additional content (e.g. controls hint).
     /// </summary>
-    protected virtual float BottomPadding => ControlsHint != null ? 35 : 0;
+    protected virtual float BottomPadding => ControlsHint != null ? 35 : 8;
 
     // ── Menu layout (subclass can override for positioning) ──
 
