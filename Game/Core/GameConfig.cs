@@ -10,6 +10,9 @@ public static class GameConfig
     static public int DefaultWindowHeight = 1080;
     public const string WindowTitle = "Space Exploration Game";
 
+    // Debug
+    public static bool Debug = false;
+
     // Tiles
     public const int TileSize = 32;
 

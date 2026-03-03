@@ -182,28 +182,6 @@ public static class SolarSystemRenderer
             enemyShipRenderer.Render(renderer, camera, transform.Position, transform.Rotation,
                 ai.Config.Faction, shipSize);
 
-            // Engine trail for moving ships
-            float speed = velocity.Linear.Length();
-            if (speed > 30f)
-            {
-                float rad = transform.Rotation * MathF.PI / 180f;
-                var engineDir = new Vector2(-MathF.Cos(rad), -MathF.Sin(rad));
-                var enginePos = transform.Position + engineDir * shipSize * 0.4f;
-                float trailLen = Math.Min(speed * 0.08f, 12f);
-                byte trailA = (byte)Math.Min(speed * 0.3f, 80);
-
-                var trailColor = ai.Config.Faction switch
-                {
-                    Faction.Pirate => new Color4(255, 140, 50, trailA),
-                    Faction.Patrol => new Color4(100, 160, 255, trailA),
-                    _ => new Color4(255, 200, 100, trailA)
-                };
-
-                renderer.DrawFilledCircle(camera, enginePos, trailLen * 0.5f, trailColor);
-                renderer.DrawFilledCircle(camera, enginePos + engineDir * trailLen * 0.3f,
-                    trailLen * 0.3f, trailColor.WithAlpha((byte)(trailA / 2)));
-            }
-
             // Health bar
             enemyShipRenderer.RenderHealthBar(renderer, camera, transform.Position,
                 health.HullPercent, health.ShieldPercent, health.MaxShield, shipSize);
@@ -223,8 +201,9 @@ public static class SolarSystemRenderer
                 Faction.Patrol => new Color3(80, 160, 255),
                 _ => new Color3(200, 200, 200)
             };
-            var labelPos = transform.Position - new Vector2(0, shipSize / 2f + 18f);
-            renderer.DrawText(camera, labelPos, factionLabel, factionColor, 0.8f);
+            var factionLabelScale = 1.0f;
+            var labelPos = transform.Position + new Vector2(-renderer.MeasureText(factionLabel, factionLabelScale) / 2 / camera.Zoom, -shipSize / 2f - 24);
+            renderer.DrawText(camera, labelPos, factionLabel, factionColor, factionLabelScale);
         }
     }
 

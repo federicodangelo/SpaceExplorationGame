@@ -35,8 +35,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private const int EditSeedIdx = 4;
     private const int RandomSeedIdx = 5;
     private const int DebugIdx = 6;
-    private const int StartGameIdx = 7;
-    private const int QuitIdx = 8;
+    private int StartGameIdx => _debugEnabled ? 7 : 6;
+    private int QuitIdx => _debugEnabled ? 8 : 7;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
     private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
@@ -48,7 +48,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         [("ABOVE", StartOption.Settlement), ("INSIDE", StartOption.SettlementInside), ("ON FOOT", StartOption.SettlementOnFoot), ("ON VEHICLE", StartOption.SettlementOnVehicle)],
     ];
 
-    private static MenuOption<MenuAction>[] BuildOptions(bool canQuit)
+    private static MenuOption<MenuAction>[] BuildOptions(bool canQuit, bool debugEnabled)
     {
         var options = new List<MenuOption<MenuAction>>
         {
@@ -58,9 +58,10 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
             new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
             new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
-            new(MenuAction.Debug, "DEBUG", "Open debug utilities"),
-            new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"),
         };
+        if (debugEnabled)
+            options.Add(new(MenuAction.Debug, "DEBUG", "Open debug utilities"));
+        options.Add(new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"));
         if (canQuit)
             options.Add(new(MenuAction.Quit, "QUIT", "Exit the game"));
         return [.. options];
@@ -69,6 +70,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private readonly TextInputOverlay _seedInputOverlay = new();
     private readonly MenuOptionsPersistence _menuOptions;
     private readonly bool _canQuit;
+    private readonly bool _debugEnabled;
 
     // Current cycling state
     private int _dangerIndex;
@@ -143,7 +145,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     {
         _menuOptions = menuOptions;
         _canQuit = canQuit;
-        Menu = new MenuWidget<MenuAction>(BuildOptions(canQuit))
+        _debugEnabled = GameConfig.Debug;
+        Menu = new MenuWidget<MenuAction>(BuildOptions(canQuit, _debugEnabled))
         {
             CenterAlign = true,
             ItemHeight = 50f,

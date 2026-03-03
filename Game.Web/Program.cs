@@ -69,6 +69,9 @@ public partial class WebMain
         string? subLocParam = JsLaunchOptions.GetUrlParam("sublocation") ?? JsLaunchOptions.GetUrlParam("sl");
         string? showcaseParam = JsLaunchOptions.GetUrlParam("showcase") ?? JsLaunchOptions.GetUrlParam("sc");
         string? starTypeParam = JsLaunchOptions.GetUrlParam("star-type");
+        string? debugParam = JsLaunchOptions.GetUrlParam("debug");
+
+        GameConfig.Debug = debugParam != null && debugParam != "false" && debugParam != "0";
 
         ulong? galaxySeed = null;
         if (seedParam != null)

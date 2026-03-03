@@ -54,11 +54,6 @@ public class Game : GameBase
 
     public void Quit() => IsRunning = false;
 
-    // Window title FPS tracking
-    private double _fpsTitleAccumTime;
-    private int _fpsTitleFrameCount;
-    private const double FpsTitleUpdateInterval = 1;
-
     // Debug overlay
     private readonly DebugOverlay _debugOverlay = new();
     private bool _debugOverlayVisible;
@@ -166,8 +161,6 @@ public class Game : GameBase
         _frameSw.Start();
         _previousTime = _frameSw.Elapsed.TotalSeconds;
         _accumulator = 0;
-        _fpsTitleAccumTime = 0;
-        _fpsTitleFrameCount = 0;
         SpriteRenderer.SetTitle(Platform.WindowTitle);
     }
 
@@ -276,16 +269,6 @@ public class Game : GameBase
         }
 
         SpriteRenderer.EndFrame();
-
-        _fpsTitleAccumTime += elapsed;
-        _fpsTitleFrameCount++;
-        if (_fpsTitleAccumTime >= FpsTitleUpdateInterval)
-        {
-            double avgFps = _fpsTitleFrameCount / _fpsTitleAccumTime;
-            SpriteRenderer.SetTitle($"{Platform.WindowTitle} - AVG FPS: {avgFps:F1}");
-            _fpsTitleAccumTime = 0;
-            _fpsTitleFrameCount = 0;
-        }
     }
 
     public override void Dispose()

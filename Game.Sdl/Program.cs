@@ -42,6 +42,7 @@ internal static class Program
         string? subLocation = null;
         string? showcase = null;
         string? starTypeArg = null;
+        bool debugMode = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -81,6 +82,10 @@ internal static class Program
                 starTypeArg = args[i + 1];
                 i++;
             }
+            else if (arg == "--debug")
+            {
+                debugMode = true;
+            }
             else
             {
                 throw new ArgumentException($"Unknown argument: {arg}");
@@ -111,6 +116,8 @@ internal static class Program
         {
             autoLaunch = ResolveStartFromLocation(location, subLocation);
         }
+
+        GameConfig.Debug = debugMode;
 
         // Create platform
         var musicProvider = new GameMusicProvider(SdlAudioManager.SampleRate);
@@ -243,6 +250,7 @@ internal static class Program
         Console.WriteLine("                              settlement: above | inside | on-foot | on-vehicle");
         Console.WriteLine("  --showcase, -sc <showcase>     debug showcase: star-type | planet-type | asteroid | surface-mining");
         Console.WriteLine("  --star-type <type>             optional for star-type showcase (default: G)");
+        Console.WriteLine("  --debug                        enable the DEBUG menu in the main menu");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  SpaceExplorationGame --seed 12345");
