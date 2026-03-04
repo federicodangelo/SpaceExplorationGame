@@ -294,8 +294,10 @@ public class SolarSystemMapPanel : MapPanelBase
         if (isStarTarget)
             DrawTargetBrackets(renderer, camera, starCenter, starDisplay + 10, game);
 
+        float labelOffset = 8 / camera.Zoom;
+
         // Star label
-        renderer.DrawText(camera, starCenter + new Vector2(0, starDisplay + 8),
+        renderer.DrawTextCentered(camera, starCenter + new Vector2(0, starDisplay + labelOffset),
             _currentStarSystem?.Name ?? "STAR", new Color3(255, 220, 80), Math.Max(1f, camera.Zoom * 18f));
 
         // Planets
@@ -317,7 +319,7 @@ public class SolarSystemMapPanel : MapPanelBase
                 DrawTargetBrackets(renderer, camera, pPos, pRadius + 8, game);
 
             // Planet label
-            renderer.DrawText(camera, pPos + new Vector2(0, pRadius + 6),
+            renderer.DrawTextCentered(camera, pPos + new Vector2(0, pRadius + labelOffset),
                 planet.Name, planet.Color, Math.Max(1f, camera.Zoom * 14f));
 
             // Moon orbit rings
@@ -342,8 +344,11 @@ public class SolarSystemMapPanel : MapPanelBase
                 if (isMTarget)
                     DrawTargetBrackets(renderer, camera, mPos, mRadius + 6, game);
 
-                renderer.DrawText(camera, mPos + new Vector2(0, mRadius + 4),
-                    moon.Name, new Color3(160, 160, 180), Math.Max(1f, camera.Zoom * 10f));
+                if (isMHovered || isMSelected || isMTarget || mRadius * camera.Zoom > 3f)
+                {
+                    renderer.DrawTextCentered(camera, mPos + new Vector2(0, mRadius + labelOffset),
+                        moon.Name, new Color3(160, 160, 180), Math.Max(1f, camera.Zoom * 10f));
+                }
             }
         }
 
@@ -352,7 +357,7 @@ public class SolarSystemMapPanel : MapPanelBase
         {
             var sPos = GetStationWorldPos(spaceStation, time);
 
-            float ds = Math.Max(6f, 3f / camera.Zoom);
+            float ds = Math.Max(8f, 3f / camera.Zoom);
             renderer.DrawFilledCircle(camera, sPos, ds * 0.6f, new Color4(100, 200, 255, 220));
 
             bool isSHovered = _hoveredObject.Type == SolarMapObjectType.SpaceStation && _hoveredObject.SpaceStationIndex == spaceStation.Index;
@@ -364,7 +369,7 @@ public class SolarSystemMapPanel : MapPanelBase
             if (isSTarget)
                 DrawTargetBrackets(renderer, camera, sPos, ds + 8, game);
 
-            renderer.DrawText(camera, sPos + new Vector2(0, ds + 4),
+            renderer.DrawTextCentered(camera, sPos + new Vector2(0, ds + labelOffset),
                 spaceStation.Name, new Color3(100, 200, 255), Math.Max(1f, camera.Zoom * 12f));
         }
 
@@ -421,7 +426,7 @@ public class SolarSystemMapPanel : MapPanelBase
         var shipPos = game.Player.ShipWorldPosition;
         renderer.DrawFilledCircle(camera, shipPos, Math.Max(4f, 2f / camera.Zoom), new Color4(0, 255, 100, 230));
         renderer.DrawCircle(camera, shipPos, Math.Max(7f, 3.5f / camera.Zoom), new Color3(0, 255, 100));
-        renderer.DrawText(camera, shipPos + new Vector2(0, Math.Max(8f, 4f / camera.Zoom)),
+        renderer.DrawTextCentered(camera, shipPos + new Vector2(0, Math.Max(8f, 4f / camera.Zoom) + labelOffset),
             "YOU", new Color3(0, 255, 100), Math.Max(1f, camera.Zoom * 14f));
 
         if (game.Input.ActiveInputMethod == InputMethod.Gamepad)

@@ -227,6 +227,8 @@ public class GalaxyMapPanel : MapPanelBase
                 renderer.DrawCircle(camera, playerPos, fuelRange, new Color4(80, 160, 200, 80));
         }
 
+        float labelOffset = 8 / camera.Zoom;
+
         // Star systems
         for (int i = 0; i < _starSystems.Count; i++)
         {
@@ -273,7 +275,7 @@ public class GalaxyMapPanel : MapPanelBase
 
             float textScale = Math.Max(1f, camera.Zoom);
             byte labelBright = (byte)(inRange ? 200 : 80);
-            renderer.DrawText(camera, sys.GalaxyPosition + new Vector2(0, radius + 12),
+            renderer.DrawTextCentered(camera, sys.GalaxyPosition + new Vector2(0, displayRadius + labelOffset),
                 sys.Name, new Color3(labelBright, labelBright, labelBright), textScale);
         }
 

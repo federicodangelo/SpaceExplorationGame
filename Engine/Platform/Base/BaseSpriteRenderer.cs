@@ -112,6 +112,13 @@ public abstract class BaseSpriteRenderer : ISpriteRenderer
     public void DrawText(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
         => _fontRenderer.DrawText(camera, worldPos, text, color, scale, maxWidth);
 
+    public void DrawTextCentered(Camera camera, Vector2 worldPos, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
+    {
+        var screenPos = camera.WorldToScreen(worldPos);
+        var textWidth = _fontRenderer.MeasureText(text, scale);
+        DrawTextScreen(screenPos.X - textWidth / 2f, screenPos.Y, text, color, scale, maxWidth);
+    }
+
     /// <summary>Draw text in screen space (delegates to FontRenderer).</summary>
     public void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
         => _fontRenderer.DrawTextScreen(x, y, text, color, scale, maxWidth);
