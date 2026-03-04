@@ -13,9 +13,6 @@ namespace SpaceExplorationGame.Core;
 /// </summary>
 public class Game : GameBase
 {
-    // ECS
-    public World EcsWorld { get; private set; } = null!;
-
     // Simulation coordinator — always ticked, manages all active simulations
     public SimulationCoordinator Coordinator { get; } = new();
 
@@ -77,9 +74,6 @@ public class Game : GameBase
         // Menu options persistence (uses platform settings)
         MenuOptions = new MenuOptionsPersistence(platform.Settings);
 
-        // ECS world
-        EcsWorld = World.Create();
-
         // Entity renderers
         AvatarRenderer = new AvatarRenderer();
         VehicleRenderer = new VehicleRenderer();
@@ -129,10 +123,6 @@ public class Game : GameBase
         if (_pendingState == null) return;
 
         _currentState?.Exit(this);
-
-        // Destroy all entities when changing states
-        EcsWorld.Dispose();
-        EcsWorld = World.Create();
 
         _currentState = _pendingState;
         _pendingState = null;
@@ -276,7 +266,6 @@ public class Game : GameBase
     {
         _currentState?.Exit(this);
         Coordinator.DestroyAll();
-        EcsWorld.Dispose();
         Platform.Dispose();
         GC.SuppressFinalize(this);
     }
