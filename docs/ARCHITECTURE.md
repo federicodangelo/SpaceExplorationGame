@@ -122,7 +122,6 @@ Game/
 ├── GlobalUsings.cs                # global using Engine.Core; global using Engine.Platform;
 ├── Core/
 │   ├── Game.cs                    # Main game class (extends GameBase; ECS world, game loop)
-│   ├── GameConfig.cs              # All tunable constants
 │   ├── GameState.cs               # Abstract base class for game states
 │   ├── CommonTypes.cs             # Shared lightweight value types (spawn data, etc.)
 │   ├── GalaxyLocation.cs          # Galaxy location value type (system/planet/settlement) for missions
@@ -143,6 +142,16 @@ Game/
 │   ├── AvatarParts.cs             # Avatar customization data model, stats, and part catalog
 │   ├── VehicleParts.cs            # Vehicle customization data model, stats, and part catalog
 │   └── MiningResources.cs         # Resource types, cargo model, mineable asteroid data
+│   └── Config/
+│       ├── AudioConfig.cs             # Audio master/music/SFX volume and combat music constants
+│       ├── AvatarConfig.cs            # Avatar base speed and projectile constants
+│       ├── CameraConfig.cs            # Camera zoom default and limits
+│       ├── CombatConfig.cs            # Projectile collision, death/loot, surface combat, mining rock constants
+│       ├── DangerConfig.cs            # Danger level scaling (health/damage/inaccuracy multipliers per tier)
+│       ├── NpcConfig.cs               # NPC spawn counts, dynamic warp-in/out timings, surface NPC budgets
+│       ├── ShipConfig.cs              # Ship physics constants (brake, shield regen, FTL, weapon speeds)
+│       ├── WindowConfig.cs            # Window size, tile size, target FPS
+│       └── WorldConfig.cs             # Galaxy/solar system/planet surface grid dimensions
 ├── Audio/
 │   ├── AudioThemes.cs             # Music theme string constants
 │   ├── AudioSfx.cs                # SFX type string constants
@@ -161,23 +170,28 @@ Game/
 │       ├── InteractionProximitySystem.cs  # Nearest interactable entity detection
 │       ├── DependentEntityCleanupSystem.cs # Removes entities owned by destroyed parent entities
 │       ├── ShipSystem.cs                # Shared ship physics + weapon firing for all ships (player & NPC)
+│       ├── AvatarSystem.cs              # Shared avatar movement + weapon firing for all walking entities (player & NPC)
+│       ├── VehicleSystem.cs             # Shared vehicle physics for mounted avatars (player)
 │       ├── Input/
 │       │   ├── PlayerAvatarInputSystem.cs  # WASD/arrow movement intent (critically damped acceleration target)
 │       │   ├── PlayerShipInputSystem.cs    # Ship input intent → writes ShipInputComponent, applied by ShipSystem + VelocitySystem
 │       │   └── PlayerVehicleInputSystem.cs # Vehicle input intent (thrust/rotation/brake), applied by VelocitySystem
 │       ├── Combat/
 │       │   ├── ProjectileSystem.cs      # Projectile movement, collision detection, damage application
-│       │   └── ShieldRegenSystem.cs     # Shield regeneration after damage delay
+│       │   ├── ShieldRegenSystem.cs     # Shield regeneration after damage delay
+│       │   └── SpatialHash.cs           # Internal 2D spatial hash grid for accelerated projectile collision queries
 │       ├── Effects/
-│       │   └── ParticleSystem.cs        # ECS particle simulation/emission with emitter bounds validation
+│       │   ├── ParticleSystem.cs        # ECS particle simulation/emission with emitter bounds validation
+│       │   └── WarpEffectSystem.cs      # Ticks WarpEffect animations on NPC ships; exposes WarpOutCompleted for despawn
 │       └── AI/
 │           ├── ShipEnemyAISystem.cs     # AI state machine for NPC ships (pirate/trader/patrol)
-│           └── AvatarEnemyAISystem.cs   # AI state machine for surface enemies (fauna/bandits)
+│           └── AvatarEnemyAISystem.cs   # AI state machine for surface enemies (pirate/trader/patrol)
 ├── Generation/
 │   ├── IUniverseGenerator.cs      # Interface: GenerateGalaxy, GenerateSolarSystem, GeneratePlanetSurface, etc.
 │   ├── SeededRandom.cs            # Deterministic xorshift64 PRNG
 │   ├── SeedManager.cs             # Hierarchical seed derivation
 │   ├── SurfaceTerrainRules.cs     # Shared walkability/landing/spawn validation rules for terrain types
+│   ├── PoissonDiskSampler.cs      # Bridson's Poisson disk sampling algorithm (deterministic, seeded)
 │   ├── Procedural/
 │   │   ├── ProceduralUniverseGenerator.cs  # Default IUniverseGenerator — delegates to individual generators
 │   │   ├── GalaxyGenerator.cs              # Galaxy star system placement & properties
@@ -195,6 +209,8 @@ Game/
 │   ├── ISimulation.cs             # Interface + UpdateContext/AddContext value types
 │   ├── SimulationPlayer.cs        # Player presence within a simulation (PlayerData + Entity)
 │   ├── SimulationCoordinator.cs   # Manages all active simulations (lifecycle, 90s empty timeout, parent chain keep-alive)
+│   ├── NpcSpawnManager.cs         # Dynamic NPC ship warp-in/warp-out manager for solar systems (per-faction budgets + respawn)
+│   ├── SurfaceNpcManager.cs       # Dynamic surface NPC manager — NPCs land, walk, and depart by ship
 │   ├── SolarSystemSimulation.cs   # Solar system simulation (orbits, combat, NPC AI, mining, loot)
 │   ├── PlanetSurfaceSimulation.cs # Planet surface simulation (terrain, surface combat, avatar/vehicle, respawn)
 │   ├── InteriorSimulation.cs      # Interior simulation (walkable rooms, NPC interaction, no combat)
@@ -223,7 +239,7 @@ Game/
 │   ├── ParticleRenderer.cs        # ECS particle rendering (queries Transform + Particle; static)
 │   ├── TireMarkRenderer.cs        # Vehicle tire mark trails on planet surface (instance, per-state)
 │   ├── WeatherRenderer.cs         # Biome-based weather particle effects (planet surface + interiors; static)
-│   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (fauna/bandit sprites, health bars)
+│   ├── SurfaceEnemyRenderer.cs    # Surface enemy rendering (pirate/trader/patrol humanoid sprites, health bars)
 │   ├── InteriorRenderer.cs        # Interior static helpers (tiles, NPCs, labels)
 │   ├── SettlementRenderer.cs      # Settlement rendering helper
 │   └── SurfaceRockRenderer.cs     # Mineable rock rendering on planet surfaces (health bars, resource veins)
@@ -357,7 +373,7 @@ The game uses a state machine pattern. Each state (`GameState` subclass) handles
 States:
 - **MainMenuState**: Starting point selection with live preview. Animated starfield background with pulsing title glow. Uses **MainMenuOverlay** (extends `MenuPanelOverlayBase<MenuAction>`) to configure danger filter, location type, reroll location, edit seed, randomize seed, open debug tools, and start. Regenerates the entire galaxy via `Game.RegenerateGalaxy()` when seed changes, and updates preview text for the currently selected start context. Supports auto-launch via constructor parameter (for CLI location/sublocation flags). Displays the active galaxy seed and preview details.
 - **SolarSystemState**: Rendering and input for space flight. Delegates all simulation logic to `SolarSystemSimulation` (obtained via `SimulationCoordinator.FindOrCreate`). Player controls ship with WASD. Orbiting planets/moons/stations rendered with sphere-shaded textures. Press E near planets/stations to interact. Press M to open the **GalaxyMapOverlay** (dual-tab map with Solar System and Galaxy views). Press Space to fire ship weapons (one or two equipped weapon slots with independent cooldowns and inherited ship velocity). Press Escape to open the **InGameMenuOverlay**. NPC ships (pirates, traders, patrols) spawn by danger level using `NpcShipLoadoutHelper` (ship type, parts, weapon specs, and loot scaling). Enemy AI now uses cruise targets, directional braking, and faction-specific combat behaviors. Thruster particles are simulated via ECS (`ParticleEmitter` + `ParticleSystem`) and rendered with `ParticleRenderer`. Destroyed enemies drop credits, resources, and equipment parts. Player death respawns at the nearest station with cargo/credit penalties (`DeathHullPercent` is currently 100%, so no hull loss). When docking at a station, a **SpaceStationOverlay** opens on top (refuels ship; offers Repair, Missions, Sell Cargo, Customization, Ship Dealer, and Walk Station). Selecting "Walk Station" triggers `StationDockingTransitionState` for the cinematic approach/portal-entry sequence. When approaching a planet/moon, a **PlanetLandingOverlay** opens on top. Uses **anchor system** to keep the player ship tracking an orbiting body while overlays are active. The state creates input-only ECS systems (`PlayerShipInputSystem`, `ShipSystem`, `CameraFollowSystem`) that operate on the simulation's ECS world. Supports auto-open parameters for seamless transitions from MainMenu or returning from other states.
-- **PlanetSurfaceState**: Rendering and input for planet exploration. Delegates all simulation logic to `PlanetSurfaceSimulation` (whose `Parent` is the `SolarSystemSimulation`). Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default), currently through `OrbitalSurfaceTransitionState` cinematic descent. On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, return to orbit uses `OrbitalSurfaceTransitionState` takeoff animation and the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile fauna and bandits spawn on walkable terrain away from the landing zone and settlements. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death triggers an in-place respawn after a 2.5-second timer — the avatar is recreated near the ship at full HP with a 10% credit penalty (no return to orbit). While dead, all input except menu-back is blocked. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. The state creates input-only ECS systems (`PlayerAvatarInputSystem`, `CameraFollowSystem`) on the simulation's ECS world.
+- **PlanetSurfaceState**: Rendering and input for planet exploration. Delegates all simulation logic to `PlanetSurfaceSimulation` (whose `Parent` is the `SolarSystemSimulation`). Player avatar walks on generated terrain with per-tile brightness variation and terrain detail sprites. Lands at the site chosen in PlanetLandingOverlay (or map center by default), currently through `OrbitalSurfaceTransitionState` cinematic descent. On landing, the **StarshipMenuOverlay** opens giving options to Fly to Space, Disembark on Foot, or Disembark on Vehicle. The vehicle starts stored inside the starship and is only deployed when the player chooses to disembark on vehicle. Press E near ship to board (reopens StarshipMenuOverlay), E near settlement to enter interior, E near deployed vehicle to mount, E while in vehicle to dismount (or board ship if near it). Ship and vehicle positions are preserved when entering/exiting settlements. When leaving the planet, return to orbit uses `OrbitalSurfaceTransitionState` takeoff animation and the vehicle always returns with the starship regardless of deployment state. Avatar walk speed and vehicle physics are dynamically computed from equipped avatar/vehicle parts. Press M to open the **PlanetSurfaceMapOverlay** (terrain overview with ship/player/vehicle markers and selectable settlements). Surface combat: hostile surface NPCs (pirates, traders, patrols) land by ship and walk on foot; managed dynamically by `SurfaceNpcManager`. Player fires projectiles with Space (movement direction) or left mouse button (aim at cursor). Avatar has persistent HP with an equipped weapon slot affecting damage. Damage popups, explosions, loot drops (credits + resources) on enemy kills. Death triggers an in-place respawn after a 2.5-second timer — the avatar is recreated near the ship at full HP with a 10% credit penalty (no return to orbit). While dead, all input except menu-back is blocked. Avatar health bar displayed in HUD; enemy health bars shown above enemies; enemy dots on minimap. Press Escape to open the **InGameMenuOverlay**. The state creates input-only ECS systems (`PlayerAvatarInputSystem`, `CameraFollowSystem`) on the simulation's ECS world.
 - **FTLTransitionState**: Intermediate animation state played during FTL jumps between star systems. 2D side-view style: the player's ship is rendered center-screen facing right with engine exhaust and FTL trail effects. Four phases: charge-up (1.6s — ship shakes, stars begin moving, engine glow builds), jump flash (0.15s — bright white-blue flash), hyperspace travel (2.5s — fast horizontal star streaks scrolling left, vertical energy waves sweeping across, long blue FTL trail behind ship), and exit flash (1.6s — arrival flash fades to reveal the new system). No player input is accepted. Automatically transitions to the target `SolarSystemState` when the animation completes. Triggered from `GalaxyMapPanel.TravelToSelected()` instead of a direct state change.
 - **StationDockingTransitionState**: Bidirectional cinematic for space station docking/undocking. **Docking** (solar-system → interior): the player ship flies toward the station, then an expanding portal/ring reveals the interior as the ship enters the docking bay. **Undocking** (interior → solar-system): the portal collapses, the exterior reappears, and the ship launches away — the full animation in reverse. Three phases: Approach (0.8s — ship flies toward station), Entry (1.6s — portal opens, interior revealed with zoom-out), Touchdown (0.8s — full interior, ring pulse). No player input during the transition. Reports `GameStateType.SolarSystem` while docking and `GameStateType.Interior` while undocking. Triggered from `SpaceStationOverlay`'s "Walk Station" action; undock is triggered from `InteriorState`'s exit door.
 - **OrbitalSurfaceTransitionState**: Bidirectional cinematic transition between orbit and surface. Landing mode animates ship alignment, descent, and touchdown while blending from orbital body rendering into terrain; takeoff mode plays the reverse flow. Input is disabled during transition. On completion, it changes state to `PlanetSurfaceState` (landing) or `SolarSystemState` (takeoff) and updates return-context metadata in `PlayerData`.
@@ -402,6 +418,20 @@ ISimulation
 - `Update(UpdateContext)` — ticks all simulations every frame (never paused by overlays)
 - **Empty timeout**: simulations with no players are destroyed after 90 seconds
 - **Parent chain keep-alive**: when a simulation has players, its entire ancestor chain is kept alive
+
+**NpcSpawnManager** (`Simulation/NpcSpawnManager.cs`) — dynamic NPC ship spawning for solar systems:
+- Owned by `SolarSystemSimulation`; initialized with per-faction budgets from `NpcSpawnConfig` and the system's danger level
+- `SpawnInitialWave()` — instantly places `NpcConfig.NpcInitialSpawnFraction` of the target count across the system orbit zone without warp effects
+- `Update(dt)` — runs every frame; periodically checks live entity counts against budgets and respawns missing ships after their faction-specific cooldown (`NpcPirateRespawnDelay`, `NpcTraderRespawnDelay`, `NpcPatrolRespawnDelay`)
+- New ships enter via a warp-in animation (`WarpEffect`) at a random position on the system edge; `WarpEffectSystem.WarpOutCompleted` is consumed each frame to destroy warp-out entities
+- Warp-out is triggered when an NPC ship has no health but its entity is still alive (detected by `WarpEffectSystem`)
+
+**SurfaceNpcManager** (`Simulation/SurfaceNpcManager.cs`) — dynamic NPC spawning on planet surfaces:
+- Owned by `PlanetSurfaceSimulation`; tracks `(Entity Npc, Entity Ship)` pairs via `NpcEntities`
+- NPCs arrive by landing a ship (`LandedNpcShip` entity), then disembark on foot (`SurfaceNpcState.Phase`)
+- `SurfaceNpcPhase` enum (in `CommonTypes.cs`): tracks the NPC lifecycle (landing → on foot → boarding ship → taking off)
+- NPCs depart after `NpcConfig.SurfaceNpcInactivityTimeout` seconds of idle wandering; depart instantly if low health
+- Per-faction budgets: enemy (pirate), cargo (trader), patrol — each with independent respawn timers
 
 **State ↔ Simulation interaction pattern**:
 1. State `Enter()` calls `game.Coordinator.FindOrCreate<T>(...)` to get/create its simulation
@@ -565,6 +595,7 @@ Station interiors derive seeds from system seed + 2000 + station index. Settleme
 - `Generation/Procedural/ProceduralUniverseGenerator` is the default implementation — a thin orchestrator that calls the individual static generator classes (`GalaxyGenerator`, `SolarSystemGenerator`, `PlanetSurfaceGenerator`, `InteriorGenerator`, `MissionGenerator`).
 - `Generation/Showcase/` contains alternative `IUniverseGenerator` implementations for debug showcases (`StarTypeShowcase`, `PlanetTypeShowcase`, `AsteroidMiningShowcase`, `SurfaceMiningShowcase`). They subclass `ProceduralUniverseGenerator` and override only the methods needed for the showcase.
 - `SurfaceTerrainRules` centralizes walkability/landing/spawn validation so that `PlanetSurfaceGenerator`, `PlanetSurfaceSimulation`, and the landing overlay all use identical rules.
+- `PoissonDiskSampler` provides Bridson's Poisson disk sampling algorithm (deterministic, seeded `SeededRandom`); used by generation and rendering logic that requires minimum-distance-separated point distributions.
 
 ### ECS Usage (Arch)
 Components are plain structs defined in `Components.cs`. The game uses Arch's `World.Query()` with lambda syntax for ad-hoc iteration, plus dedicated **systems** for recurring logic. Key component types:
@@ -581,36 +612,40 @@ Components are plain structs defined in `Components.cs`. The game uses Arch's `W
 - `Projectile` — damage, speed, lifetime, collision radius, owner faction, RGB color
 - `ShipInputComponent` — per-frame ship input intent (`AccelerationDirection`, `RotationSpeed`, `Shoot`); written by `PlayerShipInputSystem` (player) or `ShipEnemyAISystem` (NPC), consumed by `ShipSystem`
 - `ShipComponent` — ship combat and physics stats (`Faction`, `MaxSpeed`, `MaxRotationSpeed`, `MaxAcceleration`, `BrakeMultiplier`, `Weapons[]`, `WeaponCooldowns[]`); shared by player ship and all NPC ships
+- `AvatarInputComponent` — per-frame avatar input intent (`DesiredVelocity`, `Shoot`, `AimDirection` for walking; `HeadingDirection`, `Throttle`, `IsBraking` for vehicle); written by `PlayerAvatarInputSystem` / `PlayerVehicleInputSystem` (player) or `AvatarEnemyAISystem` (NPC), consumed by `AvatarSystem` / `VehicleSystem`
+- `AvatarComponent` — avatar combat and movement stats (`Faction`, `InVehicle`, `WeaponDamage`, `WeaponFireRate`, `WeaponProjectileSpeed`, `FireCooldown`, `ProjectileColor`); shared by player avatar and all surface NPCs — analogous to `ShipComponent`
+- `VehicleComponent` — vehicle physics stats (`Acceleration`, `MaxSpeed`, `RotationSpeed`, `Friction`, `BrakeMultiplier`); added to a player-controlled avatar entity when they mount a vehicle, removed on dismount
 - `EnemyAI` — mutable state (`State`, `StateTimer`, `CruiseTarget`, `LastKnownTargetPos`) + immutable `EnemyAIConfig` record (Faction, DetectRange, LootCredits, EngageDistance, FleeHealthPercent); weapon specs and rotation limits now live in `ShipComponent`
-- `SurfaceAI` — mutable state (State, StateTimer, FireCooldown, WanderTimer, WanderAngle) + immutable `SurfaceAIConfig` record (faction, detect/attack range, walk speed, fire rate)
+- `SurfaceAI` — mutable state (`State`, `StateTimer`, `WanderTimer`, `WanderAngle`, `LastKnownTargetPos`) + immutable `SurfaceAIConfig` record (faction, detect/attack range, walk speed, flee threshold, aim inaccuracy)
 - `LootDrop` — credit ranges, resource/part drop chances, danger level scaling
 - `AsteroidField` — mineable asteroid tag (resource type, amount, size)
 - `ParticleEmitter` — configurable emitter attached to an entity (`EmitCondition`, spawn interval, speed/lifetime/size/drag/color)
 - `Particle` — per-particle simulation state (velocity, age/lifetime, size curve, drag, color)
 - `OwnedBy` — ownership link for dependent entities that should be destroyed with their owner
-- `Faction` — enum: Player, Pirate, Trader, Patrol, Fauna, Bandit
-- `AIState` — enum: Idle, Patrol, Chase, Attack, Flee, Defend
+- `WarpEffect` — warp-in/warp-out visual effect attached to NPC ships (`IsWarpingIn`, `Progress`, `Duration`); during animation the ship is invulnerable; `WarpEffectSystem` removes this component when warp-in completes
+- `SurfaceNpcState` — lifecycle tracker for surface-visiting NPCs (`SurfaceNpcPhase`, timer, ship entity ref, faction, inactivity timer)
+- `LandedNpcShip` — marks a landed NPC ship entity on a planet surface (owner NPC ref, animation progress, landing/takeoff flag, faction)
+- `Faction` — enum: `Player`, `Pirate`, `Trader`, `Patrol` (all used on both space and surface layers)
+- `AIState` — enum: `Idle`, `Patrol`, `Chase`, `Attack`, `Flee`, `Defend`
 
 ### Entity Factory
 `EntityFactory` (static class in `ECS/EntityFactory.cs`) centralizes all entity creation to ensure consistent component compositions:
 
-| Factory Method       | Components Created                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `CreateStar`         | Transform, Sprite, CelestialBody, Label                                                                       |
-| `CreatePlanet`       | Transform, Sprite, CelestialBody, Orbit, Label, +Interactable if solid                                        |
-| `CreateMoon`         | Transform, Sprite, CelestialBody, Orbit, Label, Interactable                                                  |
-| `CreateStation`      | Transform, Sprite, CelestialBody, Orbit, Label, Interactable                                                  |
-| `CreateAsteroid`     | Transform, Sprite, Orbit, Health, AsteroidField                                                               |
-| `CreatePlayerShip`   | Transform, Sprite, Velocity, PlayerControlled, Health, ShipInputComponent, ShipComponent                      |
-| `CreatePlayerAvatar` | Transform, Sprite, Velocity, PlayerControlled, +Health if on surface                                          |
-| `CreateLandedShip`   | Transform, Sprite, Label                                                                                      |
-| `CreateVehicle`      | Transform, Sprite, Label                                                                                      |
-| `CreatePirateShip`   | Transform, Sprite, Velocity, Health, EnemyAI, ShipInputComponent, ShipComponent, LootDrop (scaled by danger)  |
-| `CreateTraderShip`   | Transform, Sprite, Velocity, Health, EnemyAI, ShipInputComponent, ShipComponent (unarmed, flees)              |
-| `CreatePatrolShip`   | Transform, Sprite, Velocity, Health (shielded), EnemyAI, ShipInputComponent, ShipComponent (no flee, no loot) |
-| `CreateProjectile`   | Transform, Velocity, Projectile                                                                               |
-| `CreateFauna`        | Transform, Sprite, Velocity, Health, SurfaceAI, LootDrop                                                      |
-| `CreateBandit`       | Transform, Sprite, Velocity, Health, SurfaceAI, LootDrop                                                      |
+| Factory Method        | Components Created                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CreateStar`          | Transform, Sprite, CelestialBody, Label                                                                                                      |
+| `CreatePlanet`        | Transform, Sprite, CelestialBody, Orbit, Label, +Interactable if solid                                                                       |
+| `CreateMoon`          | Transform, Sprite, CelestialBody, Orbit, Label, Interactable                                                                                 |
+| `CreateStation`       | Transform, Sprite, CelestialBody, Orbit, Label, Interactable                                                                                 |
+| `CreateAsteroid`      | Transform, Sprite, Orbit, Health, AsteroidField                                                                                              |
+| `CreatePlayerShip`    | Transform, Sprite, Velocity, PlayerControlled, Health, ShipInputComponent, ShipComponent, + thruster ParticleEmitter entities (OwnedBy)      |
+| `CreatePlayerAvatar`  | Transform, Sprite, Velocity, PlayerControlled, AvatarInputComponent, AvatarComponent, +Health if on surface                                  |
+| `CreateLandedShip`    | Transform, Sprite, Label                                                                                                                     |
+| `CreateVehicle`       | Transform, Sprite, Label                                                                                                                     |
+| `CreateNpcShip`       | Transform, Sprite, Velocity, ShipInputComponent, ShipComponent, Health, EnemyAI, +LootDrop if loot > 0, + thruster ParticleEmitter entities  |
+| `CreateProjectile`    | Transform, Velocity, Projectile                                                                                                              |
+| `CreateSurfaceNpc`    | Transform, Sprite, Velocity, Health, SurfaceAI, AvatarInputComponent, AvatarComponent, LootDrop (faction-based profile, danger-scaled stats) |
+| `CreateLandedNpcShip` | Transform, Sprite, LandedNpcShip                                                                                                             |
 
 ### ECS Systems
 Systems live in `ECS/Systems/` (organized into `Input/`, `Combat/`, `AI/`, and `Effects/` subdirectories) and encapsulate reusable game logic.
@@ -619,22 +654,25 @@ Most systems extend `BaseSystem<World, float>` and use Arch's source generator v
 
 > **Important**: The source generator overrides `Update()` without calling `BeforeUpdate()` / `AfterUpdate()`. Do not rely on those lifecycle hooks for per-frame state reset. Systems that need lifecycle control should be plain classes with manual `World.Query()` calls instead.
 
-| System                           | Location           | Base Class                  | Queries                                                                        | Used By                                                     |
-| -------------------------------- | ------------------ | --------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| **OrbitSystem**                  | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Orbit`                                                            | SolarSystemSimulation                                       |
-| **VelocitySystem**               | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity`                                                         | SolarSystemSimulation, PlanetSurfaceSimulation              |
-| **CameraFollowSystem**           | `Systems/`         | `BaseSystem` (source gen)   | `PlayerControlled + Transform`                                                 | SolarSystemState, PlanetSurfaceState, InteriorState (input) |
-| **InteractionProximitySystem**   | `Systems/`         | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable`                                     | SolarSystemSimulation                                       |
-| **DependentEntityCleanupSystem** | `Systems/`         | `BaseSystem` (manual query) | `OwnedBy`                                                                      | SolarSystemSimulation, PlanetSurfaceSimulation              |
-| **ShipSystem**                   | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity + ShipInputComponent + ShipComponent`                    | SolarSystemSimulation                                       |
-| **PlayerAvatarInputSystem**      | `Systems/Input/`   | `BaseSystem` (source gen)   | `PlayerControlled + Transform + Velocity`                                      | PlanetSurfaceState, InteriorState (input)                   |
-| **PlayerShipInputSystem**        | `Systems/Input/`   | `BaseSystem` (source gen)   | `PlayerControlled + Transform + Velocity + ShipInputComponent + ShipComponent` | SolarSystemState (input)                                    |
-| **PlayerVehicleInputSystem**     | `Systems/Input/`   | `BaseSystem` (manual)       | Single entity                                                                  | PlanetSurfaceState (input)                                  |
-| **ProjectileSystem**             | `Systems/Combat/`  | `BaseSystem` (source gen)   | `Transform + Velocity + Projectile`, `Transform + Health`                      | SolarSystemSimulation, PlanetSurfaceSimulation              |
-| **ShieldRegenSystem**            | `Systems/Combat/`  | `BaseSystem` (source gen)   | `Health`                                                                       | SolarSystemSimulation                                       |
-| **ShipEnemyAISystem**            | `Systems/AI/`      | `BaseSystem` (source gen)   | `Transform + Velocity + EnemyAI + Health + ShipInputComponent + ShipComponent` | SolarSystemSimulation                                       |
-| **AvatarEnemyAISystem**          | `Systems/AI/`      | `BaseSystem` (source gen)   | `Transform + Velocity + SurfaceAI + Health`                                    | PlanetSurfaceSimulation                                     |
-| **ParticleSystem**               | `Systems/Effects/` | `BaseSystem` (manual query) | `Transform + Particle`, `Transform + ParticleEmitter`                          | SolarSystemSimulation                                       |
+| System                           | Location           | Base Class                  | Queries                                                                              | Used By                                                     |
+| -------------------------------- | ------------------ | --------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **OrbitSystem**                  | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Orbit`                                                                  | SolarSystemSimulation                                       |
+| **VelocitySystem**               | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity`                                                               | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **CameraFollowSystem**           | `Systems/`         | `BaseSystem` (source gen)   | `PlayerControlled + Transform`                                                       | SolarSystemState, PlanetSurfaceState, InteriorState (input) |
+| **InteractionProximitySystem**   | `Systems/`         | `BaseSystem` (manual query) | `Transform + CelestialBody + Interactable`                                           | SolarSystemSimulation                                       |
+| **DependentEntityCleanupSystem** | `Systems/`         | `BaseSystem` (manual query) | `OwnedBy`                                                                            | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **ShipSystem**                   | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity + ShipInputComponent + ShipComponent`                          | SolarSystemSimulation                                       |
+| **AvatarSystem**                 | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity + AvatarInputComponent + AvatarComponent`                      | PlanetSurfaceSimulation, InteriorSimulation                 |
+| **VehicleSystem**                | `Systems/`         | `BaseSystem` (source gen)   | `Transform + Velocity + AvatarInputComponent + VehicleComponent`                     | PlanetSurfaceSimulation                                     |
+| **PlayerAvatarInputSystem**      | `Systems/Input/`   | `BaseSystem` (source gen)   | `PlayerControlled + Transform + AvatarInputComponent + AvatarComponent`              | PlanetSurfaceState, InteriorState (input)                   |
+| **PlayerShipInputSystem**        | `Systems/Input/`   | `BaseSystem` (source gen)   | `PlayerControlled + Transform + Velocity + ShipInputComponent + ShipComponent`       | SolarSystemState (input)                                    |
+| **PlayerVehicleInputSystem**     | `Systems/Input/`   | `BaseSystem` (source gen)   | `PlayerControlled + Transform + AvatarInputComponent + VehicleComponent`             | PlanetSurfaceState (input)                                  |
+| **ProjectileSystem**             | `Systems/Combat/`  | `BaseSystem` (source gen)   | `Transform + Velocity + Projectile`, `Transform + Health`                            | SolarSystemSimulation, PlanetSurfaceSimulation              |
+| **ShieldRegenSystem**            | `Systems/Combat/`  | `BaseSystem` (source gen)   | `Health`                                                                             | SolarSystemSimulation                                       |
+| **ShipEnemyAISystem**            | `Systems/AI/`      | `BaseSystem` (source gen)   | `Transform + Velocity + EnemyAI + Health + ShipInputComponent + ShipComponent`       | SolarSystemSimulation                                       |
+| **AvatarEnemyAISystem**          | `Systems/AI/`      | `BaseSystem` (source gen)   | `Transform + Velocity + SurfaceAI + Health + AvatarInputComponent + AvatarComponent` | PlanetSurfaceSimulation                                     |
+| **ParticleSystem**               | `Systems/Effects/` | `BaseSystem` (manual query) | `Transform + Particle`, `Transform + ParticleEmitter`                                | SolarSystemSimulation                                       |
+| **WarpEffectSystem**             | `Systems/Effects/` | `BaseSystem` (manual query) | `WarpEffect`                                                                         | SolarSystemSimulation                                       |
 
 Rendering helpers (not ECS systems but query ECS data):
 | Helper            | Location     | Description                                                        |
@@ -644,18 +682,21 @@ Rendering helpers (not ECS systems but query ECS data):
 System details:
 - **OrbitSystem**: Computes deterministic orbital positions from global time. Accepts `Func<float>` for time and `Func<Vector2>` for fallback center.
 - **VelocitySystem**: Integrates acceleration into velocity each frame, applies `MaxSpeed` clamping, applies centralized damping (`Velocity.Damping`), updates position via `CanMoveTo` collision checks, and applies `RotationVelocity` to `Transform.Rotation` (clamped by `MaxRotationSpeed`).
-- **PlayerAvatarInputSystem**: Handles WASD/arrow input with configurable speed. Exposes a `Func<Vector2, bool>? CanMoveTo` delegate for collision checking (terrain, walls).
+- **PlayerAvatarInputSystem**: Writes WASD/arrow movement intent and shoot/aim direction into `AvatarInputComponent` for the player-controlled avatar. Suppresses walking input when `AvatarComponent.InVehicle` is true (vehicle input system handles that). `AvatarSystem` consumes the intent.
 - **CameraFollowSystem**: Lerps camera toward the player entity and handles mouse-wheel zoom.
 - **PlayerShipInputSystem**: Reads player controls and writes per-frame intent into `ShipInputComponent` (AccelerationDirection, RotationSpeed, Shoot). Supports both relative (W=thrust, A/D=rotate) and absolute (gamepad/mouse) movement modes.
 - **ShipSystem**: Source-generated system over `Transform + Velocity + ShipInputComponent + ShipComponent`. Consumes input intent from `ShipInputComponent`, applies directional braking, sets `Velocity.Acceleration` and rotation, ticks per-weapon cooldowns, and fires projectiles via a deferred spawn list (carrying inherited velocity). Runs on both player and NPC ships, unifying all ship physics and weapon logic.
+- **AvatarSystem**: Source-generated system over `Transform + Velocity + AvatarInputComponent + AvatarComponent`. Analogous to `ShipSystem` for walking entities. Applies critically-damped spring movement toward `DesiredVelocity`, ticks `FireCooldown`, and fires projectiles via a deferred spawn list (`ProjectilesSpawnedLastUpdate`). Skips entities where `AvatarComponent.InVehicle` is true (handled by `VehicleSystem`). Runs for both player and NPC avatars.
+- **VehicleSystem**: Source-generated system over `Transform + Velocity + AvatarInputComponent + VehicleComponent`. Analogous to `AvatarSystem` for vehicle-mounted entities. Aligns `Velocity.Linear` to the forward vector to prevent lateral drift, applies rotation toward `HeadingDirection`, sets throttle acceleration, and applies friction/braking via `Velocity.Damping`. Actual position integration is handled by `VelocitySystem`.
 - **InteractionProximitySystem**: Finds the nearest interactable entity to a given position. Extends `BaseSystem<World, float>` with a static cached `QueryDescription` and manual iteration via `FindNearest(Vector2)`.
 - **DependentEntityCleanupSystem**: Removes entities with `OwnedBy` when their owner entity is no longer alive, preventing orphaned dependent entities across combat and transition flows.
-- **PlayerVehicleInputSystem**: Handles vehicle input intent — thrust along facing direction, A/D rotation, braking, friction. Extends `BaseSystem<World, float>` with manual `Update()` and configurable physics params; actual movement integration is handled by `VelocitySystem`.
-- **ProjectileSystem**: Extends `BaseSystem<World, float>` with source-generated iteration over `Transform + Velocity + Projectile`. Uses per-frame snapshot lists plus `HashSet<Entity>` tracking for expired/processed projectiles and manual target queries over `Transform + Health`. Faction logic prevents friendly fire. Exposes `DestroyedLastUpdate` and `DamageEventsLastUpdate` for states to process loot drops, explosions, and damage popups.
+- **PlayerVehicleInputSystem**: Writes vehicle driving intent into `AvatarInputComponent` vehicle fields (`HeadingDirection`, `Throttle`, `IsBraking`) from WASD/arrow player input. `VehicleSystem` consumes these fields.
+- **ProjectileSystem**: Extends `BaseSystem<World, float>` with source-generated iteration over `Transform + Velocity + Projectile`. Uses per-frame snapshot lists plus `HashSet<Entity>` tracking for expired/processed projectiles; uses `SpatialHash` (cell size 128 world units) for O(1)-per-projectile broad-phase collision candidate lookup. Faction logic prevents friendly fire. Exposes `DestroyedLastUpdate` and `DamageEventsLastUpdate` for states to process loot drops, explosions, and damage popups.
 - **ShieldRegenSystem**: Source-generated system that regenerates shields after a configurable delay (`ShieldRegenDelay`) since last hit. Regen rate is per-second (`ShieldRegenRate`).
 - **ShipEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Queries `Transform + Velocity + EnemyAI + Health + ShipInputComponent + ShipComponent`. Uses flyweight `EnemyAIConfig` records and per-entity mutable state. Implements smooth turning plus acceleration-based steering, directional braking, and per-entity cruise targets to avoid edge drift. Pirates engage player/traders and flee when low health; traders cruise/flee; patrols hunt pirates. Writes movement and shoot intent into `ShipInputComponent`; actual movement and weapon firing are then handled by `ShipSystem`.
-- **AvatarEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Uses flyweight `SurfaceAIConfig` records. Sets acceleration intent toward desired velocity (`SetAccelerationTowardVelocity`) so movement is integrated by `VelocitySystem`; fauna chase/wander/short-range attack, while bandits patrol/chase/strafe/fire/flee.
+- **AvatarEnemyAISystem**: Extends `BaseSystem<World, float>` with source-generated iteration. Queries `Transform + Velocity + SurfaceAI + Health + AvatarInputComponent + AvatarComponent`. Uses flyweight `SurfaceAIConfig` records. Writes movement intent into `AvatarInputComponent.DesiredVelocity` and shoot intent into `AvatarInputComponent.{Shoot,AimDirection}`; `AvatarSystem` converts these into physics and projectile spawning. Pirates patrol/chase/strafe/fire/flee at low HP; traders flee without fighting; patrols hunt pirates aggressively.
 - **ParticleSystem**: Manual ECS effects system over `ParticleEmitter` and `Particle` components. Simulates particle drag/lifetime, queues spawns from active emitters (`Always`, `Never`, `WhenAccelerating`), caps live particle count, and supports viewport-based emitter validation bounds for performance.
+- **WarpEffectSystem**: Manual ECS effects system over `WarpEffect`. Ticks `Progress` each frame. When warp-in completes, removes the `WarpEffect` component so the ship becomes a normal combatant. When warp-out completes, adds the entity to `WarpOutCompleted` for `NpcSpawnManager` to destroy. Ships with an active `WarpEffect` are excluded from collision and combat queries.
 - **CombatHelper**: Static utility class in `Core/` providing shared combat logic: `ProcessLootDrop` (unified loot with configurable resource amounts and part drops), `CreateDamagePopups`, `UpdateCombatMessageTimer`, `UpdateVisualEffects`. Used by both SolarSystemSimulation and PlanetSurfaceSimulation. Part drops are gated by `enablePartDrops` flag (space combat only) and tier is capped by danger level. Won't drop parts already owned or equipped.
 
 ### Rendering
@@ -695,7 +736,7 @@ The `ISpriteRenderer` interface (implemented by `SdlSpriteRenderer`) provides bo
 - **TireMarkRenderer** — instance class (per `PlanetSurfaceState`) that records four-wheel contact patches each frame and renders fading quad-strip tire marks under the vehicle
 - **WeatherRenderer** — biome-based weather particle effects (snow, rain, sand, embers) rendered in screen space over planet surface and interior views
 - **TerrainRenderer** — terrain tile color logic extracted from `PlanetSurfaceRenderer`; maps `TerrainType` × biome to RGBA with height-based shading
-- **SurfaceEnemyRenderer** — procedural fauna (4-legged creature) and bandit (humanoid) sprites with health bars overhead
+- **SurfaceEnemyRenderer** — procedural surface NPC sprites (pirate humanoid, trader humanoid, patrol humanoid) with health bars overhead
 - **SurfaceRockRenderer** — mineable rock rendering on planet surfaces (body, highlight, resource vein, health bar)
 - **PlanetSurfaceRenderer** — terrain tiles (delegates color logic to TerrainRenderer), height-based shading, biome decoration sprites (trees, cacti, boulders, ice crystals, etc.), settlement markers
 - **InteriorRenderer** — tiles, room labels, NPCs, interactable markers
@@ -809,7 +850,7 @@ Players can equip and swap vehicle parts at **Vehicle Customization** terminals 
 
 **Ownership model**: Same as ship/avatar parts. Stored in `PlayerData.OwnedVehicleParts`. Combined stats via `PlayerData.GetCombinedVehicleStats()`.
 
-**Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceSimulation`, the `VehicleMovementSystem` is created with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction). Falls back to `GameConfig` defaults if a stat is zero.
+**Dynamic stat application**: When mounting the vehicle in `PlanetSurfaceSimulation`, a `VehicleComponent` is added to the player's avatar entity with stats from `GetCombinedVehicleStats()` (acceleration, maxSpeed, rotationSpeed, friction, brakeMultiplier). `VehicleSystem` reads these stats each frame. Falls back to `NpcConfig` defaults if a stat is zero.
 
 ### Asteroid Mining
 Players can mine asteroids in the solar system view by holding **Space** near an asteroid belt. The mining laser beam originates from the ship and targets the nearest asteroid within range (120 world pixels). Mining DPS equals the ship's combined `WeaponDamage` stat — weapons are dual-use for both combat and mining.
@@ -936,7 +977,7 @@ Real-time projectile combat in the solar system. Players fire weapons with Space
 
 **Danger Level**: Each star system has a seeded danger level (1–5) stored in `StarSystemData.DangerLevel`. Displayed on the galaxy map with color-coded stars (green 1–2, yellow 3, red 4–5). Higher danger = more pirates, stronger enemies, better loot.
 
-**NPC Spawning**: Pirates, traders, and patrols are spawned when entering a solar system. Counts scale with danger level. Pirates get hull and damage bonuses per danger level. Patrols have strong shields. Traders are unarmed and flee from threats.
+**NPC Spawning**: Pirates, traders, and patrols are spawned dynamically via `NpcSpawnManager` when entering a solar system. An initial wave is placed instantly on entry; replacements warp in over time after faction-specific respawn delays. Counts scale with danger level. Pirates get hull and damage bonuses per danger level. Patrols have strong shields. Traders are unarmed and flee from threats.
 
 **Shield Mechanics**: Shields absorb damage before hull HP. Shields regenerate after a configurable delay since last hit (`ShieldRegenDelay = 3s`). Regen rate is constant (`ShieldRegenRate = 5 HP/s`). Shield HP pool comes from equipped Shield parts (`ShieldStrength` stat).
 
@@ -950,18 +991,19 @@ Real-time projectile combat in the solar system. Players fire weapons with Space
 
 **Combat HUD**: Hull bar (red→green gradient) and shield bar (blue) displayed below the cargo HUD. Danger level shown as colored text. Floating damage numbers appear at hit locations (blue = shield, yellow = hull). Expanding explosion circles on entity destruction.
 
-**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols. On planet surfaces, fauna and bandit projectiles don't hit each other but do hit the player. All friendly-fire logic is centralized in `Core/FactionRules.cs` (`FactionRules.CanHit(attacker, target)`) and shared between `ProjectileSystem` and `AvatarEnemyAISystem`.
+**Friendly Fire Rules**: Same-faction projectiles never hit each other. Patrol/trader projectiles don't hit the player. Only pirate projectiles can hit the player, traders, and patrols. The same rules apply on planet surfaces (surface pirates, traders, and patrols use the same `Faction` enum). All friendly-fire logic is centralized in `Core/FactionRules.cs` (`FactionRules.CanHit(attacker, target)`) and shared between `ProjectileSystem` and `AvatarEnemyAISystem`.
 
 ### Surface Combat
-Real-time projectile combat on planet surfaces. Players shoot with Space (fires in last movement direction) or left mouse button (fires toward cursor). Hostile fauna and bandits spawn on walkable terrain during planet surface generation.
+Real-time projectile combat on planet surfaces. Players shoot with Space (fires in last movement direction) or left mouse button (fires toward cursor). Hostile surface NPCs land by ship, walk on foot, and depart dynamically (managed by `SurfaceNpcManager`).
 
-**Surface Factions**:
-| Faction    | Behavior                                                          | Color               |
-| ---------- | ----------------------------------------------------------------- | ------------------- |
-| **Fauna**  | Wander → detect player → chase → melee-range bite attack          | Red (180,60,60)     |
-| **Bandit** | Patrol → detect player → chase → ranged fire → flee when critical | Orange (200,100,60) |
+**Surface Factions** (same `Faction` enum as space, same friendly-fire rules):
+| Faction    | Behavior                                                               | Color               |
+| ---------- | ---------------------------------------------------------------------- | ------------------- |
+| **Pirate** | Patrol → detect player → chase → ranged fire → fight to the death      | Red (255,150,80)    |
+| **Trader** | Wander → flee when player approaches; unarmed; drops cargo loot        | Yellow (255,200,80) |
+| **Patrol** | Patrol → detect pirates → chase → ranged fire; protects player/traders | Cyan (50,200,255)   |
 
-**Spawning**: Fauna (3–10 per planet) and bandits (0–4, only on planets with settlements) are placed on walkable terrain at least 8 tiles from the landing zone and 4 tiles from settlements. Counts and positions are seeded deterministically. Ocean planets get fewer fauna.
+**Spawning**: NPCs arrive dynamically via `SurfaceNpcManager` — a ship lands, the NPC disembarks and walks around, then boards the ship and departs after `SurfaceNpcInactivityTimeout` seconds (or immediately when low health). An initial wave is placed on landing; replacements arrive after per-faction respawn delays. Budgets: 15–30 enemies, 10–20 cargo, 10–20 patrols per surface.
 
 **Avatar Weapon Tiers**:
 | Weapon        | Tier | Cost | Bonus Damage |
@@ -974,7 +1016,7 @@ Base avatar weapon damage is 10. Total damage = base + equipped weapon's `Weapon
 
 **Avatar Health**: Persistent across planet visits. Base 100 HP + `Armor` stat from equipped avatar suit. Stored in `PlayerData.AvatarHealth` / `AvatarMaxHealth`. Health is synced from the ECS `Health` component back to `PlayerData` each frame and persisted when the player is removed from the simulation (via `DestroyPlayerEntity` hook).
 
-**Surface Loot Drops**: Destroyed enemies drop credits (fauna: 10–40, bandits: 20–80) with chances for resource drops (30–40%). Bandits have a small chance (5%) to drop equipment parts.
+**Surface Loot Drops**: Destroyed pirates drop 20–80 credits with ~40% resource drop and 5% part drop chance. Traders drop 10–40 credits with ~60% resource chance. Patrols drop nothing (neutral defenders).
 
 **Avatar Death**: When HP reaches zero:
 - 2.5-second death screen with "YOU DIED" and "RESPAWNING..."
@@ -982,7 +1024,7 @@ Base avatar weapon damage is 10. Total damage = base + equipped weapon's `Weapon
 - Respawn near the landed ship at full avatar health (vehicle auto-stowed)
 - All input except menu-back is blocked while dead
 
-**Surface Combat HUD**: Avatar HP bar at bottom-left, floating damage numbers, explosion effects, combat loot messages. Enemy health bars above each enemy. Enemy dots on the minimap (red = fauna, orange = bandits).
+**Surface Combat HUD**: Avatar HP bar at bottom-left, floating damage numbers, explosion effects, combat loot messages. Enemy health bars above each enemy. Enemy dots on the minimap (red = pirate, yellow = trader, cyan = patrol).
 
 ### Audio System
 Fully procedural audio engine using SDL3's built-in audio API (push-based streaming at 44100 Hz, stereo float32). No external audio files — all music and sound effects are synthesized at runtime, matching the game's procedural generation philosophy.
@@ -994,7 +1036,7 @@ Fully procedural audio engine using SDL3's built-in audio API (push-based stream
 - `Update(float dt)` generates and pushes mixed audio chunks (~2048 frames / ~46ms) to the device, keeping ~0.2s buffered via `SDL.GetAudioStreamAvailable`
 - `SetMusicTheme(theme, instant)` with smooth crossfade (fade out → switch → fade in, 2 vol units/s)
 - `PlaySfx(type, volume, pan)` with constant-power stereo panning, up to 16 simultaneous voices
-- Master / Music / SFX volume controls from `GameConfig`
+- Master / Music / SFX volume controls from `AudioConfig`
 
 **MusicGenerator** (`Audio/MusicGenerator.cs`):
 - Real-time additive synthesis with 6 concurrent layers:
@@ -1040,9 +1082,9 @@ Fully procedural audio engine using SDL3's built-in audio API (push-based stream
 | Landing        | Descending rumble          | ~0.5s    | Ship lands on planet                |
 | Takeoff        | Ascending rumble           | ~0.6s    | Ship takes off from planet          |
 
-**Combat Music Tracking**: `SolarSystemSimulation` and `PlanetSurfaceSimulation` (via `CombatSimulationBase`) maintain a `CombatMusicTimer` that resets on each damage event. The corresponding states read this timer to switch music themes — when it exceeds `GameConfig.CombatMusicDelay` (5s), the music fades back from Combat to the state's default theme.
+**Combat Music Tracking**: `SolarSystemSimulation` and `PlanetSurfaceSimulation` (via `CombatSimulationBase`) maintain a `CombatMusicTimer` that resets on each damage event. The corresponding states read this timer to switch music themes — when it exceeds `AudioConfig.CombatMusicDelay` (5s), the music fades back from Combat to the state's default theme.
 
-**Audio Config** (`GameConfig`):
+**Audio Config** (`AudioConfig`):
 - `AudioMasterVolume = 0.5f` — overall output level
 - `AudioMusicVolume = 0.4f` — music layer level
 - `AudioSfxVolume = 0.7f` — SFX layer level
@@ -1157,7 +1199,15 @@ dotnet run -- 12345  # with specific galaxy seed
 - [x] Unified HUD renderer (HudRenderer: location info, stats, health bars, prompts, offscreen indicators across all states)
 - [x] Unified minimap renderer (HudMinimapRenderer: data-driven markers/areas, player-centered scrolling, settlement/room areas)
 - [x] Offscreen edge indicators (NPC ships, star, settlements with distance labels)
-- [x] Planet surface combat (hostile fauna, hostile bandits, avatar weapons, persistent health, in-place respawn near ship)
+- [x] Planet surface combat (hostile surface NPCs using same Pirate/Trader/Patrol factions, avatar weapons, persistent health, in-place respawn near ship)
+- [x] Unified avatar ECS system (AvatarSystem + AvatarInputComponent + AvatarComponent shared by player and all surface NPCs — parallel to ShipSystem)
+- [x] Unified vehicle ECS system (VehicleSystem + VehicleComponent added/removed on mount/dismount)
+- [x] Dynamic NPC spawning in solar systems (NpcSpawnManager: warp-in/warp-out via WarpEffect, per-faction budgets, respawn timers)
+- [x] Dynamic surface NPC spawning (SurfaceNpcManager: NPCs arrive by landing ship, walk on foot, depart — mirrors NpcSpawnManager)
+- [x] Warp effect system (WarpEffectSystem: warp-in/warp-out animations on NPC ships; ships invulnerable during animation)
+- [x] Spatial hash collision acceleration (SpatialHash in Combat/: O(1) per-projectile broad-phase candidate lookup for ProjectileSystem)
+- [x] Game config split into per-domain Config/ subfolder (AudioConfig, AvatarConfig, CameraConfig, CombatConfig, DangerConfig, NpcConfig, ShipConfig, WindowConfig, WorldConfig)
+- [x] Poisson disk sampler utility (PoissonDiskSampler in Generation/: Bridson's algorithm, deterministic seeded variant)
 - [x] In-game menu overlay (Resume / Map / Missions / Cargo / Controls / Main Menu) for SolarSystem and PlanetSurface states
 - [x] Main menu with 7 start options (including Inside Station and Inside Settlement)
 - [x] Main menu overlay (MenuPanelOverlayBase extraction)
