@@ -214,11 +214,9 @@ public struct Label
 public enum Faction
 {
     Player,
-    Pirate,      // Hostile — attacks player and traders
-    Trader,      // Friendly — attacked by pirates, can be defended
-    Patrol,      // Neutral defender — attacks pirates, helps player
-    Fauna,       // Surface hostile — wild creatures, attack on sight
-    Bandit       // Surface hostile — hostile NPCs on planet surfaces
+    Pirate,      // Hostile — attacks player and traders (space and surface)
+    Trader,      // Friendly — attacked by pirates, can be defended (space and surface)
+    Patrol,      // Neutral defender — attacks pirates, helps player (space and surface)
 }
 
 /// <summary>Health and shields for a combat-capable entity.</summary>
@@ -415,6 +413,38 @@ public struct Particle
     public float EndSize;
     public float Drag;
     public Color3 Color;
+}
+
+/// <summary>
+/// Tracks the lifecycle phase of a surface NPC that arrives / departs by ship.
+/// The NPC's foot avatar and landed ship entity are cross-referenced.
+/// </summary>
+[Component]
+public struct SurfaceNpcState
+{
+    public SurfaceNpcPhase Phase;
+    public float Timer;
+    /// <summary>Reference to the landed ship entity (valid during OnFoot / BoardingShip).</summary>
+    public Entity ShipEntity;
+    public Faction Faction;
+    /// <summary>Seconds the NPC has been wandering without combat. Triggers departure when it exceeds the inactivity timeout.</summary>
+    public float InactivityTimer;
+}
+
+/// <summary>
+/// Marks an entity as a landed NPC ship on a planet surface.
+/// Cross-references the foot-avatar entity that disembarked from it.
+/// </summary>
+[Component]
+public struct LandedNpcShip
+{
+    /// <summary>The on-foot NPC entity that owns this ship (Entity.Null during landing/takeoff without avatar).</summary>
+    public Entity OwnerNpc;
+    /// <summary>Animation progress 0→1 for landing / takeoff visuals.</summary>
+    public float AnimProgress;
+    /// <summary>True = currently landing; false = taking off.</summary>
+    public bool IsLanding;
+    public Faction Faction;
 }
 
 /// <summary>

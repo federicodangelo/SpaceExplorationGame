@@ -325,10 +325,14 @@ public static class HudMinimapRenderer
         world.Query(in query, (ref Transform transform, ref SurfaceAI ai, ref Health health) =>
         {
             if (health.IsDead) return;
-            byte r = ai.Config.Faction == Faction.Fauna ? (byte)200 : (byte)255;
-            byte g = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)150;
-            byte b = ai.Config.Faction == Faction.Fauna ? (byte)60 : (byte)50;
-            markers.Add(new MinimapMarker(transform.Position, new Color3(r, g, b)));
+            var color = ai.Config.Faction switch
+            {
+                Faction.Pirate => new Color3(255, 80, 60),
+                Faction.Trader => new Color3(255, 200, 80),
+                Faction.Patrol => new Color3(80, 150, 255),
+                _ => new Color3(200, 200, 200)
+            };
+            markers.Add(new MinimapMarker(transform.Position, color));
         });
     }
 

@@ -79,57 +79,50 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         velocity.RotationVelocity = 0f;
         velocity.Acceleration = Vector2.Zero;
 
+        // NPCs that are boarding their ship walk straight toward it and ignore normal AI
+        if (World.Has<SurfaceNpcState>(entity))
+        {
+            ref var npcState = ref World.Get<SurfaceNpcState>(entity);
+            if (npcState.Phase == SurfaceNpcPhase.BoardingShip)
+            {
+                UpdateBoardingNpc(ref transform, ref velocity, ref npcState);
+                return;
+            }
+        }
+
         float distToPlayer = Vector2.Distance(transform.Position, _playerPos);
+        bool wasInCombat = false;
 
         switch (ai.Config.Faction)
         {
-            case Faction.Fauna:
-                UpdateFauna(ref transform, ref velocity, ref ai, distToPlayer);
+            case Faction.Pirate:
+                UpdateHostileNpc(ref transform, ref velocity, ref ai, ref health, distToPlayer);
+                wasInCombat = ai.State is AIState.Chase or AIState.Attack or AIState.Flee;
                 break;
-            case Faction.Bandit:
-                UpdateBandit(ref transform, ref velocity, ref ai, ref health, distToPlayer);
+            case Faction.Patrol:
+                UpdatePatrolNpc(ref transform, ref velocity, ref ai, ref health, distToPlayer);
                 break;
+            case Faction.Trader:
+                UpdateTraderNpc(ref transform, ref velocity, ref ai, distToPlayer);
+                break;
+        }
+
+        // Track inactivity for departure logic
+        if (World.Has<SurfaceNpcState>(entity))
+        {
+            ref var npcState = ref World.Get<SurfaceNpcState>(entity);
+            if (npcState.Phase == SurfaceNpcPhase.OnFoot)
+            {
+                if (wasInCombat)
+                    npcState.InactivityTimer = 0f;
+                else
+                    npcState.InactivityTimer += _dt;
+            }
         }
     }
 
-    private void UpdateFauna(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        float dist)
-    {
-        if (_playerAlive && dist < ai.Config.DetectRange)
-        {
-            // Chase player
-            SetState(ref ai, AIState.Chase);
-            var dir = Vector2.Normalize(_playerPos - transform.Position);
-            if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
-
-            SetAccelerationTowardVelocity(ref velocity, dir * ai.Config.MoveSpeed);
-
-            // Melee attack: fast short-range projectile when close
-            if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
-            {
-                ai.FireCooldown = ai.Config.FireRate;
-                _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Fauna, new Color3(200, 60, 60), 0.1f, _currentAIEntity));
-            }
-        }
-        else
-        {
-            // Wander randomly
-            SetState(ref ai, AIState.Idle);
-            ai.WanderTimer -= _dt;
-            if (ai.WanderTimer <= 0)
-            {
-                ai.WanderTimer = 2f + MathF.Abs(MathF.Sin(transform.Position.X * 0.1f)) * 3f;
-                ai.WanderAngle += MathF.PI * (0.5f + MathF.Abs(MathF.Sin(transform.Position.Y * 0.13f)));
-            }
-
-            float wanderSpeed = ai.Config.MoveSpeed * 0.3f;
-            var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
-        }
-    }
-
-    private void UpdateBandit(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
+    /// <summary>Hostile NPC (pirate) — chases and attacks the player, flees at low health.</summary>
+    private void UpdateHostileNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
         ref Health health, float dist)
     {
         float hullPercent = health.HullPercent;
@@ -140,7 +133,6 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             SetState(ref ai, AIState.Flee);
             var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-
             SetAccelerationTowardVelocity(ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
             return;
         }
@@ -158,40 +150,81 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
             if (!inAttackRange)
             {
-                // Close distance
                 SetState(ref ai, AIState.Chase);
                 SetAccelerationTowardVelocity(ref velocity, dir * ai.Config.MoveSpeed);
             }
             else
             {
-                // In range — strafe slightly
                 SetState(ref ai, AIState.Attack);
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
                 SetAccelerationTowardVelocity(ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
             }
 
-            // Fire ranged weapon
             if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, Faction.Bandit, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime, _currentAIEntity));
+                    ai.Config.ProjectileSpeed, ai.Config.Faction, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime, _currentAIEntity));
             }
         }
         else
         {
-            // Patrol / wander
-            SetState(ref ai, AIState.Patrol);
-            ai.WanderTimer -= _dt;
-            if (ai.WanderTimer <= 0)
-            {
-                ai.WanderTimer = 3f + MathF.Abs(MathF.Sin(transform.Position.X * 0.07f)) * 4f;
-                ai.WanderAngle += MathF.PI * (0.3f + MathF.Abs(MathF.Cos(transform.Position.Y * 0.09f)));
-            }
+            WanderAround(ref transform, ref velocity, ref ai);
+        }
+    }
 
-            float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
-            var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-            SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
+    /// <summary>Patrol NPC — wanders around, attacks pirates if detected (not player unless provoked). Friendly to player.</summary>
+    private void UpdatePatrolNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
+        ref Health health, float distToPlayer)
+    {
+        // Patrols just wander — they don't target the player
+        // (Future: they could chase nearby pirates if we add NPC-vs-NPC targeting)
+        WanderAround(ref transform, ref velocity, ref ai);
+    }
+
+    /// <summary>Trader NPC — wanders toward settlements, never fights.</summary>
+    private void UpdateTraderNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
+        float distToPlayer)
+    {
+        // Traders just wander peacefully
+        WanderAround(ref transform, ref velocity, ref ai);
+    }
+
+    /// <summary>Shared wander/patrol behavior.</summary>
+    private void WanderAround(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai)
+    {
+        SetState(ref ai, AIState.Patrol);
+        ai.WanderTimer -= _dt;
+        if (ai.WanderTimer <= 0)
+        {
+            ai.WanderTimer = 3f + MathF.Abs(MathF.Sin(transform.Position.X * 0.07f)) * 4f;
+            ai.WanderAngle += MathF.PI * (0.3f + MathF.Abs(MathF.Cos(transform.Position.Y * 0.09f)));
+        }
+
+        float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
+        var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
+        SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
+    }
+
+    /// <summary>NPC is walking back to its ship to board it. Once close enough, the manager handles takeoff.</summary>
+    private void UpdateBoardingNpc(ref Transform transform, ref Velocity velocity, ref SurfaceNpcState npcState)
+    {
+        if (!World.IsAlive(npcState.ShipEntity)) return;
+
+        var shipPos = World.Get<Transform>(npcState.ShipEntity).Position;
+        var toShip = shipPos - transform.Position;
+        float dist = toShip.Length();
+
+        if (dist < 8f)
+        {
+            // Close enough — stop moving, manager will handle the transition to takeoff
+            velocity.Acceleration = Vector2.Zero;
+            velocity.Linear = Vector2.Zero;
+        }
+        else
+        {
+            var dir = toShip / dist;
+            SetAccelerationTowardVelocity(ref velocity, dir * GameConfig.SurfaceNpcBoardingSpeed);
         }
     }
 

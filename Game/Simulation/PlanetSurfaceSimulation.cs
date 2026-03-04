@@ -41,6 +41,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     // ── ECS Systems (planet-surface-specific) ──────────────────────
     private AvatarEnemyAISystem _enemyAISystem = null!;
+    private SurfaceNpcManager _surfaceNpcManager = null!;
 
 
 
@@ -56,8 +57,6 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     public override void Create()
     {
-        SpawnFauna();
-        SpawnBandits();
         SpawnRocks();
 
         // Initialize shared ECS systems (velocity, projectiles, cleanup)
@@ -65,6 +64,11 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         _enemyAISystem = new AvatarEnemyAISystem(EcsWorld);
         _enemyAISystem.Initialize();
+
+        // Initialize surface NPC manager and spawn initial wave
+        _surfaceNpcManager = new SurfaceNpcManager(EcsWorld, SurfaceData,
+            SurfaceData.NpcSpawnConfig, CanMoveToTerrain);
+        _surfaceNpcManager.SpawnInitialWave();
     }
 
     public override void Destroy()
@@ -81,6 +85,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("Surface NPCs", () => _surfaceNpcManager.Update(dt));
 
         // Sync vehicle position/rotation when driving
         if (LocalPlayer is { } vehicleDriver && LocalVehicleDeployed)
@@ -208,17 +213,6 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     // ── Private spawn helpers ────────────────────────────────────────
 
-    private void SpawnFauna()
-    {
-        foreach (var spawn in SurfaceData.FaunaSpawns)
-            EntityFactory.CreateFauna(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.WanderAngle, canMoveTo: CanMoveToTerrain);
-    }
-
-    private void SpawnBandits()
-    {
-        foreach (var spawn in SurfaceData.BanditSpawns)
-            EntityFactory.CreateBandit(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.WanderAngle, canMoveTo: CanMoveToTerrain);
-    }
 
     private void SpawnRocks()
     {
@@ -291,6 +285,15 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             CombatMessageTimer = 2.5f;
         }
         base.OnAsteroidDestroyed(destroyed, resourceMsg);
+    }
+
+    protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
+    {
+        // Notify spawn manager so it can schedule a replacement
+        _surfaceNpcManager.NotifyDestroyed(destroyed.Faction, destroyed.Entity);
+
+        if (EcsWorld.IsAlive(destroyed.Entity))
+            EcsWorld.Destroy(destroyed.Entity);
     }
 
     protected override string? ApplyDeathPenalties(SimulationPlayer player)

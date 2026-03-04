@@ -131,8 +131,28 @@ public readonly record struct NpcShipStats(
 
 // ── Surface spawns ───────────────────────────────────────────────
 
-/// <summary>Spawn position for a creature (fauna or bandit) on a planet surface.</summary>
-public readonly record struct CreatureSpawn(float X, float Y, float WanderAngle);
-
 /// <summary>Spawn data for a mineable rock on a planet surface.</summary>
 public readonly record struct RockSpawn(float X, float Y, ResourceType Resource, int Amount, float Size, float Hp);
+
+/// <summary>
+/// Runtime configuration for the dynamic surface NPC spawn manager.
+/// Stored in <see cref="PlanetSurfaceData"/>; all NPC spawning is handled at runtime.
+/// </summary>
+public readonly record struct SurfaceNpcSpawnConfig(
+    int TargetEnemies,
+    int TargetCargo,
+    int TargetPatrols,
+    int DangerLevel);
+
+/// <summary>Lifecycle phase of a surface NPC that arrives/departs by ship.</summary>
+public enum SurfaceNpcPhase
+{
+    /// <summary>Ship is descending — scale animation, no foot entity yet.</summary>
+    Landing,
+    /// <summary>NPC is on foot (SurfaceAI drives behaviour).</summary>
+    OnFoot,
+    /// <summary>NPC is walking back toward its ship to board it.</summary>
+    BoardingShip,
+    /// <summary>Ship is ascending — scale animation, foot entity already removed.</summary>
+    TakingOff
+}

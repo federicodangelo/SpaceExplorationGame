@@ -431,74 +431,128 @@ public static class EntityFactory
         );
     }
 
-    // ── Surface Enemies ─────────────────────────────────────────
+    // ── Surface NPCs ──────────────────────────────────────────────
 
-    /// <summary>Create a hostile fauna entity on a planet surface.</summary>
-    public static Entity CreateFauna(World world, Vector2 position, float wanderAngle,
-        float hullMultiplier = 1f, float damageMultiplier = 1f, Func<Vector2, bool>? canMoveTo = null)
+    /// <summary>Create a surface NPC entity on foot (pirate, trader, or patrol).</summary>
+    public static Entity CreateSurfaceNpc(World world, Vector2 position, float wanderAngle,
+        Faction faction, int dangerLevel, Func<Vector2, bool>? canMoveTo = null)
     {
+        // Scale stats by danger level
+        float hullMultiplier = dangerLevel switch
+        {
+            1 => 0.6f,
+            2 => 0.8f,
+            3 => 1.0f,
+            4 => 1.3f,
+            5 => 1.6f,
+            _ => 1f
+        };
+        float damageMultiplier = dangerLevel switch
+        {
+            1 => 0.6f,
+            2 => 0.8f,
+            3 => 1.0f,
+            4 => 1.2f,
+            5 => 1.5f,
+            _ => 1f
+        };
+
+        var (config, loot, spriteSize) = GetSurfaceNpcProfile(faction, dangerLevel, hullMultiplier, damageMultiplier);
+
         return world.Create(
             new Transform(position),
-            Sprite.Build(14, 14),
-            new Velocity(GameConfig.FaunaSpeed) { CanMoveTo = canMoveTo },
-            new Health(GameConfig.FaunaBaseHull * hullMultiplier),
-            new SurfaceAI
-            {
-                Config = new SurfaceAIConfig(
-                    Faction: Faction.Fauna,
-                    MoveSpeed: GameConfig.FaunaSpeed,
-                    DetectRange: GameConfig.FaunaDetectRange,
-                    AttackRange: GameConfig.FaunaAttackRange,
-                    FireRate: GameConfig.FaunaAttackRate,
-                    WeaponDamage: GameConfig.FaunaBaseDamage * damageMultiplier,
-                    ProjectileSpeed: 500f),
-                State = AIState.Idle,
-                FireCooldown = 0f,
-                WanderAngle = wanderAngle,
-                WanderTimer = 2f
-            },
-            new LootDrop
-            {
-                MinCredits = GameConfig.SurfaceLootCreditsMin,
-                MaxCredits = GameConfig.SurfaceLootCreditsMax,
-                ResourceDropChance = 0.3f,
-                PartDropChance = 0f,
-                DangerLevel = 1
-            }
-        );
-    }
-
-    /// <summary>Create a hostile bandit NPC entity on a planet surface.</summary>
-    public static Entity CreateBandit(World world, Vector2 position, float wanderAngle,
-        float hullMultiplier = 1f, float damageMultiplier = 1f, Func<Vector2, bool>? canMoveTo = null)
-    {
-        return world.Create(
-            new Transform(position),
-            Sprite.Build(12, 12),
-            new Velocity(GameConfig.BanditSpeed) { CanMoveTo = canMoveTo },
+            Sprite.Build(spriteSize, spriteSize),
+            new Velocity(config.MoveSpeed) { CanMoveTo = canMoveTo },
             new Health(GameConfig.BanditBaseHull * hullMultiplier),
             new SurfaceAI
             {
-                Config = new SurfaceAIConfig(
-                    Faction: Faction.Bandit,
-                    MoveSpeed: GameConfig.BanditSpeed,
-                    DetectRange: GameConfig.BanditDetectRange,
-                    AttackRange: GameConfig.BanditAttackRange,
-                    FireRate: GameConfig.BanditFireRate,
-                    WeaponDamage: GameConfig.BanditBaseDamage * damageMultiplier,
-                    ProjectileSpeed: GameConfig.BanditProjectileSpeed),
-                State = AIState.Patrol,
+                Config = config,
+                State = faction == Faction.Pirate ? AIState.Patrol : AIState.Idle,
                 FireCooldown = 0f,
                 WanderAngle = wanderAngle,
                 WanderTimer = 3f
             },
-            new LootDrop
+            loot
+        );
+    }
+
+    private static (SurfaceAIConfig Config, LootDrop Loot, int SpriteSize) GetSurfaceNpcProfile(
+        Faction faction, int dangerLevel, float hullMult, float damageMult)
+    {
+        return faction switch
+        {
+            Faction.Pirate => (
+                new SurfaceAIConfig(
+                    Faction: Faction.Pirate,
+                    MoveSpeed: GameConfig.BanditSpeed,
+                    DetectRange: GameConfig.BanditDetectRange,
+                    AttackRange: GameConfig.BanditAttackRange,
+                    FireRate: GameConfig.BanditFireRate,
+                    WeaponDamage: GameConfig.BanditBaseDamage * damageMult,
+                    ProjectileSpeed: GameConfig.BanditProjectileSpeed),
+                new LootDrop
+                {
+                    MinCredits = GameConfig.SurfaceLootCreditsMin * 2,
+                    MaxCredits = GameConfig.SurfaceLootCreditsMax * 2,
+                    ResourceDropChance = 0.4f,
+                    PartDropChance = 0.05f,
+                    DangerLevel = dangerLevel
+                },
+                12),
+            Faction.Trader => (
+                new SurfaceAIConfig(
+                    Faction: Faction.Trader,
+                    MoveSpeed: GameConfig.BanditSpeed * 0.7f, // traders walk slower
+                    DetectRange: 0f, // traders don't fight
+                    AttackRange: 0f,
+                    FireRate: 0f,
+                    WeaponDamage: 0f,
+                    ProjectileSpeed: 0f),
+                new LootDrop
+                {
+                    MinCredits = GameConfig.SurfaceLootCreditsMin,
+                    MaxCredits = GameConfig.SurfaceLootCreditsMax,
+                    ResourceDropChance = 0.6f,
+                    PartDropChance = 0f,
+                    DangerLevel = dangerLevel
+                },
+                12),
+            Faction.Patrol => (
+                new SurfaceAIConfig(
+                    Faction: Faction.Patrol,
+                    MoveSpeed: GameConfig.BanditSpeed * 0.9f,
+                    DetectRange: GameConfig.BanditDetectRange * 1.3f,
+                    AttackRange: GameConfig.BanditAttackRange,
+                    FireRate: GameConfig.BanditFireRate * 0.9f,
+                    WeaponDamage: GameConfig.BanditBaseDamage * damageMult * 0.8f,
+                    ProjectileSpeed: GameConfig.BanditProjectileSpeed * 1.1f),
+                new LootDrop
+                {
+                    MinCredits = 0,
+                    MaxCredits = 0,
+                    ResourceDropChance = 0f,
+                    PartDropChance = 0f,
+                    DangerLevel = dangerLevel
+                },
+                12),
+            _ => throw new ArgumentException($"Unsupported surface NPC faction: {faction}")
+        };
+    }
+
+    /// <summary>Create a landed NPC ship entity on a planet surface (static marker with animation state).</summary>
+    public static Entity CreateLandedNpcShip(World world, Vector2 position, Faction faction,
+        bool isLanding, float animProgress = 0f)
+    {
+        int size = (int)GameConfig.SurfaceNpcShipSize;
+        return world.Create(
+            new Transform(position),
+            Sprite.Build(size, size),
+            new LandedNpcShip
             {
-                MinCredits = GameConfig.SurfaceLootCreditsMin * 2,
-                MaxCredits = GameConfig.SurfaceLootCreditsMax * 2,
-                ResourceDropChance = 0.4f,
-                PartDropChance = 0.05f,
-                DangerLevel = 1
+                OwnerNpc = Entity.Null,
+                AnimProgress = animProgress,
+                IsLanding = isLanding,
+                Faction = faction
             }
         );
     }

@@ -32,12 +32,11 @@ public class PlanetSurfaceData
     public List<SettlementData> Settlements { get; init; } = [];
     public TilePos LandingZone { get; set; }
 
-    /// <summary>Spawn positions for hostile fauna (world-space coordinates).</summary>
-    public List<CreatureSpawn> FaunaSpawns { get; init; } = [];
-    /// <summary>Spawn positions for hostile bandits (world-space coordinates).</summary>
-    public List<CreatureSpawn> BanditSpawns { get; init; } = [];
     /// <summary>Spawn positions for mineable rocks (world-space coordinates + resource info).</summary>
     public List<RockSpawn> RockSpawns { get; init; } = [];
+
+    /// <summary>Runtime NPC spawn configuration (enemies, cargo, patrols). All spawning is handled dynamically.</summary>
+    public SurfaceNpcSpawnConfig NpcSpawnConfig { get; set; }
 }
 
 /// <summary>A building within a settlement layout.</summary>
@@ -76,7 +75,7 @@ public class SettlementData
 /// </summary>
 public static class PlanetSurfaceGenerator
 {
-    public static PlanetSurfaceData Generate(SeededRandom rng, PlanetData planet)
+    public static PlanetSurfaceData Generate(SeededRandom rng, PlanetData planet, int dangerLevel = 1)
     {
         int width = GameConfig.PlanetSurfaceWidth;
         int height = GameConfig.PlanetSurfaceHeight;
@@ -152,8 +151,8 @@ public static class PlanetSurfaceGenerator
         // Safety pass in case any operation modified edge tiles.
         ApplyCircularBoundary(tiles, width, height);
 
-        // Generate enemy spawn points on walkable terrain, away from landing zone and settlements
-        GenerateEnemySpawns(rng, result, planet);
+        // Generate surface NPC spawn configuration
+        result.NpcSpawnConfig = GenerateSurfaceNpcConfig(rng, result, dangerLevel);
 
         // Generate mineable rock spawn points on walkable terrain
         GenerateRockSpawns(rng, result, planet);
@@ -293,43 +292,23 @@ public static class PlanetSurfaceGenerator
     }
 
     /// <summary>
-    /// Generate spawn positions for fauna and bandits on walkable terrain,
-    /// away from the landing zone and settlements.
+    /// Generate the runtime NPC spawn configuration based on planet danger level and presence of settlements.
     /// </summary>
-    private static void GenerateEnemySpawns(SeededRandom rng, PlanetSurfaceData data, PlanetData planet)
+    private static SurfaceNpcSpawnConfig GenerateSurfaceNpcConfig(SeededRandom rng, PlanetSurfaceData data, int dangerLevel)
     {
-        float ts = GameConfig.TileSize;
-        float lzX = data.LandingZone.X * ts;
-        float lzY = data.LandingZone.Y * ts;
-        float safeRadius = 8 * ts; // minimum distance from landing zone
+        bool hasSettlement = data.Settlements.Count > 0;
 
-        int faunaCount = rng.NextInt(GameConfig.MinFaunaPerPlanet, GameConfig.MaxFaunaPerPlanet + 1);
-        int banditCount = rng.NextInt(GameConfig.MinBanditsPerPlanet, GameConfig.MaxBanditsPerPlanet + 1);
+        // Enemies scale with danger level
+        int enemies = rng.NextInt(GameConfig.SurfaceNpcMinEnemies, GameConfig.SurfaceNpcMaxEnemies + 1);
+        // Cargo and patrols only on settlement planets
+        int cargo = hasSettlement ? rng.NextInt(GameConfig.SurfaceNpcMinCargo, GameConfig.SurfaceNpcMaxCargo + 1) : 0;
+        int patrols = hasSettlement ? rng.NextInt(GameConfig.SurfaceNpcMinPatrols, GameConfig.SurfaceNpcMaxPatrols + 1) : 0;
 
-        // No fauna on ocean worlds (hostile marine life not implemented)
-        if (planet.Type == PlanetType.Ocean)
-            faunaCount = Math.Max(0, faunaCount - 3);
-
-        // Spawn fauna
-        for (int i = 0; i < faunaCount; i++)
-        {
-            if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
-            {
-                data.FaunaSpawns.Add(new CreatureSpawn(sx, sy, rng.NextFloat() * MathF.PI * 2f));
-            }
-        }
-
-        // Spawn bandits (only on planets with settlements)
-        if (data.Settlements.Count > 0)
-        {
-            for (int i = 0; i < banditCount; i++)
-            {
-                if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float sx, out float sy))
-                {
-                    data.BanditSpawns.Add(new CreatureSpawn(sx, sy, rng.NextFloat() * MathF.PI * 2f));
-                }
-            }
-        }
+        return new SurfaceNpcSpawnConfig(
+            TargetEnemies: enemies,
+            TargetCargo: cargo,
+            TargetPatrols: patrols,
+            DangerLevel: dangerLevel);
     }
 
     /// <summary>

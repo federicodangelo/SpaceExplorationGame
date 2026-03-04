@@ -60,8 +60,8 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
         if (planet.Index != 0)
             return surfaceData;
 
-        surfaceData.BanditSpawns.Clear(); // No bandits, just rocks
-        surfaceData.FaunaSpawns.Clear(); // No fauna, just rocks
+        // Override NPC spawn config to have no NPCs — just rocks for the showcase
+        surfaceData.NpcSpawnConfig = new SurfaceNpcSpawnConfig(0, 0, 0, 1);
 
         var rng = new SeededRandom(Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index).DeriveChildSeed(8100));
         var resources = new[] { ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Platinum };

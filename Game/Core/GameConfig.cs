@@ -121,22 +121,11 @@ public static class GameConfig
     public const float AvatarFireRate = 0.35f;           // seconds between avatar shots
     public const float BaseAvatarWeaponDamage = 10f;     // base avatar weapon damage
 
-    public const int MinFaunaPerPlanet = 3;
-    public const int MaxFaunaPerPlanet = 10;
-    public const int MinBanditsPerPlanet = 0;
-    public const int MaxBanditsPerPlanet = 4;
-
-    public const float FaunaSpeed = 80f;                // fauna walking speed
-    public const float FaunaDetectRange = 120f;         // fauna aggro range
-    public const float FaunaAttackRange = 25f;          // fauna melee range (contact damage via fast projectile)
-    public const float FaunaAttackRate = 1.2f;          // seconds between fauna attacks
-    public const float FaunaBaseDamage = 8f;
-    public const float FaunaBaseHull = 30f;
-
-    public const float BanditSpeed = 100f;              // bandit walking speed
-    public const float BanditDetectRange = 160f;        // bandit aggro range
-    public const float BanditAttackRange = 140f;        // bandit shooting range
-    public const float BanditFireRate = 1.0f;           // seconds between bandit shots
+    // Surface NPC combat stats (used by all surface factions — pirates reuse bandit stats)
+    public const float BanditSpeed = 100f;              // NPC walking speed
+    public const float BanditDetectRange = 160f;        // NPC aggro range
+    public const float BanditAttackRange = 140f;        // NPC shooting range
+    public const float BanditFireRate = 1.0f;           // seconds between NPC shots
     public const float BanditProjectileSpeed = 250f;
     public const float BanditBaseDamage = 6f;
     public const float BanditBaseHull = 50f;
@@ -153,6 +142,23 @@ public static class GameConfig
     public const float SurfaceRockMaxHp = 40f;
     public const int SurfaceRockMinResource = 1;          // min resource units per rock
     public const int SurfaceRockMaxResource = 5;           // max resource units per rock
+
+    // ── Dynamic Surface NPC Spawning ─────────────────────────────
+    public const float SurfaceNpcLandingDuration = 2.0f;     // landing / takeoff animation length
+    public const float SurfaceNpcSpawnCheckInterval = 20f;   // seconds between surface spawn checks
+    public const float SurfaceNpcEnemyRespawnDelay = 60f;    // seconds before a killed enemy is replaced
+    public const float SurfaceNpcCargoRespawnDelay = 30f;    // seconds before a killed cargo is replaced
+    public const float SurfaceNpcPatrolRespawnDelay = 40f;   // seconds before a killed patrol is replaced
+    public const float SurfaceNpcInitialSpawnFraction = 0.6f;// fraction spawned instantly on landing
+    public const int SurfaceNpcMinEnemies = 10;
+    public const int SurfaceNpcMaxEnemies = 20;
+    public const int SurfaceNpcMinCargo = 5;
+    public const int SurfaceNpcMaxCargo = 10;
+    public const int SurfaceNpcMinPatrols = 5;
+    public const int SurfaceNpcMaxPatrols = 10;
+    public const float SurfaceNpcShipSize = 64f;             // landed ship sprite size
+    public const float SurfaceNpcInactivityTimeout = 60f;  // seconds of idle wandering before NPC departs
+    public const float SurfaceNpcBoardingSpeed = 80f;      // walk speed toward ship when boarding
 
     // ── Audio ───────────────────────────────────────────────────
     public const float AudioMasterVolume = 0.5f;

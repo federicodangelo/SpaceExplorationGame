@@ -1,4 +1,5 @@
 using System.Numerics;
+using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using Engine.Platform;
@@ -135,6 +136,67 @@ public class EnemyShipRenderer
             renderer.DrawRectScreen(screenPos.X, shieldY, w, h, RenderColors.ShieldBarBackground);
             renderer.DrawRectScreen(screenPos.X, shieldY, w * shieldPercent, h, RenderColors.ShieldBarFill);
         }
+    }
+
+    /// <summary>Render all landed NPC ships on a planet surface with landing/takeoff animations.</summary>
+    public void RenderLandedShips(ISpriteRenderer renderer, Camera camera, World world)
+    {
+        int baseSize = (int)GameConfig.SurfaceNpcShipSize;
+
+        var query = new QueryDescription().WithAll<Transform, LandedNpcShip, Sprite>();
+        world.Query(in query, (ref Transform transform, ref LandedNpcShip ship, ref Sprite sprite) =>
+        {
+            var pos = transform.Position;
+            bool animating = (ship.IsLanding && ship.AnimProgress < 1f) ||
+                             (!ship.IsLanding && ship.AnimProgress < 1f);
+
+            float scale;
+            float shadowOffset;
+
+            if (animating)
+            {
+                float t = ship.IsLanding
+                    ? ship.AnimProgress           // 0→1 = descending → grounded
+                    : 1f - ship.AnimProgress;     // 1→0 = grounded → ascending
+
+                float eased = t * t * (3f - 2f * t);
+                scale = 1f + (1f - eased) * 0.6f;
+                shadowOffset = (1f - eased) * 20f;
+            }
+            else
+            {
+                scale = 1f;
+                shadowOffset = 0f;
+            }
+
+            // Shadow (centered under the ship, offset downward during flight)
+            float shadowW = baseSize * scale * 0.8f;
+            float shadowH = baseSize * scale * 0.25f;
+            float shadowAlpha = 1f - shadowOffset / 20f;
+            if (shadowAlpha > 0.1f)
+            {
+                byte a = (byte)(80 * shadowAlpha);
+                renderer.DrawRect(camera,
+                    pos + new Vector2(-shadowW * 0.5f, shadowOffset - shadowH * 0.5f),
+                    (int)shadowW, (int)shadowH,
+                    new Color3(a, a, a));
+            }
+
+            // Delegate to existing ship rendering with scaled size
+            int scaledSize = (int)(baseSize * scale);
+            Render(renderer, camera, pos, 0f, ship.Faction, scaledSize);
+
+            // Engine glow during landing/takeoff
+            if (animating)
+            {
+                float glow = 1f - (ship.IsLanding ? ship.AnimProgress : 1f - ship.AnimProgress);
+                byte glowIntensity = (byte)(200 * glow);
+                var engineColor = new Color4(glowIntensity, (byte)(glowIntensity * 0.7f),
+                    (byte)(glowIntensity * 0.3f), (byte)(180 * glow));
+                renderer.DrawFilledCircle(camera, pos + new Vector2(-baseSize * scale * 0.4f, 0f),
+                    3f * scale, engineColor);
+            }
+        });
     }
 
     private static Vector2 Rotate(Vector2 v, float degrees)

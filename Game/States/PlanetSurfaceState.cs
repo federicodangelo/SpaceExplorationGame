@@ -356,8 +356,8 @@ public class PlanetSurfaceState : GameState
         // Destroyed entities → explosions + SFX
         CombatHelper.ProcessDestroyedEntities(game.Audio, _explosions,
             _sim.DestroyedEntitiesLastUpdate, playerPos,
-            faction => faction == Faction.Fauna
-                ? new Color3(200, 80, 60) : new Color3(255, 150, 50),
+            faction => faction == Faction.Pirate
+                ? new Color3(255, 100, 50) : new Color3(200, 180, 100),
             asteroidSize: 12f, playerSize: 25f, npcSize: 15f,
             playerExplosionColor: new Color3(255, 120, 80), npcSfxVolume: 0.7f);
     }
@@ -606,6 +606,9 @@ public class PlanetSurfaceState : GameState
                 (float)game.GlobalTime);
         }
 
+        // NPC ships landed on the surface
+        game.EnemyShipRenderer.RenderLandedShips(renderer, camera, world);
+
         // Ship
         var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
         game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
@@ -631,6 +634,10 @@ public class PlanetSurfaceState : GameState
                 vehicleTf.Rotation, _inVehicle, steerAngle);
         }
 
+        // NPCs on foot
+        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planet.Type);
+
+
         // Player avatar
         if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
         {
@@ -639,9 +646,8 @@ public class PlanetSurfaceState : GameState
                 game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
         }
 
-        // Rocks, enemies, projectiles
+        // Rocks, enemies, NPC ships, projectiles
         SurfaceRockRenderer.RenderRocks(renderer, camera, world);
-        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planet.Type);
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Damage/explosions

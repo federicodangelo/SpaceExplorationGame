@@ -29,10 +29,8 @@ public static class FactionRules
             (targetFaction == Faction.Player || (targetFaction.HasValue && targetFaction != Faction.Pirate)))
             return false;
 
-        // Fauna/Bandit projectiles should not hit each other
-        if (attackerFaction is Faction.Fauna or Faction.Bandit &&
-            targetFaction is Faction.Fauna or Faction.Bandit)
-            return false;
+        // On surfaces, pirate projectiles should not hit other pirates (handled by same-faction check above)
+        // Patrol/trader projectiles only hit pirates (handled above)
 
         return true;
     }
