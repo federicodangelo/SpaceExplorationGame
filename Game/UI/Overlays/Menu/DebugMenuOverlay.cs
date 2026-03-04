@@ -1,7 +1,6 @@
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
-using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;

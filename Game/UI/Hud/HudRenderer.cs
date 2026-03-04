@@ -2,7 +2,6 @@ using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.UI.Hud;

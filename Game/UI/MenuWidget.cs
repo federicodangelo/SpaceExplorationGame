@@ -1,5 +1,3 @@
-using SpaceExplorationGame.Core;
-using Engine.Platform;
 
 namespace SpaceExplorationGame.UI;
 

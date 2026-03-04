@@ -1,6 +1,5 @@
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Core;
-using Engine.Platform;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
 using SpaceExplorationGame.Core.Config;

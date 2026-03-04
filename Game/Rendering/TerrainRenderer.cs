@@ -1,4 +1,3 @@
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 
 namespace SpaceExplorationGame.Rendering;

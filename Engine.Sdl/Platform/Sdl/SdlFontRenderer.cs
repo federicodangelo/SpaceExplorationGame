@@ -1,7 +1,6 @@
 using SDL3;
 using Engine.Core;
 using Engine.Rendering.Base;
-using System.Numerics;
 
 namespace Engine.Platform.Sdl;
 

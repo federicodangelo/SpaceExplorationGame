@@ -1,5 +1,4 @@
 using SpaceExplorationGame.Core;
-using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;

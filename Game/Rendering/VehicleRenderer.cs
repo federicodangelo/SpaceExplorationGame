@@ -1,6 +1,4 @@
 using System.Numerics;
-using SpaceExplorationGame.Core;
-using Engine.Platform;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -329,12 +327,5 @@ public class VehicleRenderer
         var w2 = camera.WorldToScreen(center + Rotate(p2, rotationDeg));
         var w3 = camera.WorldToScreen(center + Rotate(p3, rotationDeg));
         renderer.DrawFilledTriangleScreen(w1.X, w1.Y, w2.X, w2.Y, w3.X, w3.Y, color);
-    }
-
-    private static void DrawRotatedQuad(ISpriteRenderer renderer, Camera camera, Vector2 center,
-        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
-    {
-        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p2, p3, color);
-        DrawRotatedTriangle(renderer, camera, center, rotationDeg, p1, p3, p4, color);
     }
 }

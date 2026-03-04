@@ -1,4 +1,3 @@
-using System.Numerics;
 using System.Text;
 using SDL3;
 using Engine.Platform.Base;

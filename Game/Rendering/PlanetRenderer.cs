@@ -2,7 +2,6 @@ using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Rendering;

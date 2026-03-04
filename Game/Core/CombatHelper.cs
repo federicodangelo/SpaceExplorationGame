@@ -4,7 +4,6 @@ using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using SpaceExplorationGame.Rendering;
 
 namespace SpaceExplorationGame.Core;

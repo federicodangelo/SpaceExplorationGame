@@ -1,5 +1,4 @@
 using SDL3;
-using Engine.Core;
 using Engine.Platform.Base;
 
 namespace Engine.Platform.Sdl;

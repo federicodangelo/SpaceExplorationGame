@@ -1,6 +1,5 @@
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;

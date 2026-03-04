@@ -1,7 +1,5 @@
 using Arch.Core;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
-using Engine.Platform;
 
 namespace SpaceExplorationGame.Rendering;
 

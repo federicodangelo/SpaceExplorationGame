@@ -11,7 +11,6 @@ using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
-using Engine.Platform;
 using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;

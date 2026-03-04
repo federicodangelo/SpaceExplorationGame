@@ -1,7 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Map.Base;

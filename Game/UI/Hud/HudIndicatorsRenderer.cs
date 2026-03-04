@@ -3,9 +3,7 @@ using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
-using Engine.Platform;
 using Engine.Rendering.Base;
-using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Hud;
