@@ -16,7 +16,7 @@ public static class CombatConfig
 
     // ── Surface Combat ──────────────────────────────────────────
     public const float AvatarProjectileSpeed = 400f;    // avatar gun projectile speed
-    public const float AvatarProjectileLifetime = 1.5f; // seconds before despawn
+    public const float AvatarProjectileLifetime = 0.75f; // seconds before despawn
     public const float AvatarFireRate = 0.35f;          // seconds between avatar shots
     public const float BaseAvatarWeaponDamage = 10f;    // base avatar weapon damage
 
