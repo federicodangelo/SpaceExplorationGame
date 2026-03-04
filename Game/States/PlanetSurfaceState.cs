@@ -1,7 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
-using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.Input;
@@ -42,9 +41,9 @@ public class PlanetSurfaceState : GameState
         CameraConfig.PlanetSurfaceZoomMin, CameraConfig.PlanetSurfaceZoomMax);
 
     // ── Input systems ───────────────────────────────────────────────
-    private PlayerAvatarInputSystem _inputSystem = null!;
+    private PlayerAvatarInputSystem _avatarInputSystem = null!;
     private CameraFollowSystem _cameraFollowSystem = null!;
-    private PlayerVehicleInputSystem? _vehicleMovementSystem;
+    private PlayerVehicleInputSystem? _vehicleInputSystem;
 
     // ── Background stars ──────────────────────────────────────────────
     private StarsBackgroundRenderer? _starsBackground;
@@ -57,8 +56,7 @@ public class PlanetSurfaceState : GameState
     // ── Player state (rendering/input only) ─────────────────────────
     private bool _inVehicle;
     private bool _playerInsideShip = true;
-    private float _playerFireCooldown;
-    private Vector2 _lastMoveDir = new(0, -1);
+
 
     // ── Combat music ────────────────────────────────────────────────
     private string _activeMusicTheme = AudioThemes.PlanetSurface;
@@ -157,8 +155,8 @@ public class PlanetSurfaceState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed);
-        _inputSystem.Initialize();
+        _avatarInputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed, _camera);
+        _avatarInputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
         _cameraFollowSystem.Initialize();
@@ -251,25 +249,14 @@ public class PlanetSurfaceState : GameState
             _camera.ClampZoom();
         }
 
-        // Track player facing
-        Vector2 moveDir = input.GetActionAxisDirection(InputActionAxis.Movement);
-        if (moveDir != Vector2.Zero) _lastMoveDir = moveDir;
-
         // Write movement input
         if (!_sim.PlayerDead && !_playerInsideShip)
         {
             float dt = game.DeltaTime;
-            if (_inVehicle)
-            {
-                _vehicleMovementSystem?.Update(in dt);
-            }
-            else
-            {
-                _inputSystem.Update(in dt);
-            }
-
-            // Player shooting
-            HandlePlayerShooting(game, dt);
+            _sim.SyncPlayerAvatarComponent(_simPlayer);
+            _sim.SyncPlayerVehicleComponent(_simPlayer);
+            _avatarInputSystem.Update(in dt);
+            _vehicleInputSystem?.Update(in dt);
         }
     }
 
@@ -345,9 +332,14 @@ public class PlanetSurfaceState : GameState
             ? _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position
             : _camera.Position;
 
-        // Enemy weapon fire SFX
-        foreach (var spawn in _sim.EnemyProjectilesSpawnedLastUpdate)
-            game.Audio.PlaySfxAtDistance(AudioSfx.EnemyLaser, spawn.Pos, playerPos, 0.4f);
+        // Avatar weapon fire SFX (player + NPC, distinguished by Faction)
+        foreach (var spawn in _sim.AvatarProjectilesSpawnedLastUpdate)
+        {
+            if (spawn.Faction == Faction.Player)
+                game.Audio.PlaySfx(AudioSfx.LaserFire, 0.5f);
+            else
+                game.Audio.PlaySfxAtDistance(AudioSfx.EnemyLaser, spawn.Pos, playerPos, 0.4f);
+        }
 
         // Damage popups + SFX
         CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
@@ -362,52 +354,11 @@ public class PlanetSurfaceState : GameState
             playerExplosionColor: new Color3(255, 120, 80), npcSfxVolume: 0.7f);
     }
 
-    private void HandlePlayerShooting(Game game, float dt)
-    {
-        if (_inVehicle || _sim.PlayerDead || _playerInsideShip) return;
-        _playerFireCooldown -= dt;
-        var input = game.Input;
-
-        if (input.IsActionDown(InputAction.FireWeapon) && _playerFireCooldown <= 0)
-        {
-            var avatarStats = game.Player.GetCombinedAvatarStats();
-            float weaponDamage = CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
-            _playerFireCooldown = CombatConfig.AvatarFireRate;
-
-            ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-
-            Vector2 aimDir;
-            var gamepadHeading = input.ActiveInputMethod == InputMethod.Gamepad
-                ? input.GetActionAxisDirection(InputActionAxis.Heading) : Vector2.Zero;
-
-            if (gamepadHeading != Vector2.Zero)
-                aimDir = gamepadHeading;
-            else if (input.IsMouseDown(MouseButton.Left))
-            {
-                var mouseWorld = _camera.ScreenToWorld(new Vector2(input.MouseX, input.MouseY));
-                aimDir = Vector2.Normalize(mouseWorld - avatarTf.Position);
-                if (float.IsNaN(aimDir.X)) aimDir = _lastMoveDir;
-            }
-            else
-                aimDir = _lastMoveDir;
-
-            var spawnPos = avatarTf.Position + aimDir * 14f;
-            EntityFactory.CreateProjectile(_sim.EcsWorld, _simPlayer.Entity, spawnPos, aimDir,
-                weaponDamage, CombatConfig.AvatarProjectileSpeed, Faction.Player,
-                new Color3(100, 255, 100), CombatConfig.AvatarProjectileLifetime, Vector2.Zero);
-            game.Audio.PlaySfx(AudioSfx.LaserFire, 0.5f);
-        }
-    }
-
     private void ZeroPlayerMovementAcceleration()
     {
         if (_sim == null || _simPlayer == null || !_sim.EcsWorld.IsAlive(_simPlayer.Entity)) return;
-        ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-        vel.Acceleration = Vector2.Zero;
-        if (!_inVehicle)
-        {
-            vel.Linear = Vector2.Zero;
-        }
+        ref var avatarInput = ref _sim.EcsWorld.Get<AvatarInputComponent>(_simPlayer.Entity);
+        avatarInput = AvatarInputComponent.Default();
     }
 
     private void HandleInteraction(Game game)
@@ -448,59 +399,16 @@ public class PlanetSurfaceState : GameState
 
     private void MountVehicle(Game game)
     {
-        if (!_sim.LocalVehicleDeployed)
-        {
-            var shipTf = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
-            _sim.DeployVehicle(shipTf.Position.X, shipTf.Position.Y);
-        }
-
-        ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-        ref var vTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
-        avatarTf.Position = vTf.Position;
-        avatarTf.Rotation = vTf.Rotation;
-
-        var vStats = game.Player.GetCombinedVehicleStats();
-        _vehicleMovementSystem = new PlayerVehicleInputSystem(
-            _sim.EcsWorld, game.Input, _simPlayer.Entity,
-            acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : AvatarConfig.VehicleAcceleration,
-            maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed,
-            rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed,
-            friction: AvatarConfig.VehicleFriction + vStats.Friction);
-
-        if (_sim.EcsWorld.Has<Velocity>(_simPlayer.Entity))
-        {
-            ref var avatarVelocity = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-            avatarVelocity.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed;
-            avatarVelocity.MaxRotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed;
-        }
-
+        _sim.MountVehicle(_simPlayer);
+        _vehicleInputSystem = new PlayerVehicleInputSystem(_sim.EcsWorld, game.Input, _simPlayer.Entity);
         _inVehicle = true;
-        game.Player.InVehicle = true;
     }
 
     private void DismountVehicle(Game game)
     {
-        ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-        if (_sim.LocalVehicleDeployed)
-        {
-            ref var vehicleTf = ref _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
-            avatarTf.Position = vehicleTf.Position + new Vector2(20, 0);
-        }
-        avatarTf.Rotation = 0f;
-
-        if (_sim.EcsWorld.Has<Velocity>(_simPlayer.Entity))
-        {
-            ref var avatarVelocity = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-            float avatarSpeed = game.Player.AvatarWalkSpeed;
-            avatarVelocity.MaxSpeed = avatarSpeed;
-            avatarVelocity.MaxRotationSpeed = 0f;
-            avatarVelocity.Linear = Vector2.Zero;
-            avatarVelocity.Acceleration = Vector2.Zero;
-            avatarVelocity.RotationVelocity = 0f;
-        }
-
+        _sim.DismountVehicle(_simPlayer, game.Player.AvatarWalkSpeed);
+        _vehicleInputSystem = null;
         _inVehicle = false;
-        game.Player.InVehicle = false;
     }
 
     private void BoardShip(Game game)

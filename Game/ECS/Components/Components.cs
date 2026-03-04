@@ -154,6 +154,59 @@ public struct ShipInputComponent
     }
 }
 
+/// <summary>Per-frame avatar input intent used by both player and NPC walking entities. Analogous to ShipInputComponent.</summary>
+[Component]
+public struct AvatarInputComponent
+{
+    /// <summary>Desired world-space movement velocity (magnitude = desired speed). Set each tick by player input or AI. Used for walking.</summary>
+    public Vector2 DesiredVelocity;
+    /// <summary>True if the entity should fire its weapon this tick (subject to cooldown in AvatarSystem).</summary>
+    public bool Shoot;
+    /// <summary>Normalized direction to fire. Must be set when Shoot is true.</summary>
+    public Vector2 AimDirection;
+
+    // ── Vehicle input (used when AvatarComponent.InVehicle is true) ──────────
+    /// <summary>Normalized heading direction the vehicle should face. Set by vehicle input system.</summary>
+    public Vector2 HeadingDirection;
+    /// <summary>Forward throttle 0..1. Set by vehicle input system.</summary>
+    public float Throttle;
+    /// <summary>True when actively braking. Set by vehicle input system.</summary>
+    public bool IsBraking;
+
+    public static AvatarInputComponent Default() => new();
+}
+
+/// <summary>Avatar combat and movement stats shared by all walking entities. Analogous to ShipComponent.</summary>
+[Component]
+public struct AvatarComponent
+{
+    public Faction Faction;
+    /// <summary>When true the entity is mounted in a vehicle; AvatarSystem skips movement and firing.</summary>
+    public bool InVehicle;
+    /// <summary>Weapon damage per projectile. 0 = no weapon.</summary>
+    public float WeaponDamage;
+    /// <summary>Seconds between shots (fire rate). 0 = no weapon.</summary>
+    public float WeaponFireRate;
+    /// <summary>Projectile travel speed in world units per second.</summary>
+    public float WeaponProjectileSpeed;
+    /// <summary>Current fire cooldown countdown. Managed by AvatarSystem; positive = not ready to fire.</summary>
+    public float FireCooldown;
+    /// <summary>Projectile render color.</summary>
+    public Color3 ProjectileColor;
+}
+
+/// <summary>Vehicle physics stats. Added to a player avatar entity when they mount a vehicle; removed on dismount.
+/// Read by VehicleSystem to apply physics, which also requires AvatarInputComponent.{HeadingDirection,Throttle,IsBraking}.</summary>
+[Component]
+public struct VehicleComponent
+{
+    public float Acceleration;
+    public float MaxSpeed;
+    public float RotationSpeed;
+    public float Friction;
+    public float BrakeMultiplier;
+}
+
 /// <summary>Ship combat and movement stats/config shared by all ships.</summary>
 [Component]
 public struct ShipComponent
@@ -330,15 +383,12 @@ public struct AsteroidField
     public float Size;                 // visual size for rendering
 }
 
-/// <summary>Immutable configuration shared across surface enemies of the same type.</summary>
+/// <summary>Immutable configuration for surface enemy AI behaviour (movement, detection, engagement ranges).</summary>
 public sealed record SurfaceAIConfig(
     Faction Faction,
     float MoveSpeed,
     float DetectRange,
-    float AttackRange,
-    float FireRate,
-    float WeaponDamage,
-    float ProjectileSpeed);
+    float AttackRange);
 
 /// <summary>AI for surface enemies (fauna and bandits). Config holds immutable stats; mutable state lives here.</summary>
 [Component]
@@ -347,7 +397,6 @@ public struct SurfaceAI
     public SurfaceAIConfig Config;
     public AIState State;
     public float StateTimer;         // time in current state
-    public float FireCooldown;       // seconds until next attack
     public float WanderAngle;        // current wander direction
     public float WanderTimer;        // time until next wander direction change
 }

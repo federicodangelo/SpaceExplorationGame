@@ -35,6 +35,7 @@ public class InteriorSimulation : SimulationBase
     // ── ECS Systems ─────────────────────────────────────────────────
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
+    private AvatarSystem _avatarSystem = null!;
 
 
 
@@ -65,6 +66,9 @@ public class InteriorSimulation : SimulationBase
 
         _velocitySystem = new VelocitySystem(EcsWorld);
         _velocitySystem.Initialize();
+
+        _avatarSystem = new AvatarSystem(EcsWorld);
+        _avatarSystem.Initialize();
     }
 
     public override void Update(UpdateContext ctx)
@@ -74,6 +78,7 @@ public class InteriorSimulation : SimulationBase
         t.Begin();
 
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Avatars", () => _avatarSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
     }

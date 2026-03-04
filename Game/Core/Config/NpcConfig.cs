@@ -22,7 +22,7 @@ public static class NpcConfig
 
     // ── Dynamic Surface NPC Spawning ─────────────────────────────
     public const float SurfaceNpcLandingDuration = 2.0f;      // landing / takeoff animation length
-    public const float SurfaceNpcSpawnCheckInterval = 20f;    // seconds between surface spawn checks
+    public const float SurfaceNpcSpawnCheckInterval = 15f;    // seconds between surface spawn checks
     public const float SurfaceNpcEnemyRespawnDelay = 60f;     // seconds before a killed enemy is replaced
     public const float SurfaceNpcCargoRespawnDelay = 30f;     // seconds before a killed cargo is replaced
     public const float SurfaceNpcPatrolRespawnDelay = 40f;    // seconds before a killed patrol is replaced

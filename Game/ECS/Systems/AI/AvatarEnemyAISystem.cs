@@ -8,9 +8,10 @@ using SpaceExplorationGame.ECS.Components;
 namespace SpaceExplorationGame.ECS.Systems.AI;
 
 /// <summary>
-/// AI behavior system for surface enemies (fauna and bandits).
-/// Walk-based movement (no rotation physics) with simple chase/attack logic.
-/// Uses Arch source generator for the main entity query.
+/// AI behaviour system for surface enemies (fauna and bandits).
+/// Walk-based movement with simple chase/attack logic.
+/// Writes movement and fire intent into <see cref="AvatarInputComponent"/>;
+/// <see cref="AvatarSystem"/> handles actual velocity updates and projectile spawning.
 /// </summary>
 public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 {
@@ -19,12 +20,6 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
     private static readonly QueryDescription _playerAvatarQuery =
         new QueryDescription().WithAll<PlayerControlled, Transform, Health>();
-
-    // Projectiles spawned this frame (created after query completes to avoid mutation during iteration)
-    private readonly List<SurfaceProjectileSpawn> _pendingProjectiles = [];
-
-    /// <summary>Projectiles spawned during the last Update (available until next Update).</summary>
-    public IReadOnlyList<SurfaceProjectileSpawn> ProjectilesSpawnedLastUpdate => _pendingProjectiles;
 
     // Per-frame cached state for [Query] method access
     private Entity _currentAIEntity;
@@ -39,18 +34,9 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        _pendingProjectiles.Clear();
         _dt = dt;
         QueryPlayerState();
-
         ProcessSurfaceAIQuery(World);
-
-        // Spawn pending projectiles
-        foreach (var spawn in _pendingProjectiles)
-        {
-            EntityFactory.CreateProjectile(World, spawn.OwnerEntity, spawn.Pos, spawn.Dir, spawn.Damage, spawn.Speed,
-                spawn.Faction, spawn.Color, spawn.Lifetime, Vector2.Zero);
-        }
     }
 
     private void QueryPlayerState()
@@ -68,17 +54,18 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
     /// <summary>Source-generated query: iterates all surface AI entities.</summary>
     [Query]
-    [All(typeof(Transform), typeof(Velocity), typeof(SurfaceAI), typeof(Health))]
+    [All(typeof(Transform), typeof(Velocity), typeof(SurfaceAI), typeof(Health), typeof(AvatarInputComponent))]
     public void ProcessSurfaceAI(Entity entity, ref Transform transform, ref Velocity velocity,
-        ref SurfaceAI ai, ref Health health)
+        ref SurfaceAI ai, ref Health health, ref AvatarInputComponent avatarInput)
     {
         if (health.IsDead) return;
         _currentAIEntity = entity;
 
         ai.StateTimer += _dt;
-        ai.FireCooldown -= _dt;
-        velocity.RotationVelocity = 0f;
-        velocity.Acceleration = Vector2.Zero;
+
+        // Clear per-tick intent; movement methods below will fill it in
+        avatarInput.DesiredVelocity = Vector2.Zero;
+        avatarInput.Shoot = false;
 
         // NPCs that are boarding their ship walk straight toward it and ignore normal AI
         if (World.Has<SurfaceNpcState>(entity))
@@ -86,7 +73,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             ref var npcState = ref World.Get<SurfaceNpcState>(entity);
             if (npcState.Phase == SurfaceNpcPhase.BoardingShip)
             {
-                UpdateBoardingNpc(ref transform, ref velocity, ref npcState);
+                UpdateBoardingNpc(ref transform, ref velocity, ref avatarInput, ref npcState);
                 return;
             }
         }
@@ -97,14 +84,14 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdateHostileNpc(ref transform, ref velocity, ref ai, ref health, distToPlayer);
+                UpdateHostileNpc(ref transform, ref ai, ref health, ref avatarInput, distToPlayer);
                 wasInCombat = ai.State is AIState.Chase or AIState.Attack or AIState.Flee;
                 break;
             case Faction.Patrol:
-                UpdatePatrolNpc(ref transform, ref velocity, ref ai, ref health, distToPlayer);
+                UpdatePatrolNpc(ref transform, ref ai, ref avatarInput);
                 break;
             case Faction.Trader:
-                UpdateTraderNpc(ref transform, ref velocity, ref ai, distToPlayer);
+                UpdateTraderNpc(ref transform, ref ai, ref avatarInput);
                 break;
         }
 
@@ -123,8 +110,8 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     }
 
     /// <summary>Hostile NPC (pirate) — chases and attacks the player, flees at low health.</summary>
-    private void UpdateHostileNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        ref Health health, float dist)
+    private void UpdateHostileNpc(ref Transform transform, ref SurfaceAI ai,
+        ref Health health, ref AvatarInputComponent avatarInput, float dist)
     {
         float hullPercent = health.HullPercent;
 
@@ -134,7 +121,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             SetState(ref ai, AIState.Flee);
             var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
             if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            SetAccelerationTowardVelocity(ref velocity, fleeDir * ai.Config.MoveSpeed * 1.2f);
+            avatarInput.DesiredVelocity = fleeDir * ai.Config.MoveSpeed * 1.2f;
             return;
         }
 
@@ -152,47 +139,44 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             if (!inAttackRange)
             {
                 SetState(ref ai, AIState.Chase);
-                SetAccelerationTowardVelocity(ref velocity, dir * ai.Config.MoveSpeed);
+                avatarInput.DesiredVelocity = dir * ai.Config.MoveSpeed;
             }
             else
             {
                 SetState(ref ai, AIState.Attack);
                 var strafeDir = new Vector2(-dir.Y, dir.X) * MathF.Sin(ai.StateTimer * 2f);
-                SetAccelerationTowardVelocity(ref velocity, strafeDir * ai.Config.MoveSpeed * 0.3f);
+                avatarInput.DesiredVelocity = strafeDir * ai.Config.MoveSpeed * 0.3f;
             }
 
-            if (dist < ai.Config.AttackRange && ai.FireCooldown <= 0)
+            // Signal fire intent — AvatarSystem checks cooldown and spawns the projectile
+            if (dist < ai.Config.AttackRange)
             {
-                ai.FireCooldown = ai.Config.FireRate;
-                _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, ai.Config.Faction, new Color3(255, 150, 50), CombatConfig.AvatarProjectileLifetime, _currentAIEntity));
+                avatarInput.Shoot = true;
+                avatarInput.AimDirection = dir;
             }
         }
         else
         {
-            WanderAround(ref transform, ref velocity, ref ai);
+            WanderAround(ref transform, ref ai, ref avatarInput);
         }
     }
 
-    /// <summary>Patrol NPC — wanders around, attacks pirates if detected (not player unless provoked). Friendly to player.</summary>
-    private void UpdatePatrolNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        ref Health health, float distToPlayer)
+    /// <summary>Patrol NPC — wanders around. Friendly to player.</summary>
+    private void UpdatePatrolNpc(ref Transform transform, ref SurfaceAI ai,
+        ref AvatarInputComponent avatarInput)
     {
-        // Patrols just wander — they don't target the player
-        // (Future: they could chase nearby pirates if we add NPC-vs-NPC targeting)
-        WanderAround(ref transform, ref velocity, ref ai);
+        WanderAround(ref transform, ref ai, ref avatarInput);
     }
 
-    /// <summary>Trader NPC — wanders toward settlements, never fights.</summary>
-    private void UpdateTraderNpc(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai,
-        float distToPlayer)
+    /// <summary>Trader NPC — wanders peacefully, never fights.</summary>
+    private void UpdateTraderNpc(ref Transform transform, ref SurfaceAI ai,
+        ref AvatarInputComponent avatarInput)
     {
-        // Traders just wander peacefully
-        WanderAround(ref transform, ref velocity, ref ai);
+        WanderAround(ref transform, ref ai, ref avatarInput);
     }
 
-    /// <summary>Shared wander/patrol behavior.</summary>
-    private void WanderAround(ref Transform transform, ref Velocity velocity, ref SurfaceAI ai)
+    /// <summary>Shared wander/patrol behaviour.</summary>
+    private void WanderAround(ref Transform transform, ref SurfaceAI ai, ref AvatarInputComponent avatarInput)
     {
         SetState(ref ai, AIState.Patrol);
         ai.WanderTimer -= _dt;
@@ -204,11 +188,12 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
         float wanderSpeed = ai.Config.MoveSpeed * 0.4f;
         var wanderDir = new Vector2(MathF.Cos(ai.WanderAngle), MathF.Sin(ai.WanderAngle));
-        SetAccelerationTowardVelocity(ref velocity, wanderDir * wanderSpeed);
+        avatarInput.DesiredVelocity = wanderDir * wanderSpeed;
     }
 
     /// <summary>NPC is walking back to its ship to board it. Once close enough, the manager handles takeoff.</summary>
-    private void UpdateBoardingNpc(ref Transform transform, ref Velocity velocity, ref SurfaceNpcState npcState)
+    private void UpdateBoardingNpc(ref Transform transform, ref Velocity velocity,
+        ref AvatarInputComponent avatarInput, ref SurfaceNpcState npcState)
     {
         if (!World.IsAlive(npcState.ShipEntity)) return;
 
@@ -218,24 +203,15 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
         if (dist < 8f)
         {
-            // Close enough — stop moving, manager will handle the transition to takeoff
-            velocity.Acceleration = Vector2.Zero;
+            // Close enough — hard-stop; AvatarSystem will see DesiredVelocity=0 → zero acceleration
+            avatarInput.DesiredVelocity = Vector2.Zero;
             velocity.Linear = Vector2.Zero;
         }
         else
         {
             var dir = toShip / dist;
-            SetAccelerationTowardVelocity(ref velocity, dir * NpcConfig.SurfaceNpcBoardingSpeed);
+            avatarInput.DesiredVelocity = dir * NpcConfig.SurfaceNpcBoardingSpeed;
         }
-    }
-
-    /// <summary>
-    /// Sets acceleration intent toward a desired velocity, with a pre-check collision test.
-    /// If the predicted next position is blocked, desired velocity is zero.
-    /// </summary>
-    private void SetAccelerationTowardVelocity(ref Velocity velocity, Vector2 desiredVelocity)
-    {
-        velocity.Acceleration += (desiredVelocity - velocity.Linear) * 14f;
     }
 
     private static void SetState(ref SurfaceAI ai, AIState newState)

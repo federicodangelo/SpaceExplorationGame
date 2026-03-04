@@ -1,4 +1,3 @@
-using Arch.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;

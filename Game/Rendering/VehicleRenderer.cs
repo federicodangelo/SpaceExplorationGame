@@ -316,16 +316,4 @@ public class VehicleRenderer
     private static void Line(ISpriteRenderer renderer, Camera camera, Vector2 center,
         float rot, float s, (float x, float y) a, (float x, float y) b, Color4 color)
         => renderer.DrawLine(camera, center + W(a.x, a.y, s, rot), center + W(b.x, b.y, s, rot), color);
-
-    // Legacy shims kept for API stability.
-    private static Vector2 Rotate(Vector2 v, float deg) => R(v, deg);
-
-    private static void DrawRotatedTriangle(ISpriteRenderer renderer, Camera camera, Vector2 center,
-        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
-    {
-        var w1 = camera.WorldToScreen(center + Rotate(p1, rotationDeg));
-        var w2 = camera.WorldToScreen(center + Rotate(p2, rotationDeg));
-        var w3 = camera.WorldToScreen(center + Rotate(p3, rotationDeg));
-        renderer.DrawFilledTriangleScreen(w1.X, w1.Y, w2.X, w2.Y, w3.X, w3.Y, color);
-    }
 }

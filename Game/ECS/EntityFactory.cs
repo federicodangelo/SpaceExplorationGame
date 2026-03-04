@@ -155,14 +155,27 @@ public static class EntityFactory
     }
 
     /// <summary>Create the player avatar entity for planet surface or interior walking.</summary>
+    /// <param name="weaponDamage">Damage per shot. Pass 0 (default) for unarmed avatars such as interior walkers.</param>
+    /// <param name="weaponFireRate">Seconds between shots. Pass 0 (default) for unarmed avatars.</param>
+    /// <param name="weaponProjectileSpeed">Projectile speed. Pass 0 (default) for unarmed avatars.</param>
     public static Entity CreatePlayerAvatar(World world, float x, float y, float speed,
-        float maxHealth = 0f, float currentHealth = 0f, Func<Vector2, bool>? canMoveTo = null)
+        float maxHealth = 0f, float currentHealth = 0f, Func<Vector2, bool>? canMoveTo = null,
+        float weaponDamage = 0f, float weaponFireRate = 0f, float weaponProjectileSpeed = 0f)
     {
         var entity = world.Create(
             new Transform(x, y),
             Sprite.Build(12, 12),
             new Velocity(speed) { CanMoveTo = canMoveTo },
-            new PlayerControlled()
+            new PlayerControlled(),
+            AvatarInputComponent.Default(),
+            new AvatarComponent
+            {
+                Faction = Faction.Player,
+                WeaponDamage = weaponDamage,
+                WeaponFireRate = weaponFireRate,
+                WeaponProjectileSpeed = weaponProjectileSpeed,
+                ProjectileColor = new Color3(100, 255, 100)
+            }
         );
 
         // Add Health component only on planet surface (maxHealth > 0)
@@ -423,7 +436,7 @@ public static class EntityFactory
         float healthMultiplier = DangerConfig.GetHealthMultiplier(dangerLevel);
         float damageMultiplier = DangerConfig.GetDamageMultiplier(dangerLevel);
 
-        var (config, loot, spriteSize) = GetSurfaceNpcProfile(faction, dangerLevel, damageMultiplier);
+        var (config, loot, spriteSize, avatarComp) = GetSurfaceNpcProfile(faction, dangerLevel, damageMultiplier);
 
         return world.Create(
             new Transform(position),
@@ -434,15 +447,16 @@ public static class EntityFactory
             {
                 Config = config,
                 State = faction == Faction.Pirate ? AIState.Patrol : AIState.Idle,
-                FireCooldown = 0f,
                 WanderAngle = wanderAngle,
                 WanderTimer = 3f
             },
+            AvatarInputComponent.Default(),
+            avatarComp,
             loot
         );
     }
 
-    private static (SurfaceAIConfig Config, LootDrop Loot, int SpriteSize) GetSurfaceNpcProfile(
+    private static (SurfaceAIConfig Config, LootDrop Loot, int SpriteSize, AvatarComponent AvatarComp) GetSurfaceNpcProfile(
         Faction faction, int dangerLevel, float damageMult)
     {
         return faction switch
@@ -452,10 +466,7 @@ public static class EntityFactory
                     Faction: Faction.Pirate,
                     MoveSpeed: CombatConfig.BanditSpeed,
                     DetectRange: CombatConfig.BanditDetectRange,
-                    AttackRange: CombatConfig.BanditAttackRange,
-                    FireRate: CombatConfig.BanditFireRate,
-                    WeaponDamage: CombatConfig.BanditBaseDamage * damageMult,
-                    ProjectileSpeed: CombatConfig.BanditProjectileSpeed),
+                    AttackRange: CombatConfig.BanditAttackRange),
                 new LootDrop
                 {
                     MinCredits = CombatConfig.SurfaceLootCreditsMin * 2,
@@ -464,16 +475,21 @@ public static class EntityFactory
                     PartDropChance = 0.05f,
                     DangerLevel = dangerLevel
                 },
-                12),
+                12,
+                new AvatarComponent
+                {
+                    Faction = Faction.Pirate,
+                    WeaponDamage = CombatConfig.BanditBaseDamage * damageMult,
+                    WeaponFireRate = CombatConfig.BanditFireRate,
+                    WeaponProjectileSpeed = CombatConfig.BanditProjectileSpeed,
+                    ProjectileColor = new Color3(255, 150, 50)
+                }),
             Faction.Trader => (
                 new SurfaceAIConfig(
                     Faction: Faction.Trader,
-                    MoveSpeed: CombatConfig.BanditSpeed * 0.7f, // traders walk slower
-                    DetectRange: 0f, // traders don't fight
-                    AttackRange: 0f,
-                    FireRate: 0f,
-                    WeaponDamage: 0f,
-                    ProjectileSpeed: 0f),
+                    MoveSpeed: CombatConfig.BanditSpeed * 0.7f,  // traders walk slower
+                    DetectRange: 0f,                              // traders don't fight
+                    AttackRange: 0f),
                 new LootDrop
                 {
                     MinCredits = CombatConfig.SurfaceLootCreditsMin,
@@ -482,16 +498,21 @@ public static class EntityFactory
                     PartDropChance = 0f,
                     DangerLevel = dangerLevel
                 },
-                12),
+                12,
+                new AvatarComponent
+                {
+                    Faction = Faction.Trader,
+                    WeaponDamage = 0f,   // traders don't fight
+                    WeaponFireRate = 0f,
+                    WeaponProjectileSpeed = 0f,
+                    ProjectileColor = new Color3(255, 200, 50)
+                }),
             Faction.Patrol => (
                 new SurfaceAIConfig(
                     Faction: Faction.Patrol,
                     MoveSpeed: CombatConfig.BanditSpeed * 0.9f,
                     DetectRange: CombatConfig.BanditDetectRange * 1.3f,
-                    AttackRange: CombatConfig.BanditAttackRange,
-                    FireRate: CombatConfig.BanditFireRate * 0.9f,
-                    WeaponDamage: CombatConfig.BanditBaseDamage * damageMult * 0.8f,
-                    ProjectileSpeed: CombatConfig.BanditProjectileSpeed * 1.1f),
+                    AttackRange: CombatConfig.BanditAttackRange),
                 new LootDrop
                 {
                     MinCredits = 0,
@@ -500,7 +521,15 @@ public static class EntityFactory
                     PartDropChance = 0f,
                     DangerLevel = dangerLevel
                 },
-                12),
+                12,
+                new AvatarComponent
+                {
+                    Faction = Faction.Patrol,
+                    WeaponDamage = CombatConfig.BanditBaseDamage * damageMult * 0.8f,
+                    WeaponFireRate = CombatConfig.BanditFireRate * 0.9f,
+                    WeaponProjectileSpeed = CombatConfig.BanditProjectileSpeed * 1.1f,
+                    ProjectileColor = new Color3(50, 200, 255)
+                }),
             _ => throw new ArgumentException($"Unsupported surface NPC faction: {faction}")
         };
     }

@@ -4,6 +4,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.AI;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
@@ -37,10 +38,13 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     protected override float RespawnDelay => 2.5f;
 
     // ── System event outputs (planet-surface-specific) ─────────────
-    public IReadOnlyList<SurfaceProjectileSpawn> EnemyProjectilesSpawnedLastUpdate =>
-        _enemyAISystem?.ProjectilesSpawnedLastUpdate ?? (IReadOnlyList<SurfaceProjectileSpawn>)[];
+    /// <summary>All avatar projectiles spawned last tick (player + NPC). Read by state for SFX; use Faction to distinguish.</summary>
+    public IReadOnlyList<SurfaceProjectileSpawn> AvatarProjectilesSpawnedLastUpdate =>
+        _avatarSystem?.ProjectilesSpawnedLastUpdate ?? (IReadOnlyList<SurfaceProjectileSpawn>)[];
 
     // ── ECS Systems (planet-surface-specific) ──────────────────────
+    private AvatarSystem _avatarSystem = null!;
+    private VehicleSystem _vehicleSystem = null!;
     private AvatarEnemyAISystem _enemyAISystem = null!;
     private SurfaceNpcManager _surfaceNpcManager = null!;
 
@@ -62,6 +66,12 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         // Initialize shared ECS systems (velocity, projectiles, cleanup)
         InitCoreSystems();
+
+        _avatarSystem = new AvatarSystem(EcsWorld);
+        _avatarSystem.Initialize();
+
+        _vehicleSystem = new VehicleSystem(EcsWorld);
+        _vehicleSystem.Initialize();
 
         _enemyAISystem = new AvatarEnemyAISystem(EcsWorld);
         _enemyAISystem.Initialize();
@@ -85,6 +95,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
+        t.Time("Avatars", () => _avatarSystem.Update(in dt));
+        t.Time("Vehicles", () => _vehicleSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Surface NPCs", () => _surfaceNpcManager.Update(dt));
 
@@ -112,6 +124,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Tick message timers
         UpdateCombatTimers(dt);
     }
+
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
@@ -166,8 +179,12 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             playerStartY = lzY;
         }
 
+        var avatarStats = player.GetCombinedAvatarStats();
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, playerStartX, playerStartY, avatarSpeed,
-            maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain);
+            maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain,
+            weaponDamage: CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage,
+            weaponFireRate: CombatConfig.AvatarFireRate,
+            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed);
 
         // Create ship entity
         var shipEntity = EntityFactory.CreateLandedShip(EcsWorld, shipX, shipY);
@@ -210,6 +227,84 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
             EcsWorld.Destroy(LocalVehicleEntity);
         LocalVehicleDeployed = false;
+    }
+
+    /// <summary>Snap a player avatar into the vehicle and configure it for driving.</summary>
+    public void MountVehicle(SimulationPlayer player)
+    {
+        var vStats = player.Data.GetCombinedVehicleStats();
+
+        if (!LocalVehicleDeployed)
+        {
+            var shipTf = EcsWorld.Get<Transform>(LocalShipEntity);
+            DeployVehicle(shipTf.Position.X, shipTf.Position.Y);
+        }
+
+        ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
+        ref var vTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
+        avatarTf.Position = vTf.Position;
+        avatarTf.Rotation = vTf.Rotation;
+
+        if (EcsWorld.Has<Velocity>(player.Entity))
+        {
+            ref var vel = ref EcsWorld.Get<Velocity>(player.Entity);
+            vel.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed;
+            vel.MaxRotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed;
+        }
+
+        if (EcsWorld.Has<AvatarComponent>(player.Entity))
+        {
+            ref var avatar = ref EcsWorld.Get<AvatarComponent>(player.Entity);
+            avatar.InVehicle = true;
+        }
+
+        var vehicleComp = new VehicleComponent
+        {
+            Acceleration = vStats.Acceleration > 0 ? vStats.Acceleration : AvatarConfig.VehicleAcceleration,
+            MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed,
+            RotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed,
+            Friction = AvatarConfig.VehicleFriction + vStats.Friction,
+            BrakeMultiplier = AvatarConfig.VehicleBrakeMultiplier,
+        };
+        if (EcsWorld.Has<VehicleComponent>(player.Entity))
+            EcsWorld.Get<VehicleComponent>(player.Entity) = vehicleComp;
+        else
+            EcsWorld.Add(player.Entity, vehicleComp);
+
+        player.Data.InVehicle = true;
+    }
+
+    /// <summary>Detach a player avatar from the vehicle and restore walking configuration.</summary>
+    public void DismountVehicle(SimulationPlayer player, float walkSpeed)
+    {
+        ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
+        if (LocalVehicleDeployed)
+        {
+            ref var vehicleTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
+            avatarTf.Position = vehicleTf.Position + new Vector2(20, 0);
+        }
+        avatarTf.Rotation = 0f;
+
+        if (EcsWorld.Has<Velocity>(player.Entity))
+        {
+            ref var vel = ref EcsWorld.Get<Velocity>(player.Entity);
+            vel.MaxSpeed = walkSpeed;
+            vel.MaxRotationSpeed = 0f;
+            vel.Linear = Vector2.Zero;
+            vel.Acceleration = Vector2.Zero;
+            vel.RotationVelocity = 0f;
+        }
+
+        if (EcsWorld.Has<AvatarComponent>(player.Entity))
+        {
+            ref var avatar = ref EcsWorld.Get<AvatarComponent>(player.Entity);
+            avatar.InVehicle = false;
+        }
+
+        if (EcsWorld.Has<VehicleComponent>(player.Entity))
+            EcsWorld.Remove<VehicleComponent>(player.Entity);
+
+        player.Data.InVehicle = false;
     }
 
     // ── Private spawn helpers ────────────────────────────────────────
@@ -318,10 +413,14 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         player.Data.RecalculateAvatarStats();
         player.Data.AvatarHealth = player.Data.AvatarMaxHealth;
 
+        var respawnAvatarStats = player.Data.GetCombinedAvatarStats();
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld,
             shipPos.X, shipPos.Y - 20f, player.Data.AvatarWalkSpeed,
             maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth,
-            canMoveTo: CanMoveToTerrain);
+            canMoveTo: CanMoveToTerrain,
+            weaponDamage: CombatConfig.BaseAvatarWeaponDamage + respawnAvatarStats.WeaponDamage,
+            weaponFireRate: CombatConfig.AvatarFireRate,
+            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed);
 
         player.Entity = avatarEntity;
 
@@ -332,6 +431,33 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         CombatMessage = "RESPAWNED";
         CombatMessageTimer = 3f;
+    }
+
+    public void SyncPlayerAvatarComponent(SimulationPlayer player)
+    {
+        if (!EcsWorld.IsAlive(player.Entity)) return;
+        if (!EcsWorld.Has<AvatarComponent>(player.Entity)) return;
+        var avatarStats = player.Data.GetCombinedAvatarStats();
+        ref var avatar = ref EcsWorld.Get<AvatarComponent>(player.Entity);
+        avatar.WeaponDamage = CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
+    }
+
+    public void SyncPlayerVehicleComponent(SimulationPlayer player)
+    {
+        if (!EcsWorld.IsAlive(player.Entity)) return;
+        if (!EcsWorld.Has<VehicleComponent>(player.Entity)) return;
+        var vStats = player.Data.GetCombinedVehicleStats();
+        ref var vehicle = ref EcsWorld.Get<VehicleComponent>(player.Entity);
+        vehicle.Acceleration = vStats.Acceleration > 0 ? vStats.Acceleration : AvatarConfig.VehicleAcceleration;
+        vehicle.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed;
+        vehicle.RotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed;
+        vehicle.Friction = AvatarConfig.VehicleFriction + vStats.Friction;
+        if (EcsWorld.Has<Velocity>(player.Entity))
+        {
+            ref var vel = ref EcsWorld.Get<Velocity>(player.Entity);
+            vel.MaxSpeed = vehicle.MaxSpeed;
+            vel.MaxRotationSpeed = vehicle.RotationSpeed;
+        }
     }
 
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)

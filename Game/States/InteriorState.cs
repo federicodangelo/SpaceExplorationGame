@@ -101,7 +101,7 @@ public class InteriorState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed);
+        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed, _camera);
         _inputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
@@ -247,9 +247,8 @@ public class InteriorState : GameState
     private void ZeroPlayerMovementAcceleration()
     {
         if (_sim == null || _simPlayer == null || !_sim.EcsWorld.IsAlive(_simPlayer.Entity)) return;
-        ref var vel = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-        vel.Acceleration = Vector2.Zero;
-        vel.Linear = Vector2.Zero;
+        ref var avatarInput = ref _sim.EcsWorld.Get<AvatarInputComponent>(_simPlayer.Entity);
+        avatarInput = AvatarInputComponent.Default();
     }
 
     private void OpenDockingMenu()
