@@ -12,7 +12,6 @@ namespace SpaceExplorationGame.ECS.Systems.AI;
 /// Walk-based movement with chase/attack/flee logic inspired by <see cref="ShipEnemyAISystem"/>.
 /// <list type="bullet">
 ///   <item>Target memory — pirates keep moving toward the last known player position for a short window after losing sight.</item>
-///   <item>Lead-shot aim — pirates predict player position based on projectile speed and relative velocity.</item>
 ///   <item>Aim inaccuracy wobble — sinusoidal aim offset scaled by <see cref="SurfaceAIConfig.AimInaccuracyRadius"/>.</item>
 ///   <item>Configurable flee threshold with minimum flee duration (no stutter-flee).</item>
 ///   <item>Patrol hunts the nearest surface pirate within detection range and opens fire.</item>
@@ -98,11 +97,11 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         switch (ai.Config.Faction)
         {
             case Faction.Pirate:
-                UpdateHostileNpc(ref transform, ref ai, ref health, ref avatarInput, ref avatar);
+                UpdateHostileNpc(ref transform, ref ai, ref health, ref avatarInput);
                 wasInCombat = ai.State is AIState.Chase or AIState.Attack or AIState.Flee;
                 break;
             case Faction.Patrol:
-                UpdatePatrolNpc(ref transform, ref ai, ref avatarInput, ref avatar);
+                UpdatePatrolNpc(ref transform, ref ai, ref avatarInput);
                 wasInCombat = ai.State is AIState.Chase or AIState.Attack;
                 break;
             case Faction.Trader:
@@ -132,7 +131,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     /// and lead-shot aim so fast projectiles actually intercept a moving player.
     /// </summary>
     private void UpdateHostileNpc(ref Transform transform, ref SurfaceAI ai,
-        ref Health health, ref AvatarInputComponent avatarInput, ref AvatarComponent avatar)
+        ref Health health, ref AvatarInputComponent avatarInput)
     {
         // Keep fleeing for a minimum duration to prevent stutter-fleeing
         bool keepFleeing = ai.State == AIState.Flee && ai.StateTimer < MinFleeStateDuration;
@@ -185,8 +184,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         if (dist < ai.Config.AttackRange)
         {
             avatarInput.AimDirection = ComputeAimWithWobble(
-                transform.Position, _playerPos, _playerVelocity,
-                avatarInput.DesiredVelocity, avatar.WeaponProjectileSpeed,
+                transform.Position, _playerPos,
                 ai.Config.AimInaccuracyRadius, ai.StateTimer, dir);
             avatarInput.Shoot = true;
         }
@@ -197,7 +195,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     /// Falls back to wandering when no pirate is found.
     /// </summary>
     private void UpdatePatrolNpc(ref Transform transform, ref SurfaceAI ai,
-        ref AvatarInputComponent avatarInput, ref AvatarComponent avatar)
+        ref AvatarInputComponent avatarInput)
     {
         var nearestPirate = FindNearestSurfacePirate(transform.Position, ai.Config.DetectRange);
 
@@ -231,10 +229,8 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
 
         if (dist < ai.Config.AttackRange)
         {
-            // Patrol targets are walking NPCs with no velocity data available here, so no lead-shot
             avatarInput.AimDirection = ComputeAimWithWobble(
-                transform.Position, nearestPirate.Value, Vector2.Zero,
-                avatarInput.DesiredVelocity, avatar.WeaponProjectileSpeed,
+                transform.Position, nearestPirate.Value,
                 ai.Config.AimInaccuracyRadius, ai.StateTimer, dir);
             avatarInput.Shoot = true;
         }
@@ -357,15 +353,15 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     // ── Aim helpers ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Combines lead-shot aim prediction (à la <see cref="ShipEnemyAISystem"/>) with a
-    /// sinusoidal inaccuracy wobble, producing a normalized aim direction.
-    /// Falls back to <paramref name="fallback"/> when the target is too close or projectile speed is zero.
+    /// Applies a sinusoidal inaccuracy wobble to the target position and returns a normalized
+    /// aim direction toward it. Lead-shot prediction is intentionally omitted — avatars change
+    /// direction too quickly for it to be useful.
+    /// Falls back to <paramref name="fallback"/> when the target is coincident with the shooter.
     /// </summary>
     private static Vector2 ComputeAimWithWobble(
-        Vector2 shooterPos, Vector2 targetPos, Vector2 targetVelocity, Vector2 shooterVelocity,
-        float projectileSpeed, float inaccuracyRadius, float stateTimer, Vector2 fallback)
+        Vector2 shooterPos, Vector2 targetPos,
+        float inaccuracyRadius, float stateTimer, Vector2 fallback)
     {
-        // Apply inaccuracy wobble to the target position before computing lead
         if (inaccuracyRadius > 0f)
         {
             // Two slightly-incommensurate frequencies produce a lissajous-like drift (never repeats predictably)
@@ -374,17 +370,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             targetPos += new Vector2(wobbleX, wobbleY);
         }
 
-        if (projectileSpeed <= 0f)
-            return Vector2.Normalize(targetPos - shooterPos) is var d && !float.IsNaN(d.X) ? d : fallback;
-
-        var toTarget = targetPos - shooterPos;
-        float dist = toTarget.Length();
-        if (dist <= 0.001f)
-            return fallback;
-
-        float leadTime = Math.Clamp(dist / projectileSpeed, 0f, 1.5f);
-        var predictedPos = targetPos + (targetVelocity - shooterVelocity) * leadTime;
-        var aimDir = Vector2.Normalize(predictedPos - shooterPos);
+        var aimDir = Vector2.Normalize(targetPos - shooterPos);
         return float.IsNaN(aimDir.X) ? fallback : aimDir;
     }
 
