@@ -13,6 +13,7 @@ using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.UI.Overlays.Map;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -31,8 +32,8 @@ public class SolarSystemState : GameState
     private readonly StarSystemData _starSystem;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
-        GameConfig.SolarSystemZoomMin, GameConfig.SolarSystemZoomMax);
+    private readonly Camera _camera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
+        CameraConfig.SolarSystemZoomMin, CameraConfig.SolarSystemZoomMax);
 
     // ── Particle system (rendering-side, only updated when state is active) ──
     private ParticleSystem _particleSystem = null!;
@@ -92,8 +93,8 @@ public class SolarSystemState : GameState
             () => new SolarSystemSimulation(game, _starSystem));
 
         // Generate background star field (Poisson disk, deterministic per galaxy seed)
-        float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float totalH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        float totalW = WorldConfig.SolarSystemWidth * WindowConfig.TileSize;
+        float totalH = WorldConfig.SolarSystemHeight * WindowConfig.TileSize;
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.08f);
         _starsBackground.Generate(0f, 0f, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xCAFEBABEuL,
@@ -122,7 +123,7 @@ public class SolarSystemState : GameState
         // Camera initial position
         var shipPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
         _camera.Position = shipPos;
-        _camera.Zoom = GameConfig.SolarSystemZoomDefault;
+        _camera.Zoom = CameraConfig.SolarSystemZoomDefault;
         _camera.ClampZoom();
 
         // Auto-open overlays
@@ -211,7 +212,7 @@ public class SolarSystemState : GameState
         // Camera zoom
         if (input.MouseWheelY != 0)
         {
-            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.Zoom *= 1f + input.MouseWheelY * CameraConfig.CameraZoomFactor;
             _camera.ClampZoom();
         }
 
@@ -439,8 +440,8 @@ public class SolarSystemState : GameState
         var camera = _camera;
         var world = _sim.EcsWorld;
 
-        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float starCenterX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float starCenterY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
         float globalTime = (float)game.GlobalTime;
@@ -525,8 +526,8 @@ public class SolarSystemState : GameState
         var camera = _camera;
         var world = _sim.EcsWorld;
 
-        float starCenterX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float starCenterY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float starCenterX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float starCenterY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
 
         float globalTime = (float)game.GlobalTime;

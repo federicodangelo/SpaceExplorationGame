@@ -3,6 +3,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -112,7 +113,7 @@ public class OrbitalSurfaceTransitionState : GameState
         _shipWorldStart = Vector2.Zero;
         _targetBodyWorldStart = Vector2.Zero;
         _solarCameraStart = Vector2.Zero;
-        _solarZoomStart = GameConfig.SolarSystemZoomDefault;
+        _solarZoomStart = CameraConfig.SolarSystemZoomDefault;
 
         _isMoon = isMoon;
         _moonPlanetIndex = moonPlanetIndex;
@@ -140,7 +141,7 @@ public class OrbitalSurfaceTransitionState : GameState
         {
             _shipScreenStart = new Vector2(CX, CY);
             _planetScreenStart = new Vector2(CX, CY);
-            _planetRadiusStartPx = MathF.Max(_planet.Radius * GameConfig.SolarSystemZoomDefault, 8f);
+            _planetRadiusStartPx = MathF.Max(_planet.Radius * CameraConfig.SolarSystemZoomDefault, 8f);
         }
 
         _terrainTexture = TerrainRenderer.CreateTerrainTexture(game.Textures, _surfaceData);
@@ -279,7 +280,7 @@ public class OrbitalSurfaceTransitionState : GameState
         // (zoom = _solarZoomStart) and p==1 corresponds to the planet-surface view
         // (zoom = PlanetSurfaceZoomDefault).  Using `p` (the forward-direction progress)
         // works for both landing (p 0→1) and takeoff (p 1→0).
-        float shipZoom = Lerp(_solarZoomStart, GameConfig.PlanetSurfaceZoomDefault, p);
+        float shipZoom = Lerp(_solarZoomStart, CameraConfig.PlanetSurfaceZoomDefault, p);
 
         game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, shipRotation, game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize, shipZoom);
@@ -304,7 +305,7 @@ public class OrbitalSurfaceTransitionState : GameState
     private Vector2 DrawTerrainLandingBlend(Game game, float planetX, float planetY, float planetRadius,
         float terrainBlend, float descentP)
     {
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
         float mapW = _surfaceData.Width;
         float mapH = _surfaceData.Height;
         float mapSize = MathF.Min(mapW, mapH);
@@ -313,7 +314,7 @@ public class OrbitalSurfaceTransitionState : GameState
         // Start: planet disc diameter covers the terrain circle (circular texture inscribed in mapSize tiles).
         // End:   gameplay zoom, matching the first frame of PlanetSurfaceState exactly.
         float startZoom = (planetRadius * 2f * 0.95f) / (mapSize * ts);
-        float endZoom = GameConfig.PlanetSurfaceZoomDefault;
+        float endZoom = CameraConfig.PlanetSurfaceZoomDefault;
         float zoom = Lerp(startZoom, endZoom, terrainBlend);
 
         // --- Camera position (world space) ---

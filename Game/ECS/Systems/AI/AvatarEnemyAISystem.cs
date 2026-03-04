@@ -2,6 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.AI;
@@ -164,7 +165,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
             {
                 ai.FireCooldown = ai.Config.FireRate;
                 _pendingProjectiles.Add(new SurfaceProjectileSpawn(transform.Position, dir, ai.Config.WeaponDamage,
-                    ai.Config.ProjectileSpeed, ai.Config.Faction, new Color3(255, 150, 50), GameConfig.AvatarProjectileLifetime, _currentAIEntity));
+                    ai.Config.ProjectileSpeed, ai.Config.Faction, new Color3(255, 150, 50), CombatConfig.AvatarProjectileLifetime, _currentAIEntity));
             }
         }
         else
@@ -224,7 +225,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         else
         {
             var dir = toShip / dist;
-            SetAccelerationTowardVelocity(ref velocity, dir * GameConfig.SurfaceNpcBoardingSpeed);
+            SetAccelerationTowardVelocity(ref velocity, dir * NpcConfig.SurfaceNpcBoardingSpeed);
         }
     }
 

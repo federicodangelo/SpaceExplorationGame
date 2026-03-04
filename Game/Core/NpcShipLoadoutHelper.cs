@@ -1,3 +1,4 @@
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 
@@ -84,7 +85,7 @@ public static class NpcShipLoadoutHelper
                 value += part.SellValue;
         }
 
-        return Math.Max(GameConfig.BaseLootCredits, value / 12);
+        return Math.Max(CombatConfig.BaseLootCredits, value / 12);
     }
 
     private static ShipPart PickWeaponPart(int qualityTier, SeededRandom rng)

@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation;
@@ -229,8 +230,8 @@ public static class SolarSystemGenerator
 
         var npcSpawnConfig = GenerateNpcSpawnConfig(rng, starSystem, planets);
 
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float centerX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float centerY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         float starDisplayRadius = starSystem.StarRadius * 2f;
         Vector2 startingPosition = new(centerX - (starDisplayRadius + 100f), centerY);
 
@@ -257,9 +258,9 @@ public static class SolarSystemGenerator
         float warpInMinRadius = starSystem.StarRadius * 2f;
         float warpInMaxRadius = warpInMinRadius + 4000f;
 
-        int pirateCount = GameConfig.MinEnemiesPerSystem + (int)((GameConfig.MaxEnemiesPerSystem - GameConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
-        int traderCount = enemyRng.NextInt(GameConfig.MinTradersPerSystem, GameConfig.MaxTradersPerSystem + 1);
-        int patrolCount = enemyRng.NextInt(GameConfig.MinPatrolsPerSystem, GameConfig.MaxPatrolsPerSystem + 1);
+        int pirateCount = NpcConfig.MinEnemiesPerSystem + (int)((NpcConfig.MaxEnemiesPerSystem - NpcConfig.MinEnemiesPerSystem) * (dangerLevel - 1f) / 4f);
+        int traderCount = enemyRng.NextInt(NpcConfig.MinTradersPerSystem, NpcConfig.MaxTradersPerSystem + 1);
+        int patrolCount = enemyRng.NextInt(NpcConfig.MinPatrolsPerSystem, NpcConfig.MaxPatrolsPerSystem + 1);
         int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
 
         return new NpcSpawnConfig(

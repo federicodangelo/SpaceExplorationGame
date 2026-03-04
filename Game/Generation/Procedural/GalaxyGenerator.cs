@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation;
@@ -42,11 +43,11 @@ public static class GalaxyGenerator
 
     public static List<StarSystemData> Generate(SeededRandom rng)
     {
-        int systemCount = rng.NextInt(Core.GameConfig.MinStarSystems, Core.GameConfig.MaxStarSystems + 1);
+        int systemCount = rng.NextInt(WorldConfig.MinStarSystems, WorldConfig.MaxStarSystems + 1);
         var systems = new List<StarSystemData>(systemCount);
 
-        float mapWidth = Core.GameConfig.GalaxyWidth * Core.GameConfig.TileSize;
-        float mapHeight = Core.GameConfig.GalaxyHeight * Core.GameConfig.TileSize;
+        float mapWidth = WorldConfig.GalaxyWidth * WindowConfig.TileSize;
+        float mapHeight = WorldConfig.GalaxyHeight * WindowConfig.TileSize;
         float centerX = mapWidth / 2f;
         float centerY = mapHeight / 2f;
         float galaxyRadius = MathF.Min(mapWidth, mapHeight) * 0.4f;

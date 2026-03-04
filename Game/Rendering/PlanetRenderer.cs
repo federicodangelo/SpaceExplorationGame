@@ -1,9 +1,9 @@
 using System.Numerics;
 using Arch.Core;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -16,7 +16,7 @@ public class PlanetRenderer
 
     public PlanetRenderer()
     {
-        _screenSpaceCamera = new Camera((int)GameConfig.DefaultWindowWidth, (int)GameConfig.DefaultWindowHeight, 1f, 1f);
+        _screenSpaceCamera = new Camera((int)WindowConfig.DefaultWindowWidth, (int)WindowConfig.DefaultWindowHeight, 1f, 1f);
     }
 
     /// <summary>

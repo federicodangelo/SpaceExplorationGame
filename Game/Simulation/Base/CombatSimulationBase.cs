@@ -1,4 +1,5 @@
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.Combat;
@@ -90,7 +91,7 @@ public abstract class CombatSimulationBase : SimulationBase
                 || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
                     && IsLocalPlayerEntity(evt.Target));
             if (localPlayerInvolved)
-                CombatMusicTimer = GameConfig.CombatMusicDelay;
+                CombatMusicTimer = AudioConfig.CombatMusicDelay;
             OnDamageEvent(evt);
         }
 

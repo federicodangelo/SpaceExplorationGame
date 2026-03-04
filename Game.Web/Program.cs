@@ -5,6 +5,7 @@ using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using Engine.Platform.Web;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame;
 
@@ -37,10 +38,10 @@ public partial class WebMain
             Console.WriteLine("[SEG-CS] Audio providers created");
 
             var platform = new WebPlatform(
-                GameConfig.WindowTitle,
-                GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
+                WindowConfig.WindowTitle,
+                WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
                 musicProvider, sfxProvider,
-                GameConfig.AudioMasterVolume, GameConfig.AudioMusicVolume, GameConfig.AudioSfxVolume);
+                AudioConfig.AudioMasterVolume, AudioConfig.AudioMusicVolume, AudioConfig.AudioSfxVolume);
             Console.WriteLine("[SEG-CS] WebPlatform created");
 
             _game = new Game();
@@ -71,7 +72,7 @@ public partial class WebMain
         string? starTypeParam = JsLaunchOptions.GetUrlParam("star-type");
         string? debugParam = JsLaunchOptions.GetUrlParam("debug");
 
-        GameConfig.Debug = debugParam != null && debugParam != "false" && debugParam != "0";
+        WindowConfig.Debug = debugParam != null && debugParam != "false" && debugParam != "0";
 
         ulong? galaxySeed = null;
         if (seedParam != null)

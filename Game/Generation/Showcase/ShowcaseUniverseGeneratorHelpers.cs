@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
@@ -14,8 +15,8 @@ internal static class ShowcaseUniverseGeneratorHelpers
             Index = 0,
             Name = name,
             GalaxyPosition = new Vector2(
-                GameConfig.GalaxyWidth * GameConfig.TileSize / 2f,
-                GameConfig.GalaxyHeight * GameConfig.TileSize / 2f),
+                WorldConfig.GalaxyWidth * WindowConfig.TileSize / 2f,
+                WorldConfig.GalaxyHeight * WindowConfig.TileSize / 2f),
             StarClass = starClass,
             StarRadius = starRadius,
             StarColor = starColor,

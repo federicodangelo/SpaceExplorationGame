@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -36,12 +37,12 @@ public class NpcSpawnManager
         _enemyEntities = enemyEntities;
         _config = config;
 
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float centerX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float centerY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         _systemCenter = new Vector2(centerX, centerY);
 
         // Start the first spawn check after a short delay so the initial wave settles
-        _spawnCheckTimer = GameConfig.NpcSpawnCheckInterval * 0.5f;
+        _spawnCheckTimer = NpcConfig.NpcSpawnCheckInterval * 0.5f;
     }
 
     /// <summary>
@@ -51,9 +52,9 @@ public class NpcSpawnManager
     /// </summary>
     public void SpawnInitialWave()
     {
-        int initialPirates = (int)(_config.TargetPirates * GameConfig.NpcInitialSpawnFraction);
-        int initialTraders = (int)(_config.TargetTraders * GameConfig.NpcInitialSpawnFraction);
-        int initialPatrols = (int)(_config.TargetPatrols * GameConfig.NpcInitialSpawnFraction);
+        int initialPirates = (int)(_config.TargetPirates * NpcConfig.NpcInitialSpawnFraction);
+        int initialTraders = (int)(_config.TargetTraders * NpcConfig.NpcInitialSpawnFraction);
+        int initialPatrols = (int)(_config.TargetPatrols * NpcConfig.NpcInitialSpawnFraction);
 
         for (int i = 0; i < initialPirates; i++)
             SpawnShip(Faction.Pirate, useInitialRadius: true, withWarpEffect: false);
@@ -72,13 +73,13 @@ public class NpcSpawnManager
         switch (faction)
         {
             case Faction.Pirate:
-                _pirateRespawnTimer = Math.Max(_pirateRespawnTimer, GameConfig.NpcPirateRespawnDelay);
+                _pirateRespawnTimer = Math.Max(_pirateRespawnTimer, NpcConfig.NpcPirateRespawnDelay);
                 break;
             case Faction.Trader:
-                _traderRespawnTimer = Math.Max(_traderRespawnTimer, GameConfig.NpcTraderRespawnDelay);
+                _traderRespawnTimer = Math.Max(_traderRespawnTimer, NpcConfig.NpcTraderRespawnDelay);
                 break;
             case Faction.Patrol:
-                _patrolRespawnTimer = Math.Max(_patrolRespawnTimer, GameConfig.NpcPatrolRespawnDelay);
+                _patrolRespawnTimer = Math.Max(_patrolRespawnTimer, NpcConfig.NpcPatrolRespawnDelay);
                 break;
         }
     }
@@ -98,7 +99,7 @@ public class NpcSpawnManager
         _spawnCheckTimer -= dt;
         if (_spawnCheckTimer <= 0)
         {
-            _spawnCheckTimer = GameConfig.NpcSpawnCheckInterval;
+            _spawnCheckTimer = NpcConfig.NpcSpawnCheckInterval;
             SpawnMissingShips();
         }
     }
@@ -166,7 +167,7 @@ public class NpcSpawnManager
             {
                 IsWarpingIn = true,
                 Progress = 0f,
-                Duration = GameConfig.NpcWarpDuration
+                Duration = NpcConfig.NpcWarpDuration
             });
         }
 
@@ -193,7 +194,7 @@ public class NpcSpawnManager
         {
             IsWarpingIn = false,
             Progress = 0f,
-            Duration = GameConfig.NpcWarpDuration
+            Duration = NpcConfig.NpcWarpDuration
         });
     }
 }

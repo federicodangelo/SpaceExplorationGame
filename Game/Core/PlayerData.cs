@@ -1,6 +1,7 @@
 namespace SpaceExplorationGame.Core;
 
 using System.Numerics;
+using SpaceExplorationGame.Core.Config;
 
 /// <summary>
 /// Distinguishes the locally-controlled player from remote (networked) players.
@@ -304,17 +305,17 @@ public class PlayerData
     public bool InVehicle { get; set; } = false;    // currently driving?
 
     // Avatar health (persistent across surface visits)
-    public float AvatarHealth { get; set; } = GameConfig.AvatarBaseMaxHealth;
-    public float AvatarMaxHealth { get; private set; } = GameConfig.AvatarBaseMaxHealth;
-    public float AvatarWalkSpeed { get; private set; } = GameConfig.AvatarBaseWalkSpeed;
+    public float AvatarHealth { get; set; } = AvatarConfig.AvatarBaseMaxHealth;
+    public float AvatarMaxHealth { get; private set; } = AvatarConfig.AvatarBaseMaxHealth;
+    public float AvatarWalkSpeed { get; private set; } = AvatarConfig.AvatarBaseWalkSpeed;
 
     /// <summary>Recalculate avatar max health from base + suit armor stat.</summary>
     public void RecalculateAvatarStats()
     {
         var stats = GetCombinedAvatarStats();
-        AvatarMaxHealth = GameConfig.AvatarBaseMaxHealth + stats.Armor;
+        AvatarMaxHealth = AvatarConfig.AvatarBaseMaxHealth + stats.Armor;
         AvatarHealth = Math.Min(AvatarHealth, AvatarMaxHealth);
-        AvatarWalkSpeed = GameConfig.AvatarBaseWalkSpeed + stats.WalkSpeed;
+        AvatarWalkSpeed = AvatarConfig.AvatarBaseWalkSpeed + stats.WalkSpeed;
     }
 
     // Avatar equipment

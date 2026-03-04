@@ -6,6 +6,7 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Generation.Showcase;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -52,7 +53,7 @@ public class MainMenuState : GameState
     private readonly DebugLaunchRequest _autoDebugLaunchRequest;
     private readonly StarClass _autoDebugStarType;
 
-    private Camera _fakeCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight);
+    private Camera _fakeCamera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight);
 
     // Preview state for the selected starting location
     private StarSystemData? _previewSystem;

@@ -4,6 +4,7 @@ using SpaceExplorationGame.ECS.Components;
 using Engine.Platform.Sdl;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame;
 
@@ -117,16 +118,16 @@ internal static class Program
             autoLaunch = ResolveStartFromLocation(location, subLocation);
         }
 
-        GameConfig.Debug = debugMode;
+        WindowConfig.Debug = debugMode;
 
         // Create platform
         var musicProvider = new GameMusicProvider(SdlAudioManager.SampleRate);
         var sfxProvider = new GameSfxProvider(SdlAudioManager.SampleRate);
         using var platform = new SdlPlatform(
-            GameConfig.WindowTitle,
-            GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
+            WindowConfig.WindowTitle,
+            WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
             musicProvider, sfxProvider,
-            GameConfig.AudioMasterVolume, GameConfig.AudioMusicVolume, GameConfig.AudioSfxVolume);
+            AudioConfig.AudioMasterVolume, AudioConfig.AudioMusicVolume, AudioConfig.AudioSfxVolume);
 
         using var game = new Game();
         game.Initialize(platform, galaxySeed);

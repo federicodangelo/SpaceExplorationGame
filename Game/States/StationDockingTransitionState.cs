@@ -4,6 +4,7 @@ using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -38,9 +39,9 @@ public class StationDockingTransitionState : GameState
 
     // ── Cameras ───────────────────────────────────────────────────────
     /// <summary>Used to place the station exterior at screen-centre during the cinematic.</summary>
-    private readonly Camera _stationCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight, 0.01f, 100f);
+    private readonly Camera _stationCamera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight, 0.01f, 100f);
     /// <summary>Interior camera — zooms from wide-out to default over the Entry phase.</summary>
-    private readonly Camera _interiorCamera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
+    private readonly Camera _interiorCamera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
         0.01f, 100f);
 
     // ── Phase timing ─────────────────────────────────────────────────
@@ -109,7 +110,7 @@ public class StationDockingTransitionState : GameState
 
         _shipWorldStart = Vector2.Zero;
         _solarCameraStart = Vector2.Zero;
-        _solarZoomStart = GameConfig.SolarSystemZoomDefault;
+        _solarZoomStart = CameraConfig.SolarSystemZoomDefault;
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -152,8 +153,8 @@ public class StationDockingTransitionState : GameState
 
         // Interior camera: centred on the landing pad, starts zoomed out
         PositionInteriorCamera(_mode == TransitionMode.Docking
-            ? GameConfig.InteriorZoomDefault * 0.3f
-            : GameConfig.InteriorZoomDefault);
+            ? CameraConfig.InteriorZoomDefault * 0.3f
+            : CameraConfig.InteriorZoomDefault);
 
         // Background stars
         _stars.Clear();
@@ -227,7 +228,7 @@ public class StationDockingTransitionState : GameState
         {
             // Zoom the interior camera from zoomed-out to default as we enter
             float zoomEased = EaseInOut01(entryP + touchdownP);
-            PositionInteriorCamera(Lerp(GameConfig.InteriorZoomDefault * 0.3f, GameConfig.InteriorZoomDefault, zoomEased));
+            PositionInteriorCamera(Lerp(CameraConfig.InteriorZoomDefault * 0.3f, CameraConfig.InteriorZoomDefault, zoomEased));
 
             if (touchdownP > 0f)
             {
@@ -283,7 +284,7 @@ public class StationDockingTransitionState : GameState
             : 0f;
 
         // Lerp ship scale to match source/destination state camera zoom seamlessly.
-        float shipZoom = Lerp(_solarZoomStart, GameConfig.InteriorZoomDefault, animP);
+        float shipZoom = Lerp(_solarZoomStart, CameraConfig.InteriorZoomDefault, animP);
 
         game.SpaceshipRenderer.RenderScreen(renderer,
             shipX, shipY, rotation,
@@ -309,8 +310,8 @@ public class StationDockingTransitionState : GameState
     {
         if (_interiorData?.LandingPadTilePos.HasValue == true)
         {
-            float padWorldX = _interiorData.LandingPadTilePos.Value.X * GameConfig.TileSize;
-            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+            float padWorldX = _interiorData.LandingPadTilePos.Value.X * WindowConfig.TileSize;
+            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * WindowConfig.TileSize;
             _interiorCamera.Position = new Vector2(padWorldX, padWorldY);
         }
         _interiorCamera.Zoom = zoom;
@@ -322,8 +323,8 @@ public class StationDockingTransitionState : GameState
     {
         if (_interiorData?.LandingPadTilePos.HasValue == true)
         {
-            float padWorldX = _interiorData.LandingPadTilePos.Value.X * GameConfig.TileSize;
-            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+            float padWorldX = _interiorData.LandingPadTilePos.Value.X * WindowConfig.TileSize;
+            float padWorldY = _interiorData.LandingPadTilePos.Value.Y * WindowConfig.TileSize;
             return _interiorCamera.WorldToScreen(new Vector2(padWorldX, padWorldY));
         }
         return new Vector2(CX, CY);

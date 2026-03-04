@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 
@@ -10,7 +11,7 @@ namespace SpaceExplorationGame.UI.Overlays.Map.Base;
 /// </summary>
 public abstract class MapPanelBase
 {
-    protected readonly Camera Camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight, 0.01f, 10f);
+    protected readonly Camera Camera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight, 0.01f, 10f);
     protected bool IsPanning;
     protected Vector2 LastMouseScreen;
     protected const float DoubleClickTime = 0.4f;
@@ -146,7 +147,7 @@ public abstract class MapPanelBase
         if (input.MouseWheelY != 0)
         {
             var worldBeforeZoom = Camera.ScreenToWorld(currentMouse);
-            Camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            Camera.Zoom *= 1f + input.MouseWheelY * CameraConfig.CameraZoomFactor;
             Camera.ClampZoom();
             var worldAfterZoom = Camera.ScreenToWorld(currentMouse);
             Camera.Position += worldBeforeZoom - worldAfterZoom;

@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
@@ -29,7 +30,7 @@ public class PlanetTypeShowcaseUniverseGenerator : ProceduralUniverseGenerator
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
             NpcSpawnConfig: default,
             StartingPosition: new Vector2(
-                GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
-                GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
+                WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
+                WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f));
     }
 }

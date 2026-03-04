@@ -1,7 +1,7 @@
 using System.Numerics;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -24,7 +24,7 @@ public static class PlanetSurfaceRenderer
         var heightMap = surfaceData.HeightMap;
         float time = (float)globalTime;
 
-        renderer.RenderTiles(camera, w, h, GameConfig.TileSize,
+        renderer.RenderTiles(camera, w, h, WindowConfig.TileSize,
             (x, y) =>
             {
                 var terrain = tiles[x, y];
@@ -37,7 +37,7 @@ public static class PlanetSurfaceRenderer
                 var terrain = tiles[x, y];
                 if (terrain == TerrainType.Void) return;
 
-                int ts = GameConfig.TileSize;
+                int ts = WindowConfig.TileSize;
                 float height = heightMap[x, y];
 
                 // Terrain transition edges
@@ -96,7 +96,7 @@ public static class PlanetSurfaceRenderer
     {
         int w = surfaceData.Width;
         int h = surfaceData.Height;
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
 
         // Planet disc geometry in world space (tile centre = x*ts + ts/2, y*ts + ts/2)
         var center = new Vector2(w * ts * 0.5f, h * ts * 0.5f);
@@ -109,7 +109,7 @@ public static class PlanetSurfaceRenderer
         // Solid black ring to mask the jagged terrain edge.
         byte blackAlpha = (byte)Math.Clamp((int)(255 * alphaScale * 4.0f), 0, 255);
         renderer.DrawSolidRing(camera, center,
-            radius - GameConfig.TileSize, radius + GameConfig.TileSize,
+            radius - WindowConfig.TileSize, radius + WindowConfig.TileSize,
             new Color4(0, 0, 0, blackAlpha), seg);
 
         // Layer 1 – inner-edge tint: subtly darkens the outermost terrain tiles

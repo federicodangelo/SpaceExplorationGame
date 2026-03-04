@@ -397,21 +397,4 @@ public class SpaceshipRenderer
         var r2 = R(new Vector2(b.x * s, b.y * s), rot);
         renderer.DrawLineScreen(cx + r1.X, cy + r1.Y, cx + r2.X, cy + r2.Y, color);
     }
-
-    // Legacy vector helpers kept for any callers still using the old api internally.
-    private static Vector2 Rotate(Vector2 v, float degrees) => R(v, degrees);
-
-    private static void DrawRotatedTriangleScreen(ISpriteRenderer renderer, float cx, float cy,
-        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Color4 color)
-    {
-        Tri(renderer, cx, cy, rotationDeg, 1f,
-            (p1.X, p1.Y), (p2.X, p2.Y), (p3.X, p3.Y), color);
-    }
-
-    private static void DrawRotatedQuadScreen(ISpriteRenderer renderer, float cx, float cy,
-        float rotationDeg, Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4, Color4 color)
-    {
-        DrawRotatedTriangleScreen(renderer, cx, cy, rotationDeg, p1, p2, p3, color);
-        DrawRotatedTriangleScreen(renderer, cx, cy, rotationDeg, p1, p3, p4, color);
-    }
 }

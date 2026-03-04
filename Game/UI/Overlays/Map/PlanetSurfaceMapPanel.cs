@@ -3,6 +3,7 @@ using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
@@ -57,7 +58,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
         _surfaceData = surfaceData;
 
         // Convert world positions (pixels) to tile positions
-        float tileSize = GameConfig.TileSize;
+        float tileSize = WindowConfig.TileSize;
         _shipTilePos = shipWorldPos / tileSize;
         _playerTilePos = playerWorldPos / tileSize;
         _vehicleTilePos = vehicleWorldPos.HasValue ? vehicleWorldPos.Value / tileSize : null;
@@ -222,7 +223,7 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
     {
         if (_selectedObject.Type == SurfaceMapObjectType.None) return;
 
-        float tileSize = GameConfig.TileSize;
+        float tileSize = WindowConfig.TileSize;
 
         switch (_selectedObject.Type)
         {
@@ -361,8 +362,8 @@ public class PlanetSurfaceMapPanel : PlanetMapPanelBase
                                 && IsCurrentNavTarget(game.Player, _selectedObject);
             if (!alreadyShown)
             {
-                float ntx = game.Player.Navigation.WorldX / GameConfig.TileSize;
-                float nty = game.Player.Navigation.WorldY / GameConfig.TileSize;
+                float ntx = game.Player.Navigation.WorldX / WindowConfig.TileSize;
+                float nty = game.Player.Navigation.WorldY / WindowConfig.TileSize;
                 DrawTargetBrackets(renderer, camera, new Vector2(ntx, nty), 4f / camera.Zoom, game);
             }
         }

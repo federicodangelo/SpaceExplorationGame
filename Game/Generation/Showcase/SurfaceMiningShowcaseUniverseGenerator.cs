@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Generation.Showcase;
@@ -49,8 +50,8 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
             NpcSpawnConfig: default,
             StartingPosition: new Vector2(
-                GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
-                GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f));
+                WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
+                WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f));
     }
 
     public override PlanetSurfaceData GeneratePlanetSurface(StarSystemData starSystem, PlanetData planet)
@@ -66,7 +67,7 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
         var rng = new SeededRandom(Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index).DeriveChildSeed(8100));
         var resources = new[] { ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Platinum };
 
-        float tileSize = GameConfig.TileSize;
+        float tileSize = WindowConfig.TileSize;
         float landingX = surfaceData.LandingZone.X * tileSize;
         float landingY = surfaceData.LandingZone.Y * tileSize;
         float safeRadius = 5f * tileSize;
@@ -107,9 +108,9 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
                 continue;
 
             var resource = resources[rng.NextInt(0, resources.Length)];
-            int amount = rng.NextInt(GameConfig.SurfaceRockMinResource, GameConfig.SurfaceRockMaxResource + 1);
-            float size = GameConfig.SurfaceRockMinSize + rng.NextFloat() * (GameConfig.SurfaceRockMaxSize - GameConfig.SurfaceRockMinSize);
-            float hp = GameConfig.SurfaceRockMinHp + rng.NextFloat() * (GameConfig.SurfaceRockMaxHp - GameConfig.SurfaceRockMinHp);
+            int amount = rng.NextInt(CombatConfig.SurfaceRockMinResource, CombatConfig.SurfaceRockMaxResource + 1);
+            float size = CombatConfig.SurfaceRockMinSize + rng.NextFloat() * (CombatConfig.SurfaceRockMaxSize - CombatConfig.SurfaceRockMinSize);
+            float hp = CombatConfig.SurfaceRockMinHp + rng.NextFloat() * (CombatConfig.SurfaceRockMaxHp - CombatConfig.SurfaceRockMinHp);
 
             surfaceData.RockSpawns.Add(new RockSpawn(worldX, worldY, resource, amount, size, hp));
         }

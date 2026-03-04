@@ -12,6 +12,7 @@ using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -38,8 +39,8 @@ public class PlanetSurfaceState : GameState
     private readonly PlanetData _planet;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
-        GameConfig.PlanetSurfaceZoomMin, GameConfig.PlanetSurfaceZoomMax);
+    private readonly Camera _camera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
+        CameraConfig.PlanetSurfaceZoomMin, CameraConfig.PlanetSurfaceZoomMax);
 
     // ── Input systems ───────────────────────────────────────────────
     private PlayerAvatarInputSystem _inputSystem = null!;
@@ -117,7 +118,7 @@ public class PlanetSurfaceState : GameState
 
         // Generate background star field outside the planet disc (Poisson disk, fixed seed)
         {
-            float ts = GameConfig.TileSize;
+            float ts = WindowConfig.TileSize;
             float discCX = (_sim.SurfaceData.Width - 1) * 0.5f * ts;
             float discCY = (_sim.SurfaceData.Height - 1) * 0.5f * ts;
             float discR = (MathF.Min(_sim.SurfaceData.Width, _sim.SurfaceData.Height) * 0.5f - 2f) * ts;
@@ -166,7 +167,7 @@ public class PlanetSurfaceState : GameState
         // Camera
         var startPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
         _camera.Position = startPos;
-        _camera.Zoom = GameConfig.PlanetSurfaceZoomDefault;
+        _camera.Zoom = CameraConfig.PlanetSurfaceZoomDefault;
         _camera.ClampZoom();
 
         // Open starship menu on fresh landing
@@ -247,7 +248,7 @@ public class PlanetSurfaceState : GameState
         // Camera zoom
         if (input.MouseWheelY != 0)
         {
-            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.Zoom *= 1f + input.MouseWheelY * CameraConfig.CameraZoomFactor;
             _camera.ClampZoom();
         }
 
@@ -371,8 +372,8 @@ public class PlanetSurfaceState : GameState
         if (input.IsActionDown(InputAction.FireWeapon) && _playerFireCooldown <= 0)
         {
             var avatarStats = game.Player.GetCombinedAvatarStats();
-            float weaponDamage = GameConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
-            _playerFireCooldown = GameConfig.AvatarFireRate;
+            float weaponDamage = CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage;
+            _playerFireCooldown = CombatConfig.AvatarFireRate;
 
             ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
 
@@ -393,8 +394,8 @@ public class PlanetSurfaceState : GameState
 
             var spawnPos = avatarTf.Position + aimDir * 14f;
             EntityFactory.CreateProjectile(_sim.EcsWorld, _simPlayer.Entity, spawnPos, aimDir,
-                weaponDamage, GameConfig.AvatarProjectileSpeed, Faction.Player,
-                new Color3(100, 255, 100), GameConfig.AvatarProjectileLifetime, Vector2.Zero);
+                weaponDamage, CombatConfig.AvatarProjectileSpeed, Faction.Player,
+                new Color3(100, 255, 100), CombatConfig.AvatarProjectileLifetime, Vector2.Zero);
             game.Audio.PlaySfx(AudioSfx.LaserFire, 0.5f);
         }
     }
@@ -462,16 +463,16 @@ public class PlanetSurfaceState : GameState
         var vStats = game.Player.GetCombinedVehicleStats();
         _vehicleMovementSystem = new PlayerVehicleInputSystem(
             _sim.EcsWorld, game.Input, _simPlayer.Entity,
-            acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : GameConfig.VehicleAcceleration,
-            maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed,
-            rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed,
-            friction: GameConfig.VehicleFriction + vStats.Friction);
+            acceleration: vStats.Acceleration > 0 ? vStats.Acceleration : AvatarConfig.VehicleAcceleration,
+            maxSpeed: vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed,
+            rotationSpeed: vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed,
+            friction: AvatarConfig.VehicleFriction + vStats.Friction);
 
         if (_sim.EcsWorld.Has<Velocity>(_simPlayer.Entity))
         {
             ref var avatarVelocity = ref _sim.EcsWorld.Get<Velocity>(_simPlayer.Entity);
-            avatarVelocity.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : GameConfig.VehicleMaxSpeed;
-            avatarVelocity.MaxRotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : GameConfig.VehicleRotationSpeed;
+            avatarVelocity.MaxSpeed = vStats.MaxSpeed > 0 ? vStats.MaxSpeed : AvatarConfig.VehicleMaxSpeed;
+            avatarVelocity.MaxRotationSpeed = vStats.RotationSpeed > 0 ? vStats.RotationSpeed : AvatarConfig.VehicleRotationSpeed;
         }
 
         _inVehicle = true;
@@ -523,8 +524,8 @@ public class PlanetSurfaceState : GameState
                 game.Player.ClearSavedSurfacePositions();
 
                 var launchShipTf = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity);
-                int launchTileX = Math.Clamp((int)MathF.Round(launchShipTf.Position.X / GameConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Width - 1));
-                int launchTileY = Math.Clamp((int)MathF.Round(launchShipTf.Position.Y / GameConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Height - 1));
+                int launchTileX = Math.Clamp((int)MathF.Round(launchShipTf.Position.X / WindowConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Width - 1));
+                int launchTileY = Math.Clamp((int)MathF.Round(launchShipTf.Position.Y / WindowConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Height - 1));
 
                 bool isMoon = game.Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon;
                 int moonPlanetIndex = isMoon ? game.Player.ReturnMoonPlanetIndex : -1;

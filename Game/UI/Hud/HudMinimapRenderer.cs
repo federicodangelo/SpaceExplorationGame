@@ -6,6 +6,7 @@ using SpaceExplorationGame.Generation;
 using Engine.Platform;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.UI.Overlays.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Hud;
 
@@ -45,8 +46,8 @@ public static class HudMinimapRenderer
         List<Entity> asteroidEntities, List<Entity> enemyEntities,
         Entity playerShip, Entity starEntity, World ecsWorld)
     {
-        float mapW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float mapH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        float mapW = WorldConfig.SolarSystemWidth * WindowConfig.TileSize;
+        float mapH = WorldConfig.SolarSystemHeight * WindowConfig.TileSize;
 
         Vector2 playerPos = ecsWorld.IsAlive(playerShip)
             ? ecsWorld.Get<Transform>(playerShip).Position
@@ -135,8 +136,8 @@ public static class HudMinimapRenderer
         PlanetSurfaceData surfaceData, Vector2 playerPos, Vector2 shipPos,
         Vector2? vehiclePos, World ecsWorld)
     {
-        float mapW = surfaceData.Width * GameConfig.TileSize;
-        float mapH = surfaceData.Height * GameConfig.TileSize;
+        float mapW = surfaceData.Width * WindowConfig.TileSize;
+        float mapH = surfaceData.Height * WindowConfig.TileSize;
         var (viewOrigin, viewSize) = PlayerCenteredView(mapW, mapH, playerPos);
 
         // Areas (settlements)
@@ -144,8 +145,8 @@ public static class HudMinimapRenderer
         foreach (var s in surfaceData.Settlements)
         {
             areas.Add(new MinimapArea(
-                s.TileRect.X * GameConfig.TileSize, s.TileRect.Y * GameConfig.TileSize,
-                s.TileRect.Width * GameConfig.TileSize, s.TileRect.Height * GameConfig.TileSize,
+                s.TileRect.X * WindowConfig.TileSize, s.TileRect.Y * WindowConfig.TileSize,
+                s.TileRect.Width * WindowConfig.TileSize, s.TileRect.Height * WindowConfig.TileSize,
                 new Color3(200, 180, 80)));
         }
 
@@ -172,9 +173,9 @@ public static class HudMinimapRenderer
                 // Planet boundary circle — drawn on top as a subtle ring
                 int tW = surfaceData.Width;
                 int tH = surfaceData.Height;
-                float bCenterX = (tW - 1) * 0.5f * GameConfig.TileSize;
-                float bCenterY = (tH - 1) * 0.5f * GameConfig.TileSize;
-                float bRadius = (MathF.Min(tW, tH) * 0.5f - 2f) * GameConfig.TileSize;
+                float bCenterX = (tW - 1) * 0.5f * WindowConfig.TileSize;
+                float bCenterY = (tH - 1) * 0.5f * WindowConfig.TileSize;
+                float bRadius = (MathF.Min(tW, tH) * 0.5f - 2f) * WindowConfig.TileSize;
 
                 float mmX = renderer.WindowWidth - MinimapSize - MinimapMargin;
                 float mmY = MinimapMargin;
@@ -196,8 +197,8 @@ public static class HudMinimapRenderer
     public static void RenderInteriorMinimap(ISpriteRenderer renderer, InteriorData interior,
         Vector2 playerPos)
     {
-        float mapW = interior.Width * GameConfig.TileSize;
-        float mapH = interior.Height * GameConfig.TileSize;
+        float mapW = interior.Width * WindowConfig.TileSize;
+        float mapH = interior.Height * WindowConfig.TileSize;
         var viewOrigin = Vector2.Zero;
         var viewSize = new Vector2(mapW, mapH);
 
@@ -207,8 +208,8 @@ public static class HudMinimapRenderer
         {
             var room = interior.Rooms[i];
             areas[i] = new MinimapArea(
-                room.TileRect.X * GameConfig.TileSize, room.TileRect.Y * GameConfig.TileSize,
-                room.TileRect.Width * GameConfig.TileSize, room.TileRect.Height * GameConfig.TileSize,
+                room.TileRect.X * WindowConfig.TileSize, room.TileRect.Y * WindowConfig.TileSize,
+                room.TileRect.Width * WindowConfig.TileSize, room.TileRect.Height * WindowConfig.TileSize,
                 new Color3(50, 50, 60));
         }
 
@@ -217,14 +218,14 @@ public static class HudMinimapRenderer
         foreach (var npc in interior.Npcs)
         {
             markers.Add(new MinimapMarker(
-                new Vector2(npc.TilePos.X * GameConfig.TileSize, npc.TilePos.Y * GameConfig.TileSize),
+                new Vector2(npc.TilePos.X * WindowConfig.TileSize, npc.TilePos.Y * WindowConfig.TileSize),
                 npc.Color));
         }
         foreach (var interactable in interior.Interactables)
         {
             var (ir, ig, ib) = InteriorRenderer.GetInteractableColor(interactable.Type);
             markers.Add(new MinimapMarker(
-                new Vector2(interactable.TilePos.X * GameConfig.TileSize, interactable.TilePos.Y * GameConfig.TileSize),
+                new Vector2(interactable.TilePos.X * WindowConfig.TileSize, interactable.TilePos.Y * WindowConfig.TileSize),
                 new Color3(ir, ig, ib)));
         }
 

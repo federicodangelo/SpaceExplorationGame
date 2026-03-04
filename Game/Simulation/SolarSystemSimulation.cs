@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
@@ -80,8 +81,8 @@ public class SolarSystemSimulation : CombatSimulationBase
         Planets = Content.Planets;
         SpaceStations = Content.SpaceStations;
 
-        float totalW = GameConfig.SolarSystemWidth * GameConfig.TileSize;
-        float totalH = GameConfig.SolarSystemHeight * GameConfig.TileSize;
+        float totalW = WorldConfig.SolarSystemWidth * WindowConfig.TileSize;
+        float totalH = WorldConfig.SolarSystemHeight * WindowConfig.TileSize;
         float centerX = totalW / 2f;
         float centerY = totalH / 2f;
         Vector2 center = new(centerX, centerY);
@@ -200,7 +201,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         ship.MaxSpeed = playerStats.MaxSpeed;
         ship.MaxRotationSpeed = playerStats.RotationSpeed;
         ship.MaxAcceleration = playerStats.Acceleration;
-        ship.BrakeMultiplier = GameConfig.ShipBrakeMultiplier;
+        ship.BrakeMultiplier = ShipConfig.ShipBrakeMultiplier;
         ship.Weapons = weapons;
 
         if (ship.WeaponCooldowns == null || ship.WeaponCooldowns.Length != weapons.Length)
@@ -248,7 +249,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         return EntityFactory.CreatePlayerShip(EcsWorld, position, shipSize,
             player.ShipMaxHealth, player.ShipHealth, playerStats.ShieldStrength,
             playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
-            GameConfig.ShipBrakeMultiplier, playerWeapons);
+            ShipConfig.ShipBrakeMultiplier, playerWeapons);
     }
 
     private void SpawnStar(StarSystemData starSystem, Vector2 center)
@@ -418,13 +419,13 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     protected override string? ApplyDeathPenalties(SimulationPlayer player)
     {
-        int creditsLost = (int)(player.Data.Credits * GameConfig.DeathCreditsLossPercent);
+        int creditsLost = (int)(player.Data.Credits * CombatConfig.DeathCreditsLossPercent);
         player.Data.Credits -= creditsLost;
 
         var cargoKeys = player.Data.Cargo.Keys.ToList();
         foreach (var key in cargoKeys)
         {
-            int loss = (int)(player.Data.Cargo[key] * GameConfig.DeathCargoLossPercent);
+            int loss = (int)(player.Data.Cargo[key] * CombatConfig.DeathCargoLossPercent);
             player.Data.Cargo[key] -= loss;
             if (player.Data.Cargo[key] <= 0) player.Data.Cargo.Remove(key);
         }

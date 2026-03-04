@@ -1,5 +1,6 @@
 using System.Numerics;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Generation;
 
@@ -77,8 +78,8 @@ public static class PlanetSurfaceGenerator
 {
     public static PlanetSurfaceData Generate(SeededRandom rng, PlanetData planet, int dangerLevel = 1)
     {
-        int width = GameConfig.PlanetSurfaceWidth;
-        int height = GameConfig.PlanetSurfaceHeight;
+        int width = WorldConfig.PlanetSurfaceWidth;
+        int height = WorldConfig.PlanetSurfaceHeight;
         var tiles = new TerrainType[width, height];
 
         // Generate heightmap using value noise
@@ -299,10 +300,10 @@ public static class PlanetSurfaceGenerator
         bool hasSettlement = data.Settlements.Count > 0;
 
         // Enemies scale with danger level
-        int enemies = rng.NextInt(GameConfig.SurfaceNpcMinEnemies, GameConfig.SurfaceNpcMaxEnemies + 1);
+        int enemies = rng.NextInt(NpcConfig.SurfaceNpcMinEnemies, NpcConfig.SurfaceNpcMaxEnemies + 1);
         // Cargo and patrols only on settlement planets
-        int cargo = hasSettlement ? rng.NextInt(GameConfig.SurfaceNpcMinCargo, GameConfig.SurfaceNpcMaxCargo + 1) : 0;
-        int patrols = hasSettlement ? rng.NextInt(GameConfig.SurfaceNpcMinPatrols, GameConfig.SurfaceNpcMaxPatrols + 1) : 0;
+        int cargo = hasSettlement ? rng.NextInt(NpcConfig.SurfaceNpcMinCargo, NpcConfig.SurfaceNpcMaxCargo + 1) : 0;
+        int patrols = hasSettlement ? rng.NextInt(NpcConfig.SurfaceNpcMinPatrols, NpcConfig.SurfaceNpcMaxPatrols + 1) : 0;
 
         return new SurfaceNpcSpawnConfig(
             TargetEnemies: enemies,
@@ -317,12 +318,12 @@ public static class PlanetSurfaceGenerator
     /// </summary>
     private static void GenerateRockSpawns(SeededRandom rng, PlanetSurfaceData data, PlanetData planet)
     {
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
         float lzX = data.LandingZone.X * ts;
         float lzY = data.LandingZone.Y * ts;
         float safeRadius = 4 * ts; // rocks can be closer to LZ than enemies
 
-        int rockCount = rng.NextInt(GameConfig.MinRocksPerPlanet, GameConfig.MaxRocksPerPlanet + 1);
+        int rockCount = rng.NextInt(CombatConfig.MinRocksPerPlanet, CombatConfig.MaxRocksPerPlanet + 1);
 
         // Choose available resources based on planet type
         ResourceType[] availableResources = GetPlanetResources(planet.Type);
@@ -332,9 +333,9 @@ public static class PlanetSurfaceGenerator
             if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float rx, out float ry))
             {
                 var resource = availableResources[rng.NextInt(0, availableResources.Length)];
-                int amount = rng.NextInt(GameConfig.SurfaceRockMinResource, GameConfig.SurfaceRockMaxResource + 1);
-                float size = GameConfig.SurfaceRockMinSize + rng.NextFloat() * (GameConfig.SurfaceRockMaxSize - GameConfig.SurfaceRockMinSize);
-                float hp = GameConfig.SurfaceRockMinHp + rng.NextFloat() * (GameConfig.SurfaceRockMaxHp - GameConfig.SurfaceRockMinHp);
+                int amount = rng.NextInt(CombatConfig.SurfaceRockMinResource, CombatConfig.SurfaceRockMaxResource + 1);
+                float size = CombatConfig.SurfaceRockMinSize + rng.NextFloat() * (CombatConfig.SurfaceRockMaxSize - CombatConfig.SurfaceRockMinSize);
+                float hp = CombatConfig.SurfaceRockMinHp + rng.NextFloat() * (CombatConfig.SurfaceRockMaxHp - CombatConfig.SurfaceRockMinHp);
                 data.RockSpawns.Add(new RockSpawn(rx, ry, resource, amount, size, hp));
             }
         }
@@ -359,7 +360,7 @@ public static class PlanetSurfaceGenerator
     private static bool TryFindSpawnPosition(SeededRandom rng, PlanetSurfaceData data,
         float lzX, float lzY, float safeRadius, out float worldX, out float worldY)
     {
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
         for (int attempt = 0; attempt < 50; attempt++)
         {
             int tx = rng.NextInt(5, data.Width - 5);
@@ -475,7 +476,7 @@ public static class PlanetSurfaceGenerator
     private static SettlementLayout GenerateSettlementLayout(SeededRandom rng, SettlementData settlement)
     {
         var layout = new SettlementLayout();
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
         float baseX = settlement.TileRect.X * ts;
         float baseY = settlement.TileRect.Y * ts;
         float totalW = settlement.TileRect.Width * ts;

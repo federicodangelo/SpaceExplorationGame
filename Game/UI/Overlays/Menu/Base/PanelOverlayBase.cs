@@ -1,6 +1,7 @@
 using SpaceExplorationGame.Core;
 using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu.Base;
 
@@ -15,8 +16,8 @@ public abstract class PanelOverlayBase : OverlayBase
     private float _statusTimer;
     private bool _statusIsPositive;
     private IInputManager? _currentInput;
-    private int _windowW = GameConfig.DefaultWindowWidth;
-    private int _windowH = GameConfig.DefaultWindowHeight;
+    private int _windowW = WindowConfig.DefaultWindowWidth;
+    private int _windowH = WindowConfig.DefaultWindowHeight;
 
     protected IInputManager? CurrentInput => _currentInput;
 

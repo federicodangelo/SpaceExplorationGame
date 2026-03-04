@@ -1,5 +1,6 @@
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
@@ -87,13 +88,13 @@ public class InteriorSimulation : SimulationBase
 
     protected override Entity CreatePlayerEntity(PlayerData player, AddContext ctx)
     {
-        float spawnX = ctx.LandingTileX * GameConfig.TileSize;
-        float spawnY = ctx.LandingTileY * GameConfig.TileSize;
+        float spawnX = ctx.LandingTileX * WindowConfig.TileSize;
+        float spawnY = ctx.LandingTileY * WindowConfig.TileSize;
 
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, player.AvatarWalkSpeed, canMoveTo: pos =>
         {
-            int tileX = (int)(pos.X / GameConfig.TileSize);
-            int tileY = (int)(pos.Y / GameConfig.TileSize);
+            int tileX = (int)(pos.X / WindowConfig.TileSize);
+            int tileY = (int)(pos.Y / WindowConfig.TileSize);
             return tileX >= 0 && tileX < Interior.Width &&
                    tileY >= 0 && tileY < Interior.Height &&
                    InteriorGenerator.IsWalkable(Interior.Tiles[tileX, tileY]);
@@ -118,8 +119,8 @@ public class InteriorSimulation : SimulationBase
         if (!EcsWorld.IsAlive(local.Entity)) return;
 
         ref var avatarTf = ref EcsWorld.Get<Transform>(local.Entity);
-        float playerTileX = avatarTf.Position.X / GameConfig.TileSize;
-        float playerTileY = avatarTf.Position.Y / GameConfig.TileSize;
+        float playerTileX = avatarTf.Position.X / WindowConfig.TileSize;
+        float playerTileY = avatarTf.Position.Y / WindowConfig.TileSize;
 
         float nearestNpcDist = float.MaxValue;
         foreach (var npc in Interior.Npcs)

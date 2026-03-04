@@ -1,4 +1,4 @@
-namespace SpaceExplorationGame.Core;
+namespace SpaceExplorationGame.Core.Config;
 
 static public class DangerConfig
 {

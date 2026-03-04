@@ -4,6 +4,7 @@ using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using Engine.Platform;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
@@ -59,8 +60,8 @@ public class SolarSystemMapPanel : MapPanelBase
     {
         Camera.ZoomMin = ZoomMin;
         Camera.ZoomMax = ZoomMax;
-        float centerX = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float centerY = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float centerX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float centerY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         Camera.Position = new Vector2(centerX, centerY);
         Camera.Zoom = ZoomDefault;
         Camera.ClampZoom();
@@ -70,8 +71,8 @@ public class SolarSystemMapPanel : MapPanelBase
     /// <summary>Keep the camera within the solar system world bounds so empty space is never visible.</summary>
     protected override void ClampCameraPosition() =>
         ClampCameraToWorldBounds(
-            GameConfig.SolarSystemWidth * GameConfig.TileSize,
-            GameConfig.SolarSystemHeight * GameConfig.TileSize);
+            WorldConfig.SolarSystemWidth * WindowConfig.TileSize,
+            WorldConfig.SolarSystemHeight * WindowConfig.TileSize);
 
     // ─────────────────────────────────────────────────────────────
     //  INPUT
@@ -93,8 +94,8 @@ public class SolarSystemMapPanel : MapPanelBase
             float bestDist = float.MaxValue;
 
             // Star
-            float cx = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-            float cy = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+            float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+            float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
             var starScreen = Camera.WorldToScreen(new Vector2(cx, cy));
             float starHit = MathF.Max((_currentStarSystem?.StarRadius ?? 10f) * 2f * Camera.Zoom, 15f);
             float starDist = (selectionPoint - starScreen).LengthSquared();
@@ -186,8 +187,8 @@ public class SolarSystemMapPanel : MapPanelBase
 
     private Vector2 GetPlanetWorldPos(PlanetData planet, float time)
     {
-        float cx = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float cy = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         float angle = planet.StartAngle + planet.OrbitSpeed * time;
         return new Vector2(cx + MathF.Cos(angle) * planet.OrbitRadius,
                            cy + MathF.Sin(angle) * planet.OrbitRadius);
@@ -203,8 +204,8 @@ public class SolarSystemMapPanel : MapPanelBase
 
     private Vector2 GetStationWorldPos(SpaceStationData station, float time)
     {
-        float cx = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float cy = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         Vector2 parentPos;
         if (station.OrbitParentPlanetIndex >= 0 && station.OrbitParentPlanetIndex < _planets.Count)
             parentPos = GetPlanetWorldPos(_planets[station.OrbitParentPlanetIndex], time);
@@ -266,8 +267,8 @@ public class SolarSystemMapPanel : MapPanelBase
     {
         var camera = Camera;
         float time = (float)game.GlobalTime;
-        float cx = GameConfig.SolarSystemWidth * GameConfig.TileSize / 2f;
-        float cy = GameConfig.SolarSystemHeight * GameConfig.TileSize / 2f;
+        float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         var starCenter = new Vector2(cx, cy);
         float starRadius = _currentStarSystem?.StarRadius ?? 20f;
 

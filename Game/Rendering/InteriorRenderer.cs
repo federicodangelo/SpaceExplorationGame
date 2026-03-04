@@ -1,8 +1,8 @@
 using System.Numerics;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using Engine.Platform;
 using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -75,7 +75,7 @@ public static class InteriorRenderer
         var (topLeft, bottomRight) = camera.GetVisibleBounds();
 
         // Extend slightly beyond visible area
-        int margin = GameConfig.TileSize * 2;
+        int margin = WindowConfig.TileSize * 2;
         float bgLeft = topLeft.X - margin;
         float bgTop = topLeft.Y - margin;
         float bgRight = bottomRight.X + margin;
@@ -289,8 +289,8 @@ public static class InteriorRenderer
 
     private static void RenderBoundaryOutline(ISpriteRenderer renderer, Camera camera, InteriorData interior)
     {
-        float interiorPixelW = interior.Width * GameConfig.TileSize;
-        float interiorPixelH = interior.Height * GameConfig.TileSize;
+        float interiorPixelW = interior.Width * WindowConfig.TileSize;
+        float interiorPixelH = interior.Height * WindowConfig.TileSize;
         var tl = new Vector2(0, 0);
         var tr = new Vector2(interiorPixelW, 0);
         var bl = new Vector2(0, interiorPixelH);
@@ -311,7 +311,7 @@ public static class InteriorRenderer
     private static void RenderTiles(ISpriteRenderer renderer, Camera camera,
         InteriorData interior, double globalTime)
     {
-        renderer.RenderTiles(camera, interior.Width, interior.Height, GameConfig.TileSize,
+        renderer.RenderTiles(camera, interior.Width, interior.Height, WindowConfig.TileSize,
             (x, y) =>
             {
                 var tile = interior.Tiles[x, y];
@@ -321,7 +321,7 @@ public static class InteriorRenderer
             (x, y, worldPos, hash) =>
             {
                 var tile = interior.Tiles[x, y];
-                int ts = GameConfig.TileSize;
+                int ts = WindowConfig.TileSize;
                 var roomFunc = (x >= 0 && x < interior.Width && y >= 0 && y < interior.Height)
                     ? interior.RoomTiles[x, y] : null;
 
@@ -586,10 +586,10 @@ public static class InteriorRenderer
             if (tint.A == 0) continue;
 
             var r = room.TileRect;
-            float roomWorldX = (r.X + r.Width / 2f) * GameConfig.TileSize;
-            float roomWorldY = (r.Y + r.Height / 2f) * GameConfig.TileSize;
-            float roomWorldW = r.Width * GameConfig.TileSize;
-            float roomWorldH = r.Height * GameConfig.TileSize;
+            float roomWorldX = (r.X + r.Width / 2f) * WindowConfig.TileSize;
+            float roomWorldY = (r.Y + r.Height / 2f) * WindowConfig.TileSize;
+            float roomWorldW = r.Width * WindowConfig.TileSize;
+            float roomWorldH = r.Height * WindowConfig.TileSize;
 
             renderer.DrawRect(camera,
                 new Vector2(roomWorldX, roomWorldY),
@@ -622,8 +622,8 @@ public static class InteriorRenderer
         {
             float roomLabelW = renderer.MeasureText(room.Name, 3f) / 2f / camera.Zoom;
             var labelPos = new Vector2(
-                (room.TileRect.X + room.TileRect.Width / 2f) * GameConfig.TileSize - roomLabelW,
-                room.TileRect.Y * GameConfig.TileSize - 8
+                (room.TileRect.X + room.TileRect.Width / 2f) * WindowConfig.TileSize - roomLabelW,
+                room.TileRect.Y * WindowConfig.TileSize - 8
             );
             renderer.DrawText(camera, labelPos, room.Name, new Color3(120, 120, 160), 3f);
         }
@@ -659,8 +659,8 @@ public static class InteriorRenderer
                 : 0f;
 
             var npcPos = new Vector2(
-                npc.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f + sway + wanderX,
-                npc.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f + wanderY
+                npc.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f + sway + wanderX,
+                npc.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f + wanderY
             );
 
             // Shadow beneath feet (scaled)
@@ -745,8 +745,8 @@ public static class InteriorRenderer
         foreach (var interactable in interior.Interactables)
         {
             var intPos = new Vector2(
-                interactable.TilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2f,
-                interactable.TilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2f
+                interactable.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f,
+                interactable.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f
             );
 
             var intColor = GetInteractableColor(interactable.Type);

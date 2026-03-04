@@ -1,9 +1,9 @@
 using System.Numerics;
 using Arch.Core;
 using Arch.System;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.ECS.Systems.Input;
 
@@ -24,11 +24,11 @@ public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
     private readonly Entity _entity;
 
     public PlayerVehicleInputSystem(World world, IInputManager input, Entity entity,
-        float acceleration = GameConfig.VehicleAcceleration,
-        float maxSpeed = GameConfig.VehicleMaxSpeed,
-        float rotationSpeed = GameConfig.VehicleRotationSpeed,
-        float friction = GameConfig.VehicleFriction,
-        float brakeMultiplier = GameConfig.VehicleBrakeMultiplier) : base(world)
+        float acceleration = AvatarConfig.VehicleAcceleration,
+        float maxSpeed = AvatarConfig.VehicleMaxSpeed,
+        float rotationSpeed = AvatarConfig.VehicleRotationSpeed,
+        float friction = AvatarConfig.VehicleFriction,
+        float brakeMultiplier = AvatarConfig.VehicleBrakeMultiplier) : base(world)
     {
         _input = input;
         _entity = entity;

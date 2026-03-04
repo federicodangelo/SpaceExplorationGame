@@ -5,6 +5,7 @@ using Engine.Platform;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Map.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
@@ -42,8 +43,8 @@ public class GalaxyMapPanel : MapPanelBase
 
     public override void SetupCamera(Game game)
     {
-        Camera.ZoomMin = GameConfig.GalaxyMapZoomMin;
-        Camera.ZoomMax = GameConfig.GalaxyMapZoomMax;
+        Camera.ZoomMin = CameraConfig.GalaxyMapZoomMin;
+        Camera.ZoomMax = CameraConfig.GalaxyMapZoomMax;
         _selectedSystemIndex = -1;
         _hoveredSystemIndex = -1;
 
@@ -54,10 +55,10 @@ public class GalaxyMapPanel : MapPanelBase
         }
         else
         {
-            Camera.Position = new Vector2(GameConfig.GalaxyWidth * GameConfig.TileSize / 2f,
-                                          GameConfig.GalaxyHeight * GameConfig.TileSize / 2f);
+            Camera.Position = new Vector2(WorldConfig.GalaxyWidth * WindowConfig.TileSize / 2f,
+                                          WorldConfig.GalaxyHeight * WindowConfig.TileSize / 2f);
         }
-        Camera.Zoom = GameConfig.GalaxyMapZoomDefault;
+        Camera.Zoom = CameraConfig.GalaxyMapZoomDefault;
         Camera.ClampZoom();
         ClampCameraPosition();
     }
@@ -65,8 +66,8 @@ public class GalaxyMapPanel : MapPanelBase
     /// <summary>Keep the camera within the galaxy world bounds so empty space is never visible.</summary>
     protected override void ClampCameraPosition() =>
         ClampCameraToWorldBounds(
-            GameConfig.GalaxyWidth * GameConfig.TileSize,
-            GameConfig.GalaxyHeight * GameConfig.TileSize);
+            WorldConfig.GalaxyWidth * WindowConfig.TileSize,
+            WorldConfig.GalaxyHeight * WindowConfig.TileSize);
 
     // ─────────────────────────────────────────────────────────────
     //  INPUT
@@ -137,8 +138,8 @@ public class GalaxyMapPanel : MapPanelBase
 
     private void InitGalaxyBackground(Game game)
     {
-        float totalW = GameConfig.GalaxyWidth * GameConfig.TileSize;
-        float totalH = GameConfig.GalaxyHeight * GameConfig.TileSize;
+        float totalW = WorldConfig.GalaxyWidth * WindowConfig.TileSize;
+        float totalH = WorldConfig.GalaxyHeight * WindowConfig.TileSize;
         _starsBackground = new StarsBackgroundRenderer(parallaxFactor: 0.02f);
         _starsBackground.Generate(0, 0, totalW, totalH,
             seed: game.Seeds.GalaxySeed ^ 0xDEADBEEFuL,
@@ -159,12 +160,12 @@ public class GalaxyMapPanel : MapPanelBase
     }
 
     private float GetFuelCost(int fromIndex, int toIndex) =>
-        GetSystemDistance(fromIndex, toIndex) * GameConfig.FuelPerDistanceUnit;
+        GetSystemDistance(fromIndex, toIndex) * ShipConfig.FuelPerDistanceUnit;
 
     private float GetFtlRange(Game game)
     {
         var stats = game.Player.GetCombinedStats();
-        return stats.FtlRange > 0 ? stats.FtlRange : GameConfig.FtlMaxRange;
+        return stats.FtlRange > 0 ? stats.FtlRange : ShipConfig.FtlMaxRange;
     }
 
     private bool IsSystemReachable(Game game, int targetIndex)
@@ -172,7 +173,7 @@ public class GalaxyMapPanel : MapPanelBase
         int current = game.Player.CurrentStarSystemIndex;
         if (current == targetIndex) return true;
         float distance = GetSystemDistance(current, targetIndex);
-        float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
+        float fuelCost = distance * ShipConfig.FuelPerDistanceUnit;
         return distance <= GetFtlRange(game) && game.Player.ShipFuel >= fuelCost;
     }
 
@@ -222,7 +223,7 @@ public class GalaxyMapPanel : MapPanelBase
             var playerPos = _starSystems[currentSys].GalaxyPosition;
             float ftlRange = GetFtlRange(game);
             renderer.DrawCircle(camera, playerPos, ftlRange, new Color4(40, 80, 40, 200), 64);
-            float fuelRange = game.Player.ShipFuel / GameConfig.FuelPerDistanceUnit;
+            float fuelRange = game.Player.ShipFuel / ShipConfig.FuelPerDistanceUnit;
             if (fuelRange < ftlRange)
                 renderer.DrawCircle(camera, playerPos, fuelRange, new Color4(80, 160, 200, 80));
         }
@@ -348,7 +349,7 @@ public class GalaxyMapPanel : MapPanelBase
         if (_selectedSystemIndex >= 0 && _selectedSystemIndex != game.Player.CurrentStarSystemIndex)
         {
             float jumpDist = GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
-            float jumpCost = jumpDist * GameConfig.FuelPerDistanceUnit;
+            float jumpCost = jumpDist * ShipConfig.FuelPerDistanceUnit;
             float costPct = game.Player.ShipMaxFuel > 0 ? jumpCost / game.Player.ShipMaxFuel : 0;
             float remainPct = fuelPct - costPct;
             if (remainPct < 0) remainPct = 0;
@@ -369,7 +370,7 @@ public class GalaxyMapPanel : MapPanelBase
             var sys = _starSystems[_selectedSystemIndex];
             bool isCurrentSystem = _selectedSystemIndex == game.Player.CurrentStarSystemIndex;
             float distance = isCurrentSystem ? 0 : GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
-            float fuelCost = distance * GameConfig.FuelPerDistanceUnit;
+            float fuelCost = distance * ShipConfig.FuelPerDistanceUnit;
             bool inRange = isCurrentSystem || distance <= GetFtlRange(game);
             bool canAfford = isCurrentSystem || game.Player.ShipFuel >= fuelCost;
 

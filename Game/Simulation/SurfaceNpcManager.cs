@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -42,7 +43,7 @@ public class SurfaceNpcManager
         _config = config;
         _canMoveTo = canMoveTo;
 
-        _spawnCheckTimer = GameConfig.SurfaceNpcSpawnCheckInterval * 0.5f;
+        _spawnCheckTimer = NpcConfig.SurfaceNpcSpawnCheckInterval * 0.5f;
     }
 
     // ── Initial Wave ────────────────────────────────────────────────
@@ -53,9 +54,9 @@ public class SurfaceNpcManager
     /// </summary>
     public void SpawnInitialWave()
     {
-        int enemies = (int)(_config.TargetEnemies * GameConfig.SurfaceNpcInitialSpawnFraction);
-        int cargo = (int)(_config.TargetCargo * GameConfig.SurfaceNpcInitialSpawnFraction);
-        int patrols = (int)(_config.TargetPatrols * GameConfig.SurfaceNpcInitialSpawnFraction);
+        int enemies = (int)(_config.TargetEnemies * NpcConfig.SurfaceNpcInitialSpawnFraction);
+        int cargo = (int)(_config.TargetCargo * NpcConfig.SurfaceNpcInitialSpawnFraction);
+        int patrols = (int)(_config.TargetPatrols * NpcConfig.SurfaceNpcInitialSpawnFraction);
 
         for (int i = 0; i < enemies; i++)
             SpawnNpcInstant(Faction.Pirate);
@@ -90,13 +91,13 @@ public class SurfaceNpcManager
         switch (faction)
         {
             case Faction.Pirate:
-                _enemyRespawnTimer = Math.Max(_enemyRespawnTimer, GameConfig.SurfaceNpcEnemyRespawnDelay);
+                _enemyRespawnTimer = Math.Max(_enemyRespawnTimer, NpcConfig.SurfaceNpcEnemyRespawnDelay);
                 break;
             case Faction.Trader:
-                _cargoRespawnTimer = Math.Max(_cargoRespawnTimer, GameConfig.SurfaceNpcCargoRespawnDelay);
+                _cargoRespawnTimer = Math.Max(_cargoRespawnTimer, NpcConfig.SurfaceNpcCargoRespawnDelay);
                 break;
             case Faction.Patrol:
-                _patrolRespawnTimer = Math.Max(_patrolRespawnTimer, GameConfig.SurfaceNpcPatrolRespawnDelay);
+                _patrolRespawnTimer = Math.Max(_patrolRespawnTimer, NpcConfig.SurfaceNpcPatrolRespawnDelay);
                 break;
         }
     }
@@ -122,7 +123,7 @@ public class SurfaceNpcManager
         _spawnCheckTimer -= dt;
         if (_spawnCheckTimer <= 0)
         {
-            _spawnCheckTimer = GameConfig.SurfaceNpcSpawnCheckInterval;
+            _spawnCheckTimer = NpcConfig.SurfaceNpcSpawnCheckInterval;
             SpawnMissingNpcs();
         }
 
@@ -196,7 +197,7 @@ public class SurfaceNpcManager
             ShipEntity = shipEntity,
             Faction = faction,
             // start with random inactivity to stagger departures
-            InactivityTimer = _rng.NextSingle() * GameConfig.SurfaceNpcInactivityTimeout * 0.5f
+            InactivityTimer = _rng.NextSingle() * NpcConfig.SurfaceNpcInactivityTimeout * 0.5f
         });
 
         // Cross-reference
@@ -222,7 +223,7 @@ public class SurfaceNpcManager
     /// <summary>Tick landing/takeoff animations on all LandedNpcShip entities.</summary>
     private void UpdateLandingAnimations(float dt)
     {
-        float step = dt / GameConfig.SurfaceNpcLandingDuration;
+        float step = dt / NpcConfig.SurfaceNpcLandingDuration;
 
         for (int i = _npcEntities.Count - 1; i >= 0; i--)
         {
@@ -298,7 +299,7 @@ public class SurfaceNpcManager
             ref var state = ref _world.Get<SurfaceNpcState>(npc);
             float inactivityMultiplier = 1 + (npc.Id % 5 - 2) * 0.1f; // add some random variation to departure timing (+/-20%)
             if (state.Phase == SurfaceNpcPhase.OnFoot &&
-                state.InactivityTimer >= GameConfig.SurfaceNpcInactivityTimeout * inactivityMultiplier)
+                state.InactivityTimer >= NpcConfig.SurfaceNpcInactivityTimeout * inactivityMultiplier)
             {
                 DepartNpc(npc);
             }
@@ -374,7 +375,7 @@ public class SurfaceNpcManager
     /// </summary>
     private bool TryFindSpawnPosition(out Vector2 position)
     {
-        float ts = GameConfig.TileSize;
+        float ts = WindowConfig.TileSize;
         float lzX = _surfaceData.LandingZone.X * ts;
         float lzY = _surfaceData.LandingZone.Y * ts;
         float safeRadius = 8 * ts;

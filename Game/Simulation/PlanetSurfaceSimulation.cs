@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems.AI;
@@ -138,8 +139,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             }
         }
 
-        float lzX = lzTileX * GameConfig.TileSize;
-        float lzY = lzTileY * GameConfig.TileSize;
+        float lzX = lzTileX * WindowConfig.TileSize;
+        float lzY = lzTileY * WindowConfig.TileSize;
 
         // Recalculate avatar stats
         player.RecalculateAvatarStats();
@@ -224,8 +225,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     private bool CanMoveToTerrain(Vector2 newPos)
     {
-        int tileX = (int)(newPos.X / GameConfig.TileSize);
-        int tileY = (int)(newPos.Y / GameConfig.TileSize);
+        int tileX = (int)(newPos.X / WindowConfig.TileSize);
+        int tileY = (int)(newPos.Y / WindowConfig.TileSize);
         if (tileX < 0 || tileX >= SurfaceData.Width || tileY < 0 || tileY >= SurfaceData.Height)
             return false;
         return SurfaceTerrainRules.IsTraversable(SurfaceData.Tiles[tileX, tileY]);
@@ -247,10 +248,10 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Settlement proximity
         foreach (var settlement in SurfaceData.Settlements)
         {
-            float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
-            float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
+            float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * WindowConfig.TileSize;
+            float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * WindowConfig.TileSize;
             float dist = Vector2.Distance(avatarPos, new Vector2(sx, sy));
-            float settlementRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * GameConfig.TileSize / 2f + 20f;
+            float settlementRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * WindowConfig.TileSize / 2f + 20f;
             if (dist < settlementRadius)
             {
                 NearSettlement = settlement;
@@ -269,7 +270,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
         {
             var vehiclePos = EcsWorld.Get<Transform>(LocalVehicleEntity).Position;
-            NearVehicle = Vector2.Distance(avatarPos, vehiclePos) < GameConfig.VehicleMountRadius;
+            NearVehicle = Vector2.Distance(avatarPos, vehiclePos) < AvatarConfig.VehicleMountRadius;
         }
     }
 
@@ -298,7 +299,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     protected override string? ApplyDeathPenalties(SimulationPlayer player)
     {
-        int creditsLost = (int)(player.Data.Credits * GameConfig.DeathCreditsLossPercent);
+        int creditsLost = (int)(player.Data.Credits * CombatConfig.DeathCreditsLossPercent);
         player.Data.Credits -= creditsLost;
         return creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
     }
@@ -311,8 +312,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Respawn near the landed ship
         var shipPos = EcsWorld.IsAlive(LocalShipEntity)
             ? EcsWorld.Get<Transform>(LocalShipEntity).Position
-            : new Vector2(SurfaceData.LandingZone.X * GameConfig.TileSize,
-                          SurfaceData.LandingZone.Y * GameConfig.TileSize);
+            : new Vector2(SurfaceData.LandingZone.X * WindowConfig.TileSize,
+                          SurfaceData.LandingZone.Y * WindowConfig.TileSize);
 
         player.Data.RecalculateAvatarStats();
         player.Data.AvatarHealth = player.Data.AvatarMaxHealth;

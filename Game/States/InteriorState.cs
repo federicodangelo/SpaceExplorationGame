@@ -11,6 +11,7 @@ using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.States;
 
@@ -46,8 +47,8 @@ public class InteriorState : GameState
     private CameraFollowSystem _cameraFollowSystem = null!;
 
     // ── Camera ──────────────────────────────────────────────────────
-    private readonly Camera _camera = new(GameConfig.DefaultWindowWidth, GameConfig.DefaultWindowHeight,
-        GameConfig.InteriorZoomMin, GameConfig.InteriorZoomMax);
+    private readonly Camera _camera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
+        CameraConfig.InteriorZoomMin, CameraConfig.InteriorZoomMax);
 
     // ── Dialogue state ──────────────────────────────────────────────
     private bool _showingDialogue;
@@ -108,8 +109,8 @@ public class InteriorState : GameState
         _cameraFollowSystem.Initialize();
 
         // Camera
-        _camera.Position = new Vector2(playerTileX * GameConfig.TileSize, playerTileY * GameConfig.TileSize);
-        _camera.Zoom = GameConfig.InteriorZoomDefault;
+        _camera.Position = new Vector2(playerTileX * WindowConfig.TileSize, playerTileY * WindowConfig.TileSize);
+        _camera.Zoom = CameraConfig.InteriorZoomDefault;
         _camera.ClampZoom();
 
         // Ship boarding — arriving by ship triggers the docking menu after a brief delay
@@ -207,7 +208,7 @@ public class InteriorState : GameState
         // Camera zoom
         if (input.MouseWheelY != 0)
         {
-            _camera.Zoom *= 1f + input.MouseWheelY * GameConfig.CameraZoomFactor;
+            _camera.Zoom *= 1f + input.MouseWheelY * CameraConfig.CameraZoomFactor;
             _camera.ClampZoom();
         }
 
@@ -273,8 +274,8 @@ public class InteriorState : GameState
                 if (_sim.Interior.LandingPadTilePos.HasValue)
                 {
                     ref var avatarTf = ref _sim.EcsWorld.Get<Transform>(_simPlayer.Entity);
-                    float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
-                    float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+                    float shipX = _sim.Interior.LandingPadTilePos.Value.X * WindowConfig.TileSize;
+                    float shipY = _sim.Interior.LandingPadTilePos.Value.Y * WindowConfig.TileSize;
                     avatarTf.Position = new Vector2(shipX, shipY);
                 }
                 break;
@@ -413,8 +414,8 @@ public class InteriorState : GameState
                 int landY = _settlement!.TileRect.Y + _settlement.TileRect.Height; // one tile below settlement
                 if (!game.Player.HasSavedSurfacePositions)
                 {
-                    float px = landX * GameConfig.TileSize;
-                    float py = landY * GameConfig.TileSize;
+                    float px = landX * WindowConfig.TileSize;
+                    float py = landY * WindowConfig.TileSize;
                     game.Player.SaveSurfacePositions(
                         px + 30, py, 0, 0, false, px, py, false);
                 }
@@ -437,8 +438,8 @@ public class InteriorState : GameState
         // Draw landed ship on the docking bay landing pad (always visible)
         if (_sim.Interior.LandingPadTilePos.HasValue)
         {
-            float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
-            float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+            float shipX = _sim.Interior.LandingPadTilePos.Value.X * WindowConfig.TileSize;
+            float shipY = _sim.Interior.LandingPadTilePos.Value.Y * WindowConfig.TileSize;
             game.SpaceshipRenderer.RenderShadow(renderer, camera, new Vector2(shipX, shipY), game.Player.CurrentShipType.SpriteSize);
             game.SpaceshipRenderer.RenderWithLabel(renderer, camera, new Vector2(shipX, shipY), 0f,
                 game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);

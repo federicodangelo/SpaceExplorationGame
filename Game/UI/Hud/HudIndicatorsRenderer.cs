@@ -6,6 +6,7 @@ using SpaceExplorationGame.Generation;
 using Engine.Platform;
 using Engine.Rendering.Base;
 using SpaceExplorationGame.Rendering.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Hud;
 
@@ -126,8 +127,8 @@ public static class HudIndicatorsRenderer
                 continue;
 
             // Point toward the center of the settlement
-            float cx = (s.TileRect.X + s.TileRect.Width / 2f) * GameConfig.TileSize;
-            float cy = (s.TileRect.Y + s.TileRect.Height / 2f) * GameConfig.TileSize;
+            float cx = (s.TileRect.X + s.TileRect.Width / 2f) * WindowConfig.TileSize;
+            float cy = (s.TileRect.Y + s.TileRect.Height / 2f) * WindowConfig.TileSize;
             RenderOffscreenIndicator(renderer, camera, new Vector2(cx, cy),
                 new Color3(200, 180, 80), prefix: s.Name + " ", arrowSize: 8f);
         }
@@ -205,8 +206,8 @@ public static class HudIndicatorsRenderer
                 var mc = mission.TypeColor;
                 foreach (var settlement in settlements)
                 {
-                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
-                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
+                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * WindowConfig.TileSize;
+                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * WindowConfig.TileSize;
                     RenderOffscreenIndicator(renderer, camera, new Vector2(sx, sy),
                         mc, prefix: mission.TypeLabel + " ", arrowSize: 10f);
                 }
@@ -394,10 +395,10 @@ public static class HudIndicatorsRenderer
 
                 foreach (var settlement in settlements)
                 {
-                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * GameConfig.TileSize;
-                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * GameConfig.TileSize;
+                    float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * WindowConfig.TileSize;
+                    float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * WindowConfig.TileSize;
                     var pos = new Vector2(sx, sy);
-                    float markerRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * GameConfig.TileSize / 2f + 8 + pulse * 4;
+                    float markerRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * WindowConfig.TileSize / 2f + 8 + pulse * 4;
                     renderer.DrawCircle(camera, pos, markerRadius, ringColor);
                     renderer.DrawText(camera, pos + new Vector2(0, -markerRadius - 10),
                         $"[{mission.TypeLabel}]", mc.WithAlpha(ringAlpha), Math.Max(1f, camera.Zoom * 0.8f));

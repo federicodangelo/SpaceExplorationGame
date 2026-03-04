@@ -1,7 +1,7 @@
 using System.Numerics;
-using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using Engine.Platform;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -45,7 +45,7 @@ public static class SettlementRenderer
         var layout = settlement.Layout;
         var (px, py, pw, ph) = layout.Perimeter;
 
-        float tileSize = GameConfig.TileSize;
+        float tileSize = WindowConfig.TileSize;
 
         DrawProjectedRect(renderer, projectRect,
             (settlement.TileRect.X + settlement.TileRect.Width * 0.5f) * tileSize,

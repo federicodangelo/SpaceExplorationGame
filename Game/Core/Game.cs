@@ -1,4 +1,5 @@
 using Arch.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
@@ -219,19 +220,19 @@ public class Game : GameBase
         _debugTimer.Begin();
         _debugTimer.PresetAccumulators("Simulation Update", "State Update");
         int steps = 0;
-        while (_accumulator >= GameConfig.FixedTimeStep && steps < GameConfig.MaxFrameSkip)
+        while (_accumulator >= WindowConfig.FixedTimeStep && steps < WindowConfig.MaxFrameSkip)
         {
-            GlobalTime += GameConfig.FixedTimeStep;
-            DeltaTime = GameConfig.FixedTimeStep;
+            GlobalTime += WindowConfig.FixedTimeStep;
+            DeltaTime = WindowConfig.FixedTimeStep;
 
             // Always tick all simulations first (physics, AI, combat)
             _debugTimer.TimeAndAccumulate("Simulation Update", () =>
-                Coordinator.Update(new UpdateContext(GameConfig.FixedTimeStep, GlobalTime)));
+                Coordinator.Update(new UpdateContext(WindowConfig.FixedTimeStep, GlobalTime)));
 
             // Then let the current state do per-tick post-processing (camera, effects)
             _debugTimer.TimeAndAccumulate("State Update", () => _currentState?.Update(this));
 
-            _accumulator -= GameConfig.FixedTimeStep;
+            _accumulator -= WindowConfig.FixedTimeStep;
             steps++;
         }
 

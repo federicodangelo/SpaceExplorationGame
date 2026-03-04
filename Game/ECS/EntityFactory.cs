@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 
@@ -142,7 +143,7 @@ public static class EntityFactory
             ShipInputComponent.Default(),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
-                GameConfig.BaseShieldRegenRate, GameConfig.ShieldRegenDelay)
+                ShipConfig.BaseShieldRegenRate, ShipConfig.ShieldRegenDelay)
             {
                 Hull = currentHull,
                 Shield = maxShield // Start with full shields
@@ -228,10 +229,10 @@ public static class EntityFactory
             Sprite.Build(stats.SpriteSize, stats.SpriteSize),
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
             new ShipComponent(spawn.Faction, stats.MaxSpeed, stats.RotationSpeed,
-                stats.Acceleration, GameConfig.ShipBrakeMultiplier,
+                stats.Acceleration, ShipConfig.ShipBrakeMultiplier,
                 spawn.Weapons),
             ShipInputComponent.Default(),
-            new Health(stats.MaxHull * healthMultiplier, stats.MaxShield * healthMultiplier, shieldRegenRate, GameConfig.ShieldRegenDelay),
+            new Health(stats.MaxHull * healthMultiplier, stats.MaxShield * healthMultiplier, shieldRegenRate, ShipConfig.ShieldRegenDelay),
             new EnemyAI { Config = aiConfig, State = AIState.Patrol }
         );
 
@@ -241,8 +242,8 @@ public static class EntityFactory
             {
                 MinCredits = Math.Max(1, spawn.LootCredits / 2),
                 MaxCredits = spawn.LootCredits * 2,
-                ResourceDropChance = GameConfig.ResourceDropChance,
-                PartDropChance = GameConfig.PartDropChance,
+                ResourceDropChance = CombatConfig.ResourceDropChance,
+                PartDropChance = CombatConfig.PartDropChance,
                 DangerLevel = spawn.DangerLevel
             });
         }
@@ -262,12 +263,12 @@ public static class EntityFactory
                 new Color3(255, 130, 110),
                 new EnemyAIConfig(
                     Faction: Faction.Pirate,
-                    DetectRange: GameConfig.EnemyDetectRange,
+                    DetectRange: NpcConfig.EnemyDetectRange,
                     LootCredits: spawn.LootCredits,
-                    EngageDistance: GameConfig.EnemyEngageDistance,
+                    EngageDistance: NpcConfig.EnemyEngageDistance,
                     FleeHealthPercent: 0.0f,   // pirates fight to the death
                     AimInaccuracyRadius: baseInaccuracy),
-                GameConfig.BaseShieldRegenRate * 0.5f,
+                ShipConfig.BaseShieldRegenRate * 0.5f,
                 healthMultiplier),
             Faction.Trader => (
                 new Color3(255, 210, 120),
@@ -278,18 +279,18 @@ public static class EntityFactory
                     EngageDistance: 0f,
                     FleeHealthPercent: 0.25f, // traders flee when hull drops below 25%
                     AimInaccuracyRadius: 0f),   // traders don't shoot
-                GameConfig.BaseShieldRegenRate * 0.5f,
+                ShipConfig.BaseShieldRegenRate * 0.5f,
                 healthMultiplier),
             Faction.Patrol => (
                 new Color3(130, 200, 255),
                 new EnemyAIConfig(
                     Faction: Faction.Patrol,
-                    DetectRange: GameConfig.EnemyDetectRange * 1.5f,
+                    DetectRange: NpcConfig.EnemyDetectRange * 1.5f,
                     LootCredits: 0,
-                    EngageDistance: GameConfig.EnemyEngageDistance,
+                    EngageDistance: NpcConfig.EnemyEngageDistance,
                     FleeHealthPercent: 0f, // patrols are disciplined – fight to the death, no fleeing
                     AimInaccuracyRadius: baseInaccuracy * 0.6f),  // patrols are trained – tighter spread
-                GameConfig.BaseShieldRegenRate,
+                ShipConfig.BaseShieldRegenRate,
                 healthMultiplier),
             _ => throw new ArgumentException($"Unsupported NPC faction: {spawn.Faction}")
         };
@@ -404,7 +405,7 @@ public static class EntityFactory
                 Damage = damage,
                 Speed = speed,
                 Lifetime = lifetime,
-                CollisionRadius = GameConfig.ProjectileRadius,
+                CollisionRadius = CombatConfig.ProjectileRadius,
                 OwnerFaction = ownerFaction,
                 OwnerEntity = ownerEntity,
                 Color = color
@@ -428,7 +429,7 @@ public static class EntityFactory
             new Transform(position),
             Sprite.Build(spriteSize, spriteSize),
             new Velocity(config.MoveSpeed) { CanMoveTo = canMoveTo },
-            new Health(GameConfig.BanditBaseHull * healthMultiplier),
+            new Health(CombatConfig.BanditBaseHull * healthMultiplier),
             new SurfaceAI
             {
                 Config = config,
@@ -449,16 +450,16 @@ public static class EntityFactory
             Faction.Pirate => (
                 new SurfaceAIConfig(
                     Faction: Faction.Pirate,
-                    MoveSpeed: GameConfig.BanditSpeed,
-                    DetectRange: GameConfig.BanditDetectRange,
-                    AttackRange: GameConfig.BanditAttackRange,
-                    FireRate: GameConfig.BanditFireRate,
-                    WeaponDamage: GameConfig.BanditBaseDamage * damageMult,
-                    ProjectileSpeed: GameConfig.BanditProjectileSpeed),
+                    MoveSpeed: CombatConfig.BanditSpeed,
+                    DetectRange: CombatConfig.BanditDetectRange,
+                    AttackRange: CombatConfig.BanditAttackRange,
+                    FireRate: CombatConfig.BanditFireRate,
+                    WeaponDamage: CombatConfig.BanditBaseDamage * damageMult,
+                    ProjectileSpeed: CombatConfig.BanditProjectileSpeed),
                 new LootDrop
                 {
-                    MinCredits = GameConfig.SurfaceLootCreditsMin * 2,
-                    MaxCredits = GameConfig.SurfaceLootCreditsMax * 2,
+                    MinCredits = CombatConfig.SurfaceLootCreditsMin * 2,
+                    MaxCredits = CombatConfig.SurfaceLootCreditsMax * 2,
                     ResourceDropChance = 0.4f,
                     PartDropChance = 0.05f,
                     DangerLevel = dangerLevel
@@ -467,7 +468,7 @@ public static class EntityFactory
             Faction.Trader => (
                 new SurfaceAIConfig(
                     Faction: Faction.Trader,
-                    MoveSpeed: GameConfig.BanditSpeed * 0.7f, // traders walk slower
+                    MoveSpeed: CombatConfig.BanditSpeed * 0.7f, // traders walk slower
                     DetectRange: 0f, // traders don't fight
                     AttackRange: 0f,
                     FireRate: 0f,
@@ -475,8 +476,8 @@ public static class EntityFactory
                     ProjectileSpeed: 0f),
                 new LootDrop
                 {
-                    MinCredits = GameConfig.SurfaceLootCreditsMin,
-                    MaxCredits = GameConfig.SurfaceLootCreditsMax,
+                    MinCredits = CombatConfig.SurfaceLootCreditsMin,
+                    MaxCredits = CombatConfig.SurfaceLootCreditsMax,
                     ResourceDropChance = 0.6f,
                     PartDropChance = 0f,
                     DangerLevel = dangerLevel
@@ -485,12 +486,12 @@ public static class EntityFactory
             Faction.Patrol => (
                 new SurfaceAIConfig(
                     Faction: Faction.Patrol,
-                    MoveSpeed: GameConfig.BanditSpeed * 0.9f,
-                    DetectRange: GameConfig.BanditDetectRange * 1.3f,
-                    AttackRange: GameConfig.BanditAttackRange,
-                    FireRate: GameConfig.BanditFireRate * 0.9f,
-                    WeaponDamage: GameConfig.BanditBaseDamage * damageMult * 0.8f,
-                    ProjectileSpeed: GameConfig.BanditProjectileSpeed * 1.1f),
+                    MoveSpeed: CombatConfig.BanditSpeed * 0.9f,
+                    DetectRange: CombatConfig.BanditDetectRange * 1.3f,
+                    AttackRange: CombatConfig.BanditAttackRange,
+                    FireRate: CombatConfig.BanditFireRate * 0.9f,
+                    WeaponDamage: CombatConfig.BanditBaseDamage * damageMult * 0.8f,
+                    ProjectileSpeed: CombatConfig.BanditProjectileSpeed * 1.1f),
                 new LootDrop
                 {
                     MinCredits = 0,
@@ -508,7 +509,7 @@ public static class EntityFactory
     public static Entity CreateLandedNpcShip(World world, Vector2 position, Faction faction,
         bool isLanding, float animProgress = 0f)
     {
-        int size = (int)GameConfig.SurfaceNpcShipSize;
+        int size = (int)NpcConfig.SurfaceNpcShipSize;
         return world.Create(
             new Transform(position),
             Sprite.Build(size, size),

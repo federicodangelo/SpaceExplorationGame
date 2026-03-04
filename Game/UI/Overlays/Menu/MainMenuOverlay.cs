@@ -3,6 +3,7 @@ using SpaceExplorationGame.Core;
 using Engine.Platform;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
+using SpaceExplorationGame.Core.Config;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;
 
@@ -151,7 +152,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     {
         _menuOptions = menuOptions;
         _canQuit = canQuit;
-        _debugEnabled = GameConfig.Debug;
+        _debugEnabled = WindowConfig.Debug;
         Menu = new MenuWidget<MenuAction>(BuildOptions(canQuit, _debugEnabled))
         {
             CenterAlign = true,
