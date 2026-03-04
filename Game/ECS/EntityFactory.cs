@@ -253,27 +253,8 @@ public static class EntityFactory
 
     private static (Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen, float HealthMultiplier) GetNpcShipProfile(NpcShipSpawnData spawn)
     {
-        // Higher danger level  → more accurate enemy (smaller inaccuracy radius).
-        // DangerLevel: 0=any(default), 1=safe … 5=extreme
-        float baseInaccuracy = spawn.DangerLevel switch
-        {
-            1 => 200f,   // SAFE     – enemies spray widely
-            2 => 150f,    // LOW      – noticeably inaccurate
-            3 => 100f,    // MEDIUM   – moderate challenge
-            4 => 80f,    // HIGH     – mostly on-target
-            5 => 50f,    // EXTREME  – near-perfect aim
-            _ => 60f,    // fallback (0 = ANY)
-        };
-
-        float healthMultiplier = spawn.DangerLevel switch
-        {
-            1 => 0.4f,   // SAFE     – weaker hull
-            2 => 0.5f,    // LOW      – slightly weaker
-            3 => 0.6f,    // MEDIUM   – baseline
-            4 => 0.8f,    // HIGH     – tougher hull
-            5 => 1.0f,    // EXTREME  – significantly tougher
-            _ => 1f,    // fallback (0 = ANY)
-        };
+        float baseInaccuracy = DangerConfig.GetInnacuracy(spawn.DangerLevel);
+        float healthMultiplier = DangerConfig.GetHealthMultiplier(spawn.DangerLevel);
 
         return spawn.Faction switch
         {
@@ -438,32 +419,16 @@ public static class EntityFactory
         Faction faction, int dangerLevel, Func<Vector2, bool>? canMoveTo = null)
     {
         // Scale stats by danger level
-        float hullMultiplier = dangerLevel switch
-        {
-            1 => 0.6f,
-            2 => 0.8f,
-            3 => 1.0f,
-            4 => 1.3f,
-            5 => 1.6f,
-            _ => 1f
-        };
-        float damageMultiplier = dangerLevel switch
-        {
-            1 => 0.6f,
-            2 => 0.8f,
-            3 => 1.0f,
-            4 => 1.2f,
-            5 => 1.5f,
-            _ => 1f
-        };
+        float healthMultiplier = DangerConfig.GetHealthMultiplier(dangerLevel);
+        float damageMultiplier = DangerConfig.GetDamageMultiplier(dangerLevel);
 
-        var (config, loot, spriteSize) = GetSurfaceNpcProfile(faction, dangerLevel, hullMultiplier, damageMultiplier);
+        var (config, loot, spriteSize) = GetSurfaceNpcProfile(faction, dangerLevel, damageMultiplier);
 
         return world.Create(
             new Transform(position),
             Sprite.Build(spriteSize, spriteSize),
             new Velocity(config.MoveSpeed) { CanMoveTo = canMoveTo },
-            new Health(GameConfig.BanditBaseHull * hullMultiplier),
+            new Health(GameConfig.BanditBaseHull * healthMultiplier),
             new SurfaceAI
             {
                 Config = config,
@@ -477,7 +442,7 @@ public static class EntityFactory
     }
 
     private static (SurfaceAIConfig Config, LootDrop Loot, int SpriteSize) GetSurfaceNpcProfile(
-        Faction faction, int dangerLevel, float hullMult, float damageMult)
+        Faction faction, int dangerLevel, float damageMult)
     {
         return faction switch
         {

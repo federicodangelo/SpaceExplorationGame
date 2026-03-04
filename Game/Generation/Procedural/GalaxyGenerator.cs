@@ -139,13 +139,13 @@ public static class GalaxyGenerator
             float dx = x - centerX;
             float dy = y - centerY;
             float normalizedDist = MathF.Sqrt(dx * dx + dy * dy) / galaxyRadius; // 0 = center, 1 = edge
-            float baseDanger = Core.GameConfig.MinDangerLevel
-                + normalizedDist * (Core.GameConfig.MaxDangerLevel - Core.GameConfig.MinDangerLevel);
+            float baseDanger = DangerConfig.MinDangerLevel
+                + normalizedDist * (DangerConfig.MaxDangerLevel - DangerConfig.MinDangerLevel);
             // Add a small random variation (±1) so nearby systems aren't identical
             int dangerLevel = Math.Clamp(
                 (int)MathF.Round(baseDanger + rng.NextFloat(-1f, 1f)),
-                Core.GameConfig.MinDangerLevel,
-                Core.GameConfig.MaxDangerLevel);
+                DangerConfig.MinDangerLevel,
+                DangerConfig.MaxDangerLevel);
 
             systems.Add(new StarSystemData
             {

@@ -24,7 +24,7 @@ public static class SolarSystemRenderer
         {
             float radius = planet.OrbitRadius;
 
-            if (!camera.CircleOverlapsCamera(starCenter, radius)) continue;
+            if (!camera.CircleBorderOverlapsCamera(starCenter, radius)) continue;
 
             // Outer faint glow
             renderer.DrawCircle(camera, starCenter, radius + 2, new Color4(25, 30, 55, 180), 80);
@@ -60,7 +60,7 @@ public static class SolarSystemRenderer
             {
                 float radius = moon.OrbitRadius;
 
-                if (!camera.CircleOverlapsCamera(planetCenter, radius)) continue;
+                if (!camera.CircleBorderOverlapsCamera(planetCenter, radius)) continue;
 
                 // Outer faint glow
                 renderer.DrawCircle(camera, planetCenter, radius + 1, new Color4(20, 25, 45, 140), 48);
@@ -102,7 +102,7 @@ public static class SolarSystemRenderer
 
             float radius = station.OrbitRadius;
 
-            if (!camera.CircleOverlapsCamera(parentCenter, radius)) continue;
+            if (!camera.CircleBorderOverlapsCamera(parentCenter, radius)) continue;
 
             // Outer faint glow (cyan-tinted for stations)
             renderer.DrawCircle(camera, parentCenter, radius + 1, new Color4(20, 40, 50, 140), 48);

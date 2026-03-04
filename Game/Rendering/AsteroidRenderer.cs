@@ -68,7 +68,7 @@ public class AsteroidRenderer
             float visualSize = (asteroid.Size + 4) * (0.5f + 0.5f * hpRatio);
 
             // Cull asteroids outside the camera viewport
-            if (!camera.DiskOverlapsCamera(transform.Position, visualSize * 0.5f)) continue;
+            if (!camera.CircleOverlapsCamera(transform.Position, visualSize * 0.5f)) continue;
 
             var resourceColor = ResourceCatalog.Get(asteroid.Resource).Color;
 

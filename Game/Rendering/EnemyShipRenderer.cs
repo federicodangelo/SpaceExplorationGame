@@ -141,12 +141,15 @@ public class EnemyShipRenderer
     /// <summary>Render all landed NPC ships on a planet surface with landing/takeoff animations.</summary>
     public void RenderLandedShips(ISpriteRenderer renderer, Camera camera, World world)
     {
-        int baseSize = (int)GameConfig.SurfaceNpcShipSize;
-
         var query = new QueryDescription().WithAll<Transform, LandedNpcShip, Sprite>();
         world.Query(in query, (ref Transform transform, ref LandedNpcShip ship, ref Sprite sprite) =>
         {
             var pos = transform.Position;
+            var shipSize = MathF.Max(sprite.Width, sprite.Height);
+
+            if (!camera.CircleOverlapsCamera(pos, shipSize))
+                return;
+
             bool animating = (ship.IsLanding && ship.AnimProgress < 1f) ||
                              (!ship.IsLanding && ship.AnimProgress < 1f);
 
@@ -170,32 +173,21 @@ public class EnemyShipRenderer
             }
 
             // Shadow (centered under the ship, offset downward during flight)
-            float shadowW = baseSize * scale * 0.8f;
-            float shadowH = baseSize * scale * 0.25f;
+            float shadowW = shipSize * scale * 0.8f;
+            float shadowH = shipSize * scale * 0.25f;
             float shadowAlpha = 1f - shadowOffset / 20f;
             if (shadowAlpha > 0.1f)
             {
                 byte a = (byte)(80 * shadowAlpha);
                 renderer.DrawRect(camera,
-                    pos + new Vector2(-shadowW * 0.5f, shadowOffset - shadowH * 0.5f),
+                    pos + new Vector2(0, shadowOffset + shadowH * 0.5f),
                     (int)shadowW, (int)shadowH,
-                    new Color3(a, a, a));
+                    new Color4(0, 0, 0, a));
             }
 
             // Delegate to existing ship rendering with scaled size
-            int scaledSize = (int)(baseSize * scale);
+            int scaledSize = (int)(shipSize * scale);
             Render(renderer, camera, pos, 0f, ship.Faction, scaledSize);
-
-            // Engine glow during landing/takeoff
-            if (animating)
-            {
-                float glow = 1f - (ship.IsLanding ? ship.AnimProgress : 1f - ship.AnimProgress);
-                byte glowIntensity = (byte)(200 * glow);
-                var engineColor = new Color4(glowIntensity, (byte)(glowIntensity * 0.7f),
-                    (byte)(glowIntensity * 0.3f), (byte)(180 * glow));
-                renderer.DrawFilledCircle(camera, pos + new Vector2(-baseSize * scale * 0.4f, 0f),
-                    3f * scale, engineColor);
-            }
         });
     }
 

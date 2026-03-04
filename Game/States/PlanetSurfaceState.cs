@@ -611,6 +611,7 @@ public class PlanetSurfaceState : GameState
 
         // Ship
         var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
+        game.SpaceshipRenderer.RenderShadow(renderer, camera, shipTf.Position, game.Player.CurrentShipType.SpriteSize);
         game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
             game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
 

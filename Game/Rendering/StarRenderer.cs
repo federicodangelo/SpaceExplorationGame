@@ -45,7 +45,7 @@ public class StarRenderer
     public void Render(ISpriteRenderer renderer, Camera camera,
         Vector2 starCenter, float starDisplayRadius, Color3 color, float globalTime)
     {
-        if (!camera.DiskOverlapsCamera(starCenter, starDisplayRadius * MaxExtentMultiplier))
+        if (!camera.CircleOverlapsCamera(starCenter, starDisplayRadius * MaxExtentMultiplier))
             return;
 
         RenderCoronaAndRays(renderer, camera, starCenter, starDisplayRadius, color, globalTime);

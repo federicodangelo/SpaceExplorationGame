@@ -439,6 +439,7 @@ public class InteriorState : GameState
         {
             float shipX = _sim.Interior.LandingPadTilePos.Value.X * GameConfig.TileSize;
             float shipY = _sim.Interior.LandingPadTilePos.Value.Y * GameConfig.TileSize;
+            game.SpaceshipRenderer.RenderShadow(renderer, camera, new Vector2(shipX, shipY), game.Player.CurrentShipType.SpriteSize);
             game.SpaceshipRenderer.RenderWithLabel(renderer, camera, new Vector2(shipX, shipY), 0f,
                 game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
         }

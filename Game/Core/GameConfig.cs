@@ -94,10 +94,6 @@ public static class GameConfig
     public const float BaseShieldRegenRate = 5f;        // shield points per second
     public const float ShieldRegenDelay = 3f;           // seconds after hit before regen
 
-    // Danger levels
-    public const int MinDangerLevel = 1;
-    public const int MaxDangerLevel = 5;
-
     // ── Dynamic NPC Spawning ────────────────────────────────────
     public const float NpcWarpDuration = 1.5f;          // warp-in/out animation length in seconds
     public const float NpcSpawnCheckInterval = 15f;      // seconds between spawn budget checks
@@ -150,12 +146,12 @@ public static class GameConfig
     public const float SurfaceNpcCargoRespawnDelay = 30f;    // seconds before a killed cargo is replaced
     public const float SurfaceNpcPatrolRespawnDelay = 40f;   // seconds before a killed patrol is replaced
     public const float SurfaceNpcInitialSpawnFraction = 0.6f;// fraction spawned instantly on landing
-    public const int SurfaceNpcMinEnemies = 10;
-    public const int SurfaceNpcMaxEnemies = 20;
-    public const int SurfaceNpcMinCargo = 5;
-    public const int SurfaceNpcMaxCargo = 10;
-    public const int SurfaceNpcMinPatrols = 5;
-    public const int SurfaceNpcMaxPatrols = 10;
+    public const int SurfaceNpcMinEnemies = 15;
+    public const int SurfaceNpcMaxEnemies = 30;
+    public const int SurfaceNpcMinCargo = 10;
+    public const int SurfaceNpcMaxCargo = 20;
+    public const int SurfaceNpcMinPatrols = 10;
+    public const int SurfaceNpcMaxPatrols = 20;
     public const float SurfaceNpcShipSize = 64f;             // landed ship sprite size
     public const float SurfaceNpcInactivityTimeout = 60f;  // seconds of idle wandering before NPC departs
     public const float SurfaceNpcBoardingSpeed = 80f;      // walk speed toward ship when boarding

@@ -194,7 +194,9 @@ public class SurfaceNpcManager
             Phase = SurfaceNpcPhase.OnFoot,
             Timer = 0f,
             ShipEntity = shipEntity,
-            Faction = faction
+            Faction = faction,
+            // start with random inactivity to stagger departures
+            InactivityTimer = _rng.NextSingle() * GameConfig.SurfaceNpcInactivityTimeout * 0.5f
         });
 
         // Cross-reference
@@ -294,8 +296,9 @@ public class SurfaceNpcManager
             if (!_world.Has<SurfaceNpcState>(npc)) continue;
 
             ref var state = ref _world.Get<SurfaceNpcState>(npc);
+            float inactivityMultiplier = 1 + (npc.Id % 5 - 2) * 0.1f; // add some random variation to departure timing (+/-20%)
             if (state.Phase == SurfaceNpcPhase.OnFoot &&
-                state.InactivityTimer >= GameConfig.SurfaceNpcInactivityTimeout)
+                state.InactivityTimer >= GameConfig.SurfaceNpcInactivityTimeout * inactivityMultiplier)
             {
                 DepartNpc(npc);
             }

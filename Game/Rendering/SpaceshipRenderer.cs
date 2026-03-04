@@ -43,6 +43,18 @@ public class SpaceshipRenderer
         renderer.DrawText(camera, position + new Vector2(-12, 14), "SHIP", new Color3(180, 180, 200));
     }
 
+    public void RenderShadow(ISpriteRenderer renderer, Camera camera, Vector2 position, int spriteSize)
+    {
+        // Shadow (centered under the ship, offset downward during flight)
+        float shadowW = spriteSize * 0.8f;
+        float shadowH = spriteSize * 0.25f;
+        byte a = 80;
+        renderer.DrawRect(camera,
+            position + new Vector2(0, shadowH * 0.5f),
+            (int)shadowW, (int)shadowH,
+            new Color4(0, 0, 0, a));
+    }
+
     /// <summary>Renders damage smoke and sparks when hull is low.</summary>
     public static void RenderDamageEffects(ISpriteRenderer renderer, Camera camera,
         Vector2 position, float hullPercent, float globalTime)

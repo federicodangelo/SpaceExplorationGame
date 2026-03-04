@@ -87,7 +87,7 @@ public class Camera
     /// whose radius equals the half-diagonal of the visible world area.
     /// Test: |distance(camera.Position, center) - radius| &lt;= cameraRadius
     /// </summary>
-    public bool CircleOverlapsCamera(Vector2 center, float radius)
+    public bool CircleBorderOverlapsCamera(Vector2 center, float radius)
     {
         float halfW = ViewportWidth / (2f * Zoom);
         float halfH = ViewportHeight / (2f * Zoom);
@@ -97,12 +97,12 @@ public class Camera
     }
 
     /// <summary>
-    /// Returns true when a world-space filled disk (centered at <paramref name="center"/> with
+    /// Returns true when a world-space filled circle (centered at <paramref name="center"/> with
     /// <paramref name="radius"/>) overlaps the camera viewport, approximated as a circle whose
     /// radius equals the half-diagonal of the visible world area.
     /// Test: distance(camera.Position, center) &lt;= cameraRadius + diskRadius
     /// </summary>
-    public bool DiskOverlapsCamera(Vector2 center, float radius)
+    public bool CircleOverlapsCamera(Vector2 center, float radius)
     {
         float halfW = ViewportWidth / (2f * Zoom);
         float halfH = ViewportHeight / (2f * Zoom);

@@ -55,7 +55,7 @@ public class PlanetRenderer
             float maxExtent = p.HasRings ? p.Radius * 2f : p.Radius;
             if (p.Moons.Count > 0)
                 maxExtent = MathF.Max(maxExtent, p.Moons[^1].OrbitRadius + p.Moons[^1].Radius);
-            if (!camera.DiskOverlapsCamera(pTransform.Position, maxExtent)) continue;
+            if (!camera.CircleOverlapsCamera(pTransform.Position, maxExtent)) continue;
 
             // Planet body
             RenderBody(renderer, camera, pTransform.Position, p.Radius, p.Color, p.Type, false, p.Index, globalTime);
@@ -97,7 +97,7 @@ public class PlanetRenderer
                     if (m >= p.Moons.Count) break;
                     var moonTransform = ecsWorld.Get<Transform>(moonEntities[i][m]);
                     var moon = p.Moons[m];
-                    if (!camera.DiskOverlapsCamera(moonTransform.Position, moon.Radius)) continue;
+                    if (!camera.CircleOverlapsCamera(moonTransform.Position, moon.Radius)) continue;
                     int seed = p.Index * 101 + moon.Index * 17 + 7;
                     RenderBody(renderer, camera, moonTransform.Position, moon.Radius, moon.Color, moon.Type, true, seed, globalTime);
                 }
