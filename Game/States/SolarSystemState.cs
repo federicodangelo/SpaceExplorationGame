@@ -230,8 +230,6 @@ public class SolarSystemState : GameState
         var t = _debugTimer;
         t.Begin();
 
-        t.Time("MenuOverlay", () => _inGameMenuOverlay.Update(game));
-
         // Apply anchor (keep ship at station/planet while overlay open)
         if (AnyOverlayOpen)
             ApplyAnchor();
@@ -269,10 +267,14 @@ public class SolarSystemState : GameState
         }
 
         // Process overlays (which may set anchor or block input)
-        _inGameMenuOverlay.Update(game);
-        _planetLandingOverlay.Update(game);
-        _galaxyMapOverlay.Update(game);
-        _spaceStationOverlay.Update(game);
+        t.Time("Overlays", () =>
+        {
+            _inGameMenuOverlay.Update(game);
+            _planetLandingOverlay.Update(game);
+            _galaxyMapOverlay.Update(game);
+            _spaceStationOverlay.Update(game);
+
+        });
 
         // Process simulation events for audio/visual effects
         t.Time("SimEvents", () => ProcessSimulationEvents(game));
