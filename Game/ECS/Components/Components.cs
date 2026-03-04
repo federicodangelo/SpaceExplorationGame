@@ -388,7 +388,11 @@ public sealed record SurfaceAIConfig(
     Faction Faction,
     float MoveSpeed,
     float DetectRange,
-    float AttackRange);
+    float AttackRange,
+    /// <summary>Hull-percent threshold below which the NPC flees (0-1).</summary>
+    float FleeHealthPercent = 0.15f,
+    /// <summary>Radius of sinusoidal aim wobble in world units. 0 = perfect aim.</summary>
+    float AimInaccuracyRadius = 0f);
 
 /// <summary>AI for surface enemies (fauna and bandits). Config holds immutable stats; mutable state lives here.</summary>
 [Component]
@@ -399,6 +403,10 @@ public struct SurfaceAI
     public float StateTimer;         // time in current state
     public float WanderAngle;        // current wander direction
     public float WanderTimer;        // time until next wander direction change
+    // Target memory — keeps the NPC moving to the last known player position after losing sight
+    public Vector2 LastKnownTargetPos;
+    public Vector2 LastKnownTargetVelocity;
+    public float LastKnownTargetTimeLeft;
 }
 
 /// <summary>

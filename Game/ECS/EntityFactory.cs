@@ -267,7 +267,7 @@ public static class EntityFactory
 
     private static (Color3 Thruster, EnemyAIConfig Ai, float ShieldRegen, float HealthMultiplier) GetNpcShipProfile(NpcShipSpawnData spawn)
     {
-        float baseInaccuracy = DangerConfig.GetInnacuracy(spawn.DangerLevel);
+        float baseInaccuracy = DangerConfig.GetInaccuracy(spawn.DangerLevel);
         float healthMultiplier = DangerConfig.GetHealthMultiplier(spawn.DangerLevel);
 
         return spawn.Faction switch
@@ -466,7 +466,9 @@ public static class EntityFactory
                     Faction: Faction.Pirate,
                     MoveSpeed: CombatConfig.BanditSpeed,
                     DetectRange: CombatConfig.BanditDetectRange,
-                    AttackRange: CombatConfig.BanditAttackRange),
+                    AttackRange: CombatConfig.BanditAttackRange,
+                    FleeHealthPercent: 0f,   // pirates fight to the death
+                    AimInaccuracyRadius: DangerConfig.GetSurfaceAimInaccuracyRadius(dangerLevel)),
                 new LootDrop
                 {
                     MinCredits = CombatConfig.SurfaceLootCreditsMin * 2,
@@ -489,7 +491,9 @@ public static class EntityFactory
                     Faction: Faction.Trader,
                     MoveSpeed: CombatConfig.BanditSpeed * 0.7f,  // traders walk slower
                     DetectRange: 0f,                              // traders don't fight
-                    AttackRange: 0f),
+                    AttackRange: 0f,
+                    FleeHealthPercent: 0.25f,                        // traders never fight back
+                    AimInaccuracyRadius: 0f),
                 new LootDrop
                 {
                     MinCredits = CombatConfig.SurfaceLootCreditsMin,
@@ -512,7 +516,9 @@ public static class EntityFactory
                     Faction: Faction.Patrol,
                     MoveSpeed: CombatConfig.BanditSpeed * 0.9f,
                     DetectRange: CombatConfig.BanditDetectRange * 1.3f,
-                    AttackRange: CombatConfig.BanditAttackRange),
+                    AttackRange: CombatConfig.BanditAttackRange,
+                    FleeHealthPercent: 0f,
+                    AimInaccuracyRadius: DangerConfig.GetSurfaceAimInaccuracyRadius(dangerLevel) * 0.75f),
                 new LootDrop
                 {
                     MinCredits = 0,

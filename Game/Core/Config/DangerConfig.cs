@@ -27,13 +27,29 @@ static public class DangerConfig
         _ => 1f
     };
 
-    static public float GetInnacuracy(int dangerLevel) => dangerLevel switch
+    /// <summary>Aim inaccuracy radius for NPC ships (world units). Higher danger = smaller radius = more accurate.</summary>
+    static public float GetInaccuracy(int dangerLevel) => dangerLevel switch
     {
         1 => 200f,   // SAFE     – enemies spray widely
-        2 => 150f,    // LOW      – noticeably inaccurate
-        3 => 100f,    // MEDIUM   – moderate challenge
-        4 => 80f,    // HIGH     – mostly on-target
-        5 => 50f,    // EXTREME  – near-perfect aim
-        _ => 60f,    // fallback (0 = ANY)
+        2 => 150f,   // LOW      – noticeably inaccurate
+        3 => 100f,   // MEDIUM   – moderate challenge
+        4 => 80f,   // HIGH     – mostly on-target
+        5 => 50f,   // EXTREME  – near-perfect aim
+        _ => 60f,   // fallback (0 = ANY)
+    };
+
+    /// <summary>
+    /// Aim inaccuracy radius for surface (walking) NPCs (world units).
+    /// Values are much smaller than ship inaccuracy because walking combat happens
+    /// at close range. Higher danger level = smaller radius = more accurate enemies.
+    /// </summary>
+    static public float GetSurfaceAimInaccuracyRadius(int dangerLevel) => dangerLevel switch
+    {
+        1 => 40f,    // SAFE     – very imprecise
+        2 => 30f,    // LOW      – noticeably inaccurate
+        3 => 20f,    // MEDIUM   – moderate challenge
+        4 => 12f,    // HIGH     – mostly on-target
+        5 => 5f,    // EXTREME  – near-perfect aim
+        _ => 15f,    // fallback (0 = ANY)
     };
 }

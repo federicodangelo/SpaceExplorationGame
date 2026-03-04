@@ -22,7 +22,7 @@ public static class CombatConfig
 
     // Surface NPC combat stats (used by all surface factions — pirates reuse bandit stats)
     public const float BanditSpeed = 100f;              // NPC walking speed
-    public const float BanditDetectRange = 160f;        // NPC aggro range
+    public const float BanditDetectRange = 250f;        // NPC aggro range
     public const float BanditAttackRange = 140f;        // NPC shooting range
     public const float BanditFireRate = 1.0f;           // seconds between NPC shots
     public const float BanditProjectileSpeed = 250f;
