@@ -57,14 +57,17 @@ public static class CombatHelper
     /// <param name="rng">Seeded random for deterministic rolls.</param>
     /// <param name="resourceAmountMax">Exclusive upper bound for resource amount roll (default 4 for surface).</param>
     /// <param name="enablePartDrops">If true, rolls for ship part drops (space combat only).</param>
-    public static string ProcessLootDrop(Game game, LootDrop loot, SeededRandom rng,
+    public static string? ProcessLootDrop(Game game, LootDrop loot, SeededRandom rng,
         int resourceAmountMax = 4, bool enablePartDrops = false)
     {
         // Credits
         int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
-        game.Player.Credits += credits;
-        game.Audio.PlaySfx(AudioSfx.PickupCredits, 0.6f);
-        string message = $"+{credits} CREDITS";
+        if (credits > 0)
+        {
+            game.Player.Credits += credits;
+            game.Audio.PlaySfx(AudioSfx.PickupCredits, 0.6f);
+        }
+        string message = credits > 0 ? $"+{credits} CREDITS" : "";
 
         // Resource drop
         if (rng.NextFloat() < loot.ResourceDropChance)
@@ -98,7 +101,7 @@ public static class CombatHelper
             }
         }
 
-        return message;
+        return message != "" ? message : null;
     }
 
     /// <summary>
