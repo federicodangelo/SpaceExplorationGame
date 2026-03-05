@@ -144,7 +144,70 @@ public abstract class BaseFontRenderer : IFontRenderer
         DrawTextScreen(screenPos.X, screenPos.Y, text, color, scale, maxWidth);
     }
 
-    public abstract void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f);
+    // ── Abstract glyph-sink callbacks ─────────────────────────────────
+
+    /// <summary>Called once before iterating glyphs. Cache atlas info and prepare draw buffers.</summary>
+    protected abstract void BeginGlyphBatch(nint texture, Color4 color, int atlasWidth, int atlasHeight, int maxGlyphs);
+
+    /// <summary>Emit a single visible (and possibly partially clipped) glyph to the platform back-end.</summary>
+    protected abstract void DrawGlyph(float visLeft, float snappedY, float visRight, int snappedDrawH,
+                                      float u0, float v0, float u1, float v1);
+
+    /// <summary>Called after all glyphs have been emitted. Flush / submit the batch to the GPU.</summary>
+    protected abstract void EndGlyphBatch();
+
+    /// <summary>
+    /// Draw text in screen space. Performs glyph layout, scroll-offset computation, and UV cropping
+    /// for partial edge glyphs, then delegates each visible glyph to <see cref="DrawGlyph"/> sandwiched
+    /// between <see cref="BeginGlyphBatch"/> / <see cref="EndGlyphBatch"/> calls.
+    /// </summary>
+    public virtual void DrawTextScreen(float x, float y, string text, Color4 color, float scale = 1f, float maxWidth = 0f)
+    {
+        if (_fontAtlases.Length == 0 || text.Length == 0) return;
+
+        ref var atlas = ref PickAtlas(scale);
+        var glyphUV = atlas.GlyphUV;
+
+        int gw = MiniBitmapFont.GlyphWidth;
+        int gh = MiniBitmapFont.GlyphHeight;
+
+        int snappedAdvance = (int)MathF.Round((gw + 1) * scale);
+        int snappedDrawW = (int)MathF.Round(gw * scale);
+        int snappedDrawH = (int)MathF.Round(gh * scale);
+        float snappedY = MathF.Round(y);
+        float startX = MathF.Round(x);
+        float clipRight = maxWidth > 0f ? startX + maxWidth : float.MaxValue;
+
+        float totalTextW = (text.Length - 1) * snappedAdvance + snappedDrawW;
+        float scrollOffset = ComputeScrollOffset(totalTextW, maxWidth);
+
+        BeginGlyphBatch(atlas.Texture, color, atlas.AtlasWidth, atlas.AtlasHeight, text.Length);
+
+        float cursorX = startX - scrollOffset;
+
+        foreach (char c in text)
+        {
+            float charLeft = MathF.Round(cursorX);
+            float charRight = charLeft + snappedDrawW;
+            cursorX += snappedAdvance;
+
+            if (charRight <= startX || charLeft >= clipRight || c == ' ')
+                continue;
+
+            if (!glyphUV.TryGetValue(c, out var uv))
+                continue;
+
+            float visLeft = Math.Max(charLeft, startX);
+            float visRight = Math.Min(charRight, clipRight);
+            float uvRange = uv.U1 - uv.U0;
+            float u0 = uv.U0 + (visLeft - charLeft) / snappedDrawW * uvRange;
+            float u1 = uv.U0 + (visRight - charLeft) / snappedDrawW * uvRange;
+
+            DrawGlyph(MathF.Round(visLeft), snappedY, MathF.Round(visRight), snappedDrawH, u0, uv.V0, u1, uv.V1);
+        }
+
+        EndGlyphBatch();
+    }
 
     /// <summary>
     /// Computes the horizontal scroll offset (pixels) for text that overflows <paramref name="maxWidth"/>,
