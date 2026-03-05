@@ -131,6 +131,61 @@ public class InteriorState : GameState
     {
         var input = game.Input;
 
+        // ── Autoplay bot ──
+        if (game.AutoplayBot.UpdateInterior(game, _sim, _simPlayer,
+            _starshipMenuOverlay, _inGameMenuOverlay,
+            _playerInsideShip, _showingDialogue,
+            AnyOverlayOpen,
+            out var botAction))
+        {
+            switch (botAction)
+            {
+                case InteriorAction.TakeOff:
+                    _starshipMenuOverlay.Close();
+                    HandleDockingMenuChoice(game, StarshipMenuOption.TakeOff);
+                    break;
+                case InteriorAction.DisembarkOnFoot:
+                    _starshipMenuOverlay.Close();
+                    HandleDockingMenuChoice(game, StarshipMenuOption.DisembarkOnFoot);
+                    break;
+                case InteriorAction.DismissDialogue:
+                    _showingDialogue = false;
+                    _dialogueNpc = null;
+                    _dialogueLine = 0;
+                    break;
+                case InteriorAction.Interact:
+                    if (_sim.NearestInteractable != null)
+                        HandleInteraction(game, _sim.NearestInteractable);
+                    break;
+                case InteriorAction.TalkToNpc:
+                    if (_sim.NearestNpc != null)
+                    {
+                        _showingDialogue = true;
+                        _dialogueNpc = _sim.NearestNpc;
+                        _dialogueLine = 0;
+                    }
+                    break;
+                case InteriorAction.BoardShip:
+                    BoardShip();
+                    break;
+                case InteriorAction.OpenStarshipMenu:
+                    OpenDockingMenu();
+                    break;
+                case InteriorAction.CloseAnyOverlay:
+                    // Close any service overlay that might be open
+                    if (_repairOverlay.IsOpen) _repairOverlay.Close();
+                    if (_healthStationOverlay.IsOpen) _healthStationOverlay.Close();
+                    if (_missionOverlay.IsOpen) _missionOverlay.Close();
+                    if (_shipCustomization.IsOpen) _shipCustomization.Close();
+                    if (_avatarCustomization.IsOpen) _avatarCustomization.Close();
+                    if (_vehicleCustomization.IsOpen) _vehicleCustomization.Close();
+                    if (_shipDealer.IsOpen) _shipDealer.Close();
+                    if (_sellCargo.IsOpen) _sellCargo.Close();
+                    break;
+            }
+            return;
+        }
+
         if (AnyOverlayOpen)
             ZeroPlayerMovementAcceleration();
 

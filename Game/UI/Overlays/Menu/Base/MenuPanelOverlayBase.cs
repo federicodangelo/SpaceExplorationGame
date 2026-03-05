@@ -17,6 +17,25 @@ public abstract class MenuPanelOverlayBase<T> : PanelOverlayBase where T : struc
     /// <summary>The menu widget. Subclasses should set this in constructor or Open().</summary>
     protected MenuWidget<T> Menu { get; set; } = null!;
 
+    /// <summary>Gets or sets the currently highlighted menu item index.
+    /// Can be written externally (e.g. by the autoplay bot) to pre-select the intended option.</summary>
+    public int MenuSelectedIndex
+    {
+        get => Menu.SelectedIndex;
+        set => Menu.SelectedIndex = value;
+    }
+
+    /// <summary>Returns the index of the first menu option whose value equals <paramref name="value"/>,
+    /// or -1 if not found.</summary>
+    public int FindMenuOptionIndex(T value)
+    {
+        var opts = Menu.Options;
+        for (int i = 0; i < opts.Count; i++)
+            if (EqualityComparer<T>.Default.Equals(opts[i].Value, value))
+                return i;
+        return -1;
+    }
+
     // ── Default panel height (auto-calculated from menu) ──
 
     /// <summary>Panel height auto-calculated from title (55px) + menu items + bottom padding.

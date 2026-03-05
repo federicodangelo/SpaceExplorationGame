@@ -8,6 +8,7 @@ namespace SpaceExplorationGame.UI.Overlays.Menu;
 public enum DebugMenuAction
 {
     None = -1,
+    Autoplay,
     StarType,
     StartingShip,
     StarTypeShowcase,
@@ -31,13 +32,15 @@ public enum DebugLaunchRequest
 /// </summary>
 public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 {
-    private const int StarTypeIdx = 0;
-    private const int StartingShipIdx = 1;
+    private const int AutoplayIdx = 0;
+    private const int StarTypeIdx = 1;
+    private const int StartingShipIdx = 2;
 
     private static readonly StarClass[] StarTypes = Enum.GetValues<StarClass>();
     private static readonly ShipType[] ShipTypes = ShipTypeCatalog.AllTypes;
 
     private readonly MenuOptionsPersistence _menuOptions;
+    private Game? _game;
     private int _starTypeIndex;
     private int _shipTypeIndex;
 
@@ -71,6 +74,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         _menuOptions = menuOptions;
         Menu = new MenuWidget<DebugMenuAction>(
         [
+            new(DebugMenuAction.Autoplay, "AUTOPLAY: OFF", "Toggle AI bot that plays the game automatically"),
             new(DebugMenuAction.StarType, "STAR TYPE: < G >", "Select the star type used by debug showcase scenarios"),
             new(DebugMenuAction.StartingShip, "STARTING SHIP: < SCOUT >", "Choose which ship you start with when launching from the main menu"),
             new(DebugMenuAction.StarTypeShowcase, "STAR TYPE SHOWCASE", "Start a debug system focused on the selected star type"),
@@ -126,8 +130,14 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     protected override void OnOptionSelected(Game game, DebugMenuAction option)
     {
+        _game = game;
         switch (option)
         {
+            case DebugMenuAction.Autoplay:
+                game.AutoplayBot.Enabled = !game.AutoplayBot.Enabled;
+                game.AutoplayBot.Reset();
+                UpdateCyclingLabels();
+                break;
             case DebugMenuAction.StarType:
                 CycleStarType(1);
                 break;
@@ -154,6 +164,7 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 
     protected override void ProcessInput(Game game, IInputManager input)
     {
+        _game = game;
         UpdateCyclingLabels();
 
         if (Menu.SelectedValue == DebugMenuAction.StarType)
@@ -216,6 +227,10 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         string left = CurrentInput?.GetActionHelpText(InputAction.MenuLeft).ToUpper() ?? "LEFT";
         string right = CurrentInput?.GetActionHelpText(InputAction.MenuRight).ToUpper() ?? "RIGHT";
 
+        string autoplayState = _game?.AutoplayBot.Enabled == true ? "ON" : "OFF";
+        Menu.SetOption(AutoplayIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.Autoplay,
+            $"AUTOPLAY: {autoplayState}",
+            $"Press {confirm} to toggle the AI autoplay bot"));
         Menu.SetOption(StarTypeIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.StarType,
             $"STAR TYPE: < {SelectedStarType} >",
             $"Press {confirm} or {left}/{right} to change star type"));

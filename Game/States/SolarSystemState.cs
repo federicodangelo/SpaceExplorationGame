@@ -161,6 +161,17 @@ public class SolarSystemState : GameState
     {
         var input = game.Input;
 
+        // ── Autoplay bot ──
+        if (game.AutoplayBot.UpdateSolarSystem(game, _sim, _simPlayer,
+            _spaceStationOverlay, _planetLandingOverlay, _galaxyMapOverlay, _inGameMenuOverlay,
+            _starSystem, AnyOverlayOpen, BeginDocking, BeginSeamlessLanding))
+        {
+            // Bot wrote ship input directly; sync ship component
+            if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+                _sim.SyncPlayerShipComponent(_simPlayer);
+            return;
+        }
+
         if (AnyOverlayOpen)
             ZeroPlayerShipInput();
 

@@ -30,7 +30,7 @@ public partial class WebMain
             //   ?seed=42
             //   ?location=planet&sublocation=on-foot
             //   ?showcase=star-type&star-type=K
-            var (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType) = ParseUrlParams();
+            var (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay) = ParseUrlParams();
 
             // Create platform
             var musicProvider = new GameMusicProvider(WebAudioManager.SampleRate);
@@ -48,6 +48,9 @@ public partial class WebMain
             _game.Initialize(platform, galaxySeed);
             Console.WriteLine("[SEG-CS] Game initialized");
 
+            if (autoplay)
+                _game.AutoplayBot.Enabled = true;
+
             _game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
             Console.WriteLine("[SEG-CS] MainMenuState set");
 
@@ -63,7 +66,7 @@ public partial class WebMain
 
     // ── URL parameter parsing ─────────────────────────────────────────────────
 
-    private static (ulong? galaxySeed, StartOption autoLaunch, DebugLaunchRequest autoDebugLaunch, StarClass autoDebugStarType) ParseUrlParams()
+    private static (ulong? galaxySeed, StartOption autoLaunch, DebugLaunchRequest autoDebugLaunch, StarClass autoDebugStarType, bool autoplay) ParseUrlParams()
     {
         string? seedParam = JsLaunchOptions.GetUrlParam("seed") ?? JsLaunchOptions.GetUrlParam("s");
         string? locationParam = JsLaunchOptions.GetUrlParam("location") ?? JsLaunchOptions.GetUrlParam("l");
@@ -71,8 +74,10 @@ public partial class WebMain
         string? showcaseParam = JsLaunchOptions.GetUrlParam("showcase") ?? JsLaunchOptions.GetUrlParam("sc");
         string? starTypeParam = JsLaunchOptions.GetUrlParam("star-type");
         string? debugParam = JsLaunchOptions.GetUrlParam("debug");
+        string? autoplayParam = JsLaunchOptions.GetUrlParam("autoplay");
 
         WindowConfig.Debug = debugParam != null && debugParam != "false" && debugParam != "0";
+        bool autoplay = autoplayParam != null && autoplayParam != "false" && autoplayParam != "0";
 
         ulong? galaxySeed = null;
         if (seedParam != null)
@@ -115,7 +120,7 @@ public partial class WebMain
                 autoLaunch = start.Value;
         }
 
-        return (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType);
+        return (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay);
     }
 
     private static DebugLaunchRequest? ResolveDebugShowcase(string showcase) =>

@@ -131,6 +131,12 @@ public class MainMenuState : GameState
 
     public override void UpdateInput(Game game)
     {
+        // Autoplay bot
+        if (game.AutoplayBot.UpdateMainMenu(game, _menuOverlay, _debugOverlay))
+        {
+            // Fall through to normal menu handling so StartRequested gets processed below
+        }
+
         // Debug overlay takes priority over main menu input
         if (_debugOverlay.UpdateInput(game))
         {

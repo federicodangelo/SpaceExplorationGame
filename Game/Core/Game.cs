@@ -39,6 +39,9 @@ public class Game : GameBase
     // Player persistent data
     public PlayerData Player { get; } = new();
 
+    // Autoplay bot
+    public AutoplayBot AutoplayBot { get; } = new();
+
     // Menu options persistence
     public MenuOptionsPersistence MenuOptions { get; private set; } = null!;
 
@@ -235,6 +238,8 @@ public class Game : GameBase
         SpriteRenderer.BeginFrame();
 
         _debugTimer.Time("State Render", () => _currentState?.Render(this));
+
+        AutoplayBot.RenderStatus(SpriteRenderer);
 
         if (_debugOverlayVisible)
         {

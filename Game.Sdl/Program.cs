@@ -44,6 +44,7 @@ internal static class Program
         string? showcase = null;
         string? starTypeArg = null;
         bool debugMode = false;
+        bool autoplay = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -86,6 +87,10 @@ internal static class Program
             else if (arg == "--debug")
             {
                 debugMode = true;
+            }
+            else if (arg == "--autoplay")
+            {
+                autoplay = true;
             }
             else
             {
@@ -131,6 +136,9 @@ internal static class Program
 
         using var game = new Game();
         game.Initialize(platform, galaxySeed);
+
+        if (autoplay)
+            game.AutoplayBot.Enabled = true;
 
         Console.WriteLine($"Galaxy Seed: {game.Seeds.GalaxySeed}");
         Console.WriteLine("Starting game...");
@@ -252,6 +260,7 @@ internal static class Program
         Console.WriteLine("  --showcase, -sc <showcase>     debug showcase: star-type | planet-type | asteroid | surface-mining");
         Console.WriteLine("  --star-type <type>             optional for star-type showcase (default: G)");
         Console.WriteLine("  --debug                        enable the DEBUG menu in the main menu");
+        Console.WriteLine("  --autoplay                     start the autoplay bot immediately");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  SpaceExplorationGame --seed 12345");

@@ -199,6 +199,50 @@ public class PlanetSurfaceState : GameState
     {
         if (_waitingToOpenStarshipMenuAfterLanding) return;
 
+        // ── Autoplay bot ──
+        if (game.AutoplayBot.UpdatePlanetSurface(game, _sim, _simPlayer,
+            _starshipMenuOverlay, _inGameMenuOverlay,
+            _playerInsideShip, _inVehicle,
+            AnyOverlayOpen,
+            out var botAction))
+        {
+            switch (botAction)
+            {
+                case PlanetSurfaceAction.TakeOff:
+                    _starshipMenuOverlay.Close();
+                    HandleStarshipMenuChoice(game, StarshipMenuOption.TakeOff);
+                    break;
+                case PlanetSurfaceAction.DisembarkOnFoot:
+                    _starshipMenuOverlay.Close();
+                    HandleStarshipMenuChoice(game, StarshipMenuOption.DisembarkOnFoot);
+                    break;
+                case PlanetSurfaceAction.DisembarkOnVehicle:
+                    _starshipMenuOverlay.Close();
+                    HandleStarshipMenuChoice(game, StarshipMenuOption.DisembarkOnVehicle);
+                    break;
+                case PlanetSurfaceAction.EnterSettlement:
+                    if (_sim.NearSettlement != null)
+                    {
+                        SaveSurfacePositions(game);
+                        game.ChangeState(new InteriorState(
+                            InteriorOrigin.Settlement, _starSystem,
+                            planet: _planet, settlement: _sim.NearSettlement));
+                    }
+                    break;
+                case PlanetSurfaceAction.BoardShip:
+                    if (_inVehicle) DismountVehicle(game);
+                    BoardShip(game);
+                    break;
+            }
+            // Bot wrote avatar input directly; sync components
+            if (!_sim.PlayerDead && !_playerInsideShip && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+            {
+                _sim.SyncPlayerAvatarComponent(_simPlayer);
+                _sim.SyncPlayerVehicleComponent(_simPlayer);
+            }
+            return;
+        }
+
         if (AnyOverlayOpen)
             ZeroPlayerMovementAcceleration();
 

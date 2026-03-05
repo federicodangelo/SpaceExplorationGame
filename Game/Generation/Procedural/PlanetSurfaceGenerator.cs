@@ -65,6 +65,7 @@ public class SettlementLayout
 
 public class SettlementData
 {
+    public int Index { get; init; }
     public string Name { get; init; } = "";
     public TileRect TileRect { get; init; } = new(0, 0, 8, 6);
     public SettlementLayout Layout { get; set; } = null!;
@@ -126,6 +127,7 @@ public static class PlanetSurfaceGenerator
 
                 var settlement = new SettlementData
                 {
+                    Index = i,
                     Name = $"Outpost {(char)('A' + i)}{rng.NextInt(1, 100)}",
                     TileRect = new TileRect(sx, sy, sw, sh)
                 };
