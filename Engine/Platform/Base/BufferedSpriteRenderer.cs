@@ -47,6 +47,20 @@ public abstract class BufferedSpriteRenderer : BaseSpriteRenderer
         Buffer.SetFlushCallback(FlushBuffer); // Wire up the auto-flush callback now that FlushBuffer is available.
     }
 
+    /// <summary>
+    /// Constructor overload that accepts an externally-created <see cref="BufferedFontRenderer"/>
+    /// subclass (e.g. a platform-specific font renderer) instead of creating a plain
+    /// <see cref="BufferedFontRenderer"/> internally.
+    /// The font renderer's <see cref="BufferedFontRenderer.Buffer"/> is wired to the shared
+    /// command buffer automatically.
+    /// </summary>
+    protected BufferedSpriteRenderer(BufferedFontRenderer fontRenderer, ITextureManager textures)
+        : base(fontRenderer, textures)
+    {
+        fontRenderer.Buffer = Buffer;
+        Buffer.SetFlushCallback(FlushBuffer);
+    }
+
     // ── Buffer flush ──────────────────────────────────────────────────
 
     /// <summary>
@@ -98,8 +112,8 @@ public abstract class BufferedSpriteRenderer : BaseSpriteRenderer
     public override void DrawRectScreen(float x, float y, float w, float h, Color4 color)
         => Buffer.WriteDrawRectScreen(x, y, w, h, color);
 
-    public override void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
-        => Buffer.WriteDrawCircle(camera, worldCenter, worldRadius, color, segments);
+    public override void DrawCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
+        => Buffer.WriteDrawCircleScreen(cx, cy, radius, color, segments);
 
     public override void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
         => Buffer.WriteDrawFilledCircleScreen(cx, cy, radius, color, segments);

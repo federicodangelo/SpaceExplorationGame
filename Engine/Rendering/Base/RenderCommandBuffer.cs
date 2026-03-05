@@ -37,8 +37,8 @@ public enum RenderCommandType : int
     // ── Shapes ────────────────────────────────────────────────────────
     /// <summary>float x, y, w, h; Color4</summary>
     DrawRectScreen = 20,
-    /// <summary>Camera snapshot (7 fields); Vector2 worldCenter; float radius; Color4; int segments</summary>
-    DrawCircle = 21,
+    /// <summary>float cx, cy, radius; Color4; int segments</summary>
+    DrawCircleScreen = 21,
     /// <summary>float cx, cy, radius; Color4; int segments</summary>
     DrawFilledCircleScreen = 22,
     /// <summary>float cx, cy, radius; Color4 inner; Color4 outer; float transitionRadius; int segments</summary>
@@ -180,6 +180,19 @@ public sealed class RenderCommandBuffer : IDisposable
             leaveOpen: false);
     }
 
+    /// <summary>
+    /// Returns the underlying byte array and the number of valid bytes written.
+    /// The array may be larger than <paramref name="length"/>; only bytes [0, length)
+    /// contain valid command data. The array is owned by this buffer — do not retain it
+    /// across frames or modify it.
+    /// </summary>
+    public void GetRawBuffer(out byte[] buffer, out int length)
+    {
+        _writer.Flush();
+        buffer = _stream.GetBuffer();
+        length = (int)_stream.Position;
+    }
+
     // ── Write helpers ─────────────────────────────────────────────────
 
     private void Cmd(RenderCommandType cmd) => _writer.Write((int)cmd);
@@ -197,13 +210,13 @@ public sealed class RenderCommandBuffer : IDisposable
 
     // ── Read helpers (static, used by BufferedSpriteRenderer.FlushBuffer) ─
 
-    internal static Color4 ReadColor4(BinaryReader r) =>
+    public static Color4 ReadColor4(BinaryReader r) =>
         new(r.ReadByte(), r.ReadByte(), r.ReadByte(), r.ReadByte());
 
-    internal static Rect ReadRect(BinaryReader r) =>
+    public static Rect ReadRect(BinaryReader r) =>
         new(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
 
-    internal static Camera ReadCamera(BinaryReader r)
+    public static Camera ReadCamera(BinaryReader r)
     {
         float posX = r.ReadSingle(); float posY = r.ReadSingle();
         float zoom = r.ReadSingle();
@@ -242,9 +255,9 @@ public sealed class RenderCommandBuffer : IDisposable
     public void WriteDrawRectScreen(float x, float y, float w, float h, Color4 color)
     { EnsureAvailable(24); Cmd(RenderCommandType.DrawRectScreen); _writer.Write(x); _writer.Write(y); _writer.Write(w); _writer.Write(h); Write(color); }
 
-    // cmd(4) + camera(28) + worldCenter(8) + worldRadius(4) + Color4(4) + segments(4) = 52
-    public void WriteDrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments)
-    { EnsureAvailable(52); Cmd(RenderCommandType.DrawCircle); WriteCamera(camera); _writer.Write(worldCenter.X); _writer.Write(worldCenter.Y); _writer.Write(worldRadius); Write(color); _writer.Write(segments); }
+    // cmd(4) + cx,cy,radius(12) + Color4(4) + segments(4) = 24
+    public void WriteDrawCircleScreen(float cx, float cy, float radius, Color4 color, int segments)
+    { EnsureAvailable(24); Cmd(RenderCommandType.DrawCircleScreen); _writer.Write(cx); _writer.Write(cy); _writer.Write(radius); Write(color); _writer.Write(segments); }
 
     // cmd(4) + cx,cy,radius(12) + Color4(4) + segments(4) = 24
     public void WriteDrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments)
@@ -290,13 +303,15 @@ public sealed class RenderCommandBuffer : IDisposable
 
     // ── Text / textured quad batches ─────────────────────────────────
 
-    // cmd(4) + texture(8) + Color4(4) + count(4) + count×(8 floats×4 = 32) = 20 + count*32
-    public void WriteDrawTexturedQuadBatchScreen(nint texture, Color4 color, TexturedQuad[] quads, int count)
+    // cmd(4) + texture(8) + Color4(4) + atlasW(4) + atlasH(4) + count(4) + count×(8 floats×4 = 32) = 28 + count*32
+    public void WriteDrawTexturedQuadBatchScreen(nint texture, Color4 color, int atlasWidth, int atlasHeight, TexturedQuad[] quads, int count)
     {
-        EnsureAvailable(20 + count * 32);
+        EnsureAvailable(28 + count * 32);
         Cmd(RenderCommandType.DrawTexturedQuadBatchScreen);
         _writer.Write((long)texture);
         Write(color);
+        _writer.Write(atlasWidth);
+        _writer.Write(atlasHeight);
         _writer.Write(count);
         for (int i = 0; i < count; i++)
         {
@@ -310,13 +325,15 @@ public sealed class RenderCommandBuffer : IDisposable
     /// Reads a <see cref="RenderCommandType.DrawTexturedQuadBatchScreen"/> command.
     /// <paramref name="quadBuf"/> is grown as needed and reused to avoid allocations.
     /// </summary>
-    internal static void ReadDrawTexturedQuadBatchScreen(
+    public static void ReadDrawTexturedQuadBatchScreen(
         BinaryReader r,
-        out nint texture, out Color4 color, out int count,
+        out nint texture, out Color4 color, out int atlasWidth, out int atlasHeight, out int count,
         ref TexturedQuad[]? quadBuf)
     {
         texture = (nint)r.ReadInt64();
         color = ReadColor4(r);
+        atlasWidth = r.ReadInt32();
+        atlasHeight = r.ReadInt32();
         count = r.ReadInt32();
         if (quadBuf == null || quadBuf.Length < count)
             quadBuf = new TexturedQuad[count];
@@ -326,6 +343,26 @@ public sealed class RenderCommandBuffer : IDisposable
             q.U0 = r.ReadSingle(); q.V0 = r.ReadSingle(); q.U1 = r.ReadSingle(); q.V1 = r.ReadSingle();
             q.DstX0 = r.ReadSingle(); q.DstY0 = r.ReadSingle(); q.DstX1 = r.ReadSingle(); q.DstY1 = r.ReadSingle();
         }
+    }
+
+    /// <summary>
+    /// Reads a <see cref="RenderCommandType.DrawTileMapScreen"/> command.
+    /// <paramref name="colorBuf"/> is grown as needed and reused to avoid allocations.
+    /// </summary>
+    public static void ReadDrawTileMapScreen(
+        BinaryReader r,
+        out float screenX, out float screenY, out float scaledTileSize,
+        out int tilesW, out int tilesH, out int colorCount,
+        ref Color4[]? colorBuf)
+    {
+        screenX = r.ReadSingle(); screenY = r.ReadSingle();
+        scaledTileSize = r.ReadSingle();
+        tilesW = r.ReadInt32(); tilesH = r.ReadInt32();
+        colorCount = r.ReadInt32();
+        if (colorBuf == null || colorBuf.Length < colorCount)
+            colorBuf = new Color4[colorCount];
+        for (int i = 0; i < colorCount; i++)
+            colorBuf[i] = ReadColor4(r);
     }
 
     // ── Tile map ─────────────────────────────────────────────────────

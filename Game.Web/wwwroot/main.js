@@ -163,6 +163,9 @@ const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotne
 
 document.getElementById('loadingStatus').textContent = 'Initializing runtime...';
 
+// Shared decoder for SetTitle string in flushCommandBuffer
+const _textDecoder = new TextDecoder();
+
 setModuleImports('game.js', {
     // ── Canvas rendering ─────────────────────────────────────────
     canvas: {
@@ -328,6 +331,346 @@ setModuleImports('game.js', {
 
         setTitle(title) {
             document.title = title;
+        },
+
+        // ── Buffered command replay ──────────────────────────────
+        // Decodes the entire RenderCommandBuffer binary payload in one JS call,
+        // eliminating per-draw-call interop marshaling overhead.
+        // Command type constants match RenderCommandType enum (C#):
+        //   0=Update 1=BeginFrame 2=EndFrame 3=SetTitle
+        //   10=SetClipRect 11=ClearClipRect
+        //   20=FillRect 21=DrawCircle 22=FillCircle 23=FillCircleGradient
+        //   24=SolidRing 25=DrawLine 26=Triangle 27=FilledTriangle
+        //   30=Texture 31=TextureRect 32=TextureSrcDst 33=TextureColor
+        //   40=QuadBatch  50=TileMap
+        //
+        // Binary layout uses little-endian IEEE-754 floats and Int32/Int64;
+        // textures are stored as Int64 (low 32 bits = texture ID).
+        flushCommandBuffer(buffer, length, cachedCircleTexId) {
+            const dv = new DataView(buffer.buffer, buffer.byteOffset, length);
+            let pos = 0;
+
+            // ── Primitive readers ────────────────────────────────
+            const ri32 = () => { const v = dv.getInt32(pos, true); pos += 4; return v; };
+            const rf32 = () => { const v = dv.getFloat32(pos, true); pos += 4; return v; };
+            const ru8 = () => buffer[pos++];
+            // Int64 texture handle: use low 32-bit unsigned word (nint on WASM32)
+            const rtex = () => { const lo = dv.getUint32(pos, true); pos += 8; return lo; };
+            const rstr = () => {
+                // BinaryWriter 7-bit LEB128 length prefix + UTF-8 bytes
+                let len = 0, shift = 0, b;
+                do { b = ru8(); len |= (b & 0x7f) << shift; shift += 7; } while (b & 0x80);
+                const bytes = new Uint8Array(buffer.buffer, buffer.byteOffset + pos, len);
+                pos += len;
+                return _textDecoder.decode(bytes);
+            };
+
+            const CACHED_CIRCLE_SIZE = 64;
+
+            // ── Command dispatch loop ────────────────────────────
+            while (pos < length) {
+                switch (ri32()) {
+
+                    case 0: break;  // Update — no payload, no-op on replay
+
+                    case 1: // BeginFrame
+                        ctx.setTransform(1, 0, 0, 1, 0, 0);
+                        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                        ctx.imageSmoothingEnabled = false;
+                        break;
+
+                    case 2: break;  // EndFrame — Canvas2D presents immediately
+
+                    case 3: document.title = rstr(); break;  // SetTitle
+
+                    case 10: {  // SetClipRect
+                        const x = rf32(), y = rf32(), w = rf32(), h = rf32();
+                        ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+                        break;
+                    }
+                    case 11: ctx.restore(); break;  // ClearClipRect
+
+                    case 20: {  // DrawRectScreen
+                        const x = rf32(), y = rf32(), w = rf32(), h = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.fillRect(x, y, w, h);
+                        break;
+                    }
+
+                    case 21: {  // DrawCircleScreen (screen-space)
+                        const cx = rf32(), cy = rf32(), radius = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ri32(); // segments — canvas arcs are always smooth
+                        ctx.strokeStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, Math.max(0.5, radius), 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                    }
+
+                    case 22: {  // DrawFilledCircleScreen
+                        const cx = rf32(), cy = rf32(), radius = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ri32(); // segments
+                        const diameter = radius * 2;
+                        if (diameter <= CACHED_CIRCLE_SIZE && cachedCircleTexId > 0) {
+                            const tinted = getTintedTexture(cachedCircleTexId, r, g, b);
+                            if (tinted) {
+                                ctx.save();
+                                ctx.globalAlpha = a / 255;
+                                ctx.imageSmoothingEnabled = false;
+                                ctx.drawImage(tinted, cx - radius, cy - radius, diameter, diameter);
+                                ctx.restore();
+                                break;
+                            }
+                        }
+                        ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, Math.max(0.5, radius), 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    }
+
+                    case 23: {  // DrawFilledCircleScreenGradient
+                        const cx = rf32(), cy = rf32(), radius = rf32();
+                        const ir = ru8(), ig = ru8(), ib = ru8(), ia = ru8();
+                        const or_ = ru8(), og = ru8(), ob = ru8(), oa = ru8();
+                        const transitionStartRadius = rf32();
+                        ri32(); // segments
+                        if (radius <= 0) break;
+                        const tRadius = Math.max(0, Math.min(transitionStartRadius, radius));
+                        const solid = tRadius >= radius || (ir === or_ && ig === og && ib === ob && ia === oa);
+                        if (solid) {
+                            const diameter = radius * 2;
+                            if (diameter <= CACHED_CIRCLE_SIZE && cachedCircleTexId > 0) {
+                                const tinted = getTintedTexture(cachedCircleTexId, ir, ig, ib);
+                                if (tinted) {
+                                    ctx.save();
+                                    ctx.globalAlpha = ia / 255;
+                                    ctx.imageSmoothingEnabled = false;
+                                    ctx.drawImage(tinted, cx - radius, cy - radius, diameter, diameter);
+                                    ctx.restore();
+                                    break;
+                                }
+                            }
+                            ctx.fillStyle = `rgba(${ir},${ig},${ib},${ia / 255})`;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, Math.max(0.5, radius), 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            const grad = ctx.createRadialGradient(cx, cy, tRadius, cx, cy, radius);
+                            grad.addColorStop(0, `rgba(${ir},${ig},${ib},${ia / 255})`);
+                            grad.addColorStop(1, `rgba(${or_},${og},${ob},${oa / 255})`);
+                            ctx.fillStyle = `rgba(${ir},${ig},${ib},${ia / 255})`;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, tRadius, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.fillStyle = grad;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                            ctx.arc(cx, cy, tRadius, 0, Math.PI * 2, true);
+                            ctx.fill();
+                        }
+                        break;
+                    }
+
+                    case 24: {  // DrawSolidRingScreen
+                        const cx = rf32(), cy = rf32();
+                        const innerRadius = rf32(), outerRadius = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ri32(); // segments
+                        if (outerRadius <= 0) break;
+                        const inner = Math.max(0, Math.min(innerRadius, outerRadius));
+                        ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        if (inner <= 0) {
+                            const diameter = outerRadius * 2;
+                            if (diameter <= CACHED_CIRCLE_SIZE && cachedCircleTexId > 0) {
+                                const tinted = getTintedTexture(cachedCircleTexId, r, g, b);
+                                if (tinted) {
+                                    ctx.save();
+                                    ctx.globalAlpha = a / 255;
+                                    ctx.imageSmoothingEnabled = false;
+                                    ctx.drawImage(tinted, cx - outerRadius, cy - outerRadius, diameter, diameter);
+                                    ctx.restore();
+                                    break;
+                                }
+                            }
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, Math.max(0.5, outerRadius), 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+                            ctx.arc(cx, cy, inner, 0, Math.PI * 2, true);
+                            ctx.fill();
+                        }
+                        break;
+                    }
+
+                    case 25: {  // DrawLineScreen
+                        const x1 = rf32(), y1 = rf32(), x2 = rf32(), y2 = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ctx.strokeStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.stroke();
+                        break;
+                    }
+
+                    case 26: {  // DrawTriangleScreen (outline)
+                        const x1 = rf32(), y1 = rf32(), x2 = rf32(), y2 = rf32(), x3 = rf32(), y3 = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ctx.strokeStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3);
+                        ctx.closePath(); ctx.stroke();
+                        break;
+                    }
+
+                    case 27: {  // DrawFilledTriangleScreen
+                        const x1 = rf32(), y1 = rf32(), x2 = rf32(), y2 = rf32(), x3 = rf32(), y3 = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3);
+                        ctx.closePath(); ctx.fill();
+                        break;
+                    }
+
+                    case 30: {  // DrawTextureScreen (center-positioned)
+                        const texId = rtex();
+                        const x = rf32(), y = rf32(), w = rf32(), h = rf32();
+                        const rotDeg = rf32();
+                        const alpha = ru8();
+                        if (texId === 0) break;
+                        const tex = textures.get(texId);
+                        if (!tex) break;
+                        ctx.save();
+                        ctx.globalAlpha = alpha / 255;
+                        ctx.imageSmoothingEnabled = tex.smooth;
+                        if (rotDeg !== 0) {
+                            ctx.translate(x, y);
+                            ctx.rotate(rotDeg * Math.PI / 180);
+                            ctx.drawImage(tex.canvas, -w / 2, -h / 2, w, h);
+                        } else {
+                            ctx.drawImage(tex.canvas, x - w / 2, y - h / 2, w, h);
+                        }
+                        ctx.restore();
+                        break;
+                    }
+
+                    case 31: {  // DrawTextureScreenRect (top-left positioned)
+                        const texId = rtex();
+                        const dx = rf32(), dy = rf32(), dw = rf32(), dh = rf32();
+                        const alpha = ru8();
+                        if (texId === 0) break;
+                        const tex = textures.get(texId);
+                        if (!tex) break;
+                        ctx.save();
+                        ctx.globalAlpha = alpha / 255;
+                        ctx.imageSmoothingEnabled = tex.smooth;
+                        ctx.drawImage(tex.canvas, dx, dy, dw, dh);
+                        ctx.restore();
+                        break;
+                    }
+
+                    case 32: {  // DrawTextureScreenSrcDst
+                        const texId = rtex();
+                        const sx = rf32(), sy = rf32(), sw = rf32(), sh = rf32();
+                        const dx = rf32(), dy = rf32(), dw = rf32(), dh = rf32();
+                        const alpha = ru8();
+                        if (texId === 0) break;
+                        const tex = textures.get(texId);
+                        if (!tex) break;
+                        ctx.save();
+                        ctx.globalAlpha = alpha / 255;
+                        ctx.imageSmoothingEnabled = tex.smooth;
+                        ctx.drawImage(tex.canvas, sx, sy, sw, sh, dx, dy, dw, dh);
+                        ctx.restore();
+                        break;
+                    }
+
+                    case 33: {  // DrawTextureScreenColor (tinted, center-positioned)
+                        const texId = rtex();
+                        const x = rf32(), y = rf32(), w = rf32(), h = rf32();
+                        const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                        const rotDeg = rf32();
+                        if (texId === 0) break;
+                        const tinted = getTintedTexture(texId, r, g, b);
+                        if (!tinted) break;
+                        const tex = textures.get(texId);
+                        ctx.save();
+                        ctx.globalAlpha = a / 255;
+                        ctx.imageSmoothingEnabled = tex ? tex.smooth : false;
+                        if (rotDeg !== 0) {
+                            ctx.translate(x, y);
+                            ctx.rotate(rotDeg * Math.PI / 180);
+                            ctx.drawImage(tinted, -w / 2, -h / 2, w, h);
+                        } else {
+                            ctx.drawImage(tinted, x - w / 2, y - h / 2, w, h);
+                        }
+                        ctx.restore();
+                        break;
+                    }
+
+                    case 40: {  // DrawTexturedQuadBatchScreen (font / glyph atlas)
+                        const texId = rtex();
+                        const tr = ru8(), tg = ru8(), tb = ru8(), ta = ru8();
+                        const atlasW = ri32(), atlasH = ri32();
+                        const count = ri32();
+                        if (texId === 0) { pos += count * 32; break; }
+                        const tinted = getTintedTexture(texId, tr, tg, tb);
+                        if (!tinted) { pos += count * 32; break; }
+                        const tex = textures.get(texId);
+                        ctx.save();
+                        ctx.globalAlpha = ta / 255;
+                        ctx.imageSmoothingEnabled = tex ? tex.smooth : false;
+                        for (let i = 0; i < count; i++) {
+                            const u0 = rf32(), v0 = rf32(), u1 = rf32(), v1 = rf32();
+                            const dx0 = rf32(), dy0 = rf32(), dx1 = rf32(), dy1 = rf32();
+                            ctx.drawImage(tinted,
+                                u0 * atlasW, v0 * atlasH, (u1 - u0) * atlasW, (v1 - v0) * atlasH,
+                                dx0, dy0, dx1 - dx0, dy1 - dy0);
+                        }
+                        ctx.restore();
+                        break;
+                    }
+
+                    case 50: {  // DrawTileMapScreen
+                        // Colors stored column-major: index = tileX * tilesH + tileY
+                        const screenX = rf32(), screenY = rf32(), scaledTileSize = rf32();
+                        const tilesW = ri32(), tilesH = ri32();
+                        const colorCount = ri32();
+                        let lastColor = -1;
+                        for (let i = 0; i < colorCount; i++) {
+                            const r = ru8(), g = ru8(), b = ru8(), a = ru8();
+                            if (a === 0) continue; // A=0 sentinel = empty tile
+                            const tx = (i / tilesH) | 0;
+                            const ty = i % tilesH;
+                            const left = Math.floor(screenX + tx * scaledTileSize);
+                            const top = Math.floor(screenY + ty * scaledTileSize);
+                            const right = Math.floor(screenX + (tx + 1) * scaledTileSize);
+                            const bottom = Math.floor(screenY + (ty + 1) * scaledTileSize);
+                            // All tile colors are opaque (Color3→Color4 = a=255),
+                            // so rgb() avoids alpha string math and is faster.
+                            const color = (r << 16) | (g << 8) | b;
+                            if (color !== lastColor) {
+                                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                                lastColor = color;
+                            }
+                            ctx.fillRect(left, top, right - left, bottom - top);
+                        }
+                        break;
+                    }
+                }
+            }
         },
     },
 

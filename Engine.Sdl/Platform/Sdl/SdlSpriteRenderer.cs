@@ -51,11 +51,8 @@ public class SdlSpriteRenderer : BaseSpriteRenderer
     }
 
     /// <summary>Draw a circle outline in world space (using line segments).</summary>
-    public override void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
+    public override void DrawCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32)
     {
-        var center = camera.WorldToScreen(worldCenter);
-        var radius = worldRadius * camera.Zoom;
-
         SDL.SetRenderDrawColor(_renderer, color.R, color.G, color.B, color.A);
 
         float angleStep = MathF.PI * 2f / segments;
@@ -64,10 +61,10 @@ public class SdlSpriteRenderer : BaseSpriteRenderer
             float a1 = angleStep * i;
             float a2 = angleStep * (i + 1);
             SDL.RenderLine(_renderer,
-                center.X + MathF.Cos(a1) * radius,
-                center.Y + MathF.Sin(a1) * radius,
-                center.X + MathF.Cos(a2) * radius,
-                center.Y + MathF.Sin(a2) * radius);
+                cx + MathF.Cos(a1) * radius,
+                cy + MathF.Sin(a1) * radius,
+                cx + MathF.Cos(a2) * radius,
+                cy + MathF.Sin(a2) * radius);
         }
     }
 

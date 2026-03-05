@@ -29,6 +29,7 @@ public interface ISpriteRenderer : IDisposable
     void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32);
 
     // ── Circles & rings (screen) ─────────────────────────────────────
+    void DrawCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32);
     void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32);
     void DrawSolidRingScreen(float cx, float cy, float innerRadius, float outerRadius, Color4 color, int segments = 48);
     void DrawFilledCircleScreen(float cx, float cy, float radius, Color4 innerColor, Color4 outerColor, float transitionStartRadius, int segments = 32);

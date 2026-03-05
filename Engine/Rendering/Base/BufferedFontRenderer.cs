@@ -20,9 +20,11 @@ public class BufferedFontRenderer : BaseFontRenderer
     // Per-batch state set in BeginGlyphBatch and consumed in DrawGlyph / EndGlyphBatch.
     private nint _batchTexture;
     private Color4 _batchColor;
+    private int _atlasWidth;
+    private int _atlasHeight;
     private int _count;
 
-    internal BufferedFontRenderer(ITextureManager textures)
+    protected internal BufferedFontRenderer(ITextureManager textures)
         : base(textures)
     {
     }
@@ -31,6 +33,8 @@ public class BufferedFontRenderer : BaseFontRenderer
     {
         _batchTexture = texture;
         _batchColor = color;
+        _atlasWidth = atlasWidth;
+        _atlasHeight = atlasHeight;
         if (_quadBuf.Length < maxGlyphs) _quadBuf = new TexturedQuad[maxGlyphs];
         _count = 0;
     }
@@ -48,6 +52,6 @@ public class BufferedFontRenderer : BaseFontRenderer
     protected override void EndGlyphBatch()
     {
         if (_count > 0)
-            Buffer.WriteDrawTexturedQuadBatchScreen(_batchTexture, _batchColor, _quadBuf, _count);
+            Buffer.WriteDrawTexturedQuadBatchScreen(_batchTexture, _batchColor, _atlasWidth, _atlasHeight, _quadBuf, _count);
     }
 }

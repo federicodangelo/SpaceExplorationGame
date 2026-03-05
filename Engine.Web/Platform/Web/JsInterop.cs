@@ -69,6 +69,16 @@ internal static partial class JsCanvas
 
     [JSImport("canvas.setTitle", "game.js")]
     internal static partial void SetTitle(string title);
+
+    /// <summary>
+    /// Passes the entire serialized command buffer to JavaScript for decoding and replay
+    /// in a single interop call, eliminating per-draw-call marshaling overhead.
+    /// Only the first <paramref name="length"/> bytes of <paramref name="buffer"/> are valid.
+    /// <paramref name="cachedCircleTexId"/> is the texture ID for the pre-rasterized circle
+    /// (0 when unavailable).
+    /// </summary>
+    [JSImport("canvas.flushCommandBuffer", "game.js")]
+    internal static partial void FlushCommandBuffer(byte[] buffer, int length, int cachedCircleTexId);
 }
 
 /// <summary>

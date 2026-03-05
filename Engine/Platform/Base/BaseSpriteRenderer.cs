@@ -56,7 +56,16 @@ public abstract class BaseSpriteRenderer : ISpriteRenderer
 
     // ── Circles & rings (world) ──────────────────────────────────────
 
-    public abstract void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32);
+    /// <summary>Draw a circle outline in world space (transforms to screen then calls <see cref="DrawCircleScreen"/>).</summary>
+    public void DrawCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color, int segments = 32)
+    {
+        var center = camera.WorldToScreen(worldCenter);
+        float radius = worldRadius * camera.Zoom;
+        DrawCircleScreen(center.X, center.Y, radius, color, segments);
+    }
+
+    /// <summary>Draw a circle outline directly in screen space.</summary>
+    public abstract void DrawCircleScreen(float cx, float cy, float radius, Color4 color, int segments = 32);
 
     /// <summary>Draw a filled circle in world space.</summary>
     public void DrawFilledCircle(Camera camera, Vector2 worldCenter, float worldRadius, Color4 color)
