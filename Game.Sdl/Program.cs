@@ -45,6 +45,7 @@ internal static class Program
         string? starTypeArg = null;
         bool debugMode = false;
         bool autoplay = false;
+        string? connectUrl = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -91,6 +92,13 @@ internal static class Program
             else if (arg == "--autoplay")
             {
                 autoplay = true;
+            }
+            else if (arg is "--connect" or "-c")
+            {
+                if (i + 1 >= args.Length)
+                    throw new ArgumentException("Missing value for --connect. Example: --connect ws://localhost:9050/");
+                connectUrl = args[i + 1];
+                i++;
             }
             else
             {
@@ -145,7 +153,42 @@ internal static class Program
         if (autoLaunch != StartOption.None)
             Console.WriteLine($"Auto-start: {autoLaunch}");
 
-        game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
+        if (connectUrl != null)
+        {
+            // Multiplayer: connect to dedicated server
+            var net = new NetworkManager();
+            game.Network = net;
+
+            Console.WriteLine($"Connecting to {connectUrl}...");
+            net.ConnectAsync(connectUrl, "Player").GetAwaiter().GetResult();
+            Console.WriteLine("Connected. Waiting for welcome...");
+
+            // Poll until the server sends the welcome message (timeout after 5s)
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!net.IsJoined && net.IsConnected && DateTime.UtcNow < deadline)
+            {
+                net.ProcessMessages();
+                Thread.Sleep(10);
+            }
+
+            if (!net.IsJoined)
+                throw new InvalidOperationException("Failed to join server — no welcome received.");
+
+            Console.WriteLine($"Joined as player {net.LocalPlayerId}, system index {net.ServerStarSystemIndex}");
+
+            // Regenerate galaxy with the server's seed so both sides have identical data
+            game.RegenerateGalaxy(net.ServerGalaxySeed);
+
+            // Jump directly into the server's solar system
+            var starSystem = game.GalaxyData[net.ServerStarSystemIndex];
+            game.Player.CurrentStarSystemIndex = starSystem.Index;
+            game.ChangeState(new SolarSystemState(starSystem));
+        }
+        else
+        {
+            game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
+        }
+
         game.Run();
     }
 
@@ -261,6 +304,7 @@ internal static class Program
         Console.WriteLine("  --star-type <type>             optional for star-type showcase (default: G)");
         Console.WriteLine("  --debug                        enable the DEBUG menu in the main menu");
         Console.WriteLine("  --autoplay                     start the autoplay bot immediately");
+        Console.WriteLine("  --connect, -c <url>            connect to a multiplayer server (e.g. ws://localhost:9050/)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  SpaceExplorationGame --seed 12345");

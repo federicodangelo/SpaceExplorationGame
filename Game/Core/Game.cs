@@ -42,6 +42,9 @@ public class Game : GameBase
     // Autoplay bot
     public AutoplayBot AutoplayBot { get; } = new();
 
+    // Network (null when playing offline)
+    public NetworkManager? Network { get; set; }
+
     // Menu options persistence
     public MenuOptionsPersistence MenuOptions { get; private set; } = null!;
 
@@ -269,6 +272,7 @@ public class Game : GameBase
     public override void Dispose()
     {
         _currentState?.Exit(this);
+        Network?.Dispose();
         Coordinator.DestroyAll();
         Platform.Dispose();
         GC.SuppressFinalize(this);

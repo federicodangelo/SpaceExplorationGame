@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Engine\Engine.csproj" />
+        <ProjectReference Include="..\Engine.Network\Engine.Network.csproj" />
     </ItemGroup>
 
     <ItemGroup>

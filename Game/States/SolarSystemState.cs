@@ -155,10 +155,24 @@ public class SolarSystemState : GameState
         // Remove player from simulation (simulation stays alive in coordinator)
         if (_sim != null && _simPlayer != null)
             _sim.RemovePlayer(_simPlayer);
+
+        // Clean up remote player entities
+        if (game.Network != null && _sim != null)
+        {
+            foreach (var remote in game.Network.RemotePlayers.Values)
+            {
+                if (remote.HasEntity && _sim.EcsWorld.IsAlive(remote.Entity))
+                    _sim.EcsWorld.Destroy(remote.Entity);
+                remote.HasEntity = false;
+            }
+        }
     }
 
     public override void UpdateInput(Game game)
     {
+        // ── Network: drain inbound messages ──
+        game.Network?.ProcessMessages();
+
         var input = game.Input;
 
         // ── Autoplay bot ──
@@ -308,6 +322,13 @@ public class SolarSystemState : GameState
             game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
             _activeMusicTheme = AudioThemes.SolarSystem;
         }
+
+        // ── Network: send local state + sync remote entities ──
+        if (game.Network is { IsJoined: true } net)
+        {
+            net.SendLocalState(_sim.EcsWorld, _simPlayer.Entity);
+            SyncRemotePlayers(game, net);
+        }
     }
 
     private void ProcessSimulationEvents(Game game)
@@ -441,6 +462,52 @@ public class SolarSystemState : GameState
         {
             _anchorEntity = default;
             _anchorOffset = Vector2.Zero;
+        }
+    }
+
+    // ── Network remote player sync ──────────────────────────────
+
+    private void SyncRemotePlayers(Game game, NetworkManager net)
+    {
+        var world = _sim.EcsWorld;
+        foreach (var remote in net.RemotePlayers.Values)
+        {
+            if (!remote.HasReceivedState) continue;
+
+            // Lazily create an ECS entity to render this remote player
+            if (!remote.HasEntity || !world.IsAlive(remote.Entity))
+            {
+                remote.Entity = ECS.EntityFactory.CreatePlayerShip(
+                    world,
+                    remote.LastState.Position,
+                    spriteSize: 32,
+                    maxHull: remote.LastState.MaxHull > 0 ? remote.LastState.MaxHull : 100f,
+                    currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : 100f,
+                    maxShield: remote.LastState.MaxShield,
+                    maxSpeed: 300f,
+                    rotationSpeed: 180f,
+                    acceleration: 400f,
+                    brakeMultiplier: 1.5f,
+                    weapons: []);
+                remote.HasEntity = true;
+            }
+
+            // Update transform + velocity from network state
+            ref var transform = ref world.Get<Transform>(remote.Entity);
+            transform.Position = remote.LastState.Position;
+            transform.Rotation = remote.LastState.Rotation;
+
+            ref var velocity = ref world.Get<Velocity>(remote.Entity);
+            velocity.Linear = remote.LastState.Velocity;
+
+            if (world.Has<Health>(remote.Entity))
+            {
+                ref var health = ref world.Get<Health>(remote.Entity);
+                health.Hull = remote.LastState.Hull;
+                health.MaxHull = remote.LastState.MaxHull;
+                health.Shield = remote.LastState.Shield;
+                health.MaxShield = remote.LastState.MaxShield;
+            }
         }
     }
 
