@@ -57,14 +57,14 @@ public static class CombatHelper
     /// <param name="rng">Seeded random for deterministic rolls.</param>
     /// <param name="resourceAmountMax">Exclusive upper bound for resource amount roll (default 4 for surface).</param>
     /// <param name="enablePartDrops">If true, rolls for ship part drops (space combat only).</param>
-    public static string? ProcessLootDrop(Game game, LootDrop loot, SeededRandom rng,
+    public static string? ProcessLootDrop(Game game, PlayerData killer, LootDrop loot, SeededRandom rng,
         int resourceAmountMax = 4, bool enablePartDrops = false)
     {
         // Credits
         int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
         if (credits > 0)
         {
-            game.Player.Credits += credits;
+            killer.Credits += credits;
             game.Audio.PlaySfx(AudioSfx.PickupCredits, 0.6f);
         }
         string message = credits > 0 ? $"+{credits} CREDITS" : "";
@@ -74,7 +74,7 @@ public static class CombatHelper
         {
             var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
             int amount = rng.NextInt(1, resourceAmountMax);
-            int added = game.Player.AddCargo(resource, amount);
+            int added = killer.AddCargo(resource, amount);
             if (added > 0)
             {
                 var resName = ResourceCatalog.Get(resource).Name;
@@ -92,10 +92,10 @@ public static class CombatHelper
             if (candidates.Length > 0)
             {
                 var droppedPart = candidates[rng.NextInt(0, candidates.Length)];
-                if (!game.Player.OwnedParts.Contains(droppedPart) &&
-                    !game.Player.EquippedParts.ContainsValue(droppedPart))
+                if (!killer.OwnedParts.Contains(droppedPart) &&
+                    !killer.EquippedParts.ContainsValue(droppedPart))
                 {
-                    game.Player.OwnedParts.Add(droppedPart);
+                    killer.OwnedParts.Add(droppedPart);
                     message += $"  +{droppedPart.Name.ToUpper()}!";
                 }
             }

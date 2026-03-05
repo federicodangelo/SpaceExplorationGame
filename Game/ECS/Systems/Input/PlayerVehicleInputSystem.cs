@@ -2,21 +2,21 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.ECS.Components;
+using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.ECS.Systems.Input;
 
 /// <summary>
-/// Reads vehicle input axes from the player and writes intent into <see cref="AvatarInputComponent"/>.
+/// Reads an <see cref="InputSnapshot"/> and writes vehicle intent into <see cref="AvatarInputComponent"/>.
 /// The actual physics (rotation, thrust, braking, damping) is applied by <see cref="VehicleSystem"/>.
 /// </summary>
 public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
 {
-    private readonly IInputManager _input;
     private readonly Entity _entity;
+    public InputSnapshot Snapshot;
 
-    public PlayerVehicleInputSystem(World world, IInputManager input, Entity entity) : base(world)
+    public PlayerVehicleInputSystem(World world, Entity entity) : base(world)
     {
-        _input = input;
         _entity = entity;
     }
 
@@ -24,10 +24,10 @@ public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
     {
         ref var avatarInput = ref World.Get<AvatarInputComponent>(_entity);
 
-        Vector2 movementInput = _input.GetActionAxisDirection(InputActionAxis.Movement);
-        Vector2 headingDirection = _input.GetActionAxisDirection(InputActionAxis.Heading);
+        Vector2 movementInput = Snapshot.MovementDirection;
+        Vector2 headingDirection = Snapshot.HeadingDirection;
 
-        if (_input.MovementMode == MovementInputMode.Absolute &&
+        if (Snapshot.AbsoluteMovement &&
             headingDirection == Vector2.Zero &&
             movementInput != Vector2.Zero)
         {
@@ -36,18 +36,15 @@ public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
 
         avatarInput.HeadingDirection = headingDirection;
 
-        switch (_input.MovementMode)
+        if (Snapshot.AbsoluteMovement)
         {
-            case MovementInputMode.Absolute:
-                avatarInput.Throttle = Math.Clamp(movementInput.Length(), 0f, 1f);
-                avatarInput.IsBraking = false;
-                break;
-
-            case MovementInputMode.HeadingRelative:
-            default:
-                avatarInput.IsBraking = movementInput.Y > 0f;
-                avatarInput.Throttle = MathF.Max(0f, -movementInput.Y);
-                break;
+            avatarInput.Throttle = Math.Clamp(movementInput.Length(), 0f, 1f);
+            avatarInput.IsBraking = false;
+        }
+        else
+        {
+            avatarInput.IsBraking = movementInput.Y > 0f;
+            avatarInput.Throttle = MathF.Max(0f, -movementInput.Y);
         }
     }
 }

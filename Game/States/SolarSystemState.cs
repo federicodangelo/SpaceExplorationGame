@@ -111,7 +111,7 @@ public class SolarSystemState : GameState
         _particleSystem.Initialize();
 
         // Create input/camera systems that operate on the simulation's ECS world
-        _playerShipInputSystem = new PlayerShipInputSystem(_sim.EcsWorld, game.Input);
+        _playerShipInputSystem = new PlayerShipInputSystem(_sim.EcsWorld);
         _playerShipInputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
@@ -230,6 +230,7 @@ public class SolarSystemState : GameState
         if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
         {
             _sim.SyncPlayerShipComponent(_simPlayer);
+            _playerShipInputSystem.Snapshot = InputSnapshot.FromInput(input);
             float dt = game.DeltaTime;
             _playerShipInputSystem.Update(in dt);
         }

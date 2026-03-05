@@ -7,15 +7,14 @@ using SpaceExplorationGame.Core;
 namespace SpaceExplorationGame.ECS.Systems.Input;
 
 /// <summary>
-/// Reads player controls and writes per-frame intent into <see cref="ShipInputComponent"/>.
+/// Reads an <see cref="InputSnapshot"/> and writes per-frame intent into <see cref="ShipInputComponent"/>.
 /// </summary>
 public partial class PlayerShipInputSystem : BaseSystem<World, float>
 {
-    private readonly IInputManager _input;
+    public InputSnapshot Snapshot;
 
-    public PlayerShipInputSystem(World world, IInputManager input) : base(world)
+    public PlayerShipInputSystem(World world) : base(world)
     {
-        _input = input;
     }
 
     public override void Update(in float dt)
@@ -30,12 +29,12 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
     {
         shipInput.AccelerationDirection = Vector2.Zero;
         shipInput.RotationSpeed = 0f;
-        shipInput.Shoot = _input.IsActionDown(InputAction.FireWeapon);
+        shipInput.Shoot = Snapshot.Shoot;
 
-        Vector2 headingDirection = _input.GetActionAxisDirection(InputActionAxis.Heading);
-        Vector2 movementInput = _input.GetActionAxisDirection(InputActionAxis.Movement);
+        Vector2 headingDirection = Snapshot.HeadingDirection;
+        Vector2 movementInput = Snapshot.MovementDirection;
 
-        bool absolute = _input.MovementMode == MovementInputMode.Absolute;
+        bool absolute = Snapshot.AbsoluteMovement;
         if (absolute && headingDirection == Vector2.Zero && movementInput != Vector2.Zero)
             headingDirection = Vector2.Normalize(movementInput);
 

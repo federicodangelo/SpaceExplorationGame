@@ -101,7 +101,7 @@ public class InteriorState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed, _camera);
+        _inputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, avatarSpeed);
         _inputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
@@ -267,8 +267,12 @@ public class InteriorState : GameState
         }
 
         // Movement input (write to entity each frame)
-        float dt = game.DeltaTime;
-        _inputSystem.Update(in dt);
+        {
+            var playerPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
+            _inputSystem.Snapshot = InputSnapshot.FromInput(input, _camera, playerPos);
+            float dt = game.DeltaTime;
+            _inputSystem.Update(in dt);
+        }
     }
 
     public override void Update(Game game)

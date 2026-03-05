@@ -399,7 +399,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, string? resourceMsg)
+    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
         if (resourceMsg != null)
         {
@@ -433,8 +433,8 @@ public class SolarSystemSimulation : CombatSimulationBase
         return $"DESTROYED! -{creditsLost} CREDITS";
     }
 
-    protected override string? ProcessEnemyLoot(LootDrop loot, SeededRandom rng)
-        => CombatHelper.ProcessLootDrop(_game, loot, rng,
+    protected override string? ProcessEnemyLoot(SimulationPlayer killer, LootDrop loot, SeededRandom rng)
+        => CombatHelper.ProcessLootDrop(_game, killer.Data, loot, rng,
             resourceAmountMax: 5 + loot.DangerLevel * 2, enablePartDrops: true);
 
     protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
@@ -471,11 +471,10 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    protected override void HandlePlayerRespawn()
+    protected override void HandlePlayerRespawn(SimulationPlayer player)
     {
-        if (LocalPlayer is not { } player) return;
-
-        PlayerDead = false;
+        var state = GetCombatState(player);
+        state.Dead = false;
 
         Vector2 respawnPos = Content.StartingPosition;
         int nearestSpaceStationIdx = -1;
@@ -501,8 +500,8 @@ public class SolarSystemSimulation : CombatSimulationBase
         player.Data.ShipHealth = player.Data.ShipMaxHealth;
         player.Entity = CreatePlayerShip(player.Data, respawnPos);
 
-        CombatMessage = "RESPAWNED";
-        CombatMessageTimer = 3f;
+        state.CombatMessage = "RESPAWNED";
+        state.CombatMessageTimer = 3f;
 
         // Expose respawn station index for state to auto-open station menu
         RespawnSpaceStationIndex = nearestSpaceStationIdx;

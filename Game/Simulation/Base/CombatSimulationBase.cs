@@ -14,16 +14,22 @@ namespace SpaceExplorationGame.Simulation.Base;
 /// </summary>
 public abstract class CombatSimulationBase : SimulationBase
 {
-    // ── Combat state ────────────────────────────────────────────────
-    public bool PlayerDead { get; protected set; }
-    public float RespawnTimer { get; protected set; }
+    // ── Per-player combat state ─────────────────────────────────────
+    private readonly Dictionary<SimulationPlayer, CombatPlayerState> _combatStates = new();
 
-    // Combat messages (loot, kill, resource pickup)
-    public string? CombatMessage { get; protected set; }
-    public float CombatMessageTimer { get; protected set; }
+    /// <summary>Get the combat state for a specific player.</summary>
+    public CombatPlayerState GetCombatState(SimulationPlayer player) => _combatStates[player];
 
-    // Combat music tracking (exposed for states to set music theme)
-    public float CombatMusicTimer { get; protected set; }
+    /// <summary>Try to get the combat state for a specific player.</summary>
+    public bool TryGetCombatState(SimulationPlayer player, out CombatPlayerState state)
+        => _combatStates.TryGetValue(player, out state!);
+
+    // ── Convenience properties (delegate to local player) ───────────
+    public bool PlayerDead => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) && s.Dead;
+    public float RespawnTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.RespawnTimer : 0;
+    public string? CombatMessage => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessage : null;
+    public float CombatMessageTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessageTimer : 0;
+    public float CombatMusicTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMusicTimer : 0;
 
     // ── Shared ECS Systems ──────────────────────────────────────────
     protected DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
@@ -42,7 +48,7 @@ public abstract class CombatSimulationBase : SimulationBase
     protected abstract float RespawnDelay { get; }
 
     /// <summary>Handle player respawn after death timer expires.</summary>
-    protected abstract void HandlePlayerRespawn();
+    protected abstract void HandlePlayerRespawn(SimulationPlayer player);
 
     /// <summary>Sync a player's health from the ECS entity to PlayerData.</summary>
     protected abstract void SyncPlayerHealth(SimulationPlayer player, float health);
@@ -50,6 +56,19 @@ public abstract class CombatSimulationBase : SimulationBase
     protected CombatSimulationBase(Game game, ISimulation? parent = null)
         : base(game, parent)
     {
+    }
+
+    /// <summary>Create the per-player combat state. Override in subclasses to return a derived type.</summary>
+    protected virtual CombatPlayerState CreateCombatPlayerState() => new();
+
+    protected override void OnPlayerAdded(SimulationPlayer player)
+    {
+        _combatStates[player] = CreateCombatPlayerState();
+    }
+
+    protected override void OnPlayerRemoved(SimulationPlayer player)
+    {
+        _combatStates.Remove(player);
     }
 
     /// <summary>Initialize ECS systems shared by all combat simulations.</summary>
@@ -67,7 +86,7 @@ public abstract class CombatSimulationBase : SimulationBase
 
     public override void Destroy()
     {
-        PlayerDead = false;
+        _combatStates.Clear();
         base.Destroy();
     }
 
@@ -86,12 +105,16 @@ public abstract class CombatSimulationBase : SimulationBase
         // Process damage events
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
         {
-            bool localPlayerInvolved =
-                (evt.OwnerFaction == Faction.Player && IsLocalPlayerEntity(evt.OwnerEntity))
-                || (EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
-                    && IsLocalPlayerEntity(evt.Target));
-            if (localPlayerInvolved)
-                CombatMusicTimer = AudioConfig.CombatMusicDelay;
+            // Track combat music for any player involved
+            var ownerPlayer = evt.OwnerFaction == Faction.Player ? FindPlayerByEntity(evt.OwnerEntity) : null;
+            var targetPlayer = EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<PlayerControlled>(evt.Target)
+                ? FindPlayerByEntity(evt.Target) : null;
+
+            if (ownerPlayer != null && _combatStates.TryGetValue(ownerPlayer, out var ownerState))
+                ownerState.CombatMusicTimer = AudioConfig.CombatMusicDelay;
+            if (targetPlayer != null && _combatStates.TryGetValue(targetPlayer, out var targetState))
+                targetState.CombatMusicTimer = AudioConfig.CombatMusicDelay;
+
             OnDamageEvent(evt);
         }
 
@@ -103,53 +126,65 @@ public abstract class CombatSimulationBase : SimulationBase
             {
                 var asteroid = destroyed.Asteroid.Value;
                 string? resourceMsg = null;
-                if (destroyed.KillerFaction == Faction.Player
-                    && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } miner)
+                SimulationPlayer? miner = null;
+                if (destroyed.KillerFaction == Faction.Player)
                 {
-                    resourceMsg = CollectResource(miner.Data, asteroid.Resource, asteroid.ResourceAmount);
+                    miner = FindPlayerByEntity(destroyed.KillerEntity);
+                    if (miner != null)
+                        resourceMsg = CollectResource(miner.Data, asteroid.Resource, asteroid.ResourceAmount);
                 }
-                OnAsteroidDestroyed(destroyed, resourceMsg);
+                OnAsteroidDestroyed(destroyed, miner, resourceMsg);
             }
             else if (destroyed.Faction == Faction.Player)
             {
-                if (IsLocalPlayerEntity(destroyed.Entity))
-                    HandlePlayerDeathCore();
+                var deadPlayer = FindPlayerByEntity(destroyed.Entity);
+                if (deadPlayer != null)
+                    HandlePlayerDeathCore(deadPlayer);
             }
             else
             {
-                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue
-                    && IsLocalPlayerEntity(destroyed.KillerEntity))
+                if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
-                    CombatMessage = ProcessEnemyLoot(destroyed.Loot.Value, combatRng);
-                    CombatMessageTimer = 3f;
+                    var killer = FindPlayerByEntity(destroyed.KillerEntity);
+                    if (killer != null && _combatStates.TryGetValue(killer, out var killerState))
+                    {
+                        killerState.CombatMessage = ProcessEnemyLoot(killer, destroyed.Loot.Value, combatRng);
+                        killerState.CombatMessageTimer = 3f;
+                    }
                 }
                 OnEnemyDestroyed(destroyed);
             }
         }
     }
 
-    /// <summary>Tick death timer and auto-respawn.</summary>
+    /// <summary>Tick death timer and auto-respawn for all players.</summary>
     protected void UpdateDeathTimer(float dt)
     {
-        if (PlayerDead)
+        foreach (var (player, state) in _combatStates)
         {
-            RespawnTimer -= dt;
-            if (RespawnTimer <= 0)
-                HandlePlayerRespawn();
+            if (state.Dead)
+            {
+                state.RespawnTimer -= dt;
+                if (state.RespawnTimer <= 0)
+                    HandlePlayerRespawn(player);
+            }
         }
     }
 
-    /// <summary>Tick combat message and music timers. Call at the end of Update.</summary>
+    /// <summary>Tick combat message and music timers for all players. Call at the end of Update.</summary>
     protected void UpdateCombatTimers(float dt)
     {
-        if (CombatMessageTimer > 0)
+        foreach (var (_, state) in _combatStates)
         {
-            CombatMessageTimer -= dt;
-            if (CombatMessageTimer <= 0) CombatMessage = null;
-        }
+            if (state.CombatMessageTimer > 0)
+            {
+                state.CombatMessageTimer -= dt;
+                if (state.CombatMessageTimer <= 0) state.CombatMessage = null;
+            }
 
-        if (CombatMusicTimer > 0)
-            CombatMusicTimer -= dt;
+            if (state.CombatMusicTimer > 0)
+                state.CombatMusicTimer -= dt;
+        }
     }
 
     /// <summary>Sync each player's health from their ECS entity to PlayerData.</summary>
@@ -170,17 +205,17 @@ public abstract class CombatSimulationBase : SimulationBase
     /// <summary>
     /// Shared death handling: sets dead state, destroys entity, applies penalties via virtual hook.
     /// </summary>
-    protected void HandlePlayerDeathCore()
+    protected void HandlePlayerDeathCore(SimulationPlayer player)
     {
-        if (LocalPlayer is not { } player) return;
-        PlayerDead = true;
-        RespawnTimer = RespawnDelay;
+        if (!_combatStates.TryGetValue(player, out var state)) return;
+        state.Dead = true;
+        state.RespawnTimer = RespawnDelay;
 
         if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
 
-        CombatMessage = ApplyDeathPenalties(player);
-        CombatMessageTimer = RespawnDelay;
+        state.CombatMessage = ApplyDeathPenalties(player);
+        state.CombatMessageTimer = RespawnDelay;
     }
 
     // ── Resource collection helper ──────────────────────────────────
@@ -210,10 +245,11 @@ public abstract class CombatSimulationBase : SimulationBase
     protected virtual void OnDamageEvent(DamageEvent evt) { }
 
     /// <summary>
-    /// Called when an asteroid/rock is destroyed. <paramref name="resourceMsg"/> is non-null
-    /// if the local player collected resources from it.
+    /// Called when an asteroid/rock is destroyed. <paramref name="miner"/> is the player who
+    /// destroyed it (null if non-player). <paramref name="resourceMsg"/> is non-null if the
+    /// miner collected resources from it.
     /// </summary>
-    protected virtual void OnAsteroidDestroyed(DestroyedEntity destroyed, string? resourceMsg)
+    protected virtual void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);
@@ -223,8 +259,8 @@ public abstract class CombatSimulationBase : SimulationBase
     protected virtual string? ApplyDeathPenalties(SimulationPlayer player) => null;
 
     /// <summary>Process enemy loot drop and return a HUD message string.</summary>
-    protected virtual string? ProcessEnemyLoot(LootDrop loot, SeededRandom rng)
-        => CombatHelper.ProcessLootDrop(_game, loot, rng);
+    protected virtual string? ProcessEnemyLoot(SimulationPlayer killer, LootDrop loot, SeededRandom rng)
+        => CombatHelper.ProcessLootDrop(_game, killer.Data, loot, rng);
 
     /// <summary>Called when an enemy entity is destroyed (cleanup lists, notify missions, etc.).</summary>
     protected virtual void OnEnemyDestroyed(DestroyedEntity destroyed)

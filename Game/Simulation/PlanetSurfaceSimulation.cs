@@ -373,14 +373,14 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     protected override ulong CombatRngSeed => 0xBEEFCAFE;
 
-    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, string? resourceMsg)
+    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
-        if (resourceMsg != null)
+        if (resourceMsg != null && miner != null && TryGetCombatState(miner, out var minerState))
         {
-            CombatMessage = resourceMsg;
-            CombatMessageTimer = 2.5f;
+            minerState.CombatMessage = resourceMsg;
+            minerState.CombatMessageTimer = 2.5f;
         }
-        base.OnAsteroidDestroyed(destroyed, resourceMsg);
+        base.OnAsteroidDestroyed(destroyed, miner, resourceMsg);
     }
 
     protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
@@ -399,10 +399,10 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         return creditsLost > 0 ? $"LOST {creditsLost} CREDITS" : null;
     }
 
-    protected override void HandlePlayerRespawn()
+    protected override void HandlePlayerRespawn(SimulationPlayer player)
     {
-        if (LocalPlayer is not { } player) return;
-        PlayerDead = false;
+        var state = GetCombatState(player);
+        state.Dead = false;
 
         // Respawn near the landed ship
         var shipPos = EcsWorld.IsAlive(LocalShipEntity)
@@ -429,8 +429,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             StowVehicle();
         player.Data.InVehicle = false;
 
-        CombatMessage = "RESPAWNED";
-        CombatMessageTimer = 3f;
+        state.CombatMessage = "RESPAWNED";
+        state.CombatMessageTimer = 3f;
     }
 
     public void SyncPlayerAvatarComponent(SimulationPlayer player)

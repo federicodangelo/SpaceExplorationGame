@@ -155,7 +155,7 @@ public class PlanetSurfaceState : GameState
 
         // Initialize input/camera systems on simulation's ECS world
         float avatarSpeed = game.Player.AvatarWalkSpeed;
-        _avatarInputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, game.Input, avatarSpeed, _camera);
+        _avatarInputSystem = new PlayerAvatarInputSystem(_sim.EcsWorld, avatarSpeed);
         _avatarInputSystem.Initialize();
 
         _cameraFollowSystem = new CameraFollowSystem(_sim.EcsWorld, _camera);
@@ -299,8 +299,15 @@ public class PlanetSurfaceState : GameState
             float dt = game.DeltaTime;
             _sim.SyncPlayerAvatarComponent(_simPlayer);
             _sim.SyncPlayerVehicleComponent(_simPlayer);
+            var playerPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
+            var snapshot = InputSnapshot.FromInput(input, _camera, playerPos);
+            _avatarInputSystem.Snapshot = snapshot;
             _avatarInputSystem.Update(in dt);
-            _vehicleInputSystem?.Update(in dt);
+            if (_vehicleInputSystem != null)
+            {
+                _vehicleInputSystem.Snapshot = snapshot;
+                _vehicleInputSystem.Update(in dt);
+            }
         }
     }
 
@@ -444,7 +451,7 @@ public class PlanetSurfaceState : GameState
     private void MountVehicle(Game game)
     {
         _sim.MountVehicle(_simPlayer);
-        _vehicleInputSystem = new PlayerVehicleInputSystem(_sim.EcsWorld, game.Input, _simPlayer.Entity);
+        _vehicleInputSystem = new PlayerVehicleInputSystem(_sim.EcsWorld, _simPlayer.Entity);
         _inVehicle = true;
     }
 

@@ -56,15 +56,18 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
         _players.Add(simPlayer);
         if (player.Type == PlayerType.Local)
             LocalPlayer = simPlayer;
+        OnPlayerAdded(simPlayer);
         return simPlayer;
     }
 
     /// <summary>
-    /// Remove a player from this simulation. Calls <see cref="DestroyPlayerEntity"/> for
-    /// subclass cleanup, then destroys the entity and updates the player list.
+    /// Remove a player from this simulation. Calls <see cref="OnPlayerRemoved"/> for
+    /// subclass cleanup, then <see cref="DestroyPlayerEntity"/>, destroys the entity,
+    /// and updates the player list.
     /// </summary>
     public void RemovePlayer(SimulationPlayer player)
     {
+        OnPlayerRemoved(player);
         DestroyPlayerEntity(player.Entity);
         if (EcsWorld.IsAlive(player.Entity))
             EcsWorld.Destroy(player.Entity);
@@ -86,6 +89,18 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     /// Override to persist state (e.g. health) before the entity is gone.
     /// </summary>
     protected virtual void DestroyPlayerEntity(Entity entity) { }
+
+    /// <summary>
+    /// Optional hook called after a player is added to this simulation.
+    /// Override to initialize per-player state.
+    /// </summary>
+    protected virtual void OnPlayerAdded(SimulationPlayer player) { }
+
+    /// <summary>
+    /// Optional hook called before a player is removed from this simulation.
+    /// Override to clean up per-player state.
+    /// </summary>
+    protected virtual void OnPlayerRemoved(SimulationPlayer player) { }
 
     // ── Shared helpers ──────────────────────────────────────────────
 
