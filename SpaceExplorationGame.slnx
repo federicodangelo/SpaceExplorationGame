@@ -4,5 +4,6 @@
   <Project Path="Engine.Web/Engine.Web.csproj" />
   <Project Path="Game/Game.csproj" />
   <Project Path="Game.Sdl/Game.Sdl.csproj" />
+  <Project Path="Game.Server/Game.Server.csproj" />
   <Project Path="Game.Web/Game.Web.csproj" />
 </Solution>
