@@ -21,5 +21,8 @@
     </ItemGroup>
     <ItemGroup>
         <WasmExtraFilesToDeploy Include="wwwroot\index.html" />
+        <WasmExtraFilesToDeploy Include="wwwroot\decode-render-commands.js" />
+        <WasmExtraFilesToDeploy Include="wwwroot\renderer-canvas2d.js" />
+        <WasmExtraFilesToDeploy Include="wwwroot\renderer-webgl.js" />
     </ItemGroup>
 </Project>
