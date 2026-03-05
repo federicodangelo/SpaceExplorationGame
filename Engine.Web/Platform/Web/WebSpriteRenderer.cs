@@ -202,7 +202,7 @@ public class WebSpriteRenderer : BaseSpriteRenderer
                     var color = getColor(x, y);
                     if (color == null) continue;
 
-                    int hash = (x * 374761393 + y * 668265263) ^ (x * y);
+                    int hash = GetTileHash(x, y);
                     var worldPos = new Vector2(x * tileSize + halfTile, y * tileSize + halfTile);
                     renderDetail(x, y, worldPos, hash);
                 }

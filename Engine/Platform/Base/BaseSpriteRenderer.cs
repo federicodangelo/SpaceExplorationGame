@@ -214,4 +214,9 @@ public abstract class BaseSpriteRenderer : ISpriteRenderer
 
         return textures.CreateTextureFromPixels(pixels, w, h, TextureScaleMode.Nearest);
     }
+
+    public static int GetTileHash(int x, int y)
+    {
+        return (x * 374761393 + y * 668265263) ^ (x * y);
+    }
 }

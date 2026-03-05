@@ -137,7 +137,7 @@ public class SdlTileMapRenderer
                     var color = getColor(x, y);
                     if (color == null) continue;
 
-                    int hash = GetTileHash(x, y);
+                    int hash = BaseSpriteRenderer.GetTileHash(x, y);
                     var worldPos = new Vector2(
                         x * tileSize + halfTile,
                         y * tileSize + halfTile);
@@ -147,10 +147,4 @@ public class SdlTileMapRenderer
             }
         }
     }
-
-    private static int GetTileHash(int x, int y)
-    {
-        return (x * 374761393 + y * 668265263) ^ (x * y);
-    }
-
 }
