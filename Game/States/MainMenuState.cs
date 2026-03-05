@@ -675,11 +675,11 @@ public class MainMenuState : GameState
         _debugOverlay.Render(game);
         _controlsPanel.Render(game, _menuOverlay.PanelRight, _menuOverlay.PanelCenterY);
 
-        // Build hash (bottom-right corner, web builds only)
+        // Build hash + type (bottom-right corner, web builds only)
         string? buildHash = BuildInfo.ShortHash;
         if (!string.IsNullOrEmpty(buildHash))
         {
-            string buildText = $"build: {buildHash}";
+            string buildText = $"build: {buildHash} ({BuildInfo.BuildType})";
             float scale = 2f;
             float bw = renderer.MeasureText(buildText, scale);
             renderer.DrawTextScreen(

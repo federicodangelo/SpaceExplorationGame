@@ -24,6 +24,16 @@ public static class BuildInfo
         ? h[..Math.Min(7, h.Length)]
         : null;
 
+    /// <summary>
+    /// "Debug" or "Release" depending on the compilation configuration.
+    /// </summary>
+    public static string BuildType =>
+#if DEBUG
+        "Debug";
+#else
+        "Release";
+#endif
+
     private static string? ReadHash()
     {
         var raw = Assembly.GetEntryAssembly()
