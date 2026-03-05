@@ -24,18 +24,37 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public PlanetData Planet { get; }
     public PlanetSurfaceData SurfaceData { get; private init; }
 
-    // ── Entities ────────────────────────────────────────────────────
-    public Entity LocalShipEntity { get; set; }
-    public Entity LocalVehicleEntity { get; set; }
-    public bool LocalVehicleDeployed { get; set; }
+    // ── Per-player state (delegates to local player for backward compat) ──
+    private SurfacePlayerState? LocalSurfaceState =>
+        LocalPlayer != null && TryGetCombatState(LocalPlayer, out var s) ? (SurfacePlayerState)s : null;
+
+    public Entity LocalShipEntity
+    {
+        get => LocalSurfaceState?.ShipEntity ?? default;
+        set { if (LocalSurfaceState is { } s) s.ShipEntity = value; }
+    }
+    public Entity LocalVehicleEntity
+    {
+        get => LocalSurfaceState?.VehicleEntity ?? default;
+        set { if (LocalSurfaceState is { } s) s.VehicleEntity = value; }
+    }
+    public bool LocalVehicleDeployed
+    {
+        get => LocalSurfaceState?.VehicleDeployed ?? false;
+        set { if (LocalSurfaceState is { } s) s.VehicleDeployed = value; }
+    }
 
     // ── Proximity state ─────────────────────────────────────────────
-    public SettlementData? NearSettlement { get; private set; }
-    public bool NearShip { get; private set; }
-    public bool NearVehicle { get; private set; }
+    public SettlementData? NearSettlement => LocalSurfaceState?.NearSettlement;
+    public bool NearShip => LocalSurfaceState?.NearShip ?? false;
+    public bool NearVehicle => LocalSurfaceState?.NearVehicle ?? false;
 
     private const float BoardShipRadius = 30f;
     protected override float RespawnDelay => 2.5f;
+    protected override CombatPlayerState CreateCombatPlayerState() => new SurfacePlayerState();
+
+    /// <summary>Get the surface-specific per-player state.</summary>
+    public SurfacePlayerState GetSurfaceState(SimulationPlayer player) => (SurfacePlayerState)GetCombatState(player);
 
     // ── System event outputs (planet-surface-specific) ─────────────
     /// <summary>All avatar projectiles spawned last tick (player + NPC). Read by state for SFX; use Faction to distinguish.</summary>
@@ -100,13 +119,14 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Surface NPCs", () => _surfaceNpcManager.Update(dt));
 
-        // Sync vehicle position/rotation when driving
-        if (LocalPlayer is { } vehicleDriver && LocalVehicleDeployed)
+        // Sync vehicle position/rotation when driving (all players)
+        foreach (var p in Players)
         {
-            if (EcsWorld.IsAlive(vehicleDriver.Entity) && EcsWorld.IsAlive(LocalVehicleEntity) && vehicleDriver.Data.InVehicle)
+            var ss = GetSurfaceState(p);
+            if (ss.VehicleDeployed && EcsWorld.IsAlive(p.Entity) && EcsWorld.IsAlive(ss.VehicleEntity) && p.Data.InVehicle)
             {
-                ref var avatarTf = ref EcsWorld.Get<Transform>(vehicleDriver.Entity);
-                ref var vehicleTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
+                ref var avatarTf = ref EcsWorld.Get<Transform>(p.Entity);
+                ref var vehicleTf = ref EcsWorld.Get<Transform>(ss.VehicleEntity);
                 vehicleTf.Position = avatarTf.Position;
                 vehicleTf.Rotation = avatarTf.Rotation;
             }
@@ -189,10 +209,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Create ship entity
         var shipEntity = EntityFactory.CreateLandedShip(EcsWorld, shipX, shipY);
 
-        if (player.Type == PlayerType.Local)
-        {
-            LocalShipEntity = shipEntity;
-        }
+        // Store in per-player state (state already exists thanks to AddPlayer ordering)
+        var ss = GetSurfaceState(FindPlayerByData(player)!);
+        ss.ShipEntity = shipEntity;
 
         // Deploy vehicle if it was deployed before
         if (player.HasSavedSurfacePositions && player.SavedVehicleDeployed)
@@ -200,11 +219,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             var vehicleEntity = EntityFactory.CreateVehicle(EcsWorld,
                 player.SavedVehicleX, player.SavedVehicleY);
 
-            if (player.Type == PlayerType.Local)
-            {
-                LocalVehicleEntity = vehicleEntity;
-                LocalVehicleDeployed = true;
-            }
+            ss.VehicleEntity = vehicleEntity;
+            ss.VehicleDeployed = true;
         }
 
         // Notify mission system
@@ -213,35 +229,50 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         return avatarEntity;
     }
 
-    /// <summary>Create a vehicle entity in the simulation world.</summary>
-    public Entity DeployVehicle(float x, float y)
+    /// <summary>Create a vehicle entity for the given player.</summary>
+    public Entity DeployVehicle(SimulationPlayer player, float x, float y)
     {
-        LocalVehicleEntity = EntityFactory.CreateVehicle(EcsWorld, x, y);
-        LocalVehicleDeployed = true;
-        return LocalVehicleEntity;
+        var ss = GetSurfaceState(player);
+        ss.VehicleEntity = EntityFactory.CreateVehicle(EcsWorld, x, y);
+        ss.VehicleDeployed = true;
+        return ss.VehicleEntity;
     }
 
-    /// <summary>Remove the vehicle entity from the simulation.</summary>
+    /// <summary>Create a vehicle entity for the local player.</summary>
+    public Entity DeployVehicle(float x, float y)
+    {
+        return DeployVehicle(LocalPlayer!, x, y);
+    }
+
+    /// <summary>Remove the vehicle entity for the given player.</summary>
+    public void StowVehicle(SimulationPlayer player)
+    {
+        var ss = GetSurfaceState(player);
+        if (ss.VehicleDeployed && EcsWorld.IsAlive(ss.VehicleEntity))
+            EcsWorld.Destroy(ss.VehicleEntity);
+        ss.VehicleDeployed = false;
+    }
+
+    /// <summary>Remove the vehicle entity for the local player.</summary>
     public void StowVehicle()
     {
-        if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
-            EcsWorld.Destroy(LocalVehicleEntity);
-        LocalVehicleDeployed = false;
+        StowVehicle(LocalPlayer!);
     }
 
     /// <summary>Snap a player avatar into the vehicle and configure it for driving.</summary>
     public void MountVehicle(SimulationPlayer player)
     {
+        var ss = GetSurfaceState(player);
         var vStats = player.Data.GetCombinedVehicleStats();
 
-        if (!LocalVehicleDeployed)
+        if (!ss.VehicleDeployed)
         {
-            var shipTf = EcsWorld.Get<Transform>(LocalShipEntity);
-            DeployVehicle(shipTf.Position.X, shipTf.Position.Y);
+            var shipTf = EcsWorld.Get<Transform>(ss.ShipEntity);
+            DeployVehicle(player, shipTf.Position.X, shipTf.Position.Y);
         }
 
         ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
-        ref var vTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
+        ref var vTf = ref EcsWorld.Get<Transform>(ss.VehicleEntity);
         avatarTf.Position = vTf.Position;
         avatarTf.Rotation = vTf.Rotation;
 
@@ -277,10 +308,11 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     /// <summary>Detach a player avatar from the vehicle and restore walking configuration.</summary>
     public void DismountVehicle(SimulationPlayer player, float walkSpeed)
     {
+        var ss = GetSurfaceState(player);
         ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
-        if (LocalVehicleDeployed)
+        if (ss.VehicleDeployed)
         {
-            ref var vehicleTf = ref EcsWorld.Get<Transform>(LocalVehicleEntity);
+            ref var vehicleTf = ref EcsWorld.Get<Transform>(ss.VehicleEntity);
             avatarTf.Position = vehicleTf.Position + new Vector2(20, 0);
         }
         avatarTf.Rotation = 0f;
@@ -331,41 +363,44 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     private void UpdateProximity()
     {
-        NearSettlement = null;
-        NearShip = false;
-        NearVehicle = false;
-
-        if (LocalPlayer is not { } local) return;
-        if (!EcsWorld.IsAlive(local.Entity)) return;
-
-        var avatarPos = EcsWorld.Get<Transform>(local.Entity).Position;
-
-        // Settlement proximity
-        foreach (var settlement in SurfaceData.Settlements)
+        foreach (var player in Players)
         {
-            float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * WindowConfig.TileSize;
-            float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * WindowConfig.TileSize;
-            float dist = Vector2.Distance(avatarPos, new Vector2(sx, sy));
-            float settlementRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * WindowConfig.TileSize / 2f + 20f;
-            if (dist < settlementRadius)
+            var ss = GetSurfaceState(player);
+            ss.NearSettlement = null;
+            ss.NearShip = false;
+            ss.NearVehicle = false;
+
+            if (!EcsWorld.IsAlive(player.Entity)) continue;
+
+            var avatarPos = EcsWorld.Get<Transform>(player.Entity).Position;
+
+            // Settlement proximity
+            foreach (var settlement in SurfaceData.Settlements)
             {
-                NearSettlement = settlement;
-                break;
+                float sx = (settlement.TileRect.X + settlement.TileRect.Width / 2f) * WindowConfig.TileSize;
+                float sy = (settlement.TileRect.Y + settlement.TileRect.Height / 2f) * WindowConfig.TileSize;
+                float dist = Vector2.Distance(avatarPos, new Vector2(sx, sy));
+                float settlementRadius = Math.Max(settlement.TileRect.Width, settlement.TileRect.Height) * WindowConfig.TileSize / 2f + 20f;
+                if (dist < settlementRadius)
+                {
+                    ss.NearSettlement = settlement;
+                    break;
+                }
             }
-        }
 
-        // Ship proximity
-        if (EcsWorld.IsAlive(LocalShipEntity))
-        {
-            var shipPos = EcsWorld.Get<Transform>(LocalShipEntity).Position;
-            NearShip = Vector2.Distance(avatarPos, shipPos) < BoardShipRadius;
-        }
+            // Ship proximity
+            if (EcsWorld.IsAlive(ss.ShipEntity))
+            {
+                var shipPos = EcsWorld.Get<Transform>(ss.ShipEntity).Position;
+                ss.NearShip = Vector2.Distance(avatarPos, shipPos) < BoardShipRadius;
+            }
 
-        // Vehicle proximity
-        if (LocalVehicleDeployed && EcsWorld.IsAlive(LocalVehicleEntity))
-        {
-            var vehiclePos = EcsWorld.Get<Transform>(LocalVehicleEntity).Position;
-            NearVehicle = Vector2.Distance(avatarPos, vehiclePos) < AvatarConfig.VehicleMountRadius;
+            // Vehicle proximity
+            if (ss.VehicleDeployed && EcsWorld.IsAlive(ss.VehicleEntity))
+            {
+                var vehiclePos = EcsWorld.Get<Transform>(ss.VehicleEntity).Position;
+                ss.NearVehicle = Vector2.Distance(avatarPos, vehiclePos) < AvatarConfig.VehicleMountRadius;
+            }
         }
     }
 
@@ -405,8 +440,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         state.Dead = false;
 
         // Respawn near the landed ship
-        var shipPos = EcsWorld.IsAlive(LocalShipEntity)
-            ? EcsWorld.Get<Transform>(LocalShipEntity).Position
+        var ss = GetSurfaceState(player);
+        var shipPos = EcsWorld.IsAlive(ss.ShipEntity)
+            ? EcsWorld.Get<Transform>(ss.ShipEntity).Position
             : new Vector2(SurfaceData.LandingZone.X * WindowConfig.TileSize,
                           SurfaceData.LandingZone.Y * WindowConfig.TileSize);
 
@@ -425,8 +461,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         player.Entity = avatarEntity;
 
         // Stow vehicle on respawn
-        if (LocalVehicleDeployed)
-            StowVehicle();
+        if (ss.VehicleDeployed)
+            StowVehicle(player);
         player.Data.InVehicle = false;
 
         state.CombatMessage = "RESPAWNED";

@@ -34,20 +34,30 @@ public class SolarSystemSimulation : CombatSimulationBase
     public List<Entity> AsteroidEntities { get; } = [];
     public List<Entity> EnemyEntities { get; } = [];
 
-    // ── Proximity (updated per-player) ──────────────────────────────
-    public int NearbyPlanetIndex { get; private set; } = -1;
-    public int NearbySpaceStationIndex { get; private set; } = -1;
-    public int NearbyMoonPlanetIndex { get; private set; } = -1;
-    public int NearbyMoonIndex { get; private set; } = -1;
+    // ── Per-player state (delegates to local player for backward compat) ──
+    private SolarPlayerState? LocalSolarState =>
+        LocalPlayer != null && TryGetCombatState(LocalPlayer, out var s) ? (SolarPlayerState)s : null;
+
+    public int NearbyPlanetIndex => LocalSolarState?.NearbyPlanetIndex ?? -1;
+    public int NearbySpaceStationIndex => LocalSolarState?.NearbySpaceStationIndex ?? -1;
+    public int NearbyMoonPlanetIndex => LocalSolarState?.NearbyMoonPlanetIndex ?? -1;
+    public int NearbyMoonIndex => LocalSolarState?.NearbyMoonIndex ?? -1;
+    public Entity LastHitAsteroid => LocalSolarState?.LastHitAsteroid ?? default;
+    public float MiningHudTimer => LocalSolarState?.MiningHudTimer ?? 0;
+    public string? MiningMessage => LocalSolarState?.MiningMessage;
+    public float MiningMessageTimer => LocalSolarState?.MiningMessageTimer ?? 0;
+    public int RespawnSpaceStationIndex
+    {
+        get => LocalSolarState?.RespawnSpaceStationIndex ?? -1;
+        set { if (LocalSolarState is { } s) s.RespawnSpaceStationIndex = value; }
+    }
 
     // ── Combat state (solar-system-specific) ─────────────────────
     protected override float RespawnDelay => 3f;
+    protected override CombatPlayerState CreateCombatPlayerState() => new SolarPlayerState();
 
-    // Mining tracking
-    public Entity LastHitAsteroid { get; private set; }
-    public float MiningHudTimer { get; private set; }
-    public string? MiningMessage { get; private set; }
-    public float MiningMessageTimer { get; private set; }
+    /// <summary>Get the solar-specific per-player state.</summary>
+    public SolarPlayerState GetSolarState(SimulationPlayer player) => (SolarPlayerState)GetCombatState(player);
 
     // ── System event outputs (solar-system-specific) ────────────────
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate =>
@@ -152,12 +162,16 @@ public class SolarSystemSimulation : CombatSimulationBase
         // Sync player health to PlayerData
         SyncAllPlayerHealth();
 
-        // Mining-specific timers
-        if (MiningHudTimer > 0) MiningHudTimer -= dt;
-        if (MiningMessageTimer > 0)
+        // Mining-specific timers (all players)
+        foreach (var player in Players)
         {
-            MiningMessageTimer -= dt;
-            if (MiningMessageTimer <= 0) MiningMessage = null;
+            var ss = GetSolarState(player);
+            if (ss.MiningHudTimer > 0) ss.MiningHudTimer -= dt;
+            if (ss.MiningMessageTimer > 0)
+            {
+                ss.MiningMessageTimer -= dt;
+                if (ss.MiningMessageTimer <= 0) ss.MiningMessage = null;
+            }
         }
         UpdateCombatTimers(dt);
     }
@@ -345,37 +359,40 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     private void UpdateProximity()
     {
-        NearbyPlanetIndex = -1;
-        NearbySpaceStationIndex = -1;
-        NearbyMoonPlanetIndex = -1;
-        NearbyMoonIndex = -1;
-
-        if (LocalPlayer is not { } local) return;
-        if (!EcsWorld.IsAlive(local.Entity)) return;
-
-        ref var shipTransform = ref EcsWorld.Get<Transform>(local.Entity);
-        local.Data.ShipWorldPosition = shipTransform.Position;
-
-        _proximitySystem.FindNearest(shipTransform.Position);
-
-        if (_proximitySystem.HasNearest)
+        foreach (var player in Players)
         {
-            var nearBody = EcsWorld.Get<CelestialBody>(_proximitySystem.NearestEntity);
-            switch (nearBody.Type)
+            var ss = GetSolarState(player);
+            ss.NearbyPlanetIndex = -1;
+            ss.NearbySpaceStationIndex = -1;
+            ss.NearbyMoonPlanetIndex = -1;
+            ss.NearbyMoonIndex = -1;
+
+            if (!EcsWorld.IsAlive(player.Entity)) continue;
+
+            ref var shipTransform = ref EcsWorld.Get<Transform>(player.Entity);
+            player.Data.ShipWorldPosition = shipTransform.Position;
+
+            _proximitySystem.FindNearest(shipTransform.Position);
+
+            if (_proximitySystem.HasNearest)
             {
-                case CelestialType.Planet:
-                    NearbyPlanetIndex = nearBody.DataIndex;
-                    break;
-                case CelestialType.Moon:
-                    for (int pi = 0; pi < MoonEntities.Count; pi++)
-                    {
-                        int mi = MoonEntities[pi].IndexOf(_proximitySystem.NearestEntity);
-                        if (mi >= 0) { NearbyMoonPlanetIndex = pi; NearbyMoonIndex = mi; break; }
-                    }
-                    break;
-                case CelestialType.SpaceStation:
-                    NearbySpaceStationIndex = SpaceStationEntities.IndexOf(_proximitySystem.NearestEntity);
-                    break;
+                var nearBody = EcsWorld.Get<CelestialBody>(_proximitySystem.NearestEntity);
+                switch (nearBody.Type)
+                {
+                    case CelestialType.Planet:
+                        ss.NearbyPlanetIndex = nearBody.DataIndex;
+                        break;
+                    case CelestialType.Moon:
+                        for (int pi = 0; pi < MoonEntities.Count; pi++)
+                        {
+                            int mi = MoonEntities[pi].IndexOf(_proximitySystem.NearestEntity);
+                            if (mi >= 0) { ss.NearbyMoonPlanetIndex = pi; ss.NearbyMoonIndex = mi; break; }
+                        }
+                        break;
+                    case CelestialType.SpaceStation:
+                        ss.NearbySpaceStationIndex = SpaceStationEntities.IndexOf(_proximitySystem.NearestEntity);
+                        break;
+                }
             }
         }
     }
@@ -389,26 +406,36 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     protected override void OnDamageEvent(DamageEvent evt)
     {
-        // Track last asteroid hit for mining HUD (only for local player's projectiles)
+        // Track last asteroid hit for mining HUD
         if (evt.OwnerFaction == Faction.Player
-            && IsLocalPlayerEntity(evt.OwnerEntity)
             && EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<AsteroidField>(evt.Target))
         {
-            LastHitAsteroid = evt.Target;
-            MiningHudTimer = 2f;
+            var shooter = FindPlayerByEntity(evt.OwnerEntity);
+            if (shooter != null)
+            {
+                var ss = GetSolarState(shooter);
+                ss.LastHitAsteroid = evt.Target;
+                ss.MiningHudTimer = 2f;
+            }
         }
     }
 
     protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
-        if (resourceMsg != null)
+        if (resourceMsg != null && miner != null)
         {
-            MiningMessage = resourceMsg;
-            MiningMessageTimer = 2.5f;
+            var ss = GetSolarState(miner);
+            ss.MiningMessage = resourceMsg;
+            ss.MiningMessageTimer = 2.5f;
         }
 
-        if (EcsWorld.IsAlive(destroyed.Entity) && destroyed.Entity == LastHitAsteroid)
-            MiningHudTimer = 0;
+        // Clear mining HUD for any player tracking this asteroid
+        foreach (var player in Players)
+        {
+            var ss = GetSolarState(player);
+            if (EcsWorld.IsAlive(destroyed.Entity) && destroyed.Entity == ss.LastHitAsteroid)
+                ss.MiningHudTimer = 0;
+        }
 
         if (EcsWorld.IsAlive(destroyed.Entity))
         {
@@ -504,14 +531,12 @@ public class SolarSystemSimulation : CombatSimulationBase
         state.CombatMessageTimer = 3f;
 
         // Expose respawn station index for state to auto-open station menu
-        RespawnSpaceStationIndex = nearestSpaceStationIdx;
+        var solarState = GetSolarState(player);
+        solarState.RespawnSpaceStationIndex = nearestSpaceStationIdx;
     }
 
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)
     {
         player.Data.ShipHealth = hull;
     }
-
-    /// <summary>Index of space station where player respawned (-1 if none). Reset by state after reading.</summary>
-    public int RespawnSpaceStationIndex { get; set; } = -1;
 }

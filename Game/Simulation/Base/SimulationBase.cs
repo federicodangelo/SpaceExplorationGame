@@ -51,12 +51,13 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     /// </summary>
     public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
     {
-        var entity = CreatePlayerEntity(player, ctx);
-        var simPlayer = new SimulationPlayer(player) { Entity = entity };
+        var simPlayer = new SimulationPlayer(player);
         _players.Add(simPlayer);
         if (player.Type == PlayerType.Local)
             LocalPlayer = simPlayer;
         OnPlayerAdded(simPlayer);
+        var entity = CreatePlayerEntity(player, ctx);
+        simPlayer.Entity = entity;
         return simPlayer;
     }
 
@@ -109,6 +110,15 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     {
         foreach (var p in _players)
             if (p.Entity == entity)
+                return p;
+        return null;
+    }
+
+    /// <summary>Find the SimulationPlayer for the given PlayerData, or null.</summary>
+    public SimulationPlayer? FindPlayerByData(PlayerData data)
+    {
+        foreach (var p in _players)
+            if (p.Data == data)
                 return p;
         return null;
     }

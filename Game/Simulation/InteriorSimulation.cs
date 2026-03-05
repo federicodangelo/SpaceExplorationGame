@@ -25,11 +25,20 @@ public class InteriorSimulation : SimulationBase
     public SettlementData? Settlement { get; }
     public InteriorData Interior { get; private set; } = null!;
 
-    // ── Proximity ───────────────────────────────────────────────────
-    public InteriorNpc? NearestNpc { get; private set; }
-    public InteriorInteractable? NearestInteractable { get; private set; }
+    // ── Per-player state ─────────────────────────────────────────────
+    private readonly Dictionary<SimulationPlayer, InteriorPlayerState> _interiorStates = new();
+
+    /// <summary>Get the interior-specific per-player state.</summary>
+    public InteriorPlayerState GetInteriorState(SimulationPlayer player) => _interiorStates[player];
+
+    private InteriorPlayerState? LocalInteriorState =>
+        LocalPlayer != null && _interiorStates.TryGetValue(LocalPlayer, out var s) ? s : null;
+
+    // ── Proximity (convenience, delegates to local player) ───────────
+    public InteriorNpc? NearestNpc => LocalInteriorState?.NearestNpc;
+    public InteriorInteractable? NearestInteractable => LocalInteriorState?.NearestInteractable;
     /// <summary>True when the local player avatar is close enough to board the landed ship.</summary>
-    public bool NearShip { get; private set; }
+    public bool NearShip => LocalInteriorState?.NearShip ?? false;
     private const float InteractionRadius = 1.5f; // in tiles
 
     // ── ECS Systems ─────────────────────────────────────────────────
@@ -69,6 +78,22 @@ public class InteriorSimulation : SimulationBase
 
         _avatarSystem = new AvatarSystem(EcsWorld);
         _avatarSystem.Initialize();
+    }
+
+    public override void Destroy()
+    {
+        _interiorStates.Clear();
+        base.Destroy();
+    }
+
+    protected override void OnPlayerAdded(SimulationPlayer player)
+    {
+        _interiorStates[player] = new InteriorPlayerState();
+    }
+
+    protected override void OnPlayerRemoved(SimulationPlayer player)
+    {
+        _interiorStates.Remove(player);
     }
 
     public override void Update(UpdateContext ctx)
@@ -116,53 +141,56 @@ public class InteriorSimulation : SimulationBase
 
     private void UpdateProximity()
     {
-        NearestNpc = null;
-        NearestInteractable = null;
-        NearShip = false;
-
-        if (LocalPlayer is not { } local) return;
-        if (!EcsWorld.IsAlive(local.Entity)) return;
-
-        ref var avatarTf = ref EcsWorld.Get<Transform>(local.Entity);
-        float playerTileX = avatarTf.Position.X / WindowConfig.TileSize;
-        float playerTileY = avatarTf.Position.Y / WindowConfig.TileSize;
-
-        float nearestNpcDist = float.MaxValue;
-        foreach (var npc in Interior.Npcs)
+        foreach (var player in Players)
         {
-            float dx = npc.TilePos.X - playerTileX;
-            float dy = npc.TilePos.Y - playerTileY;
-            float dist = MathF.Sqrt(dx * dx + dy * dy);
-            if (dist < InteractionRadius && dist < nearestNpcDist)
+            var ps = GetInteriorState(player);
+            ps.NearestNpc = null;
+            ps.NearestInteractable = null;
+            ps.NearShip = false;
+
+            if (!EcsWorld.IsAlive(player.Entity)) continue;
+
+            ref var avatarTf = ref EcsWorld.Get<Transform>(player.Entity);
+            float playerTileX = avatarTf.Position.X / WindowConfig.TileSize;
+            float playerTileY = avatarTf.Position.Y / WindowConfig.TileSize;
+
+            float nearestNpcDist = float.MaxValue;
+            foreach (var npc in Interior.Npcs)
             {
-                nearestNpcDist = dist;
-                NearestNpc = npc;
+                float dx = npc.TilePos.X - playerTileX;
+                float dy = npc.TilePos.Y - playerTileY;
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                if (dist < InteractionRadius && dist < nearestNpcDist)
+                {
+                    nearestNpcDist = dist;
+                    ps.NearestNpc = npc;
+                }
             }
-        }
 
-        float nearestIntDist = float.MaxValue;
-        foreach (var interactable in Interior.Interactables)
-        {
-            float dx = interactable.TilePos.X - playerTileX;
-            float dy = interactable.TilePos.Y - playerTileY;
-            float dist = MathF.Sqrt(dx * dx + dy * dy);
-            if (dist < InteractionRadius && dist < nearestIntDist)
+            float nearestIntDist = float.MaxValue;
+            foreach (var interactable in Interior.Interactables)
             {
-                nearestIntDist = dist;
-                NearestInteractable = interactable;
+                float dx = interactable.TilePos.X - playerTileX;
+                float dy = interactable.TilePos.Y - playerTileY;
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                if (dist < InteractionRadius && dist < nearestIntDist)
+                {
+                    nearestIntDist = dist;
+                    ps.NearestInteractable = interactable;
+                }
             }
-        }
 
-        // Check proximity to the ship on the landing pad
-        if (Interior.LandingPadTilePos.HasValue)
-        {
-            float padX = Interior.LandingPadTilePos.Value.X;
-            float padY = Interior.LandingPadTilePos.Value.Y;
-            float dx = padX - playerTileX;
-            float dy = padY - playerTileY;
-            float dist = MathF.Sqrt(dx * dx + dy * dy);
-            if (dist < InteractionRadius)
-                NearShip = true;
+            // Check proximity to the ship on the landing pad
+            if (Interior.LandingPadTilePos.HasValue)
+            {
+                float padX = Interior.LandingPadTilePos.Value.X;
+                float padY = Interior.LandingPadTilePos.Value.Y;
+                float dx = padX - playerTileX;
+                float dy = padY - playerTileY;
+                float dist = MathF.Sqrt(dx * dx + dy * dy);
+                if (dist < InteractionRadius)
+                    ps.NearShip = true;
+            }
         }
     }
 }
