@@ -580,20 +580,26 @@ public class SolarSystemSimulation : CombatSimulationBase
             if (!_remotePlayerEntities.TryGetValue(remote.PlayerId, out var entity) || !EcsWorld.IsAlive(entity))
             {
                 string shipTypeId = remote.LastState.ShipTypeId ?? ShipTypeCatalog.StarterShip.Id;
-                int spriteSize = ShipTypeCatalog.GetById(shipTypeId)?.SpriteSize ?? ShipTypeCatalog.StarterShip.SpriteSize;
+                var shipType = ShipTypeCatalog.GetById(shipTypeId)!;
+                int shipSize = shipType.SpriteSize;
+                var shipLoadout = ShipPartCatalog.GetStarterLoadout(shipType);
+                var shipStats = ShipStatsHelper.GetCombinedStats(shipType, shipLoadout.Values);
+                var playerWeapons = CombatHelper.BuildWeaponSpecs(shipLoadout);
+
+
                 entity = EntityFactory.CreatePlayerShip(
                     EcsWorld,
                     remote.LastState.Position,
-                    spriteSize: spriteSize,
-                    maxHull: remote.LastState.MaxHull > 0 ? remote.LastState.MaxHull : 100f,
-                    currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : 100f,
-                    maxShield: remote.LastState.MaxShield,
-                    maxSpeed: 300f,
-                    rotationSpeed: 180f,
-                    acceleration: 400f,
-                    brakeMultiplier: 1.5f,
+                    spriteSize: shipSize,
+                    maxHull: shipStats.MaxHull,
+                    currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : shipStats.MaxHull,
+                    maxShield: shipStats.ShieldStrength,
+                    maxSpeed: shipStats.MaxSpeed,
+                    rotationSpeed: shipStats.RotationSpeed,
+                    acceleration: shipStats.Acceleration,
+                    brakeMultiplier: ShipConfig.ShipBrakeMultiplier,
                     playerType: PlayerType.Remote,
-                    weapons: []);
+                    weapons: playerWeapons);
                 _remotePlayerEntities[remote.PlayerId] = entity;
             }
 
