@@ -172,7 +172,7 @@ public class SolarSystemState : GameState
             _starSystem, AnyOverlayOpen, BeginDocking, BeginSeamlessLanding))
         {
             // Bot wrote ship input directly; sync ship component
-            if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+            if (!_sim.LocalPlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
                 _sim.SyncPlayerShipComponent(_simPlayer);
             return;
         }
@@ -193,7 +193,7 @@ public class SolarSystemState : GameState
         }
 
         // Block gameplay input when player dead
-        if (_sim.PlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        if (_sim.LocalPlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
         {
             return;
         }
@@ -201,22 +201,22 @@ public class SolarSystemState : GameState
         // Interact
         if (input.IsActionPressed(InputAction.Interact))
         {
-            if (_sim.NearbySpaceStationIndex >= 0)
+            if (_sim.LocalNearbySpaceStationIndex >= 0)
             {
-                SetAnchor(_sim.SpaceStationEntities[_sim.NearbySpaceStationIndex]);
-                _spaceStationOverlay.Open(_starSystem, _sim.SpaceStations[_sim.NearbySpaceStationIndex], game);
+                SetAnchor(_sim.SpaceStationEntities[_sim.LocalNearbySpaceStationIndex]);
+                _spaceStationOverlay.Open(_starSystem, _sim.SpaceStations[_sim.LocalNearbySpaceStationIndex], game);
             }
-            else if (_sim.NearbyPlanetIndex >= 0 && _sim.Planets[_sim.NearbyPlanetIndex].HasSolidSurface)
+            else if (_sim.LocalNearbyPlanetIndex >= 0 && _sim.Planets[_sim.LocalNearbyPlanetIndex].HasSolidSurface)
             {
-                SetAnchor(_sim.PlanetEntities[_sim.NearbyPlanetIndex]);
-                _planetLandingOverlay.Open(_starSystem, _sim.Planets[_sim.NearbyPlanetIndex], game);
+                SetAnchor(_sim.PlanetEntities[_sim.LocalNearbyPlanetIndex]);
+                _planetLandingOverlay.Open(_starSystem, _sim.Planets[_sim.LocalNearbyPlanetIndex], game);
             }
-            else if (_sim.NearbyMoonIndex >= 0)
+            else if (_sim.LocalNearbyMoonIndex >= 0)
             {
-                SetAnchor(_sim.MoonEntities[_sim.NearbyMoonPlanetIndex][_sim.NearbyMoonIndex]);
-                var moonData = _sim.Planets[_sim.NearbyMoonPlanetIndex].Moons[_sim.NearbyMoonIndex];
-                _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_sim.NearbyMoonPlanetIndex), game,
-                    isMoon: true, moonPlanetIndex: _sim.NearbyMoonPlanetIndex, moonIndex: _sim.NearbyMoonIndex);
+                SetAnchor(_sim.MoonEntities[_sim.LocalNearbyMoonPlanetIndex][_sim.LocalNearbyMoonIndex]);
+                var moonData = _sim.Planets[_sim.LocalNearbyMoonPlanetIndex].Moons[_sim.LocalNearbyMoonIndex];
+                _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_sim.LocalNearbyMoonPlanetIndex), game,
+                    isMoon: true, moonPlanetIndex: _sim.LocalNearbyMoonPlanetIndex, moonIndex: _sim.LocalNearbyMoonIndex);
             }
         }
 
@@ -232,10 +232,10 @@ public class SolarSystemState : GameState
         }
 
         // Write player ship input (only when no overlay is blocking)
-        if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        if (!_sim.LocalPlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
         {
             _sim.SyncPlayerShipComponent(_simPlayer);
-            _playerShipInputSystem.Snapshot = InputSnapshot.FromInput(input);
+            _playerShipInputSystem.LocalSnapshot = InputSnapshot.FromInput(input);
             float dt = game.DeltaTime;
             _playerShipInputSystem.Update(in dt);
         }
@@ -254,7 +254,7 @@ public class SolarSystemState : GameState
             ClearAnchor();
 
         // Close any open overlay when the ship is destroyed
-        if (_sim.PlayerDead && AnyOverlayOpen)
+        if (_sim.LocalPlayerDead && AnyOverlayOpen)
         {
             _inGameMenuOverlay.Close();
             _spaceStationOverlay.Close();
@@ -269,11 +269,10 @@ public class SolarSystemState : GameState
         t.Time("Particles", () => _particleSystem.Update(in dt));
 
         // Handle respawn station auto-dock
-        if (_sim.RespawnSpaceStationIndex >= 0)
+        if (_sim.LocalRespawnSpaceStationIndex >= 0)
         {
-            int idx = _sim.RespawnSpaceStationIndex;
-            _sim.RespawnSpaceStationIndex = -1;
-            _simPlayer.Entity = _sim.Players.Count > 0 ? _sim.Players[0].Entity : default;
+            int idx = _sim.LocalRespawnSpaceStationIndex;
+            _sim.LocalRespawnSpaceStationIndex = -1;
             _camera.Position = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
 
             if (idx < _sim.SpaceStations.Count)
@@ -518,15 +517,23 @@ public class SolarSystemState : GameState
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Remote player ships
-        foreach (var remoteEntity in _sim.RemotePlayerEntities.Values)
+        foreach (var (remotePlayerId, remoteEntity) in _sim.RemotePlayerEntities)
         {
             if (!world.IsAlive(remoteEntity)) continue;
 
             ref var tf = ref world.Get<Transform>(remoteEntity);
             ref var sp = ref world.Get<Sprite>(remoteEntity);
             var size = Math.Max(sp.Width, sp.Height);
+
+            // Use the remote player's actual ship type if available
+            string shipTypeId = game.Network != null
+                && game.Network.RemotePlayers.TryGetValue(remotePlayerId, out var rp)
+                && rp.LastState.ShipTypeId != null
+                    ? rp.LastState.ShipTypeId
+                    : ShipTypeCatalog.StarterShip.Id;
+
             game.SpaceshipRenderer.Render(renderer, camera, tf.Position,
-                tf.Rotation, ShipTypeCatalog.StarterShip.Id, size);
+                tf.Rotation, shipTypeId, size);
 
             if (world.Has<Health>(remoteEntity))
             {
@@ -537,7 +544,7 @@ public class SolarSystemState : GameState
         }
 
         // Player ship
-        if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
+        if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))
         {
             ref var shipTransform = ref world.Get<Transform>(_simPlayer.Entity);
             ref var shipSprite = ref world.Get<Sprite>(_simPlayer.Entity);
@@ -574,7 +581,7 @@ public class SolarSystemState : GameState
         // HUD
         {
             float speed = 0f;
-            if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
+            if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))
             {
                 ref var vel = ref world.Get<Velocity>(_simPlayer.Entity);
                 speed = vel.Linear.Length();
@@ -588,8 +595,15 @@ public class SolarSystemState : GameState
             _sim.MoonEntities, _sim.SpaceStationEntities, _sim.AsteroidEntities, _sim.EnemyEntities,
             _simPlayer.Entity, _sim.StarEntity, world);
 
+        // Multiplayer player list (below minimap, only when connected)
+        if (game.Network is { IsJoined: true } netForList)
+        {
+            HudRenderer.RenderPlayerListHud(renderer, netForList,
+                game.MenuOptions.GetPlayerName(), _starSystem.Index);
+        }
+
         // Off-screen indicators
-        if (!_sim.PlayerDead)
+        if (!_sim.LocalPlayerDead)
         {
             HudIndicatorsRenderer.RenderOffscreenIndicators(renderer, camera, world,
                 _sim.EnemyEntities, _simPlayer.Entity, 2500f);
@@ -611,30 +625,30 @@ public class SolarSystemState : GameState
         }
 
         // Death screen
-        if (_sim.PlayerDead)
-            HudRenderer.RenderDeathScreen(renderer, _sim.RespawnTimer);
+        if (_sim.LocalPlayerDead)
+            HudRenderer.RenderDeathScreen(renderer, _sim.LocalRespawnTimer);
 
         // Mining panel
-        if (_sim.MiningHudTimer > 0 && world.IsAlive(_sim.LastHitAsteroid)
-            && world.Has<AsteroidField>(_sim.LastHitAsteroid))
+        if (_sim.LocalMiningHudTimer > 0 && world.IsAlive(_sim.LocalLastHitAsteroid)
+            && world.Has<AsteroidField>(_sim.LocalLastHitAsteroid))
         {
-            ref var af = ref world.Get<AsteroidField>(_sim.LastHitAsteroid);
-            ref var ah = ref world.Get<Health>(_sim.LastHitAsteroid);
+            ref var af = ref world.Get<AsteroidField>(_sim.LocalLastHitAsteroid);
+            ref var ah = ref world.Get<Health>(_sim.LocalLastHitAsteroid);
             HudRenderer.RenderMiningPanel(renderer, af.Resource, ah.Hull, ah.MaxHull, af.ResourceAmount);
         }
 
         // Mining message
-        if (_sim.MiningMessage != null)
-            HudRenderer.RenderCenteredMessage(renderer, _sim.MiningMessage, -40, new Color3(255, 220, 80), 2.5f);
+        if (_sim.LocalMiningMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, _sim.LocalMiningMessage, -40, new Color3(255, 220, 80), 2.5f);
 
         // Combat message
-        if (_sim.CombatMessage != null)
-            HudRenderer.RenderCenteredMessage(renderer, _sim.CombatMessage, 30, new Color3(255, 200, 80), 2f);
+        if (_sim.LocalCombatMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, _sim.LocalCombatMessage, 30, new Color3(255, 200, 80), 2f);
 
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,
-            _sim.NearbyPlanetIndex, _sim.NearbyMoonIndex, _sim.NearbyMoonPlanetIndex,
-            _sim.NearbySpaceStationIndex, _sim.Planets, _sim.SpaceStations,
+            _sim.LocalNearbyPlanetIndex, _sim.LocalNearbyMoonIndex, _sim.LocalNearbyMoonPlanetIndex,
+            _sim.LocalNearbySpaceStationIndex, _sim.Planets, _sim.SpaceStations,
             game.Input.GetActionHelpText(InputAction.Interact));
 
         // Overlays

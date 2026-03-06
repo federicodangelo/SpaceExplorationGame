@@ -22,13 +22,13 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
-    private static readonly QueryDescription _playerShipQuery = new QueryDescription().WithAll<PlayerControlled, Transform, Velocity, Health, ShipComponent>();
+    private static readonly QueryDescription _localPlayerShipQuery = new QueryDescription().WithAll<PlayerControlled, PlayerLocal, Transform, Velocity, Health, ShipComponent>();
 
     // Per-frame cached state for [Query] method access
     private float _dt;
-    private Vector2 _playerPos;
-    private Vector2 _playerVelocity;
-    private bool _playerAlive;
+    private Vector2 _localPlayerPos;
+    private Vector2 _localPlayerVelocity;
+    private bool _localPlayerAlive;
 
     private readonly record struct TargetSelection(Vector2 Position, Vector2 Velocity, bool HasTarget);
 
@@ -49,16 +49,16 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     private void QueryPlayerState()
     {
-        _playerAlive = false;
-        _playerPos = Vector2.Zero;
-        _playerVelocity = Vector2.Zero;
+        _localPlayerAlive = false;
+        _localPlayerPos = Vector2.Zero;
+        _localPlayerVelocity = Vector2.Zero;
 
-        var q = _playerShipQuery;
+        var q = _localPlayerShipQuery;
         World.Query(in q, (ref Transform transform, ref Velocity velocity, ref Health health) =>
         {
-            _playerPos = transform.Position;
-            _playerVelocity = velocity.Linear;
-            _playerAlive = !health.IsDead;
+            _localPlayerPos = transform.Position;
+            _localPlayerVelocity = velocity.Linear;
+            _localPlayerAlive = !health.IsDead;
         });
     }
 
@@ -91,7 +91,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
         // Find the best target based on faction
         var liveTarget = FindTarget(entity, ai.Config.Faction, transform.Position,
-            ai.Config.DetectRange, _playerPos, _playerVelocity, _playerAlive);
+            ai.Config.DetectRange, _localPlayerPos, _localPlayerVelocity, _localPlayerAlive);
         var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
         UpdateShipAIByFaction(ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,

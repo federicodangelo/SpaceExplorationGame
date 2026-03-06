@@ -12,6 +12,8 @@ public enum MessageType : byte
     C_PlayerState = 2,
     /// <summary>Client changed location (e.g. jumped to a different star system).</summary>
     C_LocationChanged = 3,
+    /// <summary>Client is disconnecting gracefully.</summary>
+    C_Disconnect = 4,
 
     // ── Server → Client ─────────────────────────────────────────
     /// <summary>Server acknowledges join, assigns player ID, sends world info.</summary>

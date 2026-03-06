@@ -1,3 +1,4 @@
+using Arch.Core;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
@@ -25,9 +26,9 @@ public abstract class CombatSimulationBase : SimulationBase
         => _combatStates.TryGetValue(player, out state!);
 
     // ── Convenience properties (delegate to local player) ───────────
-    public bool PlayerDead => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) && s.Dead;
-    public float RespawnTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.RespawnTimer : 0;
-    public string? CombatMessage => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessage : null;
+    public bool LocalPlayerDead => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) && s.Dead;
+    public float LocalRespawnTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.RespawnTimer : 0;
+    public string? LocalCombatMessage => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessage : null;
     public float CombatMessageTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessageTimer : 0;
     public float CombatMusicTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMusicTimer : 0;
 
@@ -212,7 +213,10 @@ public abstract class CombatSimulationBase : SimulationBase
         state.RespawnTimer = RespawnDelay;
 
         if (EcsWorld.IsAlive(player.Entity))
+        {
             EcsWorld.Destroy(player.Entity);
+            player.Entity = Entity.Null;
+        }
 
         state.CombatMessage = ApplyDeathPenalties(player);
         state.CombatMessageTimer = RespawnDelay;

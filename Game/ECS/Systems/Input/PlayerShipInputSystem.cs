@@ -11,7 +11,7 @@ namespace SpaceExplorationGame.ECS.Systems.Input;
 /// </summary>
 public partial class PlayerShipInputSystem : BaseSystem<World, float>
 {
-    public InputSnapshot Snapshot;
+    public InputSnapshot LocalSnapshot;
 
     public PlayerShipInputSystem(World world) : base(world)
     {
@@ -23,18 +23,18 @@ public partial class PlayerShipInputSystem : BaseSystem<World, float>
     }
 
     [Query]
-    [All(typeof(PlayerControlled), typeof(Transform), typeof(Velocity), typeof(ShipInputComponent), typeof(ShipComponent))]
+    [All(typeof(PlayerControlled), typeof(PlayerLocal), typeof(Transform), typeof(Velocity), typeof(ShipInputComponent), typeof(ShipComponent))]
     public void UpdatePlayerShipInput(ref Transform transform, ref Velocity velocity,
         ref ShipInputComponent shipInput, ref ShipComponent ship, [Data] in float dt)
     {
         shipInput.AccelerationDirection = Vector2.Zero;
         shipInput.RotationSpeed = 0f;
-        shipInput.Shoot = Snapshot.Shoot;
+        shipInput.Shoot = LocalSnapshot.Shoot;
 
-        Vector2 headingDirection = Snapshot.HeadingDirection;
-        Vector2 movementInput = Snapshot.MovementDirection;
+        Vector2 headingDirection = LocalSnapshot.HeadingDirection;
+        Vector2 movementInput = LocalSnapshot.MovementDirection;
 
-        bool absolute = Snapshot.AbsoluteMovement;
+        bool absolute = LocalSnapshot.AbsoluteMovement;
         if (absolute && headingDirection == Vector2.Zero && movementInput != Vector2.Zero)
             headingDirection = Vector2.Normalize(movementInput);
 

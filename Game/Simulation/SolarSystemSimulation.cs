@@ -39,15 +39,15 @@ public class SolarSystemSimulation : CombatSimulationBase
     private SolarPlayerState? LocalSolarState =>
         LocalPlayer != null && TryGetCombatState(LocalPlayer, out var s) ? (SolarPlayerState)s : null;
 
-    public int NearbyPlanetIndex => LocalSolarState?.NearbyPlanetIndex ?? -1;
-    public int NearbySpaceStationIndex => LocalSolarState?.NearbySpaceStationIndex ?? -1;
-    public int NearbyMoonPlanetIndex => LocalSolarState?.NearbyMoonPlanetIndex ?? -1;
-    public int NearbyMoonIndex => LocalSolarState?.NearbyMoonIndex ?? -1;
-    public Entity LastHitAsteroid => LocalSolarState?.LastHitAsteroid ?? default;
-    public float MiningHudTimer => LocalSolarState?.MiningHudTimer ?? 0;
-    public string? MiningMessage => LocalSolarState?.MiningMessage;
-    public float MiningMessageTimer => LocalSolarState?.MiningMessageTimer ?? 0;
-    public int RespawnSpaceStationIndex
+    public int LocalNearbyPlanetIndex => LocalSolarState?.NearbyPlanetIndex ?? -1;
+    public int LocalNearbySpaceStationIndex => LocalSolarState?.NearbySpaceStationIndex ?? -1;
+    public int LocalNearbyMoonPlanetIndex => LocalSolarState?.NearbyMoonPlanetIndex ?? -1;
+    public int LocalNearbyMoonIndex => LocalSolarState?.NearbyMoonIndex ?? -1;
+    public Entity LocalLastHitAsteroid => LocalSolarState?.LastHitAsteroid ?? default;
+    public float LocalMiningHudTimer => LocalSolarState?.MiningHudTimer ?? 0;
+    public string? LocalMiningMessage => LocalSolarState?.MiningMessage;
+    public float LocalMiningMessageTimer => LocalSolarState?.MiningMessageTimer ?? 0;
+    public int LocalRespawnSpaceStationIndex
     {
         get => LocalSolarState?.RespawnSpaceStationIndex ?? -1;
         set { if (LocalSolarState is { } s) s.RespawnSpaceStationIndex = value; }
@@ -264,7 +264,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         return EntityFactory.CreatePlayerShip(EcsWorld, position, shipSize,
             player.ShipMaxHealth, player.ShipHealth, playerStats.ShieldStrength,
             playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
-            ShipConfig.ShipBrakeMultiplier, playerWeapons);
+            ShipConfig.ShipBrakeMultiplier, playerWeapons, PlayerType.Local);
     }
 
     private void SpawnStar(StarSystemData starSystem, Vector2 center)
@@ -579,10 +579,12 @@ public class SolarSystemSimulation : CombatSimulationBase
 
             if (!_remotePlayerEntities.TryGetValue(remote.PlayerId, out var entity) || !EcsWorld.IsAlive(entity))
             {
+                string shipTypeId = remote.LastState.ShipTypeId ?? ShipTypeCatalog.StarterShip.Id;
+                int spriteSize = ShipTypeCatalog.GetById(shipTypeId)?.SpriteSize ?? ShipTypeCatalog.StarterShip.SpriteSize;
                 entity = EntityFactory.CreatePlayerShip(
                     EcsWorld,
                     remote.LastState.Position,
-                    spriteSize: 32,
+                    spriteSize: spriteSize,
                     maxHull: remote.LastState.MaxHull > 0 ? remote.LastState.MaxHull : 100f,
                     currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : 100f,
                     maxShield: remote.LastState.MaxShield,
@@ -590,6 +592,7 @@ public class SolarSystemSimulation : CombatSimulationBase
                     rotationSpeed: 180f,
                     acceleration: 400f,
                     brakeMultiplier: 1.5f,
+                    playerType: PlayerType.Remote,
                     weapons: []);
                 _remotePlayerEntities[remote.PlayerId] = entity;
             }
@@ -614,9 +617,9 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     public override void SendPlayerStateToServer(NetworkManager net)
     {
-        if (LocalPlayer != null && EcsWorld.IsAlive(LocalPlayer.Entity))
+        if (LocalPlayer != null && !LocalPlayerDead && EcsWorld.IsAlive(LocalPlayer.Entity))
         {
-            net.SendLocalState(EcsWorld, LocalPlayer.Entity);
+            net.SendLocalState(EcsWorld, LocalPlayer.Entity, LocalPlayer.Data.CurrentShipType.Id);
         }
     }
 }

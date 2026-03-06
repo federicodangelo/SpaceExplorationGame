@@ -16,7 +16,9 @@ public enum MenuAction
     RandomizeLocation,
     EditSeed,
     RandomSeed,
+    PlayerName,
     Debug,
+    JoinServer,
     StartGame,
     Quit,
 }
@@ -34,9 +36,11 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private const int RandomizeIdx = 3;
     private const int EditSeedIdx = 4;
     private const int RandomSeedIdx = 5;
-    private const int DebugIdx = 6;
-    private int StartGameIdx => _debugEnabled ? 7 : 6;
-    private int QuitIdx => _debugEnabled ? 8 : 7;
+    private const int PlayerNameIdx = 6;
+    private const int DebugIdx = 7;
+    private int JoinServerIdx => _debugEnabled ? 8 : 7;
+    private int StartGameIdx => _debugEnabled ? 9 : 8;
+    private int QuitIdx => _debugEnabled ? 10 : 9;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
     private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
@@ -58,9 +62,11 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
             new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
             new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
+            new(MenuAction.PlayerName, "PLAYER NAME: < PLAYER >", "Your display name in multiplayer"),
         };
         if (debugEnabled)
             options.Add(new(MenuAction.Debug, "DEBUG", "Open debug utilities"));
+        options.Add(new(MenuAction.JoinServer, "JOIN SERVER", "Connect to a multiplayer server"));
         options.Add(new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"));
         if (canQuit)
             options.Add(new(MenuAction.Quit, "QUIT", "Exit the game"));
@@ -68,6 +74,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     }
 
     private readonly TextInputOverlay _seedInputOverlay = new();
+    private readonly TextInputOverlay _playerNameInputOverlay = new();
+    private readonly TextInputOverlay _serverUrlInputOverlay = new();
     private readonly MenuOptionsPersistence _menuOptions;
     private readonly bool _canQuit;
     private readonly bool _debugEnabled;
@@ -76,6 +84,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private int _dangerIndex;
     private int _locationIndex;
     private int _subLocationIndex;
+    private string _playerName = "Player";
 
     // ── Public state for MainMenuState ──
 
@@ -96,6 +105,12 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     /// <summary>Fired when the player wants to quit the game.</summary>
     public bool QuitRequested { get; set; }
+
+    /// <summary>When non-null, the player wants to join a server at this URL.</summary>
+    public string? JoinServerUrl { get; set; }
+
+    /// <summary>Current player name for multiplayer.</summary>
+    public string PlayerName => _playerName;
 
     /// <summary>Current danger filter: 0=ANY, 1-5=specific level.</summary>
     public int DangerFilter => _dangerIndex;
@@ -167,6 +182,8 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         };
 
         RegisterSubOverlay(_seedInputOverlay);
+        RegisterSubOverlay(_playerNameInputOverlay);
+        RegisterSubOverlay(_serverUrlInputOverlay);
     }
 
     // ── Open ──
@@ -184,11 +201,14 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         RandomizeLocation = false;
         DebugRequested = false;
         QuitRequested = false;
+        JoinServerUrl = null;
         FiltersChanged = false;
         LocationPreview = null;
         StartingShipOverrideText = null;
+        _playerName = _menuOptions.GetPlayerName();
         // Keep _dangerIndex and _locationIndex from previous session
         UpdateCyclingLabels();
+        UpdatePlayerNameLabel();
         Menu.SelectedIndex = StartGameIdx;
     }
 
@@ -220,8 +240,14 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             case MenuAction.RandomSeed:
                 RandomizeSeed = true;
                 break;
+            case MenuAction.PlayerName:
+                _playerNameInputOverlay.Open("ENTER PLAYER NAME", _playerName, numericOnly: false, maxLength: 24);
+                break;
             case MenuAction.Debug:
                 DebugRequested = true;
+                break;
+            case MenuAction.JoinServer:
+                _serverUrlInputOverlay.Open("ENTER SERVER URL", "ws://localhost:9050/", numericOnly: false, maxLength: 256);
                 break;
             case MenuAction.StartGame:
                 StartRequested = true;
@@ -267,6 +293,13 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         _menuOptions.SetMainMenuSelections(_dangerIndex, _locationIndex, _subLocationIndex);
     }
 
+    private void UpdatePlayerNameLabel()
+    {
+        Menu.SetOption(PlayerNameIdx, new MenuOption<MenuAction>(MenuAction.PlayerName,
+            $"PLAYER NAME: < {_playerName} >",
+            "Your display name in multiplayer"));
+    }
+
     private void UpdateCyclingLabels()
     {
         string confirm = CurrentInput?.GetActionHelpText(InputAction.MenuConfirm).ToUpper() ?? "CONFIRM";
@@ -300,8 +333,30 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             }
         }
 
-        // Don't process other input while seed input is open
-        if (_seedInputOverlay.IsOpen)
+        // Check if player name was confirmed
+        if (!_playerNameInputOverlay.IsOpen)
+        {
+            var confirmedName = _playerNameInputOverlay.TakeConfirmedValue();
+            if (confirmedName != null)
+            {
+                _playerName = string.IsNullOrWhiteSpace(confirmedName) ? "Player" : confirmedName.Trim();
+                _menuOptions.SetPlayerName(_playerName);
+                UpdatePlayerNameLabel();
+            }
+        }
+
+        // Check if server URL was confirmed
+        if (!_serverUrlInputOverlay.IsOpen)
+        {
+            var confirmedUrl = _serverUrlInputOverlay.TakeConfirmedValue();
+            if (!string.IsNullOrWhiteSpace(confirmedUrl))
+            {
+                JoinServerUrl = confirmedUrl.Trim();
+            }
+        }
+
+        // Don't process other input while any sub-overlay is open
+        if (_seedInputOverlay.IsOpen || _playerNameInputOverlay.IsOpen || _serverUrlInputOverlay.IsOpen)
             return;
 
         // Left/Right to cycle the currently selected option

@@ -26,6 +26,8 @@ public struct NetPlayerState
     public bool Shooting;
     /// <summary>Ship input acceleration direction (for thruster visuals).</summary>
     public Vector2 AccelerationDirection;
+    /// <summary>Ship type identifier (e.g. "scout", "fighter"). Null means unknown/default.</summary>
+    public string? ShipTypeId;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -46,6 +48,9 @@ public struct PlayerStateMessage
 {
     public NetPlayerState State;
 }
+
+/// <summary>Client is disconnecting gracefully.</summary>
+public struct DisconnectMessage { }
 
 /// <summary>Client notifies the server of a location change (e.g. star system jump).</summary>
 public struct LocationChangedMessage

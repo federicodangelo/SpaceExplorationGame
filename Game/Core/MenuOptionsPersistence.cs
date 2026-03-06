@@ -12,6 +12,7 @@ public sealed class MenuOptionsPersistence
     private const string KeyDebugStarTypeIndex = "menu.debugStarTypeIndex";
     private const string KeyDebugShipTypeIndex = "menu.debugShipTypeIndex";
     private const string KeyDebugSelectedIndex = "menu.debugSelectedIndex";
+    private const string KeyPlayerName = "menu.playerName";
 
     private readonly Engine.Platform.ISettings _settings;
 
@@ -48,6 +49,13 @@ public sealed class MenuOptionsPersistence
         SaveInt(KeyDebugStarTypeIndex, starTypeIndex);
         SaveInt(KeyDebugShipTypeIndex, shipTypeIndex);
         SaveInt(KeyDebugSelectedIndex, selectedIndex);
+    }
+
+    public string GetPlayerName() => _settings.Load(KeyPlayerName) ?? "Player";
+
+    public void SetPlayerName(string name)
+    {
+        _settings.Save(KeyPlayerName, name);
     }
 
     private int LoadInt(string key, int defaultValue = 0)

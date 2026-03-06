@@ -132,14 +132,14 @@ public static class EntityFactory
     public static Entity CreatePlayerShip(World world, Vector2 position, int spriteSize,
         float maxHull, float currentHull, float maxShield,
         float maxSpeed, float rotationSpeed, float acceleration, float brakeMultiplier,
-        ShipWeaponSpec[] weapons)
+        ShipWeaponSpec[] weapons, PlayerType playerType)
     {
         var ship = world.Create(
             new Transform(position),
             Sprite.Build(spriteSize, spriteSize),
             new Velocity(maxSpeed, rotationSpeed),
             new ShipComponent(Faction.Player, maxSpeed, rotationSpeed, acceleration, brakeMultiplier,
-                weapons),
+                playerType, weapons),
             ShipInputComponent.Default(),
             new PlayerControlled(),
             new Health(maxHull, maxShield,
@@ -149,6 +149,11 @@ public static class EntityFactory
                 Shield = maxShield // Start with full shields
             }
         );
+
+        if (playerType == PlayerType.Local)
+        {
+            world.Add(ship, new PlayerLocal());
+        }
 
         CreateShipThrusterEmitters(world, ship, spriteSize, new Color3(130, 220, 255));
         return ship;
@@ -243,7 +248,7 @@ public static class EntityFactory
             new Velocity(stats.MaxSpeed, stats.RotationSpeed),
             new ShipComponent(spawn.Faction, stats.MaxSpeed, stats.RotationSpeed,
                 stats.Acceleration, ShipConfig.ShipBrakeMultiplier,
-                spawn.Weapons),
+                PlayerType.Local, spawn.Weapons),
             ShipInputComponent.Default(),
             new Health(stats.MaxHull * healthMultiplier, stats.MaxShield * healthMultiplier, shieldRegenRate, ShipConfig.ShieldRegenDelay),
             new EnemyAI { Config = aiConfig, State = AIState.Patrol }

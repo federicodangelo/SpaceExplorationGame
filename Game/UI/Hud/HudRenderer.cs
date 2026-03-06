@@ -1,4 +1,5 @@
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -498,5 +499,80 @@ public static class HudRenderer
         float msgW = renderer.MeasureText(message, scale);
         float msgX = renderer.WindowWidth / 2f - msgW / 2f;
         renderer.DrawTextScreen(msgX, renderer.WindowHeight / 2f + yOffset, message, color, scale);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  MULTIPLAYER PLAYER LIST (top-right, below minimap)
+    // ─────────────────────────────────────────────────────────────
+
+    // Minimap constants duplicated here for positioning (minimap is 200x200 at margin 10)
+    private const float MinimapSize = 200f;
+    private const float PlayerListPanelW = 200f;
+
+    /// <summary>
+    /// Render the multiplayer player list in the top-right corner, below the minimap.
+    /// Shows the local player and all remote players in the same star system.
+    /// </summary>
+    public static void RenderPlayerListHud(
+        ISpriteRenderer renderer,
+        NetworkManager net,
+        string localPlayerName,
+        int currentSystemIndex)
+    {
+        // Collect players in this system
+        var inSystem = new List<(string Name, float Hull, float MaxHull, bool IsLocal)>();
+
+        // Add local player first
+        inSystem.Add((localPlayerName, 1f, 1f, true));
+
+        foreach (var remote in net.RemotePlayers.Values)
+        {
+            if (remote.StarSystemIndex != currentSystemIndex) continue;
+            float hull = remote.LastState.MaxHull > 0
+                ? remote.LastState.Hull / remote.LastState.MaxHull
+                : 1f;
+            inSystem.Add((remote.Name, remote.LastState.Hull, remote.LastState.MaxHull, false));
+        }
+
+        if (inSystem.Count <= 1) return; // Only show when there are other players
+
+        const float nameScale = 1.5f;
+        const float rowH = 20f;
+        const float smallBarW = 80f;
+        const float smallBarH = 8f;
+        const float playerListPad = 8f;
+
+        float panelH = playerListPad + inSystem.Count * (rowH + 4f) + playerListPad;
+
+        float panelX = renderer.WindowWidth - HudMargin - PlayerListPanelW;
+        float panelY = HudMargin + MinimapSize + HudMargin;
+
+        OverlayBase.DrawFrame(renderer, panelX, panelY, PlayerListPanelW, panelH);
+
+        float cx = panelX + playerListPad;
+        float y = panelY + playerListPad;
+
+        foreach (var (name, hull, maxHull, isLocal) in inSystem)
+        {
+            var nameColor = isLocal
+                ? new Color3(180, 255, 180)
+                : new Color3(200, 200, 255);
+
+            // Truncate name if too long
+            string displayName = name.Length > 14 ? name[..14] + "…" : name;
+            renderer.DrawTextScreen(cx, y, displayName, nameColor, nameScale);
+
+            // Mini hull bar on the right side of the row
+            if (!isLocal && maxHull > 0)
+            {
+                float pct = hull / maxHull;
+                float barX = panelX + PlayerListPanelW - smallBarW - playerListPad;
+                float barY = y + (rowH - smallBarH) * 0.5f;
+                renderer.DrawRectScreen(barX, barY, smallBarW, smallBarH, new Color3(40, 40, 40));
+                renderer.DrawRectScreen(barX, barY, smallBarW * pct, smallBarH, HPBarColor(pct));
+            }
+
+            y += rowH + 4f;
+        }
     }
 }

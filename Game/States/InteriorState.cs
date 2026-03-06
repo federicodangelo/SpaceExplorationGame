@@ -269,7 +269,7 @@ public class InteriorState : GameState
         // Movement input (write to entity each frame)
         {
             var playerPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
-            _inputSystem.Snapshot = InputSnapshot.FromInput(input, _camera, playerPos);
+            _inputSystem.LocalSnapshot = InputSnapshot.FromInput(input, _camera, playerPos);
             float dt = game.DeltaTime;
             _inputSystem.Update(in dt);
         }

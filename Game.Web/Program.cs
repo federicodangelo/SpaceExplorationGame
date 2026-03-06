@@ -6,6 +6,7 @@ using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using Engine.Platform.Web;
 using SpaceExplorationGame.Core.Config;
+using Engine.Network;
 
 namespace SpaceExplorationGame;
 
@@ -24,13 +25,14 @@ public partial class WebMain
             Console.WriteLine("[SEG-CS] Main() starting...");
 
             // Parse URL query parameters (mirrors the SDL CLI argument parser).
-            // Supported params: seed, location, sublocation, showcase, star-type
-            // Short aliases:    s,    l,        sl,          sc
+            // Supported params: seed, location, sublocation, showcase, star-type, connect, name
+            // Short aliases:    s,    l,        sl,          sc,       c,       n
             // Examples:
             //   ?seed=42
             //   ?location=planet&sublocation=on-foot
             //   ?showcase=star-type&star-type=K
-            var (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay) = ParseUrlParams();
+            //   ?connect=ws://server:9050/&name=Commander
+            var (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay, connectUrl, playerNameParam) = ParseUrlParams();
 
             // Create platform
             var musicProvider = new GameMusicProvider(WebAudioManager.SampleRate);
@@ -51,8 +53,19 @@ public partial class WebMain
             if (autoplay)
                 _game.AutoplayBot.Enabled = true;
 
-            _game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
-            Console.WriteLine("[SEG-CS] MainMenuState set");
+            if (connectUrl != null)
+            {
+                var net = new NetworkManager();
+                _game.Network = net;
+                string playerName = playerNameParam ?? _game.MenuOptions.GetPlayerName();
+                Console.WriteLine($"[SEG-CS] Connecting to {connectUrl} as '{playerName}'...");
+                _game.ChangeState(new MultiplayerConnectState(connectUrl, playerName));
+            }
+            else
+            {
+                _game.ChangeState(new MainMenuState(autoLaunch, autoDebugLaunch, autoDebugStarType));
+            }
+            Console.WriteLine("[SEG-CS] Initial state set");
 
             _game.InitializeLoop();
             Console.WriteLine("[SEG-CS] Game loop initialized, ready for frames");
@@ -66,7 +79,7 @@ public partial class WebMain
 
     // ── URL parameter parsing ─────────────────────────────────────────────────
 
-    private static (ulong? galaxySeed, StartOption autoLaunch, DebugLaunchRequest autoDebugLaunch, StarClass autoDebugStarType, bool autoplay) ParseUrlParams()
+    private static (ulong? galaxySeed, StartOption autoLaunch, DebugLaunchRequest autoDebugLaunch, StarClass autoDebugStarType, bool autoplay, string? connectUrl, string? playerName) ParseUrlParams()
     {
         string? seedParam = JsLaunchOptions.GetUrlParam("seed") ?? JsLaunchOptions.GetUrlParam("s");
         string? locationParam = JsLaunchOptions.GetUrlParam("location") ?? JsLaunchOptions.GetUrlParam("l");
@@ -75,6 +88,8 @@ public partial class WebMain
         string? starTypeParam = JsLaunchOptions.GetUrlParam("star-type");
         string? debugParam = JsLaunchOptions.GetUrlParam("debug");
         string? autoplayParam = JsLaunchOptions.GetUrlParam("autoplay");
+        string? connectParam = JsLaunchOptions.GetUrlParam("connect") ?? JsLaunchOptions.GetUrlParam("c");
+        string? nameParam = JsLaunchOptions.GetUrlParam("name") ?? JsLaunchOptions.GetUrlParam("n");
 
         WindowConfig.Debug = debugParam != null && debugParam != "false" && debugParam != "0";
         bool autoplay = autoplayParam != null && autoplayParam != "false" && autoplayParam != "0";
@@ -120,7 +135,7 @@ public partial class WebMain
                 autoLaunch = start.Value;
         }
 
-        return (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay);
+        return (galaxySeed, autoLaunch, autoDebugLaunch, autoDebugStarType, autoplay, connectParam, nameParam);
     }
 
     private static DebugLaunchRequest? ResolveDebugShowcase(string showcase) =>

@@ -80,7 +80,7 @@ public sealed class NetworkManager : IDisposable
     /// Send the local player's current entity state to the server.
     /// Call once per tick from the active game state.
     /// </summary>
-    public void SendLocalState(World ecsWorld, Entity playerEntity)
+    public void SendLocalState(World ecsWorld, Entity playerEntity, string? shipTypeId = null)
     {
         if (!IsJoined || !_client.IsConnected) return;
         if (!ecsWorld.IsAlive(playerEntity)) return;
@@ -93,6 +93,7 @@ public sealed class NetworkManager : IDisposable
             Position = transform.Position,
             Rotation = transform.Rotation,
             Velocity = velocity.Linear,
+            ShipTypeId = shipTypeId,
         };
 
         if (ecsWorld.Has<Health>(playerEntity))
@@ -112,6 +113,15 @@ public sealed class NetworkManager : IDisposable
         }
 
         _client.Send(NetSerializer.Write(new PlayerStateMessage { State = state }));
+    }
+
+    /// <summary>
+    /// Send a graceful disconnect notification before closing.
+    /// </summary>
+    public void SendDisconnect()
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(new DisconnectMessage()));
     }
 
     /// <summary>
@@ -159,6 +169,7 @@ public sealed class NetworkManager : IDisposable
 
     public void Dispose()
     {
+        SendDisconnect();
         _client.Dispose();
     }
 

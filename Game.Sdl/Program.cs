@@ -46,6 +46,7 @@ internal static class Program
         bool debugMode = false;
         bool autoplay = false;
         string? connectUrl = null;
+        string? playerNameArg = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -98,6 +99,13 @@ internal static class Program
                 if (i + 1 >= args.Length)
                     throw new ArgumentException("Missing value for --connect. Example: --connect ws://localhost:9050/");
                 connectUrl = args[i + 1];
+                i++;
+            }
+            else if (arg is "--name" or "-n")
+            {
+                if (i + 1 >= args.Length)
+                    throw new ArgumentException("Missing value for --name. Example: --name Commander");
+                playerNameArg = args[i + 1];
                 i++;
             }
             else
@@ -159,8 +167,9 @@ internal static class Program
             var net = new NetworkManager();
             game.Network = net;
 
-            Console.WriteLine($"Connecting to {connectUrl}...");
-            net.ConnectAsync(connectUrl, "Player", -1).GetAwaiter().GetResult();
+            string playerName = playerNameArg ?? game.MenuOptions.GetPlayerName();
+            Console.WriteLine($"Connecting to {connectUrl} as '{playerName}'...");
+            net.ConnectAsync(connectUrl, playerName, -1).GetAwaiter().GetResult();
             Console.WriteLine("Connected. Waiting for welcome...");
 
             // Poll until the server sends the welcome message (timeout after 5s)

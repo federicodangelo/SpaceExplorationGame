@@ -211,6 +211,15 @@ public class Game : GameBase
         // Process network messages (state-agnostic — always drain even between states)
         Network?.ProcessMessages();
 
+        // Detect unexpected server disconnect — return to main menu
+        if (Network is { IsJoined: true } && !Network.IsConnected)
+        {
+            Console.WriteLine("[Net] Disconnected from server — returning to main menu.");
+            Network?.Dispose();
+            Network = null;
+            ChangeState(new SpaceExplorationGame.States.MainMenuState());
+        }
+
         // ── Network: sync remote entities + send local state──
         if (Network is { IsJoined: true } net)
         {

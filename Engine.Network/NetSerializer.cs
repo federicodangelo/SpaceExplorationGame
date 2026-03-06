@@ -42,6 +42,14 @@ public static class NetSerializer
         return ms.ToArray();
     }
 
+    public static byte[] Write(in DisconnectMessage msg)
+    {
+        using var ms = new MemoryStream(2);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_Disconnect);
+        return ms.ToArray();
+    }
+
     public static byte[] Write(in WelcomeMessage msg)
     {
         using var ms = new MemoryStream(64);
@@ -226,6 +234,7 @@ public static class NetSerializer
         w.Write(s.Shooting);
         w.Write(s.AccelerationDirection.X);
         w.Write(s.AccelerationDirection.Y);
+        w.Write(s.ShipTypeId ?? string.Empty);
     }
 
     private static NetPlayerState ReadNetPlayerState(BinaryReader r)
@@ -241,6 +250,7 @@ public static class NetSerializer
             MaxShield = r.ReadSingle(),
             Shooting = r.ReadBoolean(),
             AccelerationDirection = new Vector2(r.ReadSingle(), r.ReadSingle()),
+            ShipTypeId = r.ReadString() is { Length: > 0 } sid ? sid : null,
         };
     }
 }

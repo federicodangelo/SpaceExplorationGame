@@ -21,7 +21,7 @@ public partial class CameraFollowSystem : BaseSystem<World, float>
     }
 
     [Query]
-    [All(typeof(PlayerControlled), typeof(Transform))]
+    [All(typeof(PlayerControlled), typeof(PlayerLocal), typeof(Transform))]
     public void FollowPlayer(ref Transform transform, [Data] float dt)
     {
         _camera.LerpTo(transform.Position, _lerpSpeed * dt);

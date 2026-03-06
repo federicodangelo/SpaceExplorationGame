@@ -217,6 +217,16 @@ public class MainMenuState : GameState
             LaunchGame(game, _menuOverlay.LocationType, _menuOverlay.DangerFilter);
         }
 
+        // Handle join server
+        if (_menuOverlay.JoinServerUrl != null)
+        {
+            var url = _menuOverlay.JoinServerUrl;
+            var playerName = _menuOverlay.PlayerName;
+            _menuOverlay.JoinServerUrl = null;
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
+            game.ChangeState(new MultiplayerConnectState(url, playerName));
+        }
+
         // Handle quit
         if (_menuOverlay.QuitRequested)
         {

@@ -14,7 +14,7 @@ namespace SpaceExplorationGame.ECS.Systems.Input;
 public partial class PlayerAvatarInputSystem : BaseSystem<World, float>
 {
     private readonly float _speed;
-    public InputSnapshot Snapshot;
+    public InputSnapshot LocalSnapshot;
 
     private Vector2 _lastMoveDir = new(0, -1);
 
@@ -25,13 +25,13 @@ public partial class PlayerAvatarInputSystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        if (Snapshot.MovementDirection != Vector2.Zero)
-            _lastMoveDir = Snapshot.MovementDirection;
+        if (LocalSnapshot.MovementDirection != Vector2.Zero)
+            _lastMoveDir = LocalSnapshot.MovementDirection;
         SetAvatarInputQuery(World);
     }
 
     [Query]
-    [All(typeof(PlayerControlled), typeof(AvatarInputComponent), typeof(AvatarComponent))]
+    [All(typeof(PlayerControlled), typeof(PlayerLocal), typeof(AvatarInputComponent), typeof(AvatarComponent))]
     public void SetAvatarInput(ref AvatarInputComponent input, ref AvatarComponent avatar)
     {
         if (avatar.InVehicle)
@@ -41,13 +41,13 @@ public partial class PlayerAvatarInputSystem : BaseSystem<World, float>
             return;
         }
 
-        input.DesiredVelocity = Snapshot.MovementDirection * _speed;
-        input.Shoot = Snapshot.Shoot;
+        input.DesiredVelocity = LocalSnapshot.MovementDirection * _speed;
+        input.Shoot = LocalSnapshot.Shoot;
 
         if (input.Shoot)
         {
-            if (Snapshot.AimDirection != Vector2.Zero)
-                input.AimDirection = Snapshot.AimDirection;
+            if (LocalSnapshot.AimDirection != Vector2.Zero)
+                input.AimDirection = LocalSnapshot.AimDirection;
             else
                 input.AimDirection = _lastMoveDir;
         }

@@ -53,6 +53,9 @@ public struct Velocity
 [Component]
 public struct PlayerControlled;
 
+[Component]
+public struct PlayerLocal;
+
 /// <summary>Sprite rendering info.</summary>
 [Component]
 public struct Sprite
@@ -218,9 +221,10 @@ public struct ShipComponent
     public float BrakeMultiplier;
     public ShipWeaponSpec[] Weapons;
     public float[] WeaponCooldowns;
+    public PlayerType PlayerType;
 
     public ShipComponent(Faction faction, float maxSpeed, float rotationSpeed,
-        float acceleration, float brakeMultiplier,
+        float acceleration, float brakeMultiplier, PlayerType playerType,
         ShipWeaponSpec[]? weapons = null)
     {
         Faction = faction;
@@ -228,6 +232,7 @@ public struct ShipComponent
         MaxRotationSpeed = rotationSpeed;
         MaxAcceleration = acceleration;
         BrakeMultiplier = brakeMultiplier;
+        PlayerType = playerType;
         Weapons = weapons ?? Array.Empty<ShipWeaponSpec>();
         WeaponCooldowns = new float[Weapons.Length];
     }

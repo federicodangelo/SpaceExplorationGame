@@ -267,48 +267,60 @@ internal sealed class ServerState : GameState
     {
         if (_netPlayers.Count == 0) return;
 
-        var players = new (byte, NetPlayerState)[_netPlayers.Count];
-        int i = 0;
+        // Build per-player state snapshots
+        var stateMap = new Dictionary<byte, (int SystemIndex, NetPlayerState State)>(_netPlayers.Count);
         foreach (var (id, netPlayer) in _netPlayers)
+            stateMap[id] = (netPlayer.StarSystemIndex, BuildPlayerState(netPlayer));
+
+        // Send each client only the players in the same system
+        foreach (var (clientId, clientPlayer) in _netPlayers)
         {
-            var state = new NetPlayerState();
-            var world = netPlayer.Simulation.EcsWorld;
-            var entity = netPlayer.SimPlayer.Entity;
+            var inSystem = stateMap
+                .Where(kvp => kvp.Value.SystemIndex == clientPlayer.StarSystemIndex)
+                .Select(kvp => (kvp.Key, kvp.Value.State))
+                .ToArray();
 
-            if (world.IsAlive(entity))
+            var worldMsg = new WorldStateMessage
             {
-                var transform = world.Get<Transform>(entity);
-                state.Position = transform.Position;
-                state.Rotation = transform.Rotation;
+                PlayerCount = (byte)inSystem.Length,
+                ServerTime = _game.GlobalTime,
+                Players = inSystem,
+            };
+            _server.Send(clientId, NetSerializer.Write(worldMsg));
+        }
+    }
 
-                var velocity = world.Get<Velocity>(entity);
-                state.Velocity = velocity.Linear;
+    private NetPlayerState BuildPlayerState(NetPlayer netPlayer)
+    {
+        var state = new NetPlayerState();
+        var world = netPlayer.Simulation.EcsWorld;
+        var entity = netPlayer.SimPlayer.Entity;
 
-                if (world.Has<Health>(entity))
-                {
-                    var health = world.Get<Health>(entity);
-                    state.Hull = health.Hull;
-                    state.MaxHull = health.MaxHull;
-                    state.Shield = health.Shield;
-                    state.MaxShield = health.MaxShield;
-                }
+        if (!world.IsAlive(entity)) return state;
 
-                if (world.Has<ShipInputComponent>(entity))
-                {
-                    var input = world.Get<ShipInputComponent>(entity);
-                    state.Shooting = input.Shoot;
-                    state.AccelerationDirection = input.AccelerationDirection;
-                }
-            }
-            players[i++] = (id, state);
+        var transform = world.Get<Transform>(entity);
+        state.Position = transform.Position;
+        state.Rotation = transform.Rotation;
+
+        var velocity = world.Get<Velocity>(entity);
+        state.Velocity = velocity.Linear;
+
+        if (world.Has<Health>(entity))
+        {
+            var health = world.Get<Health>(entity);
+            state.Hull = health.Hull;
+            state.MaxHull = health.MaxHull;
+            state.Shield = health.Shield;
+            state.MaxShield = health.MaxShield;
         }
 
-        var worldMsg = new WorldStateMessage
+        if (world.Has<ShipInputComponent>(entity))
         {
-            PlayerCount = (byte)players.Length,
-            ServerTime = _game.GlobalTime,
-            Players = players,
-        };
-        _server.Broadcast(NetSerializer.Write(worldMsg));
+            var input = world.Get<ShipInputComponent>(entity);
+            state.Shooting = input.Shoot;
+            state.AccelerationDirection = input.AccelerationDirection;
+        }
+
+        return state;
     }
 }

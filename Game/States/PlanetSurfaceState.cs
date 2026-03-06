@@ -178,7 +178,7 @@ public class PlanetSurfaceState : GameState
     public override void Exit(Game game)
     {
         // Persist avatar health
-        if (!_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity) && _sim.EcsWorld.Has<Health>(_simPlayer.Entity))
+        if (!_sim.LocalPlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity) && _sim.EcsWorld.Has<Health>(_simPlayer.Entity))
         {
             var health = _sim.EcsWorld.Get<Health>(_simPlayer.Entity);
             game.Player.AvatarHealth = health.Hull;
@@ -235,7 +235,7 @@ public class PlanetSurfaceState : GameState
                     break;
             }
             // Bot wrote avatar input directly; sync components
-            if (!_sim.PlayerDead && !_playerInsideShip && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+            if (!_sim.LocalPlayerDead && !_playerInsideShip && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
             {
                 _sim.SyncPlayerAvatarComponent(_simPlayer);
                 _sim.SyncPlayerVehicleComponent(_simPlayer);
@@ -265,7 +265,7 @@ public class PlanetSurfaceState : GameState
         }
 
         // Block gameplay input when player dead
-        if (_sim.PlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
+        if (_sim.LocalPlayerDead || !_sim.EcsWorld.IsAlive(_simPlayer.Entity))
         {
             return;
         }
@@ -294,18 +294,18 @@ public class PlanetSurfaceState : GameState
         }
 
         // Write movement input
-        if (!_sim.PlayerDead && !_playerInsideShip)
+        if (!_sim.LocalPlayerDead && !_playerInsideShip)
         {
             float dt = game.DeltaTime;
             _sim.SyncPlayerAvatarComponent(_simPlayer);
             _sim.SyncPlayerVehicleComponent(_simPlayer);
             var playerPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
             var snapshot = InputSnapshot.FromInput(input, _camera, playerPos);
-            _avatarInputSystem.Snapshot = snapshot;
+            _avatarInputSystem.LocalSnapshot = snapshot;
             _avatarInputSystem.Update(in dt);
             if (_vehicleInputSystem != null)
             {
-                _vehicleInputSystem.Snapshot = snapshot;
+                _vehicleInputSystem.LocalSnapshot = snapshot;
                 _vehicleInputSystem.Update(in dt);
             }
         }
@@ -348,7 +348,7 @@ public class PlanetSurfaceState : GameState
 
         // Tire marks
         if (_inVehicle && _sim.LocalVehicleDeployed &&
-            !_sim.PlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
+            !_sim.LocalPlayerDead && _sim.EcsWorld.IsAlive(_simPlayer.Entity))
         {
             var vehicleTf = _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity);
             float speed = _sim.EcsWorld.Has<Velocity>(_simPlayer.Entity)
@@ -599,7 +599,7 @@ public class PlanetSurfaceState : GameState
 
 
         // Player avatar
-        if (!_sim.PlayerDead && world.IsAlive(_simPlayer.Entity))
+        if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))
         {
             ref var avatarTf = ref world.Get<Transform>(_simPlayer.Entity);
             if (!_inVehicle && !_playerInsideShip)
@@ -629,12 +629,12 @@ public class PlanetSurfaceState : GameState
 
         // Resolve positions needed for HUD
         var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
-        Vector2 avatarPos = !_sim.PlayerDead && world.IsAlive(_simPlayer.Entity)
+        Vector2 avatarPos = !_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity)
             ? world.Get<Transform>(_simPlayer.Entity).Position
             : shipTf.Position; // fallback when dead
 
         // Interaction prompts
-        if (!_sim.PlayerDead && !_playerInsideShip)
+        if (!_sim.LocalPlayerDead && !_playerInsideShip)
         {
             HudRenderer.RenderPlanetSurfacePrompt(renderer,
                 _inVehicle, _sim.NearShip, _sim.NearVehicle, _sim.LocalVehicleDeployed, _sim.NearSettlement,
@@ -642,18 +642,18 @@ public class PlanetSurfaceState : GameState
         }
 
         // HUD
-        if (!_sim.PlayerDead)
+        if (!_sim.LocalPlayerDead)
         {
             HudRenderer.RenderPlanetSurfaceHud(renderer, game.Player, _planet,
                 _starSystem.DangerLevel, _inVehicle, world, _simPlayer.Entity);
         }
 
         // Combat message
-        if (_sim.CombatMessage != null)
-            HudRenderer.RenderCenteredMessage(renderer, _sim.CombatMessage, -40, new Color3(255, 220, 80), 2f);
+        if (_sim.LocalCombatMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, _sim.LocalCombatMessage, -40, new Color3(255, 220, 80), 2f);
 
         // Death message
-        if (_sim.PlayerDead)
+        if (_sim.LocalPlayerDead)
         {
             HudRenderer.RenderCenteredMessage(renderer, "YOU DIED", -20, new Color3(255, 80, 80), 3f);
             HudRenderer.RenderCenteredMessage(renderer, "RESPAWNING...", 20, new Color3(200, 200, 200), 1.5f);
@@ -667,7 +667,7 @@ public class PlanetSurfaceState : GameState
             avatarPos, shipTf.Position, vehiclePos, world);
 
         // Off-screen indicators
-        if (!_sim.PlayerDead && !_playerInsideShip)
+        if (!_sim.LocalPlayerDead && !_playerInsideShip)
         {
             HudIndicatorsRenderer.RenderSettlementOffscreenIndicators(renderer, camera,
                 _sim.SurfaceData.Settlements, game.Player);

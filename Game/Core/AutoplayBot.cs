@@ -242,7 +242,7 @@ public class AutoplayBot
         _actionCooldown = Math.Max(0, _actionCooldown - dt);
 
         // ── Zero ship input whenever an overlay is blocking the player ──
-        if (!sim.PlayerDead && sim.EcsWorld.IsAlive(simPlayer.Entity) && anyOverlayOpen)
+        if (!sim.LocalPlayerDead && sim.EcsWorld.IsAlive(simPlayer.Entity) && anyOverlayOpen)
         {
             ref var blockedInput = ref sim.EcsWorld.Get<ShipInputComponent>(simPlayer.Entity);
             blockedInput = ShipInputComponent.Default();
@@ -277,7 +277,7 @@ public class AutoplayBot
         }
 
         // ── Player dead — wait for respawn ──
-        if (sim.PlayerDead || !sim.EcsWorld.IsAlive(simPlayer.Entity))
+        if (sim.LocalPlayerDead || !sim.EcsWorld.IsAlive(simPlayer.Entity))
             return true;
 
         var world = sim.EcsWorld;
@@ -309,7 +309,7 @@ public class AutoplayBot
 
         if (_actionCooldown <= 0)
         {
-            if (sim.NearbySpaceStationIndex >= 0 && _solarGoal == SolarGoal.FlyToStation && _solarTargetIndex == sim.NearbySpaceStationIndex)
+            if (sim.LocalNearbySpaceStationIndex >= 0 && _solarGoal == SolarGoal.FlyToStation && _solarTargetIndex == sim.LocalNearbySpaceStationIndex)
             {
                 if (!shipStopped)
                 {
@@ -321,13 +321,13 @@ public class AutoplayBot
                     // Open station overlay
                     _actionCooldown = ActionDelay;
                     _statusAction = "Opening station overlay";
-                    stationOverlay.Open(starSystem, sim.SpaceStations[sim.NearbySpaceStationIndex], game);
+                    stationOverlay.Open(starSystem, sim.SpaceStations[sim.LocalNearbySpaceStationIndex], game);
                     return true;
                 }
             }
 
-            if (sim.NearbyPlanetIndex >= 0 && _solarGoal == SolarGoal.FlyToPlanet
-                && sim.Planets[sim.NearbyPlanetIndex].HasSolidSurface && _solarTargetIndex == sim.NearbyPlanetIndex)
+            if (sim.LocalNearbyPlanetIndex >= 0 && _solarGoal == SolarGoal.FlyToPlanet
+                && sim.Planets[sim.LocalNearbyPlanetIndex].HasSolidSurface && _solarTargetIndex == sim.LocalNearbyPlanetIndex)
             {
                 if (!shipStopped)
                 {
@@ -337,7 +337,7 @@ public class AutoplayBot
                 {
                     // Trigger landing directly (skip the map overlay for bot simplicity)
                     _actionCooldown = ActionDelay;
-                    var planet = sim.Planets[sim.NearbyPlanetIndex];
+                    var planet = sim.Planets[sim.LocalNearbyPlanetIndex];
                     int centerTile = WorldConfig.PlanetSurfaceWidth / 2;
                     var landing = new LandingSelectionRequest(
                         starSystem, planet,
@@ -520,7 +520,7 @@ public class AutoplayBot
         if (_actionCooldown > 0) return true;
 
         // Just dock (disembark) — the station already refuels on open
-        int stationIdx = sim.NearbySpaceStationIndex;
+        int stationIdx = sim.LocalNearbySpaceStationIndex;
         if (stationIdx >= 0 && stationIdx < sim.SpaceStations.Count)
         {
             var station = sim.SpaceStations[stationIdx];
@@ -625,7 +625,7 @@ public class AutoplayBot
         _surfaceTimer += dt;
         _actionCooldown = Math.Max(0, _actionCooldown - dt);
 
-        if (!sim.PlayerDead && sim.EcsWorld.IsAlive(simPlayer.Entity) && anyOverlayOpen)
+        if (!sim.LocalPlayerDead && sim.EcsWorld.IsAlive(simPlayer.Entity) && anyOverlayOpen)
         {
             // Block all input when any overlay is open, so the bot doesn't do anything unexpected in the background.
             ref var blockedInput = ref sim.EcsWorld.Get<AvatarInputComponent>(simPlayer.Entity);
@@ -687,7 +687,7 @@ public class AutoplayBot
         }
 
         // ── Player dead — wait for respawn ──
-        if (sim.PlayerDead || !sim.EcsWorld.IsAlive(simPlayer.Entity))
+        if (sim.LocalPlayerDead || !sim.EcsWorld.IsAlive(simPlayer.Entity))
             return true;
 
         // ── Inside ship waiting for menu ──

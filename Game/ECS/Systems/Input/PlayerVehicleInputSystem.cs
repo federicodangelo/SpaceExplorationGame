@@ -13,7 +13,7 @@ namespace SpaceExplorationGame.ECS.Systems.Input;
 public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
 {
     private readonly Entity _entity;
-    public InputSnapshot Snapshot;
+    public InputSnapshot LocalSnapshot;
 
     public PlayerVehicleInputSystem(World world, Entity entity) : base(world)
     {
@@ -24,10 +24,10 @@ public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
     {
         ref var avatarInput = ref World.Get<AvatarInputComponent>(_entity);
 
-        Vector2 movementInput = Snapshot.MovementDirection;
-        Vector2 headingDirection = Snapshot.HeadingDirection;
+        Vector2 movementInput = LocalSnapshot.MovementDirection;
+        Vector2 headingDirection = LocalSnapshot.HeadingDirection;
 
-        if (Snapshot.AbsoluteMovement &&
+        if (LocalSnapshot.AbsoluteMovement &&
             headingDirection == Vector2.Zero &&
             movementInput != Vector2.Zero)
         {
@@ -36,7 +36,7 @@ public partial class PlayerVehicleInputSystem : BaseSystem<World, float>
 
         avatarInput.HeadingDirection = headingDirection;
 
-        if (Snapshot.AbsoluteMovement)
+        if (LocalSnapshot.AbsoluteMovement)
         {
             avatarInput.Throttle = Math.Clamp(movementInput.Length(), 0f, 1f);
             avatarInput.IsBraking = false;
