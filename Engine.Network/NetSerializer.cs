@@ -20,6 +20,7 @@ public static class NetSerializer
         using var w = new BinaryWriter(ms);
         w.Write((byte)MessageType.C_Join);
         w.Write(msg.PlayerName ?? string.Empty);
+        w.Write(msg.StarSystemIndex);
         return ms.ToArray();
     }
 
@@ -29,6 +30,15 @@ public static class NetSerializer
         using var w = new BinaryWriter(ms);
         w.Write((byte)MessageType.C_PlayerState);
         WritePlayerState(w, msg.State);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in LocationChangedMessage msg)
+    {
+        using var ms = new MemoryStream(8);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_LocationChanged);
+        w.Write(msg.StarSystemIndex);
         return ms.ToArray();
     }
 
@@ -52,6 +62,7 @@ public static class NetSerializer
         w.Write((byte)MessageType.S_PlayerJoined);
         w.Write(msg.PlayerId);
         w.Write(msg.PlayerName ?? string.Empty);
+        w.Write(msg.StarSystemIndex);
         WritePlayerState(w, msg.InitialState);
         return ms.ToArray();
     }
@@ -62,6 +73,16 @@ public static class NetSerializer
         using var w = new BinaryWriter(ms);
         w.Write((byte)MessageType.S_PlayerLeft);
         w.Write(msg.PlayerId);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in PlayerLocationChangedMessage msg)
+    {
+        using var ms = new MemoryStream(8);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_PlayerLocationChanged);
+        w.Write(msg.PlayerId);
+        w.Write(msg.StarSystemIndex);
         return ms.ToArray();
     }
 
@@ -97,6 +118,7 @@ public static class NetSerializer
         return new JoinMessage
         {
             PlayerName = r.ReadString(),
+            StarSystemIndex = r.ReadInt32(),
         };
     }
 
@@ -106,6 +128,14 @@ public static class NetSerializer
         using var r = new BinaryReader(ms);
         r.ReadByte(); // skip type
         return new PlayerStateMessage { State = ReadNetPlayerState(r) };
+    }
+
+    public static LocationChangedMessage ReadLocationChanged(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new LocationChangedMessage { StarSystemIndex = r.ReadInt32() };
     }
 
     public static WelcomeMessage ReadWelcome(ReadOnlySpan<byte> data)
@@ -132,6 +162,7 @@ public static class NetSerializer
         {
             PlayerId = r.ReadByte(),
             PlayerName = r.ReadString(),
+            StarSystemIndex = r.ReadInt32(),
             InitialState = ReadNetPlayerState(r),
         };
     }
@@ -142,6 +173,18 @@ public static class NetSerializer
         using var r = new BinaryReader(ms);
         r.ReadByte(); // skip type
         return new PlayerLeftMessage { PlayerId = r.ReadByte() };
+    }
+
+    public static PlayerLocationChangedMessage ReadPlayerLocationChanged(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new PlayerLocationChangedMessage
+        {
+            PlayerId = r.ReadByte(),
+            StarSystemIndex = r.ReadInt32(),
+        };
     }
 
     public static WorldStateMessage ReadWorldState(ReadOnlySpan<byte> data)

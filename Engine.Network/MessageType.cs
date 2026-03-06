@@ -10,6 +10,8 @@ public enum MessageType : byte
     C_Join = 1,
     /// <summary>Client sends its player entity state each tick.</summary>
     C_PlayerState = 2,
+    /// <summary>Client changed location (e.g. jumped to a different star system).</summary>
+    C_LocationChanged = 3,
 
     // ── Server → Client ─────────────────────────────────────────
     /// <summary>Server acknowledges join, assigns player ID, sends world info.</summary>
@@ -20,4 +22,6 @@ public enum MessageType : byte
     S_PlayerLeft = 130,
     /// <summary>Snapshot of all remote player states (broadcast every tick).</summary>
     S_WorldState = 131,
+    /// <summary>A player changed location (star system).</summary>
+    S_PlayerLocationChanged = 132,
 }

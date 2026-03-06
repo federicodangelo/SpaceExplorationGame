@@ -143,4 +143,12 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
 
     /// <inheritdoc />
     public virtual IReadOnlyList<string>? GetDebugInfo() => _debugInfo.Entries;
+
+    public virtual void SyncRemotePlayers(NetworkManager net)
+    {
+    }
+
+    public virtual void SendPlayerStateToServer(NetworkManager net)
+    {
+    }
 }

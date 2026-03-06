@@ -208,6 +208,16 @@ public class Game : GameBase
         // Apply pending state changes
         ApplyPendingState();
 
+        // Process network messages (state-agnostic — always drain even between states)
+        Network?.ProcessMessages();
+
+        // ── Network: sync remote entities + send local state──
+        if (Network is { IsJoined: true } net)
+        {
+            Coordinator.SyncRemotePlayers(net);
+            Coordinator.SendPlayerStateToServer(net);
+        }
+
         // Process input once per frame
         _currentState?.UpdateInput(this);
 

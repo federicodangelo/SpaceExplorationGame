@@ -60,4 +60,17 @@ public interface ISimulation
     /// after a timeout period.
     /// </summary>
     void RemovePlayer(SimulationPlayer player);
+
+
+    /// <summary>
+    /// Sync remote player states from the server. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server. Each simulation should update the states of any remote players it
+    /// </summary>
+    /// <param name="net"></param>
+    void SyncRemotePlayers(NetworkManager net);
+
+    /// <summary>
+    /// Send the local player's state to the server. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server. Each simulation should send any relevant state for the local player (position, health, etc.) that the server needs to sync with other clients.
+    /// </summary>
+    /// <param name="net"></param>
+    void SendPlayerStateToServer(NetworkManager net);
 }

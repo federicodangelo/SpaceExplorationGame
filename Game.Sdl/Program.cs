@@ -160,7 +160,7 @@ internal static class Program
             game.Network = net;
 
             Console.WriteLine($"Connecting to {connectUrl}...");
-            net.ConnectAsync(connectUrl, "Player").GetAwaiter().GetResult();
+            net.ConnectAsync(connectUrl, "Player", -1).GetAwaiter().GetResult();
             Console.WriteLine("Connected. Waiting for welcome...");
 
             // Poll until the server sends the welcome message (timeout after 5s)

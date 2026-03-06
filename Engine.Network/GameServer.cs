@@ -7,7 +7,7 @@ namespace Engine.Network;
 /// <summary>
 /// Event types queued by background receive threads and dispatched on the main thread.
 /// </summary>
-public enum ServerEventType { ClientJoined, ClientLeft, PlayerState }
+public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged }
 
 /// <summary>
 /// A server-side network event, enqueued from background threads and
@@ -19,6 +19,7 @@ public readonly struct ServerEvent
     public byte PlayerId { get; init; }
     public JoinMessage Join { get; init; }
     public PlayerStateMessage PlayerState { get; init; }
+    public LocationChangedMessage LocationChanged { get; init; }
 }
 
 /// <summary>
@@ -187,6 +188,15 @@ public sealed class GameServer : IDisposable
                             Type = ServerEventType.PlayerState,
                             PlayerId = playerId,
                             PlayerState = state,
+                        });
+                        break;
+                    case MessageType.C_LocationChanged:
+                        var locChanged = NetSerializer.ReadLocationChanged(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.LocationChanged,
+                            PlayerId = playerId,
+                            LocationChanged = locChanged,
                         });
                         break;
                 }

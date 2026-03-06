@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
@@ -538,5 +539,84 @@ public class SolarSystemSimulation : CombatSimulationBase
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)
     {
         player.Data.ShipHealth = hull;
+    }
+
+    // ── Network: remote player entity management ────────────────
+
+    private readonly Dictionary<byte, Entity> _remotePlayerEntities = new();
+
+    /// <summary>Remote player entities managed by this simulation, keyed by player ID.</summary>
+    public IReadOnlyDictionary<byte, Entity> RemotePlayerEntities => _remotePlayerEntities;
+
+    /// <summary>
+    /// Create/update ECS entities for remote players in this star system.
+    /// Call once per frame from the game loop.
+    /// </summary>
+    public override void SyncRemotePlayers(NetworkManager net)
+    {
+        int mySystemIndex = StarSystem.Index;
+
+        // Remove entities for players who left or changed system
+        List<byte>? toRemove = null;
+        foreach (var (id, entity) in _remotePlayerEntities)
+        {
+            if (!net.RemotePlayers.TryGetValue(id, out var remote) || remote.StarSystemIndex != mySystemIndex)
+            {
+                if (EcsWorld.IsAlive(entity))
+                    EcsWorld.Destroy(entity);
+                (toRemove ??= []).Add(id);
+            }
+        }
+        if (toRemove != null)
+            foreach (var id in toRemove)
+                _remotePlayerEntities.Remove(id);
+
+        // Create or update entities for remote players in this system
+        foreach (var remote in net.RemotePlayers.Values)
+        {
+            if (remote.StarSystemIndex != mySystemIndex) continue;
+            if (!remote.HasReceivedState) continue;
+
+            if (!_remotePlayerEntities.TryGetValue(remote.PlayerId, out var entity) || !EcsWorld.IsAlive(entity))
+            {
+                entity = EntityFactory.CreatePlayerShip(
+                    EcsWorld,
+                    remote.LastState.Position,
+                    spriteSize: 32,
+                    maxHull: remote.LastState.MaxHull > 0 ? remote.LastState.MaxHull : 100f,
+                    currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : 100f,
+                    maxShield: remote.LastState.MaxShield,
+                    maxSpeed: 300f,
+                    rotationSpeed: 180f,
+                    acceleration: 400f,
+                    brakeMultiplier: 1.5f,
+                    weapons: []);
+                _remotePlayerEntities[remote.PlayerId] = entity;
+            }
+
+            ref var transform = ref EcsWorld.Get<Transform>(entity);
+            transform.Position = remote.LastState.Position;
+            transform.Rotation = remote.LastState.Rotation;
+
+            ref var velocity = ref EcsWorld.Get<Velocity>(entity);
+            velocity.Linear = remote.LastState.Velocity;
+
+            if (EcsWorld.Has<Health>(entity))
+            {
+                ref var health = ref EcsWorld.Get<Health>(entity);
+                health.Hull = remote.LastState.Hull;
+                health.MaxHull = remote.LastState.MaxHull;
+                health.Shield = remote.LastState.Shield;
+                health.MaxShield = remote.LastState.MaxShield;
+            }
+        }
+    }
+
+    public override void SendPlayerStateToServer(NetworkManager net)
+    {
+        if (LocalPlayer != null && EcsWorld.IsAlive(LocalPlayer.Entity))
+        {
+            net.SendLocalState(EcsWorld, LocalPlayer.Entity);
+        }
     }
 }

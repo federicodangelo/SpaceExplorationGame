@@ -37,12 +37,21 @@ public struct JoinMessage
 {
     /// <summary>Display name for this player.</summary>
     public string PlayerName;
+    /// <summary>Star system index the player wants to join (-1 = server decides).</summary>
+    public int StarSystemIndex;
 }
 
 /// <summary>Client sends its own player state each tick.</summary>
 public struct PlayerStateMessage
 {
     public NetPlayerState State;
+}
+
+/// <summary>Client notifies the server of a location change (e.g. star system jump).</summary>
+public struct LocationChangedMessage
+{
+    /// <summary>New star system index.</summary>
+    public int StarSystemIndex;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -69,6 +78,8 @@ public struct PlayerJoinedMessage
 {
     public byte PlayerId;
     public string PlayerName;
+    /// <summary>Star system the player is in.</summary>
+    public int StarSystemIndex;
     public NetPlayerState InitialState;
 }
 
@@ -76,6 +87,13 @@ public struct PlayerJoinedMessage
 public struct PlayerLeftMessage
 {
     public byte PlayerId;
+}
+
+/// <summary>Notification that a player changed star system.</summary>
+public struct PlayerLocationChangedMessage
+{
+    public byte PlayerId;
+    public int StarSystemIndex;
 }
 
 /// <summary>

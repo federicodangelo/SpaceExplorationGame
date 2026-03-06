@@ -1,3 +1,5 @@
+using SpaceExplorationGame.Core;
+
 namespace SpaceExplorationGame.Simulation;
 
 /// <summary>
@@ -146,5 +148,17 @@ public class SimulationCoordinator
                 return entry.Simulation.HasPlayers ? null : DestroyDelaySeconds - entry.EmptyTimer;
         }
         return null;
+    }
+
+    public void SyncRemotePlayers(NetworkManager net)
+    {
+        foreach (var entry in _simulations)
+            entry.Simulation.SyncRemotePlayers(net);
+    }
+
+    public void SendPlayerStateToServer(NetworkManager net)
+    {
+        foreach (var entry in _simulations)
+            entry.Simulation.SendPlayerStateToServer(net);
     }
 }
