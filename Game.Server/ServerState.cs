@@ -45,28 +45,24 @@ internal sealed class ServerState : GameState
     private int _tickCounter;
     private const int BroadcastEveryNTicks = 3; // ~20 Hz at 60 tick
 
+    // Reusable buffer for draining network events each tick
+    private readonly List<ServerEvent> _pendingEvents = new();
+
     public ServerState(GameServer server, Game game)
     {
         _server = server;
         _game = game;
-
-        _server.OnClientJoined += HandleClientJoined;
-        _server.OnClientLeft += HandleClientLeft;
-        _server.OnPlayerStateReceived += HandlePlayerState;
     }
 
     public override void Enter(Game game) { }
-    public override void Exit(Game game)
-    {
-        _server.OnClientJoined -= HandleClientJoined;
-        _server.OnClientLeft -= HandleClientLeft;
-        _server.OnPlayerStateReceived -= HandlePlayerState;
-    }
+    public override void Exit(Game game) { }
 
     public override void UpdateInput(Game game) { }
 
     public override void Update(Game game)
     {
+        HandleServerEvents();
+
         _tickCounter++;
 
         // Broadcast world state at reduced rate
@@ -86,6 +82,27 @@ internal sealed class ServerState : GameState
                 int entityCount = sim.EcsWorld.Size;
                 int playerCount = sim.HasPlayers ? ((SimulationBase)sim).Players.Count : 0;
                 Console.WriteLine($"  {sim.GetType().Name}: {playerCount} player(s), {entityCount} entities");
+            }
+        }
+    }
+
+    private void HandleServerEvents()
+    {
+        // Drain and process all queued network events on the main thread.
+        _server.DrainEvents(_pendingEvents);
+        foreach (var evt in _pendingEvents)
+        {
+            switch (evt.Type)
+            {
+                case ServerEventType.ClientJoined:
+                    HandleClientJoined(evt.PlayerId, evt.Join);
+                    break;
+                case ServerEventType.ClientLeft:
+                    HandleClientLeft(evt.PlayerId);
+                    break;
+                case ServerEventType.PlayerState:
+                    HandlePlayerState(evt.PlayerId, evt.PlayerState);
+                    break;
             }
         }
     }
@@ -116,7 +133,7 @@ internal sealed class ServerState : GameState
         // Create a new PlayerData for this remote player
         var remotePlayerData = new PlayerData { Type = PlayerType.Remote };
         var simPlayer = sim.AddPlayer(remotePlayerData);
-        lock (_netPlayers) { _netPlayers[playerId] = new NetPlayer(simPlayer, sim, join.PlayerName); }
+        _netPlayers[playerId] = new NetPlayer(simPlayer, sim, join.PlayerName);
 
         Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joined {starSystem.Name}.");
 
@@ -145,13 +162,9 @@ internal sealed class ServerState : GameState
     {
         Console.WriteLine($"[Server] Player {playerId} disconnected.");
 
-        NetPlayer? netPlayer;
-        lock (_netPlayers)
-        {
-            if (!_netPlayers.TryGetValue(playerId, out netPlayer))
-                return;
-            _netPlayers.Remove(playerId);
-        }
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer))
+            return;
+        _netPlayers.Remove(playerId);
 
         netPlayer.Simulation.RemovePlayer(netPlayer.SimPlayer);
 
@@ -162,12 +175,8 @@ internal sealed class ServerState : GameState
     private void HandlePlayerState(byte playerId, PlayerStateMessage msg)
     {
         // Update the remote player's ECS entity with the state reported by the client.
-        NetPlayer? netPlayer;
-        lock (_netPlayers)
-        {
-            if (!_netPlayers.TryGetValue(playerId, out netPlayer))
-                return;
-        }
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer))
+            return;
 
         var world = netPlayer.Simulation.EcsWorld;
         var entity = netPlayer.SimPlayer.Entity;
@@ -194,14 +203,11 @@ internal sealed class ServerState : GameState
 
     private void BroadcastWorldState()
     {
-        Dictionary<byte, NetPlayer> snapshot;
-        lock (_netPlayers) { snapshot = new(_netPlayers); }
+        if (_netPlayers.Count == 0) return;
 
-        if (snapshot.Count == 0) return;
-
-        var players = new (byte, NetPlayerState)[snapshot.Count];
+        var players = new (byte, NetPlayerState)[_netPlayers.Count];
         int i = 0;
-        foreach (var (id, netPlayer) in snapshot)
+        foreach (var (id, netPlayer) in _netPlayers)
         {
             var state = new NetPlayerState();
             var world = netPlayer.Simulation.EcsWorld;

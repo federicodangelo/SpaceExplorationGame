@@ -5,14 +5,33 @@ using System.Net.WebSockets;
 namespace Engine.Network;
 
 /// <summary>
+/// Event types queued by background receive threads and dispatched on the main thread.
+/// </summary>
+public enum ServerEventType { ClientJoined, ClientLeft, PlayerState }
+
+/// <summary>
+/// A server-side network event, enqueued from background threads and
+/// dispatched on the main thread via <see cref="GameServer.DispatchMessages"/>.
+/// </summary>
+public readonly struct ServerEvent
+{
+    public ServerEventType Type { get; init; }
+    public byte PlayerId { get; init; }
+    public JoinMessage Join { get; init; }
+    public PlayerStateMessage PlayerState { get; init; }
+}
+
+/// <summary>
 /// Lightweight WebSocket server that accepts client connections and provides
 /// message-level send/receive. Runs the HTTP listener on a background thread.
+/// Network events are queued and dispatched on the main thread.
 /// </summary>
 public sealed class GameServer : IDisposable
 {
     private readonly HttpListener _httpListener = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<byte, ConnectedClient> _clients = new();
+    private readonly ConcurrentQueue<ServerEvent> _events = new();
     private byte _nextPlayerId;
     private Task? _listenTask;
 
@@ -21,13 +40,6 @@ public sealed class GameServer : IDisposable
 
     /// <summary>Currently connected clients (thread-safe snapshot).</summary>
     public IReadOnlyDictionary<byte, ConnectedClient> Clients => _clients;
-
-    /// <summary>Raised on the listener thread when a new client connects and sends C_Join.</summary>
-    public event Action<byte, JoinMessage>? OnClientJoined;
-    /// <summary>Raised when a client disconnects or errors out.</summary>
-    public event Action<byte>? OnClientLeft;
-    /// <summary>Raised when a C_PlayerState message is received from a client.</summary>
-    public event Action<byte, PlayerStateMessage>? OnPlayerStateReceived;
 
     public GameServer(int port = 9050, int maxPlayers = 8)
     {
@@ -41,6 +53,18 @@ public sealed class GameServer : IDisposable
     {
         _httpListener.Start();
         _listenTask = Task.Run(() => ListenLoop(_cts.Token));
+    }
+
+    /// <summary>
+    /// Drain all queued network events into the provided list.
+    /// Call this once per tick from the main game loop, then iterate the results.
+    /// The list is cleared before filling.
+    /// </summary>
+    public void DrainEvents(List<ServerEvent> dest)
+    {
+        dest.Clear();
+        while (_events.TryDequeue(out var evt))
+            dest.Add(evt);
     }
 
     /// <summary>Broadcast a raw message to all connected clients.</summary>
@@ -139,7 +163,12 @@ public sealed class GameServer : IDisposable
             _clients[playerId] = client;
             registered = true;
 
-            OnClientJoined?.Invoke(playerId, join);
+            _events.Enqueue(new ServerEvent
+            {
+                Type = ServerEventType.ClientJoined,
+                PlayerId = playerId,
+                Join = join,
+            });
 
             // Receive loop
             while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
@@ -153,7 +182,12 @@ public sealed class GameServer : IDisposable
                     case MessageType.C_PlayerState:
                         var state = NetSerializer.ReadPlayerState(msg);
                         client.LastState = state.State;
-                        OnPlayerStateReceived?.Invoke(playerId, state);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.PlayerState,
+                            PlayerId = playerId,
+                            PlayerState = state,
+                        });
                         break;
                 }
             }
@@ -169,7 +203,11 @@ public sealed class GameServer : IDisposable
             if (registered)
             {
                 _clients.TryRemove(playerId, out _);
-                OnClientLeft?.Invoke(playerId);
+                _events.Enqueue(new ServerEvent
+                {
+                    Type = ServerEventType.ClientLeft,
+                    PlayerId = playerId,
+                });
             }
             if (ws.State == WebSocketState.Open || ws.State == WebSocketState.CloseReceived)
             {
