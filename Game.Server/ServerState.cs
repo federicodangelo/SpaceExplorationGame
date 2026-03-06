@@ -212,6 +212,11 @@ internal sealed class ServerState : GameState
         ref var velocity = ref world.Get<Velocity>(entity);
         velocity.Linear = msg.State.Velocity;
 
+        ref var shipInput = ref world.Get<ShipInputComponent>(entity);
+        shipInput.Shoot = msg.State.Shooting;
+        shipInput.AccelerationDirection = msg.State.AccelerationDirection;
+        shipInput.RotationSpeed = msg.State.RotationSpeed;
+
         if (world.Has<Health>(entity))
         {
             ref var health = ref world.Get<Health>(entity);
@@ -319,6 +324,7 @@ internal sealed class ServerState : GameState
             var input = world.Get<ShipInputComponent>(entity);
             state.Shooting = input.Shoot;
             state.AccelerationDirection = input.AccelerationDirection;
+            state.RotationSpeed = input.RotationSpeed;
         }
 
         return state;

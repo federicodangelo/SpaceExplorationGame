@@ -234,6 +234,7 @@ public static class NetSerializer
         w.Write(s.Shooting);
         w.Write(s.AccelerationDirection.X);
         w.Write(s.AccelerationDirection.Y);
+        w.Write(s.RotationSpeed);
         w.Write(s.ShipTypeId ?? string.Empty);
     }
 
@@ -250,6 +251,7 @@ public static class NetSerializer
             MaxShield = r.ReadSingle(),
             Shooting = r.ReadBoolean(),
             AccelerationDirection = new Vector2(r.ReadSingle(), r.ReadSingle()),
+            RotationSpeed = r.ReadSingle(),
             ShipTypeId = r.ReadString() is { Length: > 0 } sid ? sid : null,
         };
     }

@@ -110,6 +110,7 @@ public sealed class NetworkManager : IDisposable
             var input = ecsWorld.Get<ShipInputComponent>(playerEntity);
             state.Shooting = input.Shoot;
             state.AccelerationDirection = input.AccelerationDirection;
+            state.RotationSpeed = input.RotationSpeed;
         }
 
         _client.Send(NetSerializer.Write(new PlayerStateMessage { State = state }));

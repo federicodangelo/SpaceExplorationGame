@@ -26,6 +26,8 @@ public struct NetPlayerState
     public bool Shooting;
     /// <summary>Ship input acceleration direction (for thruster visuals).</summary>
     public Vector2 AccelerationDirection;
+    /// <summary>Ship input rotation speed (for thruster visuals).</summary>
+    public float RotationSpeed;
     /// <summary>Ship type identifier (e.g. "scout", "fighter"). Null means unknown/default.</summary>
     public string? ShipTypeId;
 }

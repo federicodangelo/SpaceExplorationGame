@@ -604,6 +604,11 @@ public class SolarSystemSimulation : CombatSimulationBase
             ref var velocity = ref EcsWorld.Get<Velocity>(entity);
             velocity.Linear = remote.LastState.Velocity;
 
+            ref var shipInput = ref EcsWorld.Get<ShipInputComponent>(entity);
+            shipInput.Shoot = remote.LastState.Shooting;
+            shipInput.AccelerationDirection = remote.LastState.AccelerationDirection;
+            shipInput.RotationSpeed = remote.LastState.RotationSpeed;
+
             if (EcsWorld.Has<Health>(entity))
             {
                 ref var health = ref EcsWorld.Get<Health>(entity);

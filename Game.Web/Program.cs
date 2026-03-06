@@ -6,7 +6,6 @@ using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using Engine.Platform.Web;
 using SpaceExplorationGame.Core.Config;
-using Engine.Network;
 
 namespace SpaceExplorationGame;
 
@@ -55,8 +54,6 @@ public partial class WebMain
 
             if (connectUrl != null)
             {
-                var net = new NetworkManager();
-                _game.Network = net;
                 string playerName = playerNameParam ?? _game.MenuOptions.GetPlayerName();
                 Console.WriteLine($"[SEG-CS] Connecting to {connectUrl} as '{playerName}'...");
                 _game.ChangeState(new MultiplayerConnectState(connectUrl, playerName));
