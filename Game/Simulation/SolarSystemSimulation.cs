@@ -593,53 +593,37 @@ public class SolarSystemSimulation : CombatSimulationBase
         return state;
     }
 
-    public override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state)
+    protected override void ApplyCombatNetPlayerState(SimulationPlayer player, NetPlayerState netState)
     {
         var world = EcsWorld;
         var entity = player.Entity;
 
-        if (!world.IsAlive(entity))
-        {
-            return;
-        }
-
-        if (!state.Alive)
-        {
-            ref var healthDeadRef = ref world.TryGetRef<Health>(entity, out var healthDeadFound);
-            if (healthDeadFound)
-            {
-                healthDeadRef.Hull = 0;
-                healthDeadRef.Shield = 0;
-            }
-            return;
-        }
-
         ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
         if (transformFound)
         {
-            transformRef.Position = state.Position;
-            transformRef.Rotation = state.Rotation;
+            transformRef.Position = netState.Position;
+            transformRef.Rotation = netState.Rotation;
         }
 
         ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);
         if (velocityFound)
         {
-            velocityRef.Linear = state.Velocity;
+            velocityRef.Linear = netState.Velocity;
         }
 
         ref var healthRef = ref world.TryGetRef<Health>(entity, out var healthFound);
         if (healthFound)
         {
-            healthRef.Hull = state.Hull;
-            healthRef.Shield = state.Shield;
+            healthRef.Hull = netState.Hull;
+            healthRef.Shield = netState.Shield;
         }
 
         ref var inputRef = ref world.TryGetRef<ShipInputComponent>(entity, out var inputFound);
         if (inputFound)
         {
-            inputRef.Shoot = state.Shooting;
-            inputRef.RotationSpeed = state.RotationSpeed;
-            inputRef.AccelerationDirection = state.AccelerationDirection;
+            inputRef.Shoot = netState.Shooting;
+            inputRef.RotationSpeed = netState.RotationSpeed;
+            inputRef.AccelerationDirection = netState.AccelerationDirection;
         }
     }
 }

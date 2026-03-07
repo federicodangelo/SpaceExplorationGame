@@ -1,4 +1,5 @@
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
@@ -139,8 +140,12 @@ public abstract class CombatSimulationBase : SimulationBase
             else if (destroyed.Faction == Faction.Player)
             {
                 var deadPlayer = FindPlayerByEntity(destroyed.Entity);
-                if (deadPlayer != null)
-                    HandlePlayerDeathCore(deadPlayer);
+                // Only handle local player death here, remote player deaths are handled by their own clients
+                // and synchronized via ApplyNetPlayerState()
+                if (deadPlayer != null && deadPlayer.Type == PlayerType.Local)
+                {
+                    HandlePlayerDeath(deadPlayer);
+                }
             }
             else
             {
@@ -166,7 +171,8 @@ public abstract class CombatSimulationBase : SimulationBase
             if (state.Dead)
             {
                 state.RespawnTimer -= dt;
-                if (state.RespawnTimer <= 0)
+                // Auto-respawn when timer expires (only for local player, remote players are respawned by their own clients and synchronized via ApplyNetPlayerState())
+                if (state.RespawnTimer <= 0 && player.Type == PlayerType.Local)
                     HandlePlayerRespawn(player);
             }
         }
@@ -206,7 +212,7 @@ public abstract class CombatSimulationBase : SimulationBase
     /// <summary>
     /// Shared death handling: sets dead state, destroys entity, applies penalties via virtual hook.
     /// </summary>
-    protected void HandlePlayerDeathCore(SimulationPlayer player)
+    protected void HandlePlayerDeath(SimulationPlayer player)
     {
         if (!_combatStates.TryGetValue(player, out var state)) return;
         state.Dead = true;
@@ -272,4 +278,49 @@ public abstract class CombatSimulationBase : SimulationBase
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);
     }
+
+    public sealed override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState netState)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+        var solarState = GetCombatState(player);
+
+        if (solarState.Dead && !netState.Alive)
+        {
+            // Dead locally, dead on remote, nothing to do
+            return;
+        }
+
+        if (!netState.Alive)
+        {
+            // Alive locally, dead on remote, mark as dead and trigger death handling
+            ref var healthRef = ref world.TryGetRef<Health>(entity, out var healthFound);
+            if (healthFound)
+            {
+                healthRef.Hull = 0;
+                healthRef.Shield = 0;
+            }
+            HandlePlayerDeath(player);
+            return;
+        }
+
+        if (solarState.Dead && netState.Alive)
+        {
+            // Dead locally but alive on remote, trigger respawn
+            HandlePlayerRespawn(player);
+            // Update reference to new entity after respawn
+            entity = player.Entity;
+        }
+
+        if (!world.IsAlive(entity))
+        {
+            // This should not happen
+            Console.WriteLine($"Warning: Entity for remote player {player.RemotePlayerId} is not alive during ApplyNetPlayerState.");
+            return;
+        }
+
+        ApplyCombatNetPlayerState(player, netState);
+    }
+
+    protected abstract void ApplyCombatNetPlayerState(SimulationPlayer player, NetPlayerState netState);
 }

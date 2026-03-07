@@ -13,6 +13,9 @@ if errorlevel 1 (
 	exit /b 1
 )
 
+echo Compiling server and client...
+dotnet build --no-restore
+
 echo Starting server...
 start "SpaceExplorationGame Server" cmd /c call "%SCRIPT_DIR%run-server.bat"
 

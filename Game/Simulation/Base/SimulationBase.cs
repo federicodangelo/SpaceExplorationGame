@@ -164,12 +164,9 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
         {
             if (player.Type != PlayerType.Remote) continue;
             byte id = player.RemotePlayerId;
-            Entity entity = player.Entity;
 
             if (!net.RemotePlayers.TryGetValue(id, out var remote) || remote.Location != location)
             {
-                if (EcsWorld.IsAlive(entity))
-                    EcsWorld.Destroy(entity);
                 (toRemove ??= []).Add(player);
             }
         }
