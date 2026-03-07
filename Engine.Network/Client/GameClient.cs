@@ -68,6 +68,10 @@ public sealed class GameClient : IDisposable
         _receiveTask?.Wait(TimeSpan.FromSeconds(1));
         _ws?.Dispose();
         _cts?.Dispose();
+
+        _cts = null;
+        _ws = null;
+        _receiveTask = null;
     }
 
     private async Task ReceiveLoop(CancellationToken ct)

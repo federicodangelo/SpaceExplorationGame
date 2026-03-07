@@ -35,8 +35,9 @@ public sealed class MultiplayerConnectState : GameState
         game.Audio.SetMusicTheme(AudioThemes.MainMenu);
         game.Player.ClearReturnContext();
 
+        // Don't assign the network to Game.Network yet; we have to wait for the welcome message to get the starting location and galaxy seed.
         _net = new ClientNetworkManager();
-        game.Network = _net;
+
         _statusMessage = "CONNECTING...";
         _failed = false;
         _elapsed = 0f;
@@ -65,7 +66,6 @@ public sealed class MultiplayerConnectState : GameState
         // Allow cancelling with Escape / Back
         if (game.Input.IsActionPressed(InputAction.MenuBack) || game.Input.IsActionPressed(InputAction.MenuConfirm) && _failed)
         {
-            game.Network = null;
             _net?.Dispose();
             game.ChangeState(new MainMenuState());
         }
@@ -84,7 +84,6 @@ public sealed class MultiplayerConnectState : GameState
             _statusMessage = $"FAILED: {msg}";
             Console.Error.WriteLine($"[Net] Connect failed: {msg}");
             _failed = true;
-            game.Network = null;
             _net?.Dispose();
             return;
         }
@@ -104,7 +103,6 @@ public sealed class MultiplayerConnectState : GameState
             _statusMessage = "FAILED: SERVER DID NOT RESPOND";
             Console.Error.WriteLine("[Net] Connect timeout — no welcome message received.");
             _failed = true;
-            game.Network = null;
             _net?.Dispose();
         }
     }
@@ -117,9 +115,11 @@ public sealed class MultiplayerConnectState : GameState
 
         Console.WriteLine($"[Net] Joined as player {net.LocalPlayerId}, {location}");
 
+        // Assign the network manager to the game AFTER we print the welcome message
+        game.Network = net;
+
         // Regenerate galaxy with the server's seed so both sides use identical data
         game.RegenerateGalaxy(net.ServerGalaxySeed);
-
         game.Audio.PlaySfx(AudioSfx.MenuSelect);
 
         var solarSystemData = game.GalaxyData[location.SolarSystemIndex];
