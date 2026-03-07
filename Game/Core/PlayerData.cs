@@ -22,7 +22,8 @@ public enum PlayerType
 public class PlayerData
 {
     /// <summary>Whether this is the local or a remote player.</summary>
-    public PlayerType Type { get; set; } = PlayerType.Local;
+    public PlayerType Type { get; init; } = PlayerType.Local;
+    public byte RemotePlayerId { get; init; } = 255; // assigned by server for remote players, 255 means unassigned
 
     /// <summary>Mission tracking (accept, abandon, turn-in, objective notifications).</summary>
     public MissionTracker Missions { get; } = new();
@@ -60,7 +61,6 @@ public class PlayerData
 
         // Location
         CurrentStarSystemIndex = -1;
-        CurrentPlanetIndex = -1;
         SolarSystemReturnContext = ReturnContext.Default;
         ReturnSpaceStationIndex = -1;
         ReturnPlanetIndex = -1;
@@ -96,7 +96,7 @@ public class PlayerData
     /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>
     public void RecalculateShipStats()
     {
-        var stats = GetCombinedStats();
+        var stats = GetCombinedShipStats();
 
         // Hull = ship base hull + part bonuses
         ShipMaxHealth = CurrentShipType.BaseHull + stats.MaxHull;
@@ -109,7 +109,7 @@ public class PlayerData
     }
 
     /// <summary>Sum up stats from all equipped parts. Acceleration/MaxSpeed are reduced by ship weight.</summary>
-    public ShipPartStats GetCombinedStats()
+    public ShipPartStats GetCombinedShipStats()
     {
         return ShipStatsHelper.GetCombinedStats(CurrentShipType, EquippedParts.Values);
     }
@@ -118,7 +118,7 @@ public class PlayerData
     public bool TrySpendFuel(float amount)
     {
         // Apply fuel efficiency from parts
-        float efficiency = 1f - GetCombinedStats().FuelEfficiency;
+        float efficiency = 1f - GetCombinedShipStats().FuelEfficiency;
         float actual = amount * Math.Max(0.1f, efficiency);
         if (ShipFuel < actual) return false;
         ShipFuel -= actual;
@@ -177,7 +177,6 @@ public class PlayerData
 
     // Current location
     public int CurrentStarSystemIndex { get; set; } = -1;
-    public int CurrentPlanetIndex { get; set; } = -1;
 
     // Return context: where to place the player when re-entering the solar system
     public enum ReturnContext { Default, FromSpaceStation, FromPlanet, FromMoon }
@@ -220,6 +219,15 @@ public class PlayerData
         HasSavedSurfacePositions = false;
     }
 
+    public void ClearReturnContext()
+    {
+        SolarSystemReturnContext = ReturnContext.Default;
+        ReturnSpaceStationIndex = -1;
+        ReturnPlanetIndex = -1;
+        ReturnMoonPlanetIndex = -1;
+        ReturnMoonIndex = -1;
+    }
+
     // Credits
     public int Credits { get; set; } = 10000;
 
@@ -238,7 +246,7 @@ public class PlayerData
     }
 
     /// <summary>Max cargo capacity = ship base + part bonuses.</summary>
-    public int MaxCargo => (int)(CurrentShipType.BaseCargo + GetCombinedStats().CargoCapacity);
+    public int MaxCargo => (int)(CurrentShipType.BaseCargo + GetCombinedShipStats().CargoCapacity);
 
     /// <summary>Remaining cargo space.</summary>
     public int CargoFree => MaxCargo - CargoUsed;

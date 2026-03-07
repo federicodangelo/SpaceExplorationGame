@@ -24,7 +24,7 @@ public class ProceduralUniverseGenerator : IUniverseGenerator
 
     public virtual PlanetSurfaceData GeneratePlanetSurface(StarSystemData starSystem, PlanetData planet)
     {
-        var rng = Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index);
+        var rng = Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index + planet.MoonIndex >= 0 ? planet.MoonIndex * 1000 : 0);
         return PlanetSurfaceGenerator.Generate(rng, planet, starSystem.DangerLevel);
     }
 

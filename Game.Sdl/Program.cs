@@ -5,6 +5,7 @@ using Engine.Platform.Sdl;
 using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Core.Config;
+using Engine.Network.Client;
 
 namespace SpaceExplorationGame;
 
@@ -164,34 +165,12 @@ internal static class Program
         if (connectUrl != null)
         {
             // Multiplayer: connect to dedicated server
-            var net = new NetworkManager();
+            var net = new ClientNetworkManager();
             game.Network = net;
 
             string playerName = playerNameArg ?? game.MenuOptions.GetPlayerName();
             Console.WriteLine($"Connecting to {connectUrl} as '{playerName}'...");
-            net.ConnectAsync(connectUrl, playerName, -1).GetAwaiter().GetResult();
-            Console.WriteLine("Connected. Waiting for welcome...");
-
-            // Poll until the server sends the welcome message (timeout after 5s)
-            var deadline = DateTime.UtcNow.AddSeconds(5);
-            while (!net.IsJoined && net.IsConnected && DateTime.UtcNow < deadline)
-            {
-                net.ProcessMessages();
-                Thread.Sleep(10);
-            }
-
-            if (!net.IsJoined)
-                throw new InvalidOperationException("Failed to join server — no welcome received.");
-
-            Console.WriteLine($"Joined as player {net.LocalPlayerId}, system index {net.ServerStarSystemIndex}");
-
-            // Regenerate galaxy with the server's seed so both sides have identical data
-            game.RegenerateGalaxy(net.ServerGalaxySeed);
-
-            // Jump directly into the server's solar system
-            var starSystem = game.GalaxyData[net.ServerStarSystemIndex];
-            game.Player.CurrentStarSystemIndex = starSystem.Index;
-            game.ChangeState(new SolarSystemState(starSystem));
+            game.ChangeState(new MultiplayerConnectState(connectUrl, playerName));
         }
         else
         {

@@ -1,3 +1,5 @@
+using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
@@ -43,7 +45,7 @@ public class Game : GameBase
     public AutoplayBot AutoplayBot { get; } = new();
 
     // Network (null when playing offline)
-    public NetworkManager? Network { get; set; }
+    public ClientNetworkManager? Network { get; set; }
 
     // Menu options persistence
     public MenuOptionsPersistence MenuOptions { get; private set; } = null!;
@@ -223,8 +225,8 @@ public class Game : GameBase
         // ── Network: sync remote entities + send local state──
         if (Network is { IsJoined: true } net)
         {
-            Coordinator.SyncRemotePlayers(net);
-            Coordinator.SendPlayerStateToServer(net);
+            SyncRemotePlayersInSimulations(net, Coordinator.Simulations);
+            SendLocalPlayerStateToServer(net, Coordinator.Simulations);
         }
 
         // Process input once per frame
@@ -286,6 +288,35 @@ public class Game : GameBase
         }
 
         SpriteRenderer.EndFrame();
+    }
+
+
+    private void SyncRemotePlayersInSimulations(ClientNetworkManager net, IEnumerable<ISimulation> simulations)
+    {
+        foreach (var entry in simulations)
+            entry.SyncRemotePlayers(net);
+    }
+
+    private NetPlayerLocation lastSentLocalPlayerLocation = NetPlayerLocation.ForUnknown();
+
+    private void SendLocalPlayerStateToServer(ClientNetworkManager net, IEnumerable<ISimulation> simulations)
+    {
+        var localPlayers = simulations.Select(s => s.GetLocalPlayer()).Where(p => p != null).ToList();
+        if (localPlayers.Count > 1)
+        {
+            Console.WriteLine("[Net] Warning: multiple local players found in simulations, sending state for the first one only");
+        }
+        var localPlayer = localPlayers.FirstOrDefault();
+        if (localPlayer == null) return;
+        var simulation = localPlayer.Simulation;
+        var location = simulation.GetNetPlayerLocation();
+        if (location != lastSentLocalPlayerLocation)
+        {
+            net.SendLocationChanged(location);
+            lastSentLocalPlayerLocation = location;
+        }
+        var state = localPlayer.Simulation.GetNetPlayerState(localPlayer);
+        net.SendLocalState(state);
     }
 
     public override void Dispose()

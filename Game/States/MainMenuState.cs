@@ -76,6 +76,13 @@ public class MainMenuState : GameState
 
     public override void Enter(Game game)
     {
+        if (game.Network != null)
+        {
+            // Clean up any existing network manager (e.g. after leaving a multiplayer session)
+            game.Network.Dispose();
+            game.Network = null;
+        }
+
         _menuOverlay = new MainMenuOverlay(game.MenuOptions, game.Platform.CanQuit);
         _debugOverlay = new DebugMenuOverlay(game.MenuOptions);
 

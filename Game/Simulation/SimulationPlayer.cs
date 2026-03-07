@@ -13,14 +13,19 @@ public class SimulationPlayer
     /// <summary>Persistent player data (credits, inventory, stats, etc.).</summary>
     public PlayerData Data { get; }
 
+    public ISimulation Simulation { get; }
+
     /// <summary>Shorthand for <see cref="Data"/>.<see cref="PlayerData.Type"/>.</summary>
     public PlayerType Type => Data.Type;
+
+    public byte RemotePlayerId => Data.RemotePlayerId;
 
     /// <summary>The player's primary entity in this simulation (ship, avatar, etc.).</summary>
     public Entity Entity { get; set; }
 
-    public SimulationPlayer(PlayerData data)
+    public SimulationPlayer(PlayerData data, ISimulation simulation)
     {
         Data = data;
+        Simulation = simulation;
     }
 }

@@ -8,6 +8,8 @@ namespace Engine.Network;
 /// </summary>
 public struct NetPlayerState
 {
+    /// <summary>Whether the player is alive (i.e. has a valid entity in the world). If false, the rest of the fields may be ignored.</summary>
+    public bool Alive;
     /// <summary>World position.</summary>
     public Vector2 Position;
     /// <summary>Rotation in degrees.</summary>
@@ -16,20 +18,111 @@ public struct NetPlayerState
     public Vector2 Velocity;
     /// <summary>Current hull HP.</summary>
     public float Hull;
-    /// <summary>Max hull HP.</summary>
-    public float MaxHull;
     /// <summary>Current shield HP.</summary>
     public float Shield;
-    /// <summary>Max shield HP.</summary>
-    public float MaxShield;
-    /// <summary>Whether the fire button is held (for visual thruster/weapon effects).</summary>
+    /// <summary>Whether the player is currently shooting their weapon.</summary>
     public bool Shooting;
-    /// <summary>Ship input acceleration direction (for thruster visuals).</summary>
+    /// <summary>Aim direction.</summary>
+    public Vector2 AimDirection;
+    /// <summary>Acceleration direction.</summary>
     public Vector2 AccelerationDirection;
-    /// <summary>Ship input rotation speed (for thruster visuals).</summary>
+    /// <summary>Rotation speed.</summary>
     public float RotationSpeed;
+}
+
+/// <summary>
+/// Additional player info that doesn't change every tick, sent by the client on join and relayed by the server.
+/// </summary>
+public struct NetPlayerInfo
+{
     /// <summary>Ship type identifier (e.g. "scout", "fighter"). Null means unknown/default.</summary>
-    public string? ShipTypeId;
+    public string ShipTypeId;
+    public int MaxHull;
+    public int MaxShield;
+}
+
+/// <summary>
+/// Player location info, sent by the server on join and whenever the player changes location.
+/// </summary>
+public record struct NetPlayerLocation
+{
+    /// <summary>Solar system index the player is currently in (players are always in a star system).</summary>
+    public int SolarSystemIndex;
+    public int SpaceStationIndex; // -1 if not docked
+    public int PlanetIndex; // -1 if not landed
+    public int MoonIndex; // -1 if not landed on a moon
+    public int SettlementIndex; // -1 if not landed on a settlement
+
+    public override string ToString()
+    {
+        if (SpaceStationIndex >= 0)
+            return $"space station {SpaceStationIndex} in star system {SolarSystemIndex}";
+        else if (PlanetIndex >= 0)
+        {
+            if (MoonIndex >= 0)
+                return $"moon {MoonIndex} of planet {PlanetIndex} in star system {SolarSystemIndex}";
+            else if (SettlementIndex >= 0)
+                return $"settlement {SettlementIndex} on planet {PlanetIndex} in star system {SolarSystemIndex}";
+            else
+                return $"planet {PlanetIndex} in star system {SolarSystemIndex}";
+        }
+        else
+            return $"star system {SolarSystemIndex}";
+    }
+
+    static public NetPlayerLocation ForSolarSystem(int solarSystemIndex) => new NetPlayerLocation
+    {
+        SolarSystemIndex = solarSystemIndex,
+        SpaceStationIndex = -1,
+        PlanetIndex = -1,
+        MoonIndex = -1,
+        SettlementIndex = -1
+    };
+
+    static public NetPlayerLocation ForSpaceStation(int solarSystemIndex, int spaceStationIndex) => new NetPlayerLocation
+    {
+        SolarSystemIndex = solarSystemIndex,
+        SpaceStationIndex = spaceStationIndex,
+        PlanetIndex = -1,
+        MoonIndex = -1,
+        SettlementIndex = -1
+    };
+
+    static public NetPlayerLocation ForPlanet(int solarSystemIndex, int planetIndex) => new NetPlayerLocation
+    {
+        SolarSystemIndex = solarSystemIndex,
+        SpaceStationIndex = -1,
+        PlanetIndex = planetIndex,
+        MoonIndex = -1,
+        SettlementIndex = -1
+    };
+
+    static public NetPlayerLocation ForMoon(int solarSystemIndex, int planetIndex, int moonIndex) => new NetPlayerLocation
+    {
+        SolarSystemIndex = solarSystemIndex,
+        SpaceStationIndex = -1,
+        PlanetIndex = planetIndex,
+        MoonIndex = moonIndex,
+        SettlementIndex = -1
+    };
+
+    static public NetPlayerLocation ForPlanetSettlement(int solarSystemIndex, int planetIndex, int settlementIndex) => new NetPlayerLocation
+    {
+        SolarSystemIndex = solarSystemIndex,
+        SpaceStationIndex = -1,
+        PlanetIndex = planetIndex,
+        MoonIndex = -1,
+        SettlementIndex = settlementIndex
+    };
+
+    static public NetPlayerLocation ForUnknown() => new NetPlayerLocation
+    {
+        SolarSystemIndex = -1,
+        SpaceStationIndex = -1,
+        PlanetIndex = -1,
+        MoonIndex = -1,
+        SettlementIndex = -1
+    };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -37,28 +130,29 @@ public struct NetPlayerState
 // ────────────────────────────────────────────────────────────────
 
 /// <summary>Client requests to join. Sent once on connection.</summary>
-public struct JoinMessage
+public struct C_JoinMessage
 {
-    /// <summary>Display name for this player.</summary>
     public string PlayerName;
-    /// <summary>Star system index the player wants to join (-1 = server decides).</summary>
-    public int StarSystemIndex;
+    public NetPlayerInfo PlayerInfo;
+    public NetPlayerLocation PlayerLocation;
 }
 
 /// <summary>Client sends its own player state each tick.</summary>
-public struct PlayerStateMessage
+public struct C_PlayerStateMessage
 {
     public NetPlayerState State;
 }
 
 /// <summary>Client is disconnecting gracefully.</summary>
-public struct DisconnectMessage { }
+public struct C_DisconnectMessage
+{
+
+}
 
 /// <summary>Client notifies the server of a location change (e.g. star system jump).</summary>
-public struct LocationChangedMessage
+public struct C_LocationChangedMessage
 {
-    /// <summary>New star system index.</summary>
-    public int StarSystemIndex;
+    public NetPlayerLocation NewLocation;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -66,48 +160,51 @@ public struct LocationChangedMessage
 // ────────────────────────────────────────────────────────────────
 
 /// <summary>Server acknowledges a join request.</summary>
-public struct WelcomeMessage
+public struct S_WelcomeMessage
 {
     /// <summary>Unique player ID assigned by the server (0-based).</summary>
     public byte PlayerId;
     /// <summary>Galaxy seed for this server session.</summary>
     public ulong GalaxySeed;
-    /// <summary>Star system index the server is currently running.</summary>
-    public int StarSystemIndex;
     /// <summary>Server's current global simulation time.</summary>
     public double GlobalTime;
     /// <summary>Number of players already connected (including this one).</summary>
     public byte PlayerCount;
+    /// <summary>Starting player location.</summary>
+    public NetPlayerLocation PlayerLocation;
+    // <summary>Starting player position in the map.</summary>
+    public Vector2 PlayerCoordinates;
 }
 
 /// <summary>Notification that a new player has joined.</summary>
-public struct PlayerJoinedMessage
+public struct S_PlayerJoinedMessage
 {
     public byte PlayerId;
-    public string PlayerName;
-    /// <summary>Star system the player is in.</summary>
-    public int StarSystemIndex;
-    public NetPlayerState InitialState;
+    public string Name;
+    public NetPlayerLocation Location;
+    public NetPlayerInfo Info;
+    public NetPlayerState State;
 }
 
 /// <summary>Notification that a player has left.</summary>
-public struct PlayerLeftMessage
+public struct S_PlayerLeftMessage
 {
     public byte PlayerId;
 }
 
 /// <summary>Notification that a player changed star system.</summary>
-public struct PlayerLocationChangedMessage
+public struct S_PlayerLocationChangedMessage
 {
     public byte PlayerId;
-    public int StarSystemIndex;
+    public NetPlayerLocation Location;
+    public Vector2 Coordinates;
 }
 
 /// <summary>
 /// Per-tick broadcast of all player states. Each client uses this to update remote players.
 /// The sender's own state is included (the client can ignore it or use it for reconciliation).
 /// </summary>
-public struct WorldStateMessage
+public struct S_WorldStateMessage
 {
     /// <summary>Number of player entries.</summary>
     public byte PlayerCount;

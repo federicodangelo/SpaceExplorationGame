@@ -1,4 +1,4 @@
-using SpaceExplorationGame.Core;
+using Engine.Network.Client;
 
 namespace SpaceExplorationGame.Simulation;
 
@@ -23,18 +23,14 @@ public class SimulationCoordinator
     }
 
     private readonly List<ActiveSimulation> _simulations = [];
-    private List<ISimulation>? _cachedSimulations;
 
     /// <summary>All currently active simulations (read-only view).</summary>
-    public IReadOnlyList<ISimulation> Simulations => _cachedSimulations ??= _simulations.ConvertAll(s => s.Simulation);
-
-    private void InvalidateCache() => _cachedSimulations = null;
+    public IEnumerable<ISimulation> Simulations => _simulations.Select(s => s.Simulation);
 
     /// <summary>Register a simulation that has already been created.</summary>
     public void Register(ISimulation simulation)
     {
         _simulations.Add(new ActiveSimulation(simulation));
-        InvalidateCache();
     }
 
     /// <summary>Unregister and destroy a specific simulation immediately.</summary>
@@ -46,7 +42,6 @@ public class SimulationCoordinator
             {
                 _simulations[i].Simulation.Destroy();
                 _simulations.RemoveAt(i);
-                InvalidateCache();
                 return;
             }
         }
@@ -82,7 +77,6 @@ public class SimulationCoordinator
                 {
                     entry.Simulation.Destroy();
                     _simulations.RemoveAt(i);
-                    InvalidateCache();
                 }
             }
         }
@@ -121,7 +115,7 @@ public class SimulationCoordinator
         if (existing != null)
             return existing;
 
-        var simulation = builder();
+        var simulation = (T)builder();
         simulation.Create();
         Register(simulation);
         return simulation;
@@ -133,7 +127,6 @@ public class SimulationCoordinator
         foreach (var entry in _simulations)
             entry.Simulation.Destroy();
         _simulations.Clear();
-        InvalidateCache();
     }
 
     /// <summary>
@@ -150,15 +143,22 @@ public class SimulationCoordinator
         return null;
     }
 
-    public void SyncRemotePlayers(NetworkManager net)
+    public void SyncRemotePlayers(ClientNetworkManager net)
     {
         foreach (var entry in _simulations)
             entry.Simulation.SyncRemotePlayers(net);
     }
 
-    public void SendPlayerStateToServer(NetworkManager net)
+    public void SendLocalPlayerStateToServer(ClientNetworkManager net)
     {
-        foreach (var entry in _simulations)
-            entry.Simulation.SendPlayerStateToServer(net);
+        var localPlayers = _simulations.Select(s => s.Simulation.GetLocalPlayer()).Where(p => p != null).ToList();
+        if (localPlayers.Count > 1)
+        {
+            Console.WriteLine("[Net] Warning: multiple local players found in simulations, sending state for the first one only");
+        }
+        var localPlayer = localPlayers.FirstOrDefault();
+        if (localPlayer == null) return;
+        var state = localPlayer.Simulation.GetNetPlayerState(localPlayer);
+        net.SendLocalState(state);
     }
 }

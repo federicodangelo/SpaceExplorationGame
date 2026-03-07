@@ -1,5 +1,6 @@
 using Arch.Core;
 using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -37,7 +38,7 @@ public static class HudRenderer
         string locationLine = $"{starSystem.Name}  |  CLASS {starSystem.StarClass} STAR  |  {dangerStr}  |  SPD {speed:F0}";
         string infoLine = FormatPlayerInfo(player);
         var tracked = player.Missions.GetTracked();
-        var stats = player.GetCombinedStats();
+        var stats = player.GetCombinedShipStats();
         bool hasShield = stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip);
 
         // Measure panel width
@@ -515,9 +516,9 @@ public static class HudRenderer
     /// </summary>
     public static void RenderPlayerListHud(
         ISpriteRenderer renderer,
-        NetworkManager net,
+        ClientNetworkManager net,
         string localPlayerName,
-        int currentSystemIndex)
+        NetPlayerLocation localPlayerLocation)
     {
         // Collect players in this system
         var inSystem = new List<(string Name, float Hull, float MaxHull, bool IsLocal)>();
@@ -527,11 +528,8 @@ public static class HudRenderer
 
         foreach (var remote in net.RemotePlayers.Values)
         {
-            if (remote.StarSystemIndex != currentSystemIndex) continue;
-            float hull = remote.LastState.MaxHull > 0
-                ? remote.LastState.Hull / remote.LastState.MaxHull
-                : 1f;
-            inSystem.Add((remote.Name, remote.LastState.Hull, remote.LastState.MaxHull, false));
+            if (remote.Location != localPlayerLocation) continue;
+            inSystem.Add((remote.Name, remote.State.Hull, remote.Info.MaxHull, false));
         }
 
         if (inSystem.Count <= 1) return; // Only show when there are other players

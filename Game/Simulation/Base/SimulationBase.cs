@@ -1,4 +1,7 @@
+using System.Numerics;
 using Arch.Core;
+using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.Simulation.Base;
@@ -51,7 +54,7 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     /// </summary>
     public SimulationPlayer AddPlayer(PlayerData player, AddContext ctx = default)
     {
-        var simPlayer = new SimulationPlayer(player);
+        var simPlayer = new SimulationPlayer(player, this);
         _players.Add(simPlayer);
         if (player.Type == PlayerType.Local)
             LocalPlayer = simPlayer;
@@ -144,11 +147,64 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     /// <inheritdoc />
     public virtual IReadOnlyList<string>? GetDebugInfo() => _debugInfo.Entries;
 
-    public virtual void SyncRemotePlayers(NetworkManager net)
+    public abstract Vector2 GetDefaultSpawnCoordinates();
+
+    public abstract NetPlayerState GetNetPlayerState(SimulationPlayer player);
+
+    public abstract void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state);
+
+    public abstract NetPlayerLocation GetNetPlayerLocation();
+
+    public void SyncRemotePlayers(ClientNetworkManager net)
     {
+        var location = GetNetPlayerLocation();
+        // Remove entities for players who left or changed system
+        List<SimulationPlayer>? toRemove = null;
+        foreach (var player in _players)
+        {
+            if (player.Type != PlayerType.Remote) continue;
+            byte id = player.RemotePlayerId;
+            Entity entity = player.Entity;
+
+            if (!net.RemotePlayers.TryGetValue(id, out var remote) || remote.Location != location)
+            {
+                if (EcsWorld.IsAlive(entity))
+                    EcsWorld.Destroy(entity);
+                (toRemove ??= []).Add(player);
+            }
+        }
+        if (toRemove != null)
+            foreach (var player in toRemove)
+                RemovePlayer(player);
+
+        // Create or update entities for remote players in this system
+        foreach (var remote in net.RemotePlayers.Values)
+        {
+            if (remote.Location != location) continue;
+            if (!remote.HasReceivedState) continue;
+
+            var player = _players.FirstOrDefault(p => p.Type == PlayerType.Remote && p.RemotePlayerId == remote.PlayerId);
+
+            if (player == null)
+            {
+                var shipType = ShipTypeCatalog.GetById(remote.Info.ShipTypeId) ?? ShipTypeCatalog.StarterShip;
+                var newPlayerData = new PlayerData
+                {
+                    Type = PlayerType.Remote,
+                    RemotePlayerId = remote.PlayerId,
+                };
+                if (shipType != newPlayerData.CurrentShipType)
+                    newPlayerData.SwitchShipType(shipType);
+
+                player = AddPlayer(newPlayerData);
+            }
+
+            ApplyNetPlayerState(player, remote.State);
+        }
     }
 
-    public virtual void SendPlayerStateToServer(NetworkManager net)
+    public SimulationPlayer? GetLocalPlayer()
     {
+        return LocalPlayer;
     }
 }

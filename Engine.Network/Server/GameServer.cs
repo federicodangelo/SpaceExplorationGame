@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.WebSockets;
 
-namespace Engine.Network;
+namespace Engine.Network.Server;
 
 /// <summary>
 /// Event types queued by background receive threads and dispatched on the main thread.
@@ -17,9 +17,10 @@ public readonly struct ServerEvent
 {
     public ServerEventType Type { get; init; }
     public byte PlayerId { get; init; }
-    public JoinMessage Join { get; init; }
-    public PlayerStateMessage PlayerState { get; init; }
-    public LocationChangedMessage LocationChanged { get; init; }
+    public C_JoinMessage Join { get; init; }
+    public C_PlayerStateMessage PlayerState { get; init; }
+    public C_DisconnectMessage Disconnect { get; init; }
+    public C_LocationChangedMessage LocationChanged { get; init; }
 }
 
 /// <summary>
@@ -138,6 +139,18 @@ public sealed class GameServer : IDisposable
         }
     }
 
+    private byte GetNextPlayerId()
+    {
+        byte next = _nextPlayerId++;
+        // Wrap around, but skip IDs that are currently in use
+        int attempts = 0;
+        while (_clients.ContainsKey(next) && attempts++ < 255)
+        {
+            next = _nextPlayerId++;
+        }
+        return next;
+    }
+
     private async Task HandleClient(WebSocket ws, CancellationToken ct)
     {
         byte playerId = 0;
@@ -159,7 +172,7 @@ public sealed class GameServer : IDisposable
             }
 
             var join = NetSerializer.ReadJoin(data);
-            playerId = _nextPlayerId++;
+            playerId = GetNextPlayerId();
             var client = new ConnectedClient(playerId, join.PlayerName, ws);
             _clients[playerId] = client;
             registered = true;
@@ -190,6 +203,7 @@ public sealed class GameServer : IDisposable
                             PlayerState = state,
                         });
                         break;
+
                     case MessageType.C_LocationChanged:
                         var locChanged = NetSerializer.ReadLocationChanged(msg);
                         _events.Enqueue(new ServerEvent
@@ -199,6 +213,18 @@ public sealed class GameServer : IDisposable
                             LocationChanged = locChanged,
                         });
                         break;
+
+                    case MessageType.C_Disconnect:
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.ClientLeft,
+                            PlayerId = playerId,
+                            Disconnect = new C_DisconnectMessage(),
+                        });
+                        return;
+
+                    default:
+                        throw new InvalidOperationException($"Unknown message type {type}");
                 }
             }
         }

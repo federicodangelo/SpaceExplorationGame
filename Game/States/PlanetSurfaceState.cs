@@ -34,7 +34,7 @@ public class PlanetSurfaceState : GameState
     private SimulationPlayer _simPlayer = null!;
 
     private readonly StarSystemData _starSystem;
-    private readonly PlanetData _planet;
+    private readonly PlanetData _planetOrMoon;
 
     // ── Camera ──────────────────────────────────────────────────────
     private readonly Camera _camera = new(WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
@@ -78,12 +78,12 @@ public class PlanetSurfaceState : GameState
     private bool AnyOverlayOpen =>
         _inGameMenuOverlay.IsOpen || _surfaceMapOverlay.IsOpen || _starshipMenuOverlay.IsOpen;
 
-    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planet, int landingTileX = -1, int landingTileY = -1,
+    public PlanetSurfaceState(StarSystemData starSystem, PlanetData planetOrMoon, int landingTileX = -1, int landingTileY = -1,
         PlanetSurfaceData? preGeneratedSurfaceData = null, float landingDelay = 1.2f,
         PlanetSurfaceStartMode startMode = PlanetSurfaceStartMode.InShip)
     {
         _starSystem = starSystem;
-        _planet = planet;
+        _planetOrMoon = planetOrMoon;
         _landingTileX = landingTileX;
         _landingTileY = landingTileY;
         _preGeneratedSurfaceData = preGeneratedSurfaceData;
@@ -103,15 +103,15 @@ public class PlanetSurfaceState : GameState
             Vector2? vehiclePos = _sim.LocalVehicleDeployed
                 ? _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity).Position
                 : null;
-            _surfaceMapOverlay.Open(g, _starSystem, _planet, _sim.SurfaceData,
+            _surfaceMapOverlay.Open(g, _starSystem, _planetOrMoon, _sim.SurfaceData,
                 shipPos, avatarPos, vehiclePos);
         };
 
         // Get or create the simulation
         var parentSim = game.Coordinator.Find<SolarSystemSimulation>(s => s.StarSystem.Index == _starSystem.Index);
         _sim = game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
-            s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planet.Index,
-            () => new PlanetSurfaceSimulation(game, _starSystem, _planet, _preGeneratedSurfaceData, parentSim));
+            s => s.StarSystem.Index == _starSystem.Index && s.Planet.Index == _planetOrMoon.Index && s.Planet.MoonIndex == _planetOrMoon.MoonIndex,
+            () => new PlanetSurfaceSimulation(game, _starSystem, _planetOrMoon, _preGeneratedSurfaceData, parentSim));
 
         // Generate background star field outside the planet disc (Poisson disk, fixed seed)
         {
@@ -226,7 +226,7 @@ public class PlanetSurfaceState : GameState
                         SaveSurfacePositions(game);
                         game.ChangeState(new InteriorState(
                             InteriorOrigin.Settlement, _starSystem,
-                            planet: _planet, settlement: _sim.NearSettlement));
+                            planet: _planetOrMoon, settlement: _sim.NearSettlement));
                     }
                     break;
                 case PlanetSurfaceAction.BoardShip:
@@ -277,7 +277,7 @@ public class PlanetSurfaceState : GameState
             Vector2? vehiclePos = _sim.LocalVehicleDeployed
                 ? _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity).Position
                 : null;
-            _surfaceMapOverlay.Open(game, _starSystem, _planet, _sim.SurfaceData,
+            _surfaceMapOverlay.Open(game, _starSystem, _planetOrMoon, _sim.SurfaceData,
                 shipPos, avatarPos, vehiclePos);
             return;
         }
@@ -444,7 +444,7 @@ public class PlanetSurfaceState : GameState
             SaveSurfacePositions(game);
             game.ChangeState(new InteriorState(
                 InteriorOrigin.Settlement, _starSystem,
-                planet: _planet, settlement: _sim.NearSettlement));
+                planet: _planetOrMoon, settlement: _sim.NearSettlement));
         }
     }
 
@@ -485,14 +485,9 @@ public class PlanetSurfaceState : GameState
                 int launchTileX = Math.Clamp((int)MathF.Round(launchShipTf.Position.X / WindowConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Width - 1));
                 int launchTileY = Math.Clamp((int)MathF.Round(launchShipTf.Position.Y / WindowConfig.TileSize), 0, Math.Max(0, _sim.SurfaceData.Height - 1));
 
-                bool isMoon = game.Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon;
-                int moonPlanetIndex = isMoon ? game.Player.ReturnMoonPlanetIndex : -1;
-                int moonIndex = isMoon ? game.Player.ReturnMoonIndex : -1;
-
                 game.ChangeState(new OrbitalSurfaceTransitionState(
-                    _starSystem, _planet, _sim.SurfaceData,
-                    launchTileX, launchTileY,
-                    isMoon, moonPlanetIndex, moonIndex));
+                    _starSystem, _planetOrMoon, _sim.SurfaceData,
+                    launchTileX, launchTileY));
                 break;
 
             case StarshipMenuOption.DisembarkOnFoot:
@@ -542,18 +537,18 @@ public class PlanetSurfaceState : GameState
 
         // Terrain
         PlanetSurfaceRenderer.RenderTerrain(renderer, camera, _sim.SurfaceData,
-            game.GlobalTime, _planet.Type);
+            game.GlobalTime, _planetOrMoon.Type);
 
         // Atmosphere halo – soft glow at the disc boundary to mask jagged tile edges
         PlanetSurfaceRenderer.RenderAtmosphere(renderer, camera, _sim.SurfaceData,
-            _planet.Type, game.GlobalTime);
+            _planetOrMoon.Type, game.GlobalTime);
 
         // Settlements
         SettlementRenderer.Render(renderer, camera, _sim.SurfaceData);
 
         // Mission markers
         HudIndicatorsRenderer.RenderPlanetSurfaceMissionMarkers(renderer, camera,
-            game.Player, (float)game.GlobalTime, _starSystem.Index, _planet.Index,
+            game.Player, (float)game.GlobalTime, _starSystem.Index, _planetOrMoon.Index,
             _sim.SurfaceData.Settlements);
 
         // Navigation target
@@ -595,8 +590,18 @@ public class PlanetSurfaceState : GameState
         }
 
         // NPCs on foot
-        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planet.Type);
+        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planetOrMoon.Type);
 
+        // Remote player avatars
+        foreach (var player in _sim.Players)
+        {
+            if (player.Type != PlayerType.Remote) continue;
+            var remoteEntity = player.Entity;
+            if (!world.IsAlive(remoteEntity)) continue;
+
+            ref var remoteAvatarTf = ref world.Get<Transform>(remoteEntity);
+            game.AvatarRenderer.Render(renderer, camera, remoteAvatarTf.Position);
+        }
 
         // Player avatar
         if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))
@@ -617,7 +622,7 @@ public class PlanetSurfaceState : GameState
         // Weather overlay based on planet biome
         int screenW = renderer.WindowWidth;
         int screenH = renderer.WindowHeight;
-        WeatherRenderer.Render(renderer, screenW, screenH, _planet, game.GlobalTime,
+        WeatherRenderer.Render(renderer, screenW, screenH, _planetOrMoon, game.GlobalTime,
             _camera.Position.X, _camera.Position.Y);
     }
 
@@ -644,7 +649,7 @@ public class PlanetSurfaceState : GameState
         // HUD
         if (!_sim.LocalPlayerDead)
         {
-            HudRenderer.RenderPlanetSurfaceHud(renderer, game.Player, _planet,
+            HudRenderer.RenderPlanetSurfaceHud(renderer, game.Player, _planetOrMoon,
                 _starSystem.DangerLevel, _inVehicle, world, _simPlayer.Entity);
         }
 
@@ -666,6 +671,13 @@ public class PlanetSurfaceState : GameState
         HudMinimapRenderer.RenderPlanetSurfaceMinimap(renderer, _sim.SurfaceData,
             avatarPos, shipTf.Position, vehiclePos, world);
 
+        // Multiplayer player list (below minimap, only when connected)
+        if (game.Network is { IsJoined: true } netForList)
+        {
+            HudRenderer.RenderPlayerListHud(renderer, netForList,
+                game.MenuOptions.GetPlayerName(), _sim.GetNetPlayerLocation());
+        }
+
         // Off-screen indicators
         if (!_sim.LocalPlayerDead && !_playerInsideShip)
         {
@@ -675,7 +687,7 @@ public class PlanetSurfaceState : GameState
                 && game.Player.Navigation.Name == "SHIP"))
                 HudIndicatorsRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
             HudIndicatorsRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
-                game.Player, _starSystem.Index, _planet.Index, _sim.SurfaceData.Settlements);
+                game.Player, _starSystem.Index, _planetOrMoon.Index, _sim.SurfaceData.Settlements);
 
             if (game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget)
             {
@@ -694,7 +706,7 @@ public class PlanetSurfaceState : GameState
     public override IReadOnlyList<string>? GetDebugInfo()
     {
         _debugInfo.Begin();
-        _debugInfo.Add($"Planet: {_planet.Name}  Type: {_planet.Type}");
+        _debugInfo.Add($"Planet: {_planetOrMoon.Name}  Type: {_planetOrMoon.Type}");
         _debugInfo.Add($"Camera: ({_camera.Position.X:F0}, {_camera.Position.Y:F0}) Zoom: {_camera.Zoom:F2}");
         _debugInfo.Add($"InShip: {_playerInsideShip}  InVehicle: {_inVehicle}");
         _debugInfo.Add($"Popups: {_damagePopups.Count}  Explosions: {_explosions.Count}");

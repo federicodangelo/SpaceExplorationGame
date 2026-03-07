@@ -106,9 +106,6 @@ public class SolarSystemState : GameState
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
 
-        // Notify server of new player location (in case we were already in this sim as a remote player)
-        game.Network?.SendLocationChanged(_starSystem.Index);
-
         // Particle system lives in the state — only updated when this state is active
         _particleSystem = new ParticleSystem(_sim.EcsWorld);
         _particleSystem.Initialize();
@@ -393,8 +390,7 @@ public class SolarSystemState : GameState
             landing.StarSystem, landing.Planet,
             landing.TileX, landing.TileY,
             shipWorldPos, shipRotationAtLanding, targetBodyPos,
-            _camera.Position, _camera.Zoom,
-            landing.IsMoon, landing.MoonPlanetIndex, landing.MoonIndex));
+            _camera.Position, _camera.Zoom));
     }
 
     // ── Anchor ──────────────────────────────────────────────────────
@@ -513,12 +509,11 @@ public class SolarSystemState : GameState
         SolarSystemRenderer.RenderNPCShips(renderer, camera, world,
             _sim.EnemyEntities, game.EnemyShipRenderer, globalTime);
 
-        // Projectiles
-        ProjectileRenderer.RenderProjectiles(renderer, camera, world);
-
         // Remote player ships
-        foreach (var (remotePlayerId, remoteEntity) in _sim.RemotePlayerEntities)
+        foreach (var player in _sim.Players)
         {
+            if (player.Type != PlayerType.Remote) continue;
+            var remoteEntity = player.Entity;
             if (!world.IsAlive(remoteEntity)) continue;
 
             ref var tf = ref world.Get<Transform>(remoteEntity);
@@ -527,10 +522,9 @@ public class SolarSystemState : GameState
 
             // Use the remote player's actual ship type if available
             string shipTypeId = game.Network != null
-                && game.Network.RemotePlayers.TryGetValue(remotePlayerId, out var rp)
-                && rp.LastState.ShipTypeId != null
-                    ? rp.LastState.ShipTypeId
-                    : ShipTypeCatalog.StarterShip.Id;
+                && game.Network.RemotePlayers.TryGetValue(player.RemotePlayerId, out var rp)
+                ? rp.Info.ShipTypeId
+                : ShipTypeCatalog.StarterShip.Id;
 
             game.SpaceshipRenderer.Render(renderer, camera, tf.Position,
                 tf.Rotation, shipTypeId, size);
@@ -560,6 +554,9 @@ public class SolarSystemState : GameState
                     shipTransform.Position, shipHealth.HullPercent, globalTime);
             }
         }
+
+        // Projectiles
+        ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Visual effects
         ProjectileRenderer.RenderDamageEffects(renderer, camera, _damagePopups);
@@ -599,7 +596,7 @@ public class SolarSystemState : GameState
         if (game.Network is { IsJoined: true } netForList)
         {
             HudRenderer.RenderPlayerListHud(renderer, netForList,
-                game.MenuOptions.GetPlayerName(), _starSystem.Index);
+                game.MenuOptions.GetPlayerName(), _sim.GetNetPlayerLocation());
         }
 
         // Off-screen indicators

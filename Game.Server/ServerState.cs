@@ -1,9 +1,13 @@
+using System.Numerics;
 using Engine.Network;
+using Engine.Network.Server;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.Simulation.Base;
+using SpaceExplorationGame.States;
 
 namespace SpaceExplorationGame;
 
@@ -24,16 +28,20 @@ internal sealed class ServerState : GameState
     private sealed class NetPlayer
     {
         public SimulationPlayer SimPlayer;
-        public SolarSystemSimulation Simulation;
-        public string Name;
-        public int StarSystemIndex;
+        public ISimulation Simulation;
+        public string PlayerName;
+        public NetPlayerInfo PlayerInfo;
+        public NetPlayerState PlayerState;
+        public NetPlayerLocation PlayerLocation;
 
-        public NetPlayer(SimulationPlayer simPlayer, SolarSystemSimulation simulation, string name, int starSystemIndex)
+        public NetPlayer(SimulationPlayer simPlayer, ISimulation simulation, string name, NetPlayerInfo info, NetPlayerState state, NetPlayerLocation location)
         {
             SimPlayer = simPlayer;
             Simulation = simulation;
-            Name = name;
-            StarSystemIndex = starSystemIndex;
+            PlayerName = name;
+            PlayerInfo = info;
+            PlayerState = state;
+            PlayerLocation = location;
         }
     }
 
@@ -78,7 +86,7 @@ internal sealed class ServerState : GameState
             _logTimer -= LogIntervalSeconds;
             var sims = game.Coordinator.Simulations;
             int clientCount = _server.Clients.Count;
-            Console.WriteLine($"[{game.GlobalTime:F1}s] Clients: {clientCount}, Simulations: {sims.Count}");
+            Console.WriteLine($"[{game.GlobalTime:F1}s] Clients: {clientCount}, Simulations: {sims.Count()}");
             foreach (var sim in sims)
             {
                 int entityCount = sim.EcsWorld.Size;
@@ -119,40 +127,31 @@ internal sealed class ServerState : GameState
     //  Network event handlers (called from server's background threads)
     // ────────────────────────────────────────────────────────────
 
-    private void HandleClientJoined(byte playerId, JoinMessage join)
+    private void HandleClientJoined(byte playerId, C_JoinMessage join)
     {
         Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joining...");
 
-        // Pick a starting star system: use client's requested index, or default to first system.
-        int systemIndex = join.StarSystemIndex >= 0 && join.StarSystemIndex < _game.GalaxyData.Count
-            ? join.StarSystemIndex
-            : 0;
-        var starSystem = _game.GalaxyData[systemIndex];
-
-        // Find or create the solar system simulation on demand.
-        var sim = _game.Coordinator.FindOrCreate<SolarSystemSimulation>(
-            s => s.StarSystem.Index == starSystem.Index,
-            () =>
-            {
-                Console.WriteLine($"[Server] Creating simulation for {starSystem.Name} (index {starSystem.Index})");
-                return new SolarSystemSimulation(_game, starSystem);
-            });
+        var joinedSimulation = GetLocationSimulation(playerId, join.PlayerLocation);
 
         // Create a new PlayerData for this remote player
         var remotePlayerData = new PlayerData { Type = PlayerType.Remote };
-        var simPlayer = sim.AddPlayer(remotePlayerData);
-        _netPlayers[playerId] = new NetPlayer(simPlayer, sim, join.PlayerName, starSystem.Index);
+        var simPlayer = joinedSimulation.AddPlayer(remotePlayerData);
+        var playerState = joinedSimulation.GetNetPlayerState(simPlayer);
+        var playerLocation = joinedSimulation.GetNetPlayerLocation();
+        var playerCoordinates = joinedSimulation.GetDefaultSpawnCoordinates();
+        _netPlayers[playerId] = new NetPlayer(simPlayer, joinedSimulation, join.PlayerName, join.PlayerInfo, playerState, playerLocation);
 
-        Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joined {starSystem.Name}.");
+        Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joined {playerLocation}.");
 
         // Send S_Welcome
-        var welcome = new WelcomeMessage
+        var welcome = new S_WelcomeMessage
         {
             PlayerId = playerId,
             GalaxySeed = _game.Seeds.GalaxySeed,
-            StarSystemIndex = starSystem.Index,
             GlobalTime = _game.GlobalTime,
             PlayerCount = (byte)_server.Clients.Count,
+            PlayerLocation = playerLocation,
+            PlayerCoordinates = playerCoordinates
         };
         _server.Send(playerId, NetSerializer.Write(welcome));
 
@@ -160,25 +159,176 @@ internal sealed class ServerState : GameState
         foreach (var (existingId, existingPlayer) in _netPlayers)
         {
             if (existingId == playerId) continue;
-            var existingMsg = new PlayerJoinedMessage
+            var existingMsg = new S_PlayerJoinedMessage
             {
                 PlayerId = existingId,
-                PlayerName = existingPlayer.Name,
-                StarSystemIndex = existingPlayer.StarSystemIndex,
-                InitialState = default,
+                Name = existingPlayer.PlayerName,
+                Location = existingPlayer.PlayerLocation,
+                State = existingPlayer.PlayerState,
+                Info = existingPlayer.PlayerInfo
             };
             _server.Send(playerId, NetSerializer.Write(existingMsg));
         }
 
         // Notify other clients about the new player
-        var joinedMsg = new PlayerJoinedMessage
+        var joinedMsg = new S_PlayerJoinedMessage
         {
             PlayerId = playerId,
-            PlayerName = join.PlayerName,
-            StarSystemIndex = starSystem.Index,
-            InitialState = default,
+            Name = join.PlayerName,
+            Location = playerLocation,
+            State = playerState,
+            Info = join.PlayerInfo
         };
         _server.BroadcastExcept(NetSerializer.Write(joinedMsg), playerId);
+    }
+
+    private ISimulation GetLocationSimulation(byte playerId, NetPlayerLocation location)
+    {
+        int starSystemIndex = location.SolarSystemIndex >= 0 && location.SolarSystemIndex < _game.GalaxyData.Count
+            ? location.SolarSystemIndex
+            : 0;
+
+        var starSystem = _game.GalaxyData[starSystemIndex];
+
+        var onSpaceStation = location.SpaceStationIndex >= 0;
+        var onPlanetSettlement = location.PlanetIndex >= 0 && location.SettlementIndex >= 0;
+        var onMoon = location.PlanetIndex >= 0 && location.MoonIndex >= 0 && !onPlanetSettlement;
+        var onPlanet = location.PlanetIndex >= 0 && !onPlanetSettlement && !onMoon;
+        var onStarSystem = !onSpaceStation && !onPlanet && !onPlanetSettlement && !onMoon;
+
+
+        ISimulation joinedSimulation;
+        // Find or create the solar system simulation on demand.
+        var solarSystemSimulation = _game.Coordinator.FindOrCreate<SolarSystemSimulation>(
+            s => s.StarSystem.Index == starSystem.Index,
+            () =>
+            {
+                Console.WriteLine($"[Server] Creating solar system simulation for {location}");
+                return new SolarSystemSimulation(_game, starSystem);
+            });
+
+        if (onStarSystem)
+        {
+            joinedSimulation = solarSystemSimulation;
+        }
+        else if (onSpaceStation)
+        {
+            var spaceStation = solarSystemSimulation.SpaceStations.ElementAtOrDefault(location.SpaceStationIndex);
+            if (spaceStation == null)
+            {
+                Console.WriteLine($"[Server] Invalid location {location} for player {playerId} in {starSystem.Name}. Joining at star system instead.");
+                joinedSimulation = solarSystemSimulation;
+            }
+            else
+            {
+                var spaceStationSimulation = _game.Coordinator.FindOrCreate<InteriorSimulation>(
+                    s => s.Origin == InteriorOrigin.SpaceStation && s.StarSystem.Index == starSystem.Index && s.SpaceStation?.Index == spaceStation.Index,
+                    () =>
+                    {
+                        Console.WriteLine($"[Server] Creating space station simulation for {location}");
+                        return new InteriorSimulation(_game,
+                            InteriorOrigin.SpaceStation,
+                            starSystem: starSystem,
+                            spaceStation: spaceStation,
+                            parent: solarSystemSimulation
+                        );
+                    });
+                joinedSimulation = spaceStationSimulation;
+            }
+        }
+        else if (onPlanet || onMoon)
+        {
+            var planet = solarSystemSimulation.Planets.ElementAtOrDefault(location.PlanetIndex);
+
+            if (onMoon && planet != null)
+            {
+                var moon = planet.Moons.ElementAtOrDefault(location.MoonIndex);
+                if (moon == null)
+                {
+                    planet = null;
+                }
+                else
+                {
+                    planet = moon.ToPlanetData(planet.Index); // Convert moon to planet data for simulation
+                }
+            }
+
+            if (planet == null)
+            {
+                Console.WriteLine($"[Server] Invalid location {location} for player {playerId} in {starSystem.Name}. Joining at star system instead.");
+                joinedSimulation = solarSystemSimulation;
+            }
+            else
+            {
+                var planetSimulation = _game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
+                    s => s.StarSystem.Index == starSystem.Index && s.Planet.Index == location.PlanetIndex,
+                    () =>
+                    {
+                        Console.WriteLine($"[Server] Creating planet surface simulation for {location}");
+                        return new PlanetSurfaceSimulation(_game,
+                            starSystem: starSystem,
+                            planet: planet,
+                            parent: solarSystemSimulation
+                        );
+                    });
+                joinedSimulation = planetSimulation;
+            }
+        }
+        else if (onPlanetSettlement)
+        {
+            var planet = solarSystemSimulation.Planets.ElementAtOrDefault(location.PlanetIndex);
+            if (planet == null)
+            {
+                Console.WriteLine($"[Server] Invalid location {location} for player {playerId} in {starSystem.Name}. Joining at star system instead.");
+                joinedSimulation = solarSystemSimulation;
+            }
+            else
+            {
+                var planetSimulation = _game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
+                    s => s.StarSystem.Index == starSystem.Index && s.Planet.Index == location.PlanetIndex,
+                    () =>
+                    {
+                        Console.WriteLine($"[Server] Creating planet surface simulation for {location}");
+                        return new PlanetSurfaceSimulation(_game,
+                            starSystem: starSystem,
+                            planet: planet,
+                            parent: solarSystemSimulation
+                        );
+                    });
+
+                var settlement = planetSimulation.Settlements.ElementAtOrDefault(location.SettlementIndex);
+
+                if (settlement == null)
+                {
+                    Console.WriteLine($"[Server] Invalid location {location} for player {playerId} in {starSystem.Name}. Joining at star system instead.");
+                    joinedSimulation = planetSimulation;
+                }
+                else
+                {
+                    var settlementSimulation = _game.Coordinator.FindOrCreate<InteriorSimulation>(
+                        s => s.Origin == InteriorOrigin.Settlement && s.StarSystem.Index == starSystem.Index && s.Planet?.Index == location.PlanetIndex && s.Settlement?.Index == location.SettlementIndex,
+                        () =>
+                        {
+                            Console.WriteLine($"[Server] Creating settlement simulation for {location}");
+                            return new InteriorSimulation(_game,
+                                InteriorOrigin.Settlement,
+                                starSystem: starSystem,
+                                planet: planet,
+                                settlement: settlement,
+                                parent: planetSimulation
+                            );
+                        });
+                    joinedSimulation = settlementSimulation;
+                }
+            }
+        }
+        else
+        {
+            Console.WriteLine($"[Server] Player {playerId} joining at unknown location in {starSystem.Name}. Joining at star system instead.");
+            joinedSimulation = solarSystemSimulation;
+        }
+
+        return joinedSimulation;
     }
 
     private void HandleClientLeft(byte playerId)
@@ -191,75 +341,49 @@ internal sealed class ServerState : GameState
 
         netPlayer.Simulation.RemovePlayer(netPlayer.SimPlayer);
 
-        var leftMsg = new PlayerLeftMessage { PlayerId = playerId };
+        var leftMsg = new S_PlayerLeftMessage { PlayerId = playerId };
         _server.Broadcast(NetSerializer.Write(leftMsg));
     }
 
-    private void HandlePlayerState(byte playerId, PlayerStateMessage msg)
+    private void HandlePlayerState(byte playerId, C_PlayerStateMessage msg)
     {
         // Update the remote player's ECS entity with the state reported by the client.
         if (!_netPlayers.TryGetValue(playerId, out var netPlayer))
             return;
 
-        var world = netPlayer.Simulation.EcsWorld;
-        var entity = netPlayer.SimPlayer.Entity;
-        if (!world.IsAlive(entity)) return;
-
-        ref var transform = ref world.Get<Transform>(entity);
-        transform.Position = msg.State.Position;
-        transform.Rotation = msg.State.Rotation;
-
-        ref var velocity = ref world.Get<Velocity>(entity);
-        velocity.Linear = msg.State.Velocity;
-
-        ref var shipInput = ref world.Get<ShipInputComponent>(entity);
-        shipInput.Shoot = msg.State.Shooting;
-        shipInput.AccelerationDirection = msg.State.AccelerationDirection;
-        shipInput.RotationSpeed = msg.State.RotationSpeed;
-
-        if (world.Has<Health>(entity))
-        {
-            ref var health = ref world.Get<Health>(entity);
-            health.Hull = msg.State.Hull;
-            health.Shield = msg.State.Shield;
-        }
+        netPlayer.PlayerState = msg.State;
+        netPlayer.Simulation.ApplyNetPlayerState(netPlayer.SimPlayer, msg.State);
     }
 
-    private void HandleLocationChanged(byte playerId, LocationChangedMessage msg)
+    private void HandleLocationChanged(byte playerId, C_LocationChangedMessage msg)
     {
         if (!_netPlayers.TryGetValue(playerId, out var netPlayer))
             return;
 
-        int newIndex = msg.StarSystemIndex;
-        if (newIndex < 0 || newIndex >= _game.GalaxyData.Count) return;
-        if (newIndex == netPlayer.StarSystemIndex) return;
+        var newSimulation = GetLocationSimulation(playerId, msg.NewLocation);
 
-        Console.WriteLine($"[Server] Player {playerId} ({netPlayer.Name}) moving to system {newIndex}");
+        if (newSimulation == netPlayer.Simulation)
+            return; // No change
+
+        var newLocation = newSimulation.GetNetPlayerLocation();
+
+        Console.WriteLine($"[Server] Player {playerId} ({netPlayer.PlayerName}) moved to {newLocation}");
 
         // Remove from old simulation
         netPlayer.Simulation.RemovePlayer(netPlayer.SimPlayer);
 
-        // Find or create the new simulation
-        var starSystem = _game.GalaxyData[newIndex];
-        var sim = _game.Coordinator.FindOrCreate<SolarSystemSimulation>(
-            s => s.StarSystem.Index == starSystem.Index,
-            () =>
-            {
-                Console.WriteLine($"[Server] Creating simulation for {starSystem.Name} (index {starSystem.Index})");
-                return new SolarSystemSimulation(_game, starSystem);
-            });
-
         var remotePlayerData = new PlayerData { Type = PlayerType.Remote };
-        var simPlayer = sim.AddPlayer(remotePlayerData);
+        var simPlayer = newSimulation.AddPlayer(remotePlayerData);
         netPlayer.SimPlayer = simPlayer;
-        netPlayer.Simulation = sim;
-        netPlayer.StarSystemIndex = newIndex;
+        netPlayer.Simulation = newSimulation;
+        netPlayer.PlayerLocation = newLocation;
 
         // Notify other clients
-        var locMsg = new PlayerLocationChangedMessage
+        var locMsg = new S_PlayerLocationChangedMessage
         {
             PlayerId = playerId,
-            StarSystemIndex = newIndex,
+            Location = newLocation,
+            Coordinates = newSimulation.GetDefaultSpawnCoordinates()
         };
         _server.BroadcastExcept(NetSerializer.Write(locMsg), playerId);
     }
@@ -273,19 +397,19 @@ internal sealed class ServerState : GameState
         if (_netPlayers.Count == 0) return;
 
         // Build per-player state snapshots
-        var stateMap = new Dictionary<byte, (int SystemIndex, NetPlayerState State)>(_netPlayers.Count);
+        var stateMap = new Dictionary<byte, (NetPlayerLocation Location, NetPlayerState State)>(_netPlayers.Count);
         foreach (var (id, netPlayer) in _netPlayers)
-            stateMap[id] = (netPlayer.StarSystemIndex, BuildPlayerState(netPlayer));
+            stateMap[id] = (netPlayer.PlayerLocation, netPlayer.Simulation.GetNetPlayerState(netPlayer.SimPlayer));
 
         // Send each client only the players in the same system
         foreach (var (clientId, clientPlayer) in _netPlayers)
         {
             var inSystem = stateMap
-                .Where(kvp => kvp.Value.SystemIndex == clientPlayer.StarSystemIndex)
+                .Where(kvp => kvp.Value.Location == clientPlayer.PlayerLocation)
                 .Select(kvp => (kvp.Key, kvp.Value.State))
                 .ToArray();
 
-            var worldMsg = new WorldStateMessage
+            var worldMsg = new S_WorldStateMessage
             {
                 PlayerCount = (byte)inSystem.Length,
                 ServerTime = _game.GlobalTime,
@@ -295,38 +419,4 @@ internal sealed class ServerState : GameState
         }
     }
 
-    private NetPlayerState BuildPlayerState(NetPlayer netPlayer)
-    {
-        var state = new NetPlayerState();
-        var world = netPlayer.Simulation.EcsWorld;
-        var entity = netPlayer.SimPlayer.Entity;
-
-        if (!world.IsAlive(entity)) return state;
-
-        var transform = world.Get<Transform>(entity);
-        state.Position = transform.Position;
-        state.Rotation = transform.Rotation;
-
-        var velocity = world.Get<Velocity>(entity);
-        state.Velocity = velocity.Linear;
-
-        if (world.Has<Health>(entity))
-        {
-            var health = world.Get<Health>(entity);
-            state.Hull = health.Hull;
-            state.MaxHull = health.MaxHull;
-            state.Shield = health.Shield;
-            state.MaxShield = health.MaxShield;
-        }
-
-        if (world.Has<ShipInputComponent>(entity))
-        {
-            var input = world.Get<ShipInputComponent>(entity);
-            state.Shooting = input.Shoot;
-            state.AccelerationDirection = input.AccelerationDirection;
-            state.RotationSpeed = input.RotationSpeed;
-        }
-
-        return state;
-    }
 }

@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using Engine.Network.Server;
 
-namespace Engine.Network;
+namespace Engine.Network.Client;
 
 /// <summary>
 /// WebSocket client that connects to a <see cref="GameServer"/> and provides

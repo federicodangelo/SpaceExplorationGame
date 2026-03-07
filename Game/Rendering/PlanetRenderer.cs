@@ -24,14 +24,14 @@ public class PlanetRenderer
     /// </summary>
     public void RenderBodyScreen(ISpriteRenderer renderer,
         float screenX, float screenY, float radius,
-        Color3 color, PlanetType type, bool isMoon, int seed, float globalTime,
+        Color3 color, PlanetType type, bool isMoon, int planetOrMoonIndex, float globalTime,
         float alphaMultiplier = 1f)
     {
         _screenSpaceCamera.Update(renderer.WindowWidth, renderer.WindowHeight);
         _screenSpaceCamera.ViewportOffsetX = screenX - _screenSpaceCamera.ViewportWidth / 2f;
         _screenSpaceCamera.ViewportOffsetY = screenY - _screenSpaceCamera.ViewportHeight / 2f;
 
-        RenderBody(renderer, _screenSpaceCamera, Vector2.Zero, radius, color, type, isMoon, seed, globalTime, alphaMultiplier);
+        RenderBody(renderer, _screenSpaceCamera, Vector2.Zero, radius, color, type, isMoon, planetOrMoonIndex, globalTime, alphaMultiplier);
 
         _screenSpaceCamera.ViewportOffsetX = 0f;
         _screenSpaceCamera.ViewportOffsetY = 0f;
@@ -43,75 +43,71 @@ public class PlanetRenderer
         List<Entity> planetEntities, List<List<Entity>> moonEntities,
         float globalTime)
     {
-        for (int i = 0; i < planets.Count; i++)
+        foreach (var planet in planets)
         {
-            if (i >= planetEntities.Count) break;
-            var pTransform = ecsWorld.Get<Transform>(planetEntities[i]);
-            var p = planets[i];
+            var planetEntity = planetEntities.ElementAtOrDefault(planet.Index);
+            if (planetEntity == default) continue;
+            var pTransform = ecsWorld.Get<Transform>(planetEntity);
 
             // Compute the maximum world-space extent of this planet including rings and moons,
             // and skip the entire block when nothing can be visible.
-            float maxExtent = p.HasRings ? p.Radius * 2f : p.Radius;
-            if (p.Moons.Count > 0)
-                maxExtent = MathF.Max(maxExtent, p.Moons[^1].OrbitRadius + p.Moons[^1].Radius);
+            float maxExtent = planet.HasRings ? planet.Radius * 2f : planet.Radius;
+            if (planet.Moons.Count > 0)
+                maxExtent = MathF.Max(maxExtent, planet.Moons[^1].OrbitRadius + planet.Moons[^1].Radius);
             if (!camera.CircleOverlapsCamera(pTransform.Position, maxExtent)) continue;
 
             // Planet body
-            RenderBody(renderer, camera, pTransform.Position, p.Radius, p.Color, p.Type, false, p.Index, globalTime);
+            RenderBody(renderer, camera, pTransform.Position, planet.Radius, planet.Color, planet.Type, false, planet.Index, globalTime);
 
             // Settlement indicator (small diamond below planet)
-            if (p.HasSettlement)
+            if (planet.HasSettlement)
             {
-                var indicatorPos = pTransform.Position + new Vector2(0, p.Radius + 15);
-                float pulse = 1f + 0.25f * MathF.Sin(globalTime * 3f + p.Index * 0.7f);
+                var indicatorPos = pTransform.Position + new Vector2(0, planet.Radius + 15);
+                float pulse = 1f + 0.25f * MathF.Sin(globalTime * 3f + planet.Index * 0.7f);
                 renderer.DrawFilledCircle(camera, indicatorPos, 3f * pulse, new Color4(255, 210, 200, 220));
             }
 
             // Rings
-            if (p.HasRings)
+            if (planet.HasRings)
             {
-                byte ringAlphaA = (byte)Math.Clamp((int)(120 + 20 * MathF.Sin(globalTime * 1.4f + i)), 0, 255);
-                byte ringAlphaB = (byte)Math.Clamp((int)(80 + 18 * MathF.Sin(globalTime * 1.1f + i * 0.8f)), 0, 255);
+                byte ringAlphaA = (byte)Math.Clamp((int)(120 + 20 * MathF.Sin(globalTime * 1.4f + planet.Index)), 0, 255);
+                byte ringAlphaB = (byte)Math.Clamp((int)(80 + 18 * MathF.Sin(globalTime * 1.1f + planet.Index * 0.8f)), 0, 255);
 
-                float ringAInner = p.Radius * 1.42f;
-                float ringAOuter = p.Radius * 1.58f;
-                float ringBInner = p.Radius * 1.68f;
-                float ringBOuter = p.Radius * 1.92f;
+                float ringAInner = planet.Radius * 1.42f;
+                float ringAOuter = planet.Radius * 1.58f;
+                float ringBInner = planet.Radius * 1.68f;
+                float ringBOuter = planet.Radius * 1.92f;
 
                 renderer.DrawSolidRing(camera, pTransform.Position,
                     ringAInner, ringAOuter,
-                    p.Color.WithAlpha(ringAlphaA), 48);
+                    planet.Color.WithAlpha(ringAlphaA), 48);
 
                 renderer.DrawSolidRing(camera, pTransform.Position,
                     ringBInner, ringBOuter,
-                    p.Color.WithAlpha(ringAlphaB), 48);
+                    planet.Color.WithAlpha(ringAlphaB), 48);
             }
 
 
             // Moons
-            if (i < moonEntities.Count)
+            foreach (var moon in planet.Moons)
             {
-                for (int m = 0; m < moonEntities[i].Count; m++)
-                {
-                    if (m >= p.Moons.Count) break;
-                    var moonTransform = ecsWorld.Get<Transform>(moonEntities[i][m]);
-                    var moon = p.Moons[m];
-                    if (!camera.CircleOverlapsCamera(moonTransform.Position, moon.Radius)) continue;
-                    int seed = p.Index * 101 + moon.Index * 17 + 7;
-                    RenderBody(renderer, camera, moonTransform.Position, moon.Radius, moon.Color, moon.Type, true, seed, globalTime);
-                }
+                var moonEntity = moonEntities.ElementAtOrDefault(planet.Index)?.ElementAtOrDefault(moon.Index);
+                if (!moonEntity.HasValue || moonEntity.Value == default) continue;
+                var moonTransform = ecsWorld.Get<Transform>(moonEntity.Value);
+                if (!camera.CircleOverlapsCamera(moonTransform.Position, moon.Radius)) continue;
+                RenderBody(renderer, camera, moonTransform.Position, moon.Radius, moon.Color, moon.Type, true, moon.Index, globalTime);
             }
         }
     }
 
     private static void RenderBody(ISpriteRenderer renderer, Camera camera,
-        Vector2 center, float radius, Color3 color, PlanetType type, bool isMoon, int seed, float globalTime,
+        Vector2 center, float radius, Color3 color, PlanetType type, bool isMoon, int planetOrMoonIndex, float globalTime,
         float alphaMultiplier = 1f)
     {
         var baseColor = isMoon ? Mul(color, 0.82f) : color;
         var inner = Lerp(baseColor, new Color3(255, 255, 245), isMoon ? 0.08f : 0.20f);
         var outer = Mul(baseColor, isMoon ? 0.70f : 0.82f);
-        float phase = seed * 0.071f;
+        float phase = planetOrMoonIndex * 0.071f;
 
         // Main sphere gradient
         renderer.DrawFilledCircle(camera, center, radius,
@@ -122,50 +118,50 @@ public class PlanetRenderer
         // Atmospheric shell for larger planets (helps match transition visuals).
         if (!isMoon && type is PlanetType.Terrestrial or PlanetType.Ocean or PlanetType.GasGiant or PlanetType.IceGiant or PlanetType.Frozen)
         {
-            DrawAtmosphereShell(renderer, camera, center, radius, type, globalTime, seed, alphaMultiplier);
+            DrawAtmosphereShell(renderer, camera, center, radius, type, globalTime, planetOrMoonIndex, alphaMultiplier);
         }
 
         // Type-specific overlays
         switch (type)
         {
             case PlanetType.GasGiant:
-                DrawBands(renderer, camera, center, radius, baseColor, seed, 6, 80, globalTime, 0.35f, alphaMultiplier);
+                DrawBands(renderer, camera, center, radius, baseColor, planetOrMoonIndex, 6, 80, globalTime, 0.35f, alphaMultiplier);
                 DrawBands(renderer, camera, center, radius,
-                    Lerp(baseColor, new Color3(250, 230, 180), 0.22f), seed + 81, 3, 55, globalTime, 0.22f, alphaMultiplier);
+                    Lerp(baseColor, new Color3(250, 230, 180), 0.22f), planetOrMoonIndex + 81, 3, 55, globalTime, 0.22f, alphaMultiplier);
                 break;
             case PlanetType.IceGiant:
-                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(210, 240, 255), 0.35f), seed, 4, 55, globalTime, 0.28f, alphaMultiplier);
+                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(210, 240, 255), 0.35f), planetOrMoonIndex, 4, 55, globalTime, 0.28f, alphaMultiplier);
                 break;
             case PlanetType.Terrestrial:
-                DrawPatches(renderer, camera, center, radius, Lerp(baseColor, new Color3(45, 140, 70), 0.35f), seed, 3, 0.32f, 115, globalTime, 0.20f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, Lerp(baseColor, new Color3(45, 140, 70), 0.35f), planetOrMoonIndex, 3, 0.32f, 115, globalTime, 0.20f, alphaMultiplier);
                 if (!isMoon)
                 {
-                    DrawPatches(renderer, camera, center, radius, new Color3(240, 245, 255), seed + 31, 2, 0.22f, 60, globalTime, 0.12f, alphaMultiplier);
-                    DrawCloudLayer(renderer, camera, center, radius, seed + 211, globalTime, 0.11f, 38, alphaMultiplier);
+                    DrawPatches(renderer, camera, center, radius, new Color3(240, 245, 255), planetOrMoonIndex + 31, 2, 0.22f, 60, globalTime, 0.12f, alphaMultiplier);
+                    DrawCloudLayer(renderer, camera, center, radius, planetOrMoonIndex + 211, globalTime, 0.11f, 38, alphaMultiplier);
                 }
                 break;
             case PlanetType.Ocean:
-                DrawPatches(renderer, camera, center, radius, new Color3(40, 120, 185), seed, 3, 0.34f, 95, globalTime, 0.18f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(40, 120, 185), planetOrMoonIndex, 3, 0.34f, 95, globalTime, 0.18f, alphaMultiplier);
                 if (!isMoon)
                 {
-                    DrawPatches(renderer, camera, center, radius, new Color3(230, 245, 255), seed + 19, 2, 0.20f, 70, globalTime, 0.10f, alphaMultiplier);
-                    DrawCloudLayer(renderer, camera, center, radius, seed + 173, globalTime, 0.14f, 44, alphaMultiplier);
+                    DrawPatches(renderer, camera, center, radius, new Color3(230, 245, 255), planetOrMoonIndex + 19, 2, 0.20f, 70, globalTime, 0.10f, alphaMultiplier);
+                    DrawCloudLayer(renderer, camera, center, radius, planetOrMoonIndex + 173, globalTime, 0.14f, 44, alphaMultiplier);
                 }
                 break;
             case PlanetType.Desert:
-                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(205, 165, 90), 0.40f), seed, 3, 45, globalTime, 0.16f, alphaMultiplier);
-                DrawPatches(renderer, camera, center, radius, new Color3(180, 145, 85), seed + 44, 2, 0.24f, 42, globalTime, 0.09f, alphaMultiplier);
+                DrawBands(renderer, camera, center, radius, Lerp(baseColor, new Color3(205, 165, 90), 0.40f), planetOrMoonIndex, 3, 45, globalTime, 0.16f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(180, 145, 85), planetOrMoonIndex + 44, 2, 0.24f, 42, globalTime, 0.09f, alphaMultiplier);
                 break;
             case PlanetType.Volcanic:
-                DrawPatches(renderer, camera, center, radius, new Color3(255, 110, 40), seed, 3, 0.18f, 135, globalTime, 0.32f, alphaMultiplier);
-                DrawPatches(renderer, camera, center, radius, new Color3(30, 20, 20), seed + 9, 2, 0.30f, 80, globalTime, 0.22f, alphaMultiplier);
-                DrawPatches(renderer, camera, center, radius, new Color3(255, 155, 80), seed + 121, 2, 0.14f, 120, globalTime, 0.45f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(255, 110, 40), planetOrMoonIndex, 3, 0.18f, 135, globalTime, 0.32f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(30, 20, 20), planetOrMoonIndex + 9, 2, 0.30f, 80, globalTime, 0.22f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(255, 155, 80), planetOrMoonIndex + 121, 2, 0.14f, 120, globalTime, 0.45f, alphaMultiplier);
                 break;
             case PlanetType.Frozen:
-                DrawCracks(renderer, camera, center, radius, new Color4(220, 245, 255, isMoon ? (byte)110 : (byte)140), seed, 4, globalTime, alphaMultiplier);
+                DrawCracks(renderer, camera, center, radius, new Color4(220, 245, 255, isMoon ? (byte)110 : (byte)140), planetOrMoonIndex, 4, globalTime, alphaMultiplier);
                 break;
             case PlanetType.Rocky:
-                DrawPatches(renderer, camera, center, radius, new Color3(155, 140, 120), seed + 66, 2, 0.18f, 36, globalTime, 0.06f, alphaMultiplier);
+                DrawPatches(renderer, camera, center, radius, new Color3(155, 140, 120), planetOrMoonIndex + 66, 2, 0.18f, 36, globalTime, 0.06f, alphaMultiplier);
                 break;
             default:
                 break;
@@ -175,7 +171,7 @@ public class PlanetRenderer
         if (isMoon || type is PlanetType.Rocky or PlanetType.Frozen)
         {
             int craterCount = isMoon ? 4 : 3;
-            DrawCraters(renderer, camera, center, radius, seed + 77, craterCount, globalTime, alphaMultiplier);
+            DrawCraters(renderer, camera, center, radius, planetOrMoonIndex + 77, craterCount, globalTime, alphaMultiplier);
         }
 
         renderer.DrawFilledCircle(camera, center, radius,

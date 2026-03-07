@@ -1,4 +1,7 @@
+using System.Numerics;
 using Arch.Core;
+using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 
 namespace SpaceExplorationGame.Simulation;
@@ -27,6 +30,9 @@ public interface ISimulation
 
     /// <summary>Whether any players are currently present in this simulation.</summary>
     bool HasPlayers { get; }
+
+    /// <summary>>Get the local player in this simulation, or null if the local player is not present.</summary
+    SimulationPlayer? GetLocalPlayer();
 
     /// <summary>
     /// Optional parent simulation. When a simulation has players, all ancestors in the
@@ -61,16 +67,30 @@ public interface ISimulation
     /// </summary>
     void RemovePlayer(SimulationPlayer player);
 
-
     /// <summary>
     /// Sync remote player states from the server. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server. Each simulation should update the states of any remote players it
     /// </summary>
     /// <param name="net"></param>
-    void SyncRemotePlayers(NetworkManager net);
+    void SyncRemotePlayers(ClientNetworkManager net);
 
     /// <summary>
-    /// Send the local player's state to the server. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server. Each simulation should send any relevant state for the local player (position, health, etc.) that the server needs to sync with other clients.
+    /// Gets the compact per-tick state of a player entity that should be sent to the server and relayed to other clients. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server, after which the resulting states are sent to the server and relayed back to all clients, which then call ApplyNetPlayerState on each simulation with the received state. Each simulation should return a non-null state for its local player if it has one, or null if it doesn't (e.g. if the local player is in a different simulation or hasn't fully spawned yet). The returned state will be applied to the local player on all clients, including this one, so it should contain the latest input and position data for this player.
     /// </summary>
-    /// <param name="net"></param>
-    void SendPlayerStateToServer(NetworkManager net);
+    NetPlayerState GetNetPlayerState(SimulationPlayer player);
+
+    /// <summary>
+    /// Applies the latest per-tick state of the local player received from the server. Called by the SimulationCoordinator every tick if the game is connected to a multiplayer server, after GetLocalPlayerNetPlayerState has been called on all simulations and the resulting states have been sent to the server and relayed back to all clients. Each simulation should apply the state to its local player if it matches this simulation's location, or ignore it otherwise.
+    /// </summary>
+    /// <param name="state"></param>
+    void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state);
+
+    /// <summary>
+    /// Gets the net player location that represents this simulation
+    /// </summary>
+    NetPlayerLocation GetNetPlayerLocation();
+
+    /// <summary> 
+    /// Gets the default spawn coordinates for players joining this simulation. Used when the player is joining for the first time and has no previous location to return to. 
+    /// </summary>
+    Vector2 GetDefaultSpawnCoordinates();
 }

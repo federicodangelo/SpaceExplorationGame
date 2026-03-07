@@ -200,14 +200,6 @@ public sealed class RenderCommandBuffer : IDisposable
     private void Write(Color4 c) { _writer.Write(c.R); _writer.Write(c.G); _writer.Write(c.B); _writer.Write(c.A); }
     private void Write(Rect r) { _writer.Write(r.X); _writer.Write(r.Y); _writer.Write(r.W); _writer.Write(r.H); }
 
-    private void WriteCamera(Camera cam)
-    {
-        _writer.Write(cam.Position.X); _writer.Write(cam.Position.Y);
-        _writer.Write(cam.Zoom);
-        _writer.Write(cam.ViewportWidth); _writer.Write(cam.ViewportHeight);
-        _writer.Write(cam.ViewportOffsetX); _writer.Write(cam.ViewportOffsetY);
-    }
-
     // ── Read helpers (static, used by BufferedSpriteRenderer.FlushBuffer) ─
 
     public static Color4 ReadColor4(BinaryReader r) =>
@@ -215,21 +207,6 @@ public sealed class RenderCommandBuffer : IDisposable
 
     public static Rect ReadRect(BinaryReader r) =>
         new(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
-
-    public static Camera ReadCamera(BinaryReader r)
-    {
-        float posX = r.ReadSingle(); float posY = r.ReadSingle();
-        float zoom = r.ReadSingle();
-        int vpW = r.ReadInt32(); int vpH = r.ReadInt32();
-        float offX = r.ReadSingle(); float offY = r.ReadSingle();
-        return new Camera(vpW, vpH)
-        {
-            Position = new Vector2(posX, posY),
-            Zoom = zoom,
-            ViewportOffsetX = offX,
-            ViewportOffsetY = offY,
-        };
-    }
 
     // ── Frame lifecycle ───────────────────────────────────────────────
 

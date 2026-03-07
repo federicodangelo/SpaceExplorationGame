@@ -1,25 +1,22 @@
 using System.Numerics;
-using Engine.Network;
-using SpaceExplorationGame.ECS.Components;
-using Arch.Core;
 
-namespace SpaceExplorationGame.Core;
+namespace Engine.Network.Client;
 
 /// <summary>
-/// Event types produced by <see cref="NetworkManager"/> after processing inbound messages.
+/// Event types produced by <see cref="ClientNetworkManager"/> after processing inbound messages.
 /// </summary>
-public enum ClientEventType { PlayerJoined, PlayerLeft }
+public enum ClientEventType { PlayerJoined, PlayerLeft, PlayerLocationChanged }
 
 /// <summary>
-/// A client-side network event, queued by <see cref="NetworkManager.ProcessMessages"/>
-/// and drained on the main thread via <see cref="NetworkManager.DrainEvents"/>.
+/// A client-side network event, queued by <see cref="ClientNetworkManager.ProcessMessages"/>
+/// and drained on the main thread via <see cref="ClientNetworkManager.DrainEvents"/>.
 /// </summary>
 public readonly struct ClientEvent
 {
     public ClientEventType Type { get; init; }
-    public byte PlayerId { get; init; }
-    public string PlayerName { get; init; }
-    public int StarSystemIndex { get; init; }
+    public S_PlayerJoinedMessage PlayerJoined { get; init; }
+    public S_PlayerLeftMessage PlayerLeft { get; init; }
+    public S_PlayerLocationChangedMessage PlayerLocationChanged { get; init; }
 }
 
 /// <summary>
@@ -30,7 +27,7 @@ public readonly struct ClientEvent
 /// <see cref="ProcessMessages"/> every frame from the game loop.
 /// Call <see cref="DrainEvents"/> after ProcessMessages to get join/leave events.
 /// </summary>
-public sealed class NetworkManager : IDisposable
+public sealed class ClientNetworkManager : IDisposable
 {
     private readonly GameClient _client = new();
     private readonly List<ClientEvent> _events = new();
@@ -47,8 +44,9 @@ public sealed class NetworkManager : IDisposable
     /// <summary>Server's galaxy seed (received in welcome).</summary>
     public ulong ServerGalaxySeed { get; private set; }
 
-    /// <summary>Star system index the server is running.</summary>
-    public int ServerStarSystemIndex { get; private set; }
+    /// <summary>Player starting location in the server</summary>
+    public NetPlayerLocation PlayerStartingLocation { get; private set; }
+    public Vector2 PlayerStartingCoordinates { get; private set; }
 
     /// <summary>Server's global time at the moment of the welcome message.</summary>
     public double ServerGlobalTime { get; private set; }
@@ -60,60 +58,31 @@ public sealed class NetworkManager : IDisposable
     /// Connect to the server and send a join request.
     /// Blocks until the connection is established (but the join handshake is async).
     /// </summary>
-    public async Task ConnectAsync(string url, string playerName, int starSystemIndex = -1)
+    public async Task ConnectAsync(string url, string playerName, NetPlayerInfo info, NetPlayerLocation location)
     {
         await _client.ConnectAsync(url);
-        var joinMsg = new JoinMessage { PlayerName = playerName, StarSystemIndex = starSystemIndex };
+        var joinMsg = new C_JoinMessage { PlayerName = playerName, PlayerInfo = info, PlayerLocation = location };
         _client.Send(NetSerializer.Write(joinMsg));
     }
 
     /// <summary>
     /// Send a location change notification to the server (e.g. after a star system jump).
     /// </summary>
-    public void SendLocationChanged(int starSystemIndex)
+    public void SendLocationChanged(NetPlayerLocation location)
     {
         if (!IsJoined || !_client.IsConnected) return;
-        _client.Send(NetSerializer.Write(new LocationChangedMessage { StarSystemIndex = starSystemIndex }));
+        _client.Send(NetSerializer.Write(new C_LocationChangedMessage { NewLocation = location }));
     }
 
     /// <summary>
     /// Send the local player's current entity state to the server.
     /// Call once per tick from the active game state.
     /// </summary>
-    public void SendLocalState(World ecsWorld, Entity playerEntity, string? shipTypeId = null)
+    public void SendLocalState(NetPlayerState state)
     {
         if (!IsJoined || !_client.IsConnected) return;
-        if (!ecsWorld.IsAlive(playerEntity)) return;
 
-        var transform = ecsWorld.Get<Transform>(playerEntity);
-        var velocity = ecsWorld.Get<Velocity>(playerEntity);
-
-        var state = new NetPlayerState
-        {
-            Position = transform.Position,
-            Rotation = transform.Rotation,
-            Velocity = velocity.Linear,
-            ShipTypeId = shipTypeId,
-        };
-
-        if (ecsWorld.Has<Health>(playerEntity))
-        {
-            var health = ecsWorld.Get<Health>(playerEntity);
-            state.Hull = health.Hull;
-            state.MaxHull = health.MaxHull;
-            state.Shield = health.Shield;
-            state.MaxShield = health.MaxShield;
-        }
-
-        if (ecsWorld.Has<ShipInputComponent>(playerEntity))
-        {
-            var input = ecsWorld.Get<ShipInputComponent>(playerEntity);
-            state.Shooting = input.Shoot;
-            state.AccelerationDirection = input.AccelerationDirection;
-            state.RotationSpeed = input.RotationSpeed;
-        }
-
-        _client.Send(NetSerializer.Write(new PlayerStateMessage { State = state }));
+        _client.Send(NetSerializer.Write(new C_PlayerStateMessage { State = state }));
     }
 
     /// <summary>
@@ -122,7 +91,7 @@ public sealed class NetworkManager : IDisposable
     public void SendDisconnect()
     {
         if (!IsJoined || !_client.IsConnected) return;
-        _client.Send(NetSerializer.Write(new DisconnectMessage()));
+        _client.Send(NetSerializer.Write(new C_DisconnectMessage()));
     }
 
     /// <summary>
@@ -183,25 +152,24 @@ public sealed class NetworkManager : IDisposable
         var msg = NetSerializer.ReadWelcome(data);
         LocalPlayerId = msg.PlayerId;
         ServerGalaxySeed = msg.GalaxySeed;
-        ServerStarSystemIndex = msg.StarSystemIndex;
         ServerGlobalTime = msg.GlobalTime;
+        PlayerStartingLocation = msg.PlayerLocation;
+        PlayerStartingCoordinates = msg.PlayerCoordinates;
         IsJoined = true;
-        Console.WriteLine($"[Net] Joined server as player {msg.PlayerId} (system {msg.StarSystemIndex}, {msg.PlayerCount} players)");
+        Console.WriteLine($"[Net] Joined server as player {msg.PlayerId} (system {msg.PlayerLocation}, {msg.PlayerCount} players)");
     }
 
     private void HandlePlayerJoined(byte[] data)
     {
         var msg = NetSerializer.ReadPlayerJoined(data);
         if (msg.PlayerId == LocalPlayerId) return;
-        RemotePlayers[msg.PlayerId] = new RemotePlayer(msg.PlayerId, msg.PlayerName, msg.StarSystemIndex);
+        RemotePlayers[msg.PlayerId] = new RemotePlayer(msg.PlayerId, msg.Name, msg.Location, msg.Info, msg.State);
         _events.Add(new ClientEvent
         {
             Type = ClientEventType.PlayerJoined,
-            PlayerId = msg.PlayerId,
-            PlayerName = msg.PlayerName,
-            StarSystemIndex = msg.StarSystemIndex,
+            PlayerJoined = msg,
         });
-        Console.WriteLine($"[Net] Player {msg.PlayerId} ({msg.PlayerName}) joined system {msg.StarSystemIndex}");
+        Console.WriteLine($"[Net] Player {msg.PlayerId} ({msg.Name}) joined {msg.Location}");
     }
 
     private void HandlePlayerLeft(byte[] data)
@@ -211,8 +179,7 @@ public sealed class NetworkManager : IDisposable
         _events.Add(new ClientEvent
         {
             Type = ClientEventType.PlayerLeft,
-            PlayerId = msg.PlayerId,
-            PlayerName = string.Empty,
+            PlayerLeft = msg,
         });
         Console.WriteLine($"[Net] Player {msg.PlayerId} left");
     }
@@ -221,12 +188,17 @@ public sealed class NetworkManager : IDisposable
     {
         var msg = NetSerializer.ReadPlayerLocationChanged(data);
         if (msg.PlayerId == LocalPlayerId) return;
+        _events.Add(new ClientEvent
+        {
+            Type = ClientEventType.PlayerLocationChanged,
+            PlayerLocationChanged = msg,
+        });
         if (RemotePlayers.TryGetValue(msg.PlayerId, out var remote))
         {
-            remote.StarSystemIndex = msg.StarSystemIndex;
+            remote.Location = msg.Location;
             remote.HasReceivedState = false;
         }
-        Console.WriteLine($"[Net] Player {msg.PlayerId} moved to system {msg.StarSystemIndex}");
+        Console.WriteLine($"[Net] Player {msg.PlayerId} moved to {msg.Location}");
     }
 
     private void HandleWorldState(byte[] data)
@@ -239,25 +211,13 @@ public sealed class NetworkManager : IDisposable
 
             if (RemotePlayers.TryGetValue(id, out var remote))
             {
-                remote.LastState = state;
+                remote.State = state;
                 remote.HasReceivedState = true;
             }
             else
             {
-                // Player joined before we got an S_PlayerJoined — create on the fly
-                var newRemote = new RemotePlayer(id, $"Player {id}", -1)
-                {
-                    LastState = state,
-                    HasReceivedState = true,
-                };
-                RemotePlayers[id] = newRemote;
-                _events.Add(new ClientEvent
-                {
-                    Type = ClientEventType.PlayerJoined,
-                    PlayerId = id,
-                    PlayerName = newRemote.Name,
-                    StarSystemIndex = -1,
-                });
+                // This should NEVER happen
+                Console.WriteLine($"[Net] Warning: received state for unknown player {id}");
             }
         }
     }
@@ -271,19 +231,19 @@ public class RemotePlayer
     public byte PlayerId { get; }
     public string Name { get; }
 
-    /// <summary>Star system index the remote player is in.</summary>
-    public int StarSystemIndex { get; set; }
-
-    /// <summary>Latest state received from the server.</summary>
-    public NetPlayerState LastState;
+    public NetPlayerLocation Location;
+    public NetPlayerState State;
+    public NetPlayerInfo Info;
 
     /// <summary>True once at least one state update has been received.</summary>
     public bool HasReceivedState;
 
-    public RemotePlayer(byte playerId, string name, int starSystemIndex)
+    public RemotePlayer(byte playerId, string name, NetPlayerLocation location, NetPlayerInfo info, NetPlayerState state)
     {
         PlayerId = playerId;
         Name = name;
-        StarSystemIndex = starSystemIndex;
+        Location = location;
+        Info = info;
+        State = state;
     }
 }

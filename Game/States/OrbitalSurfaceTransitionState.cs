@@ -27,7 +27,7 @@ public class OrbitalSurfaceTransitionState : GameState
         : GameStateType.SolarSystem;
 
     private readonly StarSystemData _starSystem;
-    private readonly PlanetData _planet;
+    private readonly PlanetData _planetOrMoon;
     private readonly int _tileX;
     private readonly int _tileY;
     private readonly Vector2 _shipWorldStart;
@@ -35,9 +35,6 @@ public class OrbitalSurfaceTransitionState : GameState
     private readonly Vector2 _solarCameraStart;
     private readonly float _solarZoomStart;
     private readonly float _shipRotationStart;
-    private readonly bool _isMoon;
-    private readonly int _moonPlanetIndex;
-    private readonly int _moonIndex;
 
     private PlanetSurfaceData _surfaceData = null!;
     private nint _terrainTexture;
@@ -66,21 +63,18 @@ public class OrbitalSurfaceTransitionState : GameState
 
     public OrbitalSurfaceTransitionState(
         StarSystemData starSystem,
-        PlanetData planet,
+        PlanetData planetOrMoon,
         int landingTileX,
         int landingTileY,
         Vector2 shipWorldStart,
         float shipRotationStart,
         Vector2 targetBodyWorldStart,
         Vector2 solarCameraStart,
-        float solarZoomStart,
-        bool isMoon,
-        int moonPlanetIndex,
-        int moonIndex)
+        float solarZoomStart)
     {
         _mode = TransitionMode.Landing;
         _starSystem = starSystem;
-        _planet = planet;
+        _planetOrMoon = planetOrMoon;
         _tileX = landingTileX;
         _tileY = landingTileY;
         _shipWorldStart = shipWorldStart;
@@ -88,24 +82,18 @@ public class OrbitalSurfaceTransitionState : GameState
         _targetBodyWorldStart = targetBodyWorldStart;
         _solarCameraStart = solarCameraStart;
         _solarZoomStart = MathF.Max(0.01f, solarZoomStart);
-        _isMoon = isMoon;
-        _moonPlanetIndex = moonPlanetIndex;
-        _moonIndex = moonIndex;
     }
 
     public OrbitalSurfaceTransitionState(
         StarSystemData starSystem,
-        PlanetData planet,
+        PlanetData planetOrMoon,
         PlanetSurfaceData surfaceData,
         int launchTileX,
-        int launchTileY,
-        bool isMoon,
-        int moonPlanetIndex,
-        int moonIndex)
+        int launchTileY)
     {
         _mode = TransitionMode.Takeoff;
         _starSystem = starSystem;
-        _planet = planet;
+        _planetOrMoon = planetOrMoon;
         _surfaceData = surfaceData;
         _tileX = Math.Clamp(launchTileX, 0, Math.Max(0, surfaceData.Width - 1));
         _tileY = Math.Clamp(launchTileY, 0, Math.Max(0, surfaceData.Height - 1));
@@ -114,10 +102,6 @@ public class OrbitalSurfaceTransitionState : GameState
         _targetBodyWorldStart = Vector2.Zero;
         _solarCameraStart = Vector2.Zero;
         _solarZoomStart = CameraConfig.SolarSystemZoomDefault;
-
-        _isMoon = isMoon;
-        _moonPlanetIndex = moonPlanetIndex;
-        _moonIndex = moonIndex;
     }
 
     public override void Enter(Game game)
@@ -131,17 +115,17 @@ public class OrbitalSurfaceTransitionState : GameState
 
         if (_mode == TransitionMode.Landing)
         {
-            _surfaceData = game.UniverseGenerator.GeneratePlanetSurface(_starSystem, _planet);
+            _surfaceData = game.UniverseGenerator.GeneratePlanetSurface(_starSystem, _planetOrMoon);
 
             _shipScreenStart = WorldToScreenFromSolarSnapshot(_shipWorldStart);
             _planetScreenStart = WorldToScreenFromSolarSnapshot(_targetBodyWorldStart);
-            _planetRadiusStartPx = MathF.Max(_planet.Radius * _solarZoomStart, 8f);
+            _planetRadiusStartPx = MathF.Max(_planetOrMoon.Radius * _solarZoomStart, 8f);
         }
         else
         {
             _shipScreenStart = new Vector2(CX, CY);
             _planetScreenStart = new Vector2(CX, CY);
-            _planetRadiusStartPx = MathF.Max(_planet.Radius * CameraConfig.SolarSystemZoomDefault, 8f);
+            _planetRadiusStartPx = MathF.Max(_planetOrMoon.Radius * CameraConfig.SolarSystemZoomDefault, 8f);
         }
 
         _terrainTexture = TerrainRenderer.CreateTerrainTexture(game.Textures, _surfaceData);
@@ -193,31 +177,24 @@ public class OrbitalSurfaceTransitionState : GameState
 
         if (_elapsed >= TotalDuration)
         {
+            game.Player.SolarSystemReturnContext = _planetOrMoon.IsMoon
+                ? PlayerData.ReturnContext.FromMoon
+                : PlayerData.ReturnContext.FromPlanet;
+            game.Player.ReturnPlanetIndex = _planetOrMoon.IsMoon ? -1 : _planetOrMoon.Index;
+            game.Player.ReturnMoonPlanetIndex = _planetOrMoon.IsMoon ? _planetOrMoon.Index : -1;
+            game.Player.ReturnMoonIndex = _planetOrMoon.IsMoon ? _planetOrMoon.MoonIndex : -1;
+
             if (_mode == TransitionMode.Landing)
             {
-                game.Player.SolarSystemReturnContext = _isMoon
-                    ? PlayerData.ReturnContext.FromMoon
-                    : PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = _isMoon ? -1 : _planet.Index;
-                game.Player.ReturnMoonPlanetIndex = _isMoon ? _moonPlanetIndex : -1;
-                game.Player.ReturnMoonIndex = _isMoon ? _moonIndex : -1;
-
                 game.ChangeState(new PlanetSurfaceState(
                     _starSystem,
-                    _planet,
+                    _planetOrMoon,
                     _tileX,
                     _tileY,
                     preGeneratedSurfaceData: _surfaceData));
             }
             else
             {
-                game.Player.SolarSystemReturnContext = _isMoon
-                    ? PlayerData.ReturnContext.FromMoon
-                    : PlayerData.ReturnContext.FromPlanet;
-                game.Player.ReturnPlanetIndex = _isMoon ? -1 : _planet.Index;
-                game.Player.ReturnMoonPlanetIndex = _isMoon ? _moonPlanetIndex : -1;
-                game.Player.ReturnMoonIndex = _isMoon ? _moonIndex : -1;
-
                 game.Player.InVehicle = false;
                 game.Player.ClearSavedSurfacePositions();
                 game.ChangeState(new SolarSystemState(_starSystem));
@@ -246,11 +223,10 @@ public class OrbitalSurfaceTransitionState : GameState
         float planetY = Lerp(_planetScreenStart.Y, CY, travelP);
         float planetRadius = Lerp(_planetRadiusStartPx, MathF.Max(ScreenW, ScreenH) * 1.08f, EaseInOut01(descentP));
 
-        int planetSeed = _isMoon ? (_moonPlanetIndex * 101 + _moonIndex * 17 + 7) : _planet.Index;
         float terrainBlend = EaseInOut01(Math.Clamp((descentP - 0.24f) / 0.76f, 0f, 1f));
         game.PlanetRenderer.RenderBodyScreen(renderer,
             planetX, planetY, planetRadius,
-            _planet.Color, _planet.Type, _isMoon, planetSeed,
+            _planetOrMoon.Color, _planetOrMoon.Type, _planetOrMoon.IsMoon, _planetOrMoon.IsMoon ? _planetOrMoon.MoonIndex : _planetOrMoon.Index,
             (float)game.GlobalTime, alphaMultiplier: 1f - terrainBlend * terrainBlend);
 
         Vector2 landingScreenTarget = new(CX, CY + 4f);
@@ -348,7 +324,7 @@ public class OrbitalSurfaceTransitionState : GameState
             new Rect(texTopLeftScreen.X, texTopLeftScreen.Y, dstW, dstH), a);
 
         PlanetSurfaceRenderer.RenderAtmosphere(game.SpriteRenderer, _terrainBlendCamera,
-            _surfaceData, _planet.Type, game.GlobalTime, alphaScale: terrainBlend);
+            _surfaceData, _planetOrMoon.Type, game.GlobalTime, alphaScale: terrainBlend);
 
         float markerP = EaseInOut01(Math.Clamp((descentP - 0.22f) / 0.78f, 0f, 1f)) * terrainBlend;
         byte markerAlpha = (byte)Math.Clamp((int)(markerP * 255f), 0, 255);

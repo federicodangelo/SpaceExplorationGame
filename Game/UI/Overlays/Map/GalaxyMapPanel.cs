@@ -163,7 +163,7 @@ public class GalaxyMapPanel : MapPanelBase
 
     private float GetFtlRange(Game game)
     {
-        var stats = game.Player.GetCombinedStats();
+        var stats = game.Player.GetCombinedShipStats();
         return stats.FtlRange > 0 ? stats.FtlRange : ShipConfig.FtlMaxRange;
     }
 

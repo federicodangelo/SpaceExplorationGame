@@ -1,7 +1,7 @@
+using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.Core;
-using SpaceExplorationGame.Core.Config;
-using SpaceExplorationGame.UI.Overlays.Base;
 
 namespace SpaceExplorationGame.States;
 
@@ -16,7 +16,7 @@ public sealed class MultiplayerConnectState : GameState
     private readonly string _url;
     private readonly string _playerName;
 
-    private NetworkManager? _net;
+    private ClientNetworkManager? _net;
     private Task? _connectTask;
     private float _elapsed;
     private string _statusMessage = "CONNECTING...";
@@ -33,15 +33,29 @@ public sealed class MultiplayerConnectState : GameState
     public override void Enter(Game game)
     {
         game.Audio.SetMusicTheme(AudioThemes.MainMenu);
+        game.Player.ClearReturnContext();
 
-        _net = new NetworkManager();
+        _net = new ClientNetworkManager();
         game.Network = _net;
         _statusMessage = "CONNECTING...";
         _failed = false;
         _elapsed = 0f;
 
+        var player = game.Player;
+        var ship = player.CurrentShipType;
+        var shipStats = player.GetCombinedShipStats();
+
+        NetPlayerInfo info = new NetPlayerInfo
+        {
+            ShipTypeId = game.Player.CurrentShipType.Id,
+            MaxHull = (int)(ship.BaseHull + shipStats.MaxHull),
+            MaxShield = (int)shipStats.ShieldStrength,
+        };
+
+        NetPlayerLocation location = NetPlayerLocation.ForSolarSystem(0);
+
         // Begin async connect; we'll poll IsJoined each frame
-        _connectTask = _net.ConnectAsync(_url, _playerName, -1);
+        _connectTask = _net.ConnectAsync(_url, _playerName, info, location);
     }
 
     public override void Exit(Game game) { }
@@ -98,15 +112,54 @@ public sealed class MultiplayerConnectState : GameState
     private void OnJoined(Game game)
     {
         var net = _net!;
-        Console.WriteLine($"[Net] Joined as player {net.LocalPlayerId}, system {net.ServerStarSystemIndex}");
+        var location = net.PlayerStartingLocation;
+        var player = game.Player;
+
+        Console.WriteLine($"[Net] Joined as player {net.LocalPlayerId}, {location}");
 
         // Regenerate galaxy with the server's seed so both sides use identical data
         game.RegenerateGalaxy(net.ServerGalaxySeed);
 
-        var starSystem = game.GalaxyData[net.ServerStarSystemIndex];
-        game.Player.CurrentStarSystemIndex = starSystem.Index;
         game.Audio.PlaySfx(AudioSfx.MenuSelect);
-        game.ChangeState(new SolarSystemState(starSystem));
+
+        var solarSystemData = game.GalaxyData[location.SolarSystemIndex];
+        var solarSystem = game.UniverseGenerator.GenerateSolarSystem(solarSystemData);
+
+        var spaceStationData = location.SolarSystemIndex >= 0 ? solarSystem.SpaceStations.FirstOrDefault(s => s.Index == location.SpaceStationIndex) : null;
+        var planetData = location.SolarSystemIndex >= 0 && location.PlanetIndex >= 0 ? solarSystem.Planets.FirstOrDefault(p => p.Index == location.PlanetIndex) : null;
+        if (location.MoonIndex >= 0 && planetData != null)
+            planetData = planetData.Moons.FirstOrDefault(m => m.Index == location.MoonIndex)?.ToPlanetData(planetData.Index);
+
+        var planet = planetData != null ? game.UniverseGenerator.GeneratePlanetSurface(solarSystemData, planetData) : null;
+        var settlementData = location.SettlementIndex >= 0 && planet != null ? planet.Settlements.FirstOrDefault(s => s.Index == location.SettlementIndex) : null;
+
+        player.CurrentStarSystemIndex = solarSystemData.Index;
+
+        if (settlementData != null)
+        {
+            game.ChangeState(new InteriorState(
+                InteriorOrigin.Settlement,
+                solarSystemData,
+                planet: planetData,
+                settlement: settlementData)
+            );
+        }
+        else if (spaceStationData != null)
+        {
+            game.ChangeState(new InteriorState(
+                InteriorOrigin.SpaceStation,
+                solarSystemData,
+                spaceStation: spaceStationData)
+            );
+        }
+        else if (planetData != null)
+        {
+            game.ChangeState(new PlanetSurfaceState(solarSystemData, planetData));
+        }
+        else
+        {
+            game.ChangeState(new SolarSystemState(solarSystemData));
+        }
     }
 
     public override void RenderGame(Game game)

@@ -1,4 +1,6 @@
+using System.Numerics;
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
@@ -45,8 +47,6 @@ public class InteriorSimulation : SimulationBase
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private AvatarSystem _avatarSystem = null!;
-
-
 
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null,
@@ -121,20 +121,23 @@ public class InteriorSimulation : SimulationBase
         float spawnX = ctx.LandingTileX * WindowConfig.TileSize;
         float spawnY = ctx.LandingTileY * WindowConfig.TileSize;
 
-        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, player.AvatarWalkSpeed, canMoveTo: pos =>
-        {
-            int tileX = (int)(pos.X / WindowConfig.TileSize);
-            int tileY = (int)(pos.Y / WindowConfig.TileSize);
-            return tileX >= 0 && tileX < Interior.Width &&
-                   tileY >= 0 && tileY < Interior.Height &&
-                   InteriorGenerator.IsWalkable(Interior.Tiles[tileX, tileY]);
-        });
+        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, spawnX, spawnY, player.Type,
+        speed: player.AvatarWalkSpeed, canMoveTo: CanMoveToInterior);
 
         // Notify mission system
         if (Origin == InteriorOrigin.Settlement && Planet != null)
             player.Missions.NotifySettlementEntered(StarSystem.Index, Planet.Index);
 
         return avatarEntity;
+    }
+
+    private bool CanMoveToInterior(Vector2 pos)
+    {
+        int tileX = (int)(pos.X / WindowConfig.TileSize);
+        int tileY = (int)(pos.Y / WindowConfig.TileSize);
+        return tileX >= 0 && tileX < Interior.Width &&
+                tileY >= 0 && tileY < Interior.Height &&
+                InteriorGenerator.IsWalkable(Interior.Tiles[tileX, tileY]);
     }
 
     // ── Proximity ───────────────────────────────────────────────────
@@ -192,5 +195,112 @@ public class InteriorSimulation : SimulationBase
                     ps.NearShip = true;
             }
         }
+    }
+
+    public override Vector2 GetDefaultSpawnCoordinates()
+    {
+        float x = Interior.SpawnPoint.X * WindowConfig.TileSize;
+        float y = Interior.SpawnPoint.Y * WindowConfig.TileSize;
+        return new Vector2(x, y);
+    }
+
+    public override NetPlayerState GetNetPlayerState(SimulationPlayer player)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        var state = new NetPlayerState();
+
+        if (!world.IsAlive(entity))
+        {
+            state.Alive = false;
+            return state;
+        }
+
+        state.Alive = true;
+
+        if (world.TryGet<Transform>(entity, out var transform))
+        {
+            state.Position = transform.Position;
+            state.Rotation = transform.Rotation;
+        }
+
+        if (world.TryGet<Velocity>(entity, out var velocity))
+        {
+            state.Velocity = velocity.Linear;
+        }
+
+        if (world.TryGet<Health>(entity, out var health))
+        {
+            state.Hull = health.Hull;
+            state.Shield = health.Shield;
+        }
+
+        if (world.TryGet<AvatarInputComponent>(entity, out var input))
+        {
+            state.Shooting = input.Shoot;
+            state.AimDirection = input.AimDirection;
+        }
+
+        return state;
+    }
+
+    public override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        if (!state.Alive)
+        {
+            ref var healthDeadRef = ref world.TryGetRef<Health>(entity, out var healthDeadFound);
+            if (healthDeadFound)
+            {
+                healthDeadRef.Hull = 0;
+                healthDeadRef.Shield = 0;
+            }
+            return;
+        }
+
+        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+        if (transformFound)
+        {
+            transformRef.Position = state.Position;
+            transformRef.Rotation = state.Rotation;
+        }
+
+        ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);
+        if (velocityFound)
+        {
+            velocityRef.Linear = state.Velocity;
+        }
+
+        ref var healthRef = ref world.TryGetRef<Health>(entity, out var healthFound);
+        if (healthFound)
+        {
+            healthRef.Hull = state.Hull;
+            healthRef.Shield = state.Shield;
+        }
+
+        ref var inputRef = ref world.TryGetRef<AvatarInputComponent>(entity, out var inputFound);
+        if (inputFound)
+        {
+            inputRef.Shoot = state.Shooting;
+            inputRef.AimDirection = state.AimDirection;
+        }
+    }
+
+    public override NetPlayerLocation GetNetPlayerLocation()
+    {
+        if (Origin == InteriorOrigin.SpaceStation && SpaceStation != null)
+            return NetPlayerLocation.ForSpaceStation(StarSystem.Index, SpaceStation.Index);
+        else if (Origin == InteriorOrigin.Settlement && Planet != null && Settlement != null)
+            return NetPlayerLocation.ForPlanetSettlement(StarSystem.Index, Planet.Index, Settlement.Index);
+        else
+            return NetPlayerLocation.ForSolarSystem(StarSystem.Index); // This should never happen..
     }
 }

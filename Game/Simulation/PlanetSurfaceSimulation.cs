@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
@@ -23,6 +24,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public StarSystemData StarSystem { get; }
     public PlanetData Planet { get; }
     public PlanetSurfaceData SurfaceData { get; private init; }
+    public IReadOnlyList<SettlementData> Settlements => SurfaceData.Settlements;
 
     // ── Per-player state (delegates to local player for backward compat) ──
     private SurfacePlayerState? LocalSurfaceState =>
@@ -200,8 +202,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         }
 
         var avatarStats = player.GetCombinedAvatarStats();
-        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, playerStartX, playerStartY, avatarSpeed,
-            maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain,
+        var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld, playerStartX, playerStartY, player.Type,
+            speed: avatarSpeed, maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain,
             weaponDamage: CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage,
             weaponFireRate: CombatConfig.AvatarFireRate,
             weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed);
@@ -238,18 +240,15 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         return ss.VehicleEntity;
     }
 
-    /// <summary>Create a vehicle entity for the local player.</summary>
-    public Entity DeployVehicle(float x, float y)
-    {
-        return DeployVehicle(LocalPlayer!, x, y);
-    }
-
     /// <summary>Remove the vehicle entity for the given player.</summary>
     public void StowVehicle(SimulationPlayer player)
     {
         var ss = GetSurfaceState(player);
         if (ss.VehicleDeployed && EcsWorld.IsAlive(ss.VehicleEntity))
+        {
             EcsWorld.Destroy(ss.VehicleEntity);
+            ss.VehicleEntity = Entity.Null;
+        }
         ss.VehicleDeployed = false;
     }
 
@@ -451,8 +450,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
         var respawnAvatarStats = player.Data.GetCombinedAvatarStats();
         var avatarEntity = EntityFactory.CreatePlayerAvatar(EcsWorld,
-            shipPos.X, shipPos.Y - 20f, player.Data.AvatarWalkSpeed,
-            maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth,
+            shipPos.X, shipPos.Y - 20f, player.Type,
+            speed: player.Data.AvatarWalkSpeed, maxHealth: player.Data.AvatarMaxHealth, currentHealth: player.Data.AvatarMaxHealth,
             canMoveTo: CanMoveToTerrain,
             weaponDamage: CombatConfig.BaseAvatarWeaponDamage + respawnAvatarStats.WeaponDamage,
             weaponFireRate: CombatConfig.AvatarFireRate,
@@ -499,5 +498,110 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)
     {
         player.Data.AvatarHealth = hull;
+    }
+
+    public override Vector2 GetDefaultSpawnCoordinates()
+    {
+        return new Vector2(SurfaceData.LandingZone.X * WindowConfig.TileSize,
+                           SurfaceData.LandingZone.Y * WindowConfig.TileSize);
+    }
+
+    public override NetPlayerLocation GetNetPlayerLocation()
+    {
+        if (Planet.IsMoon)
+            return NetPlayerLocation.ForMoon(StarSystem.Index, Planet.Index, Planet.MoonIndex);
+        else
+            return NetPlayerLocation.ForPlanet(StarSystem.Index, Planet.Index);
+    }
+
+    public override NetPlayerState GetNetPlayerState(SimulationPlayer player)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        var state = new NetPlayerState();
+
+        if (!world.IsAlive(entity))
+        {
+            state.Alive = false;
+            return state;
+        }
+
+        state.Alive = true;
+
+        if (world.TryGet<Transform>(entity, out var transform))
+        {
+            state.Position = transform.Position;
+            state.Rotation = transform.Rotation;
+        }
+
+        if (world.TryGet<Velocity>(entity, out var velocity))
+        {
+            state.Velocity = velocity.Linear;
+        }
+
+        if (world.TryGet<Health>(entity, out var health))
+        {
+            state.Hull = health.Hull;
+            state.Shield = health.Shield;
+        }
+
+        if (world.TryGet<AvatarInputComponent>(entity, out var input))
+        {
+            state.Shooting = input.Shoot;
+            state.AimDirection = input.AimDirection;
+        }
+
+        return state;
+    }
+
+    public override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state)
+    {
+
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        if (!state.Alive)
+        {
+            ref var healthDeadRef = ref world.TryGetRef<Health>(entity, out var healthDeadFound);
+            if (healthDeadFound)
+            {
+                healthDeadRef.Hull = 0;
+                healthDeadRef.Shield = 0;
+            }
+            return;
+        }
+
+        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+        if (transformFound)
+        {
+            transformRef.Position = state.Position;
+            transformRef.Rotation = state.Rotation;
+        }
+
+        ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);
+        if (velocityFound)
+        {
+            velocityRef.Linear = state.Velocity;
+        }
+
+        ref var healthRef = ref world.TryGetRef<Health>(entity, out var healthFound);
+        if (healthFound)
+        {
+            healthRef.Hull = state.Hull;
+            healthRef.Shield = state.Shield;
+        }
+
+        ref var inputRef = ref world.TryGetRef<AvatarInputComponent>(entity, out var inputFound);
+        if (inputFound)
+        {
+            inputRef.Shoot = state.Shooting;
+            inputRef.AimDirection = state.AimDirection;
+        }
     }
 }

@@ -502,6 +502,17 @@ public class InteriorState : GameState
                 game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
         }
 
+        // Remote player avatars
+        foreach (var player in _sim.Players)
+        {
+            if (player.Type != PlayerType.Remote) continue;
+            var remoteEntity = player.Entity;
+            if (!world.IsAlive(remoteEntity)) continue;
+
+            ref var remoteAvatarTf = ref world.Get<Transform>(remoteEntity);
+            game.AvatarRenderer.Render(renderer, camera, remoteAvatarTf.Position);
+        }
+
         // Draw player avatar only when not inside the ship
         if (!_playerInsideShip)
             InteriorRenderer.RenderPlayerAvatar(renderer, camera, avatarTf.Position, game.AvatarRenderer);
@@ -547,6 +558,16 @@ public class InteriorState : GameState
             }
         }
 
+        // Minimap
+        HudMinimapRenderer.RenderInteriorMinimap(renderer, _sim.Interior, avatarTf.Position);
+
+        // Multiplayer player list (below minimap, only when connected)
+        if (game.Network is { IsJoined: true } netForList)
+        {
+            HudRenderer.RenderPlayerListHud(renderer, netForList,
+                game.MenuOptions.GetPlayerName(), _sim.GetNetPlayerLocation());
+        }
+
         // Dialogue
         if (_showingDialogue && _dialogueNpc != null)
             InteriorRenderer.RenderDialogue(renderer, w, h, _dialogueNpc, _dialogueLine);
@@ -562,9 +583,6 @@ public class InteriorState : GameState
         _sellCargo.Render(game);
         _inGameMenuOverlay.Render(game);
         _starshipMenuOverlay.Render(game);
-
-        // Minimap
-        HudMinimapRenderer.RenderInteriorMinimap(renderer, _sim.Interior, avatarTf.Position);
     }
 
     public override IReadOnlyList<string>? GetDebugInfo()

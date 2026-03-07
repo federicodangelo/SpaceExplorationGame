@@ -200,7 +200,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         // Notify mission system
         player.Missions.NotifySystemEntered(StarSystem.Index);
 
-        return CreatePlayerShip(player, startPos);
+        return CreatePlayerShip(player, startPos, player.Type);
     }
 
     /// <summary>Sync the player ship's ShipComponent with current equipment stats.</summary>
@@ -209,7 +209,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         if (!EcsWorld.IsAlive(player.Entity)) return;
         if (!EcsWorld.Has<ShipComponent>(player.Entity) || !EcsWorld.Has<Velocity>(player.Entity)) return;
 
-        var playerStats = player.Data.GetCombinedStats();
+        var playerStats = player.Data.GetCombinedShipStats();
         var weapons = CombatHelper.BuildWeaponSpecs(player.Data.EquippedParts);
 
         ref var ship = ref EcsWorld.Get<ShipComponent>(player.Entity);
@@ -255,16 +255,16 @@ public class SolarSystemSimulation : CombatSimulationBase
         return Content.StartingPosition;
     }
 
-    private Entity CreatePlayerShip(PlayerData player, Vector2 position)
+    private Entity CreatePlayerShip(PlayerData player, Vector2 position, PlayerType playerType)
     {
         int shipSize = player.CurrentShipType.SpriteSize;
-        var playerStats = player.GetCombinedStats();
+        var playerStats = player.GetCombinedShipStats();
         var playerWeapons = CombatHelper.BuildWeaponSpecs(player.EquippedParts);
 
         return EntityFactory.CreatePlayerShip(EcsWorld, position, shipSize,
             player.ShipMaxHealth, player.ShipHealth, playerStats.ShieldStrength,
             playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
-            ShipConfig.ShipBrakeMultiplier, playerWeapons, PlayerType.Local);
+            ShipConfig.ShipBrakeMultiplier, playerWeapons, playerType);
     }
 
     private void SpawnStar(StarSystemData starSystem, Vector2 center)
@@ -526,7 +526,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
 
         player.Data.ShipHealth = player.Data.ShipMaxHealth;
-        player.Entity = CreatePlayerShip(player.Data, respawnPos);
+        player.Entity = CreatePlayerShip(player.Data, respawnPos, player.Type);
 
         state.CombatMessage = "RESPAWNED";
         state.CombatMessageTimer = 3f;
@@ -541,96 +541,105 @@ public class SolarSystemSimulation : CombatSimulationBase
         player.Data.ShipHealth = hull;
     }
 
-    // ── Network: remote player entity management ────────────────
-
-    private readonly Dictionary<byte, Entity> _remotePlayerEntities = new();
-
-    /// <summary>Remote player entities managed by this simulation, keyed by player ID.</summary>
-    public IReadOnlyDictionary<byte, Entity> RemotePlayerEntities => _remotePlayerEntities;
-
-    /// <summary>
-    /// Create/update ECS entities for remote players in this star system.
-    /// Call once per frame from the game loop.
-    /// </summary>
-    public override void SyncRemotePlayers(NetworkManager net)
+    public override Vector2 GetDefaultSpawnCoordinates()
     {
-        int mySystemIndex = StarSystem.Index;
-
-        // Remove entities for players who left or changed system
-        List<byte>? toRemove = null;
-        foreach (var (id, entity) in _remotePlayerEntities)
-        {
-            if (!net.RemotePlayers.TryGetValue(id, out var remote) || remote.StarSystemIndex != mySystemIndex)
-            {
-                if (EcsWorld.IsAlive(entity))
-                    EcsWorld.Destroy(entity);
-                (toRemove ??= []).Add(id);
-            }
-        }
-        if (toRemove != null)
-            foreach (var id in toRemove)
-                _remotePlayerEntities.Remove(id);
-
-        // Create or update entities for remote players in this system
-        foreach (var remote in net.RemotePlayers.Values)
-        {
-            if (remote.StarSystemIndex != mySystemIndex) continue;
-            if (!remote.HasReceivedState) continue;
-
-            if (!_remotePlayerEntities.TryGetValue(remote.PlayerId, out var entity) || !EcsWorld.IsAlive(entity))
-            {
-                string shipTypeId = remote.LastState.ShipTypeId ?? ShipTypeCatalog.StarterShip.Id;
-                var shipType = ShipTypeCatalog.GetById(shipTypeId)!;
-                int shipSize = shipType.SpriteSize;
-                var shipLoadout = ShipPartCatalog.GetStarterLoadout(shipType);
-                var shipStats = ShipStatsHelper.GetCombinedStats(shipType, shipLoadout.Values);
-                var playerWeapons = CombatHelper.BuildWeaponSpecs(shipLoadout);
-
-
-                entity = EntityFactory.CreatePlayerShip(
-                    EcsWorld,
-                    remote.LastState.Position,
-                    spriteSize: shipSize,
-                    maxHull: shipStats.MaxHull,
-                    currentHull: remote.LastState.Hull > 0 ? remote.LastState.Hull : shipStats.MaxHull,
-                    maxShield: shipStats.ShieldStrength,
-                    maxSpeed: shipStats.MaxSpeed,
-                    rotationSpeed: shipStats.RotationSpeed,
-                    acceleration: shipStats.Acceleration,
-                    brakeMultiplier: ShipConfig.ShipBrakeMultiplier,
-                    playerType: PlayerType.Remote,
-                    weapons: playerWeapons);
-                _remotePlayerEntities[remote.PlayerId] = entity;
-            }
-
-            ref var transform = ref EcsWorld.Get<Transform>(entity);
-            transform.Position = remote.LastState.Position;
-            transform.Rotation = remote.LastState.Rotation;
-
-            ref var velocity = ref EcsWorld.Get<Velocity>(entity);
-            velocity.Linear = remote.LastState.Velocity;
-
-            ref var shipInput = ref EcsWorld.Get<ShipInputComponent>(entity);
-            shipInput.Shoot = remote.LastState.Shooting;
-            shipInput.AccelerationDirection = remote.LastState.AccelerationDirection;
-            shipInput.RotationSpeed = remote.LastState.RotationSpeed;
-
-            if (EcsWorld.Has<Health>(entity))
-            {
-                ref var health = ref EcsWorld.Get<Health>(entity);
-                health.Hull = remote.LastState.Hull;
-                health.MaxHull = remote.LastState.MaxHull;
-                health.Shield = remote.LastState.Shield;
-                health.MaxShield = remote.LastState.MaxShield;
-            }
-        }
+        return Content.StartingPosition;
     }
 
-    public override void SendPlayerStateToServer(NetworkManager net)
+    public override NetPlayerLocation GetNetPlayerLocation()
     {
-        if (LocalPlayer != null && !LocalPlayerDead && EcsWorld.IsAlive(LocalPlayer.Entity))
+        return NetPlayerLocation.ForSolarSystem(StarSystem.Index);
+    }
+
+    public override NetPlayerState GetNetPlayerState(SimulationPlayer player)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        var state = new NetPlayerState();
+
+        if (!world.IsAlive(entity))
         {
-            net.SendLocalState(EcsWorld, LocalPlayer.Entity, LocalPlayer.Data.CurrentShipType.Id);
+            state.Alive = false;
+            return state;
+        }
+
+        state.Alive = true;
+
+        if (world.TryGet<Transform>(entity, out var transform))
+        {
+            state.Position = transform.Position;
+            state.Rotation = transform.Rotation;
+        }
+
+        if (world.TryGet<Velocity>(entity, out var velocity))
+        {
+            state.Velocity = velocity.Linear;
+        }
+
+        if (world.TryGet<Health>(entity, out var health))
+        {
+            state.Hull = health.Hull;
+            state.Shield = health.Shield;
+        }
+
+        if (world.TryGet<ShipInputComponent>(entity, out var input))
+        {
+            state.Shooting = input.Shoot;
+            state.RotationSpeed = input.RotationSpeed;
+            state.AccelerationDirection = input.AccelerationDirection;
+        }
+
+        return state;
+    }
+
+    public override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState state)
+    {
+        var world = EcsWorld;
+        var entity = player.Entity;
+
+        if (!world.IsAlive(entity))
+        {
+            return;
+        }
+
+        if (!state.Alive)
+        {
+            ref var healthDeadRef = ref world.TryGetRef<Health>(entity, out var healthDeadFound);
+            if (healthDeadFound)
+            {
+                healthDeadRef.Hull = 0;
+                healthDeadRef.Shield = 0;
+            }
+            return;
+        }
+
+        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+        if (transformFound)
+        {
+            transformRef.Position = state.Position;
+            transformRef.Rotation = state.Rotation;
+        }
+
+        ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);
+        if (velocityFound)
+        {
+            velocityRef.Linear = state.Velocity;
+        }
+
+        ref var healthRef = ref world.TryGetRef<Health>(entity, out var healthFound);
+        if (healthFound)
+        {
+            healthRef.Hull = state.Hull;
+            healthRef.Shield = state.Shield;
+        }
+
+        ref var inputRef = ref world.TryGetRef<ShipInputComponent>(entity, out var inputFound);
+        if (inputFound)
+        {
+            inputRef.Shoot = state.Shooting;
+            inputRef.RotationSpeed = state.RotationSpeed;
+            inputRef.AccelerationDirection = state.AccelerationDirection;
         }
     }
 }

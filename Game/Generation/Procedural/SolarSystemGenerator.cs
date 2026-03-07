@@ -11,6 +11,8 @@ namespace SpaceExplorationGame.Generation;
 public class PlanetData
 {
     public int Index { get; init; }
+    public int MoonIndex { get; init; } = -1; // -1 = no moon, otherwise index into planet Moons list
+    public bool IsMoon => MoonIndex >= 0;
     public string Name { get; init; } = "";
     public PlanetType Type { get; init; }
     public float OrbitRadius { get; init; }       // distance from star in world pixels
@@ -41,7 +43,8 @@ public class MoonData
     {
         return new PlanetData
         {
-            Index = parentPlanetIndex * 100 + Index, // unique index for seed derivation
+            Index = parentPlanetIndex,
+            MoonIndex = Index,
             Name = Name,
             Type = Type,
             OrbitRadius = OrbitRadius,

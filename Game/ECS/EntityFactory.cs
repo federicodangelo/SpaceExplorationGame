@@ -163,7 +163,7 @@ public static class EntityFactory
     /// <param name="weaponDamage">Damage per shot. Pass 0 (default) for unarmed avatars such as interior walkers.</param>
     /// <param name="weaponFireRate">Seconds between shots. Pass 0 (default) for unarmed avatars.</param>
     /// <param name="weaponProjectileSpeed">Projectile speed. Pass 0 (default) for unarmed avatars.</param>
-    public static Entity CreatePlayerAvatar(World world, float x, float y, float speed,
+    public static Entity CreatePlayerAvatar(World world, float x, float y, PlayerType playerType, float speed,
         float maxHealth = 0f, float currentHealth = 0f, Func<Vector2, bool>? canMoveTo = null,
         float weaponDamage = 0f, float weaponFireRate = 0f, float weaponProjectileSpeed = 0f)
     {
@@ -187,6 +187,11 @@ public static class EntityFactory
         if (maxHealth > 0f)
         {
             world.Add(entity, new Health(maxHealth) { Hull = currentHealth > 0 ? currentHealth : maxHealth });
+        }
+
+        if (playerType == PlayerType.Local)
+        {
+            world.Add(entity, new PlayerLocal());
         }
 
         return entity;
