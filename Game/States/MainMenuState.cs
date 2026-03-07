@@ -228,10 +228,9 @@ public class MainMenuState : GameState
         if (_menuOverlay.JoinServerUrl != null)
         {
             var url = _menuOverlay.JoinServerUrl;
-            var playerName = _menuOverlay.PlayerName;
             _menuOverlay.JoinServerUrl = null;
             game.Audio.PlaySfx(AudioSfx.MenuSelect);
-            game.ChangeState(new MultiplayerConnectState(url, playerName));
+            game.ChangeState(new MultiplayerConnectState(url));
         }
 
         // Handle quit

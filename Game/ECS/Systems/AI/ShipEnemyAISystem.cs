@@ -22,15 +22,15 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     // Cached query description for nested target/pirate lookups
     private static readonly QueryDescription _aiEntityQuery = new QueryDescription().WithAll<Transform, Velocity, EnemyAI, Health>();
-    private static readonly QueryDescription _localPlayerShipQuery = new QueryDescription().WithAll<PlayerControlled, PlayerLocal, Transform, Velocity, Health, ShipComponent>();
+    private static readonly QueryDescription _playerShipQuery = new QueryDescription().WithAll<PlayerControlled, Transform, Velocity, Health, ShipComponent>();
 
     // Per-frame cached state for [Query] method access
     private float _dt;
-    private Vector2 _localPlayerPos;
-    private Vector2 _localPlayerVelocity;
-    private bool _localPlayerAlive;
 
-    private readonly record struct TargetSelection(Vector2 Position, Vector2 Velocity, bool HasTarget);
+    private readonly record struct TargetSelection(bool HasTarget, Vector2 Position, Vector2 Velocity)
+    {
+        public static readonly TargetSelection Empty = new TargetSelection(false, Vector2.Zero, Vector2.Zero);
+    }
 
     public ShipEnemyAISystem(World world, float mapWidth, float mapHeight)
         : base(world)
@@ -42,24 +42,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
     public override void Update(in float dt)
     {
         _dt = dt;
-        QueryPlayerState();
-
         ProcessEnemyAIQuery(World);
-    }
-
-    private void QueryPlayerState()
-    {
-        _localPlayerAlive = false;
-        _localPlayerPos = Vector2.Zero;
-        _localPlayerVelocity = Vector2.Zero;
-
-        var q = _localPlayerShipQuery;
-        World.Query(in q, (ref Transform transform, ref Velocity velocity, ref Health health) =>
-        {
-            _localPlayerPos = transform.Position;
-            _localPlayerVelocity = velocity.Linear;
-            _localPlayerAlive = !health.IsDead;
-        });
     }
 
     /// <summary>Source-generated query: iterates all NPC ships with AI.</summary>
@@ -90,8 +73,7 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         shipInput.Shoot = false;
 
         // Find the best target based on faction
-        var liveTarget = FindTarget(entity, ai.Config.Faction, transform.Position,
-            ai.Config.DetectRange, _localPlayerPos, _localPlayerVelocity, _localPlayerAlive);
+        var liveTarget = FindTarget(entity, ai.Config.Faction, transform.Position, ai.Config.DetectRange);
         var target = ResolveTargetWithMemory(ref ai, liveTarget);
 
         UpdateShipAIByFaction(ref transform, ref ai, ref health, ref shipInput, ref ship, _dt,
@@ -380,34 +362,39 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
             return default;
         }
 
-        return new TargetSelection(ai.LastKnownTargetPos, ai.LastKnownTargetVelocity, true);
+        return new TargetSelection(true, ai.LastKnownTargetPos, ai.LastKnownTargetVelocity);
     }
 
-    private TargetSelection FindTarget(Entity self, Faction selfFaction,
-        Vector2 selfPos, float range, Vector2 playerPos, Vector2 playerVelocity, bool playerAlive)
+    private TargetSelection FindTarget(Entity self, Faction selfFaction, Vector2 selfPos, float range)
     {
-        Entity? bestTarget = null;
-        float bestDist = float.MaxValue;
-        Vector2 bestPos = Vector2.Zero;
-        Vector2 bestVelocity = Vector2.Zero;
+        TargetSelection target = TargetSelection.Empty;
 
-        // Optional player target (virtual target; no entity handle)
-        if (playerAlive && ShouldTargetPlayer(selfFaction))
-            TrySelectTarget(playerPos, playerVelocity, null, selfPos, range,
-                ref bestDist, ref bestPos, ref bestVelocity, ref bestTarget);
+        // Ship-vs-player target selection policy (if applicable to this faction)
+        if (ShouldTargetPlayer(selfFaction))
+        {
+            World.Query(in _playerShipQuery, (ref Transform transform, ref Velocity velocity, ref Health health) =>
+            {
+                if (health.IsDead) return;
+
+                TargetSelection candidate = new TargetSelection(true, transform.Position, velocity.Linear);
+
+                target = TrySelectTarget(target, candidate, selfPos, range);
+            });
+        }
 
         // Ship-vs-ship target selection policy
-        World.Query(in _aiEntityQuery, (Entity entity, ref Transform t, ref Velocity v, ref EnemyAI ai, ref Health h) =>
+        World.Query(in _aiEntityQuery, (Entity entity, ref Transform transform, ref Velocity velocity, ref EnemyAI ai, ref Health health) =>
         {
-            if (entity == self || h.IsDead) return;
+            if (entity == self || health.IsDead) return;
             if (World.Has<WarpEffect>(entity)) return; // warping ships are not valid targets
             if (!ShouldTargetFaction(selfFaction, ai.Config.Faction)) return;
 
-            TrySelectTarget(t.Position, v.Linear, entity, selfPos, range,
-                ref bestDist, ref bestPos, ref bestVelocity, ref bestTarget);
+            var candidate = new TargetSelection(true, transform.Position, velocity.Linear);
+
+            target = TrySelectTarget(target, candidate, selfPos, range);
         });
 
-        return new TargetSelection(bestPos, bestVelocity, bestDist < float.MaxValue);
+        return target;
     }
 
     private static bool ShouldTargetPlayer(Faction selfFaction)
@@ -425,18 +412,17 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
         };
     }
 
-    private static void TrySelectTarget(Vector2 candidatePos, Vector2 candidateVelocity,
-        Entity? candidateEntity, Vector2 selfPos, float range, ref float bestDist,
-        ref Vector2 bestPos, ref Vector2 bestVelocity, ref Entity? bestTarget)
+    private static TargetSelection TrySelectTarget(TargetSelection currentTarget, TargetSelection candidate, Vector2 selfPos, float range)
     {
-        float dist = Vector2.Distance(selfPos, candidatePos);
-        if (dist >= range || dist >= bestDist)
-            return;
+        if (!candidate.HasTarget)
+            return candidate;
 
-        bestDist = dist;
-        bestPos = candidatePos;
-        bestVelocity = candidateVelocity;
-        bestTarget = candidateEntity;
+        float currentDistance = Vector2.Distance(selfPos, currentTarget.Position);
+        float candidateDistance = Vector2.Distance(selfPos, candidate.Position);
+        if (candidateDistance >= range || candidateDistance >= currentDistance)
+            return currentTarget;
+
+        return candidate;
     }
 
     private Vector2? FindNearestPirate(Vector2 pos, float range)

@@ -54,9 +54,13 @@ public partial class WebMain
 
             if (connectUrl != null)
             {
-                string playerName = playerNameParam ?? _game.MenuOptions.GetPlayerName();
-                Console.WriteLine($"[SEG-CS] Connecting to {connectUrl} as '{playerName}'...");
-                _game.ChangeState(new MultiplayerConnectState(connectUrl, playerName));
+                if (playerNameParam != null)
+                {
+                    // Save the player name for next time
+                    _game.PlayerName = playerNameParam;
+                }
+                Console.WriteLine($"[SEG-CS] Connecting to {connectUrl} as '{_game.PlayerName}'...");
+                _game.ChangeState(new MultiplayerConnectState(connectUrl));
             }
             else
             {

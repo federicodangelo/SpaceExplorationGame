@@ -80,18 +80,18 @@ internal static class Program
                 showcase = args[i + 1];
                 i++;
             }
-            else if (arg == "--star-type")
+            else if (arg is "--star-type" or "-st")
             {
                 if (i + 1 >= args.Length)
                     throw new ArgumentException("Missing value for --star-type. Example: --star-type g");
                 starTypeArg = args[i + 1];
                 i++;
             }
-            else if (arg == "--debug")
+            else if (arg is "--debug" or "-d")
             {
                 debugMode = true;
             }
-            else if (arg == "--autoplay")
+            else if (arg is "--autoplay" or "-ap")
             {
                 autoplay = true;
             }
@@ -168,9 +168,14 @@ internal static class Program
             var net = new ClientNetworkManager();
             game.Network = net;
 
-            string playerName = playerNameArg ?? game.MenuOptions.GetPlayerName();
-            Console.WriteLine($"Connecting to {connectUrl} as '{playerName}'...");
-            game.ChangeState(new MultiplayerConnectState(connectUrl, playerName));
+            if (playerNameArg != null)
+            {
+                // Save the player name for next time
+                game.PlayerName = playerNameArg;
+            }
+
+            Console.WriteLine($"Connecting to {connectUrl} as '{game.PlayerName}'...");
+            game.ChangeState(new MultiplayerConnectState(connectUrl));
         }
         else
         {
@@ -289,10 +294,11 @@ internal static class Program
         Console.WriteLine("                              planet: orbit | landed | on-foot | on-vehicle");
         Console.WriteLine("                              settlement: above | inside | on-foot | on-vehicle");
         Console.WriteLine("  --showcase, -sc <showcase>     debug showcase: star-type | planet-type | asteroid | surface-mining");
-        Console.WriteLine("  --star-type <type>             optional for star-type showcase (default: G)");
-        Console.WriteLine("  --debug                        enable the DEBUG menu in the main menu");
-        Console.WriteLine("  --autoplay                     start the autoplay bot immediately");
+        Console.WriteLine("  --star-type, -st <type>        optional for star-type showcase (default: G)");
+        Console.WriteLine("  --debug, -d                    enable the DEBUG menu in the main menu");
+        Console.WriteLine("  --autoplay, -ap                start the autoplay bot immediately");
         Console.WriteLine("  --connect, -c <url>            connect to a multiplayer server (e.g. ws://localhost:9050/)");
+        Console.WriteLine("  --name, -n <name>              username to use when connecting to multiplayer (default: last used name or 'Player')");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  SpaceExplorationGame --seed 12345");

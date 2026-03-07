@@ -14,7 +14,6 @@ public sealed class MultiplayerConnectState : GameState
     public override GameStateType Type => GameStateType.MainMenu;
 
     private readonly string _url;
-    private readonly string _playerName;
 
     private ClientNetworkManager? _net;
     private Task? _connectTask;
@@ -24,10 +23,9 @@ public sealed class MultiplayerConnectState : GameState
 
     private const float TimeoutSeconds = 10f;
 
-    public MultiplayerConnectState(string url, string playerName)
+    public MultiplayerConnectState(string url)
     {
         _url = url;
-        _playerName = playerName;
     }
 
     public override void Enter(Game game)
@@ -43,6 +41,7 @@ public sealed class MultiplayerConnectState : GameState
         _elapsed = 0f;
 
         var player = game.Player;
+        var playerName = game.PlayerName;
         var ship = player.CurrentShipType;
         var shipStats = player.GetCombinedShipStats();
 
@@ -56,7 +55,7 @@ public sealed class MultiplayerConnectState : GameState
         NetPlayerLocation location = NetPlayerLocation.ForSolarSystem(0);
 
         // Begin async connect; we'll poll IsJoined each frame
-        _connectTask = _net.ConnectAsync(_url, _playerName, info, location);
+        _connectTask = _net.ConnectAsync(_url, playerName, info, location);
     }
 
     public override void Exit(Game game) { }

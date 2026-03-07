@@ -595,8 +595,7 @@ public class SolarSystemState : GameState
         // Multiplayer player list (below minimap, only when connected)
         if (game.Network is { IsJoined: true } netForList)
         {
-            HudRenderer.RenderPlayerListHud(renderer, netForList,
-                game.MenuOptions.GetPlayerName(), _sim.GetNetPlayerLocation());
+            HudRenderer.RenderPlayerListHud(renderer, netForList, game.PlayerName, _sim.GetNetPlayerLocation());
         }
 
         // Off-screen indicators

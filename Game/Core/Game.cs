@@ -50,6 +50,8 @@ public class Game : GameBase
     // Menu options persistence
     public MenuOptionsPersistence MenuOptions { get; private set; } = null!;
 
+    public string PlayerName { get; set; } = "Player";
+
     // Global simulation time (never resets, used for deterministic orbit positions)
     public double GlobalTime { get; private set; }
 
@@ -80,6 +82,8 @@ public class Game : GameBase
 
         // Menu options persistence (uses platform settings)
         MenuOptions = new MenuOptionsPersistence(platform.Settings);
+
+        PlayerName = MenuOptions.GetPlayerName();
 
         // Entity renderers
         AvatarRenderer = new AvatarRenderer();

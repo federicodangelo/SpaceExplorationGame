@@ -341,6 +341,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             {
                 _playerName = string.IsNullOrWhiteSpace(confirmedName) ? "Player" : confirmedName.Trim();
                 _menuOptions.SetPlayerName(_playerName);
+                game.PlayerName = _playerName;
                 UpdatePlayerNameLabel();
             }
         }
