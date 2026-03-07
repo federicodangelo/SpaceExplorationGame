@@ -27,6 +27,7 @@ internal sealed class ServerState : GameState
     /// <summary>Per-player tracking: simulation player + which system they're in.</summary>
     private sealed class NetPlayer
     {
+        public byte PlayerId;
         public SimulationPlayer SimPlayer;
         public ISimulation Simulation;
         public string PlayerName;
@@ -34,8 +35,9 @@ internal sealed class ServerState : GameState
         public NetPlayerState PlayerState;
         public NetPlayerLocation PlayerLocation;
 
-        public NetPlayer(SimulationPlayer simPlayer, ISimulation simulation, string name, NetPlayerInfo info, NetPlayerState state, NetPlayerLocation location)
+        public NetPlayer(byte id, SimulationPlayer simPlayer, ISimulation simulation, string name, NetPlayerInfo info, NetPlayerState state, NetPlayerLocation location)
         {
+            PlayerId = id;
             SimPlayer = simPlayer;
             Simulation = simulation;
             PlayerName = name;
@@ -134,12 +136,12 @@ internal sealed class ServerState : GameState
         var joinedSimulation = GetLocationSimulation(playerId, join.PlayerLocation);
 
         // Create a new PlayerData for this remote player
-        var remotePlayerData = new PlayerData { Type = PlayerType.Remote };
+        var remotePlayerData = PlayerData.CreateRemote(playerId);
         var simPlayer = joinedSimulation.AddPlayer(remotePlayerData);
         var playerState = joinedSimulation.GetNetPlayerState(simPlayer);
         var playerLocation = joinedSimulation.GetNetPlayerLocation();
         var playerCoordinates = joinedSimulation.GetDefaultSpawnCoordinates();
-        _netPlayers[playerId] = new NetPlayer(simPlayer, joinedSimulation, join.PlayerName, join.PlayerInfo, playerState, playerLocation);
+        _netPlayers[playerId] = new NetPlayer(playerId, simPlayer, joinedSimulation, join.PlayerName, join.PlayerInfo, playerState, playerLocation);
 
         Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joined {playerLocation}.");
 
@@ -365,6 +367,8 @@ internal sealed class ServerState : GameState
         if (newSimulation == netPlayer.Simulation)
             return; // No change
 
+
+        var playerData = netPlayer.SimPlayer.Data;
         var newLocation = newSimulation.GetNetPlayerLocation();
 
         Console.WriteLine($"[Server] Player {playerId} ({netPlayer.PlayerName}) moved to {newLocation}");
@@ -372,8 +376,7 @@ internal sealed class ServerState : GameState
         // Remove from old simulation
         netPlayer.Simulation.RemovePlayer(netPlayer.SimPlayer);
 
-        var remotePlayerData = new PlayerData { Type = PlayerType.Remote };
-        var simPlayer = newSimulation.AddPlayer(remotePlayerData);
+        var simPlayer = newSimulation.AddPlayer(playerData);
         netPlayer.SimPlayer = simPlayer;
         netPlayer.Simulation = newSimulation;
         netPlayer.PlayerLocation = newLocation;
@@ -386,6 +389,9 @@ internal sealed class ServerState : GameState
             Coordinates = newSimulation.GetDefaultSpawnCoordinates()
         };
         _server.BroadcastExcept(NetSerializer.Write(locMsg), playerId);
+
+        // Send the new simulation state to the player
+        SendOtherPlayersState(netPlayer);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -396,27 +402,26 @@ internal sealed class ServerState : GameState
     {
         if (_netPlayers.Count == 0) return;
 
-        // Build per-player state snapshots
-        var stateMap = new Dictionary<byte, (NetPlayerLocation Location, NetPlayerState State)>(_netPlayers.Count);
-        foreach (var (id, netPlayer) in _netPlayers)
-            stateMap[id] = (netPlayer.PlayerLocation, netPlayer.Simulation.GetNetPlayerState(netPlayer.SimPlayer));
-
         // Send each client only the players in the same system
-        foreach (var (clientId, clientPlayer) in _netPlayers)
+        foreach (var netPlayer in _netPlayers.Values)
         {
-            var inSystem = stateMap
-                .Where(kvp => kvp.Value.Location == clientPlayer.PlayerLocation)
-                .Select(kvp => (kvp.Key, kvp.Value.State))
-                .ToArray();
-
-            var worldMsg = new S_WorldStateMessage
-            {
-                PlayerCount = (byte)inSystem.Length,
-                ServerTime = _game.GlobalTime,
-                Players = inSystem,
-            };
-            _server.Send(clientId, NetSerializer.Write(worldMsg));
+            SendOtherPlayersState(netPlayer);
         }
     }
 
+    private void SendOtherPlayersState(NetPlayer netPlayer)
+    {
+        var inSystem = _netPlayers.Values
+            .Where(otherNetPlayer => otherNetPlayer.PlayerLocation == netPlayer.PlayerLocation && otherNetPlayer != netPlayer)
+            .Select(otherNetPlayer => (otherNetPlayer.PlayerId, otherNetPlayer.Simulation.GetNetPlayerState(otherNetPlayer.SimPlayer)))
+            .ToArray();
+
+        var worldMsg = new S_WorldStateMessage
+        {
+            PlayerCount = (byte)inSystem.Length,
+            ServerTime = _game.GlobalTime,
+            Players = inSystem,
+        };
+        _server.Send(netPlayer.PlayerId, NetSerializer.Write(worldMsg));
+    }
 }

@@ -39,7 +39,7 @@ public class Game : GameBase
     private GameState? _pendingState;
 
     // Player persistent data
-    public PlayerData Player { get; } = new();
+    public PlayerData Player { get; } = PlayerData.CreateLocal();
 
     // Autoplay bot
     public AutoplayBot AutoplayBot { get; } = new();

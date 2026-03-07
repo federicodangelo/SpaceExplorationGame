@@ -185,11 +185,7 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
             if (player == null)
             {
                 var shipType = ShipTypeCatalog.GetById(remote.Info.ShipTypeId) ?? ShipTypeCatalog.StarterShip;
-                var newPlayerData = new PlayerData
-                {
-                    Type = PlayerType.Remote,
-                    RemotePlayerId = remote.PlayerId,
-                };
+                var newPlayerData = PlayerData.CreateRemote(remote.PlayerId);
                 if (shipType != newPlayerData.CurrentShipType)
                     newPlayerData.SwitchShipType(shipType);
 

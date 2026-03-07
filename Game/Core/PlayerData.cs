@@ -22,8 +22,8 @@ public enum PlayerType
 public class PlayerData
 {
     /// <summary>Whether this is the local or a remote player.</summary>
-    public PlayerType Type { get; init; } = PlayerType.Local;
-    public byte RemotePlayerId { get; init; } = 255; // assigned by server for remote players, 255 means unassigned
+    public PlayerType Type { get; private set; } = PlayerType.Local;
+    public byte RemotePlayerId { get; private set; } = 255; // assigned by server for remote players, 255 means unassigned
 
     /// <summary>Mission tracking (accept, abandon, turn-in, objective notifications).</summary>
     public MissionTracker Missions { get; } = new();
@@ -32,11 +32,11 @@ public class PlayerData
     public NavigationTarget Navigation { get; } = new();
 
     // Current ship
-    public ShipType CurrentShipType { get; set; } = ShipTypeCatalog.StarterShip;
+    public ShipType CurrentShipType { get; private set; } = ShipTypeCatalog.StarterShip;
     public float ShipHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
-    public float ShipMaxHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
+    public float ShipMaxHealth { get; private set; } = ShipTypeCatalog.StarterShip.BaseHull;
     public float ShipFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
-    public float ShipMaxFuel { get; set; } = ShipTypeCatalog.StarterShip.BaseFuel;
+    public float ShipMaxFuel { get; private set; } = ShipTypeCatalog.StarterShip.BaseFuel;
 
     /// <summary>Current ship world position (updated each frame by the active state).</summary>
     public Vector2 ShipWorldPosition { get; set; }
@@ -46,6 +46,13 @@ public class PlayerData
 
     /// <summary>Parts the player owns but are not currently equipped (inventory).</summary>
     public List<ShipPart> OwnedParts { get; set; } = new();
+
+    public static PlayerData CreateLocal() => new() { Type = PlayerType.Local };
+    public static PlayerData CreateRemote(byte remotePlayerId) => new()
+    {
+        Type = PlayerType.Remote,
+        RemotePlayerId = remotePlayerId
+    };
 
     /// <summary>Reset all player data to initial values (new game).</summary>
     public void Reset()
