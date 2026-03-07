@@ -10,14 +10,14 @@ namespace SpaceExplorationGame.Simulation;
 
 /// <summary>
 /// Runtime manager that dynamically warps NPC ships in and out of a solar system.
-/// Maintains per-faction budgets derived from <see cref="NpcSpawnConfig"/> and
+/// Maintains per-faction budgets derived from <see cref="NpcShipSpawnConfig"/> and
 /// respawns ships over time to replace destroyed ones.
 /// </summary>
-public class NpcSpawnManager
+public class NpcShipSpawnManager
 {
     private readonly World _world;
     private readonly List<Entity> _enemyEntities;
-    private readonly NpcSpawnConfig _config;
+    private readonly NpcShipSpawnConfig _config;
     private readonly Random _rng = new();
 
     // Per-faction respawn tracking
@@ -31,7 +31,7 @@ public class NpcSpawnManager
     // System center (for position calculations)
     private readonly Vector2 _systemCenter;
 
-    public NpcSpawnManager(World world, List<Entity> enemyEntities, NpcSpawnConfig config)
+    public NpcShipSpawnManager(World world, List<Entity> enemyEntities, NpcShipSpawnConfig config)
     {
         _world = world;
         _enemyEntities = enemyEntities;

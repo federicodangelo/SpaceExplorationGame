@@ -37,7 +37,7 @@ public class PlanetSurfaceData
     public List<RockSpawn> RockSpawns { get; init; } = [];
 
     /// <summary>Runtime NPC spawn configuration (enemies, cargo, patrols). All spawning is handled dynamically.</summary>
-    public SurfaceNpcSpawnConfig NpcSpawnConfig { get; set; }
+    public NpcAvatarSpawnConfig NpcAvatarSpawnConfig { get; set; }
 }
 
 /// <summary>A building within a settlement layout.</summary>
@@ -155,7 +155,7 @@ public static class PlanetSurfaceGenerator
         ApplyCircularBoundary(tiles, width, height);
 
         // Generate surface NPC spawn configuration
-        result.NpcSpawnConfig = GenerateSurfaceNpcConfig(rng, result, dangerLevel);
+        result.NpcAvatarSpawnConfig = GenerateNpcAvatarSpawnConfig(rng, result, dangerLevel);
 
         // Generate mineable rock spawn points on walkable terrain
         GenerateRockSpawns(rng, result, planet);
@@ -297,7 +297,7 @@ public static class PlanetSurfaceGenerator
     /// <summary>
     /// Generate the runtime NPC spawn configuration based on planet danger level and presence of settlements.
     /// </summary>
-    private static SurfaceNpcSpawnConfig GenerateSurfaceNpcConfig(SeededRandom rng, PlanetSurfaceData data, int dangerLevel)
+    private static NpcAvatarSpawnConfig GenerateNpcAvatarSpawnConfig(SeededRandom rng, PlanetSurfaceData data, int dangerLevel)
     {
         bool hasSettlement = data.Settlements.Count > 0;
 
@@ -307,7 +307,7 @@ public static class PlanetSurfaceGenerator
         int cargo = hasSettlement ? rng.NextInt(NpcConfig.SurfaceNpcMinCargo, NpcConfig.SurfaceNpcMaxCargo + 1) : 0;
         int patrols = hasSettlement ? rng.NextInt(NpcConfig.SurfaceNpcMinPatrols, NpcConfig.SurfaceNpcMaxPatrols + 1) : 0;
 
-        return new SurfaceNpcSpawnConfig(
+        return new NpcAvatarSpawnConfig(
             TargetEnemies: enemies,
             TargetCargo: cargo,
             TargetPatrols: patrols,

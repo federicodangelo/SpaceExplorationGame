@@ -11,13 +11,13 @@ namespace SpaceExplorationGame.Simulation;
 /// <summary>
 /// Runtime manager that dynamically spawns / despawns NPC entities on a planet surface.
 /// NPCs arrive by landing a ship, walk around on foot, and depart by taking off.
-/// Mirrors <see cref="NpcSpawnManager"/> for the solar-system layer.
+/// Mirrors <see cref="NpcShipSpawnManager"/> for the solar-system layer.
 /// </summary>
-public class SurfaceNpcManager
+public class NpcAvatarSpawnManager
 {
     private readonly World _world;
     private readonly PlanetSurfaceData _surfaceData;
-    private readonly SurfaceNpcSpawnConfig _config;
+    private readonly NpcAvatarSpawnConfig _config;
     private readonly Func<Vector2, bool> _canMoveTo;
     private readonly Random _rng = new();
 
@@ -35,8 +35,8 @@ public class SurfaceNpcManager
     /// <summary>Read-only view of all tracked NPC/ship pairs.</summary>
     public IReadOnlyList<(Entity Npc, Entity Ship)> NpcEntities => _npcEntities;
 
-    public SurfaceNpcManager(World world, PlanetSurfaceData surfaceData,
-        SurfaceNpcSpawnConfig config, Func<Vector2, bool> canMoveTo)
+    public NpcAvatarSpawnManager(World world, PlanetSurfaceData surfaceData,
+        NpcAvatarSpawnConfig config, Func<Vector2, bool> canMoveTo)
     {
         _world = world;
         _surfaceData = surfaceData;

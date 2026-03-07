@@ -64,14 +64,14 @@ public readonly record struct SolarSystemContent(
     List<PlanetData> Planets,
     List<AsteroidBeltData> AsteroidBelts,
     List<SpaceStationData> SpaceStations,
-    NpcSpawnConfig NpcSpawnConfig,
+    NpcShipSpawnConfig NpcShipSpawnConfig,
     Vector2 StartingPosition);
 
 /// <summary>
 /// Runtime configuration for the dynamic NPC spawn manager.
 /// Stored in <see cref="SolarSystemContent"/>; all NPC spawning is handled at runtime.
 /// </summary>
-public readonly record struct NpcSpawnConfig(
+public readonly record struct NpcShipSpawnConfig(
     int TargetPirates,
     int TargetTraders,
     int TargetPatrols,
@@ -138,7 +138,7 @@ public readonly record struct RockSpawn(float X, float Y, ResourceType Resource,
 /// Runtime configuration for the dynamic surface NPC spawn manager.
 /// Stored in <see cref="PlanetSurfaceData"/>; all NPC spawning is handled at runtime.
 /// </summary>
-public readonly record struct SurfaceNpcSpawnConfig(
+public readonly record struct NpcAvatarSpawnConfig(
     int TargetEnemies,
     int TargetCargo,
     int TargetPatrols,

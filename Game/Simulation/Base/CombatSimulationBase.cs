@@ -19,19 +19,12 @@ public abstract class CombatSimulationBase : SimulationBase
     // ── Per-player combat state ─────────────────────────────────────
     private readonly Dictionary<SimulationPlayer, CombatPlayerState> _combatStates = new();
 
-    /// <summary>Get the combat state for a specific player.</summary>
-    public CombatPlayerState GetCombatState(SimulationPlayer player) => _combatStates[player];
-
-    /// <summary>Try to get the combat state for a specific player.</summary>
-    public bool TryGetCombatState(SimulationPlayer player, out CombatPlayerState state)
-        => _combatStates.TryGetValue(player, out state!);
-
     // ── Convenience properties (delegate to local player) ───────────
-    public bool LocalPlayerDead => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) && s.Dead;
-    public float LocalRespawnTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.RespawnTimer : 0;
-    public string? LocalCombatMessage => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessage : null;
-    public float CombatMessageTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMessageTimer : 0;
-    public float CombatMusicTimer => LocalPlayer != null && _combatStates.TryGetValue(LocalPlayer, out var s) ? s.CombatMusicTimer : 0;
+    public bool LocalPlayerDead => LocalPlayer != null ? GetCombatState(LocalPlayer).Dead : false;
+    public float LocalRespawnTimer => LocalPlayer != null ? GetCombatState(LocalPlayer).RespawnTimer : 0;
+    public string? LocalCombatMessage => LocalPlayer != null ? GetCombatState(LocalPlayer).CombatMessage : null;
+    public float CombatMessageTimer => LocalPlayer != null ? GetCombatState(LocalPlayer).CombatMessageTimer : 0;
+    public float CombatMusicTimer => LocalPlayer != null ? GetCombatState(LocalPlayer).CombatMusicTimer : 0;
 
     // ── Shared ECS Systems ──────────────────────────────────────────
     protected DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
@@ -62,6 +55,7 @@ public abstract class CombatSimulationBase : SimulationBase
 
     /// <summary>Create the per-player combat state. Override in subclasses to return a derived type.</summary>
     protected virtual CombatPlayerState CreateCombatPlayerState() => new();
+    protected CombatPlayerState GetCombatState(SimulationPlayer player) => _combatStates[player];
 
     protected override void OnPlayerAdded(SimulationPlayer player)
     {
@@ -99,10 +93,9 @@ public abstract class CombatSimulationBase : SimulationBase
     /// (resource collection, player death, enemy loot). Calls virtual hooks for
     /// subclass-specific behaviour.
     /// </summary>
-    protected void ProcessCombatResults(float dt)
+    protected void ProcessProjectilesAndDispatchEvents(float dt)
     {
         _projectileSystem.Update(in dt);
-        OnPostProjectileUpdate(dt);
 
         // Process damage events
         foreach (var evt in _projectileSystem.DamageEventsLastUpdate)
@@ -117,7 +110,7 @@ public abstract class CombatSimulationBase : SimulationBase
             if (targetPlayer != null && _combatStates.TryGetValue(targetPlayer, out var targetState))
                 targetState.CombatMusicTimer = AudioConfig.CombatMusicDelay;
 
-            OnDamageEvent(evt);
+            OnProjectileDamageEvent(evt);
         }
 
         // Process destroyed entities
@@ -195,7 +188,7 @@ public abstract class CombatSimulationBase : SimulationBase
     }
 
     /// <summary>Sync each player's health from their ECS entity to PlayerData.</summary>
-    protected void SyncAllPlayerHealth()
+    protected void SyncPlayersHealth()
     {
         foreach (var player in Players)
         {
@@ -248,11 +241,8 @@ public abstract class CombatSimulationBase : SimulationBase
     /// <summary>RNG seed for combat loot rolls. Override to vary per simulation.</summary>
     protected virtual ulong CombatRngSeed => 0xDEADBEEF;
 
-    /// <summary>Called after projectile system update (e.g. for shield regen).</summary>
-    protected virtual void OnPostProjectileUpdate(float dt) { }
-
     /// <summary>Called for each damage event (e.g. asteroid mining HUD tracking).</summary>
-    protected virtual void OnDamageEvent(DamageEvent evt) { }
+    protected virtual void OnProjectileDamageEvent(DamageEvent evt) { }
 
     /// <summary>
     /// Called when an asteroid/rock is destroyed. <paramref name="miner"/> is the player who
@@ -261,6 +251,13 @@ public abstract class CombatSimulationBase : SimulationBase
     /// </summary>
     protected virtual void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
+        if (miner != null && resourceMsg != null)
+        {
+            var minerState = GetCombatState(miner);
+            minerState.CombatMessage = resourceMsg;
+            minerState.CombatMessageTimer = 2.5f;
+        }
+
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);
     }

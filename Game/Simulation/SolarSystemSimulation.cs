@@ -11,6 +11,7 @@ using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.ECS.Systems.Effects;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Simulation.Base;
+using SpaceExplorationGame.States;
 
 namespace SpaceExplorationGame.Simulation;
 
@@ -35,10 +36,6 @@ public class SolarSystemSimulation : CombatSimulationBase
     public List<Entity> AsteroidEntities { get; } = [];
     public List<Entity> EnemyEntities { get; } = [];
 
-    // ── Per-player state (delegates to local player for backward compat) ──
-    private SolarPlayerState? LocalSolarState =>
-        LocalPlayer != null && TryGetCombatState(LocalPlayer, out var s) ? (SolarPlayerState)s : null;
-
     public int LocalNearbyPlanetIndex => LocalSolarState?.NearbyPlanetIndex ?? -1;
     public int LocalNearbySpaceStationIndex => LocalSolarState?.NearbySpaceStationIndex ?? -1;
     public int LocalNearbyMoonPlanetIndex => LocalSolarState?.NearbyMoonPlanetIndex ?? -1;
@@ -47,18 +44,13 @@ public class SolarSystemSimulation : CombatSimulationBase
     public float LocalMiningHudTimer => LocalSolarState?.MiningHudTimer ?? 0;
     public string? LocalMiningMessage => LocalSolarState?.MiningMessage;
     public float LocalMiningMessageTimer => LocalSolarState?.MiningMessageTimer ?? 0;
-    public int LocalRespawnSpaceStationIndex
-    {
-        get => LocalSolarState?.RespawnSpaceStationIndex ?? -1;
-        set { if (LocalSolarState is { } s) s.RespawnSpaceStationIndex = value; }
-    }
+    public int LocalRespawnSpaceStationIndex => LocalSolarState?.RespawnSpaceStationIndex ?? -1;
 
     // ── Combat state (solar-system-specific) ─────────────────────
     protected override float RespawnDelay => 3f;
     protected override CombatPlayerState CreateCombatPlayerState() => new SolarPlayerState();
-
-    /// <summary>Get the solar-specific per-player state.</summary>
-    public SolarPlayerState GetSolarState(SimulationPlayer player) => (SolarPlayerState)GetCombatState(player);
+    private SolarPlayerState? LocalSolarState => LocalPlayer != null ? GetSolarState(LocalPlayer) : null;
+    private SolarPlayerState GetSolarState(SimulationPlayer player) => (SolarPlayerState)GetCombatState(player);
 
     // ── System event outputs (solar-system-specific) ────────────────
     public IReadOnlyList<ProjectileSpawn> ProjectilesSpawnedLastUpdate =>
@@ -71,9 +63,7 @@ public class SolarSystemSimulation : CombatSimulationBase
     private ShieldRegenSystem _shieldRegenSystem = null!;
     private ShipEnemyAISystem _enemyAISystem = null!;
     private WarpEffectSystem _warpEffectSystem = null!;
-
-    // ── Dynamic NPC spawning ────────────────────────────────────────
-    private NpcSpawnManager _npcSpawnManager = null!;
+    private NpcShipSpawnManager _npcSpawnManager = null!;
 
     private const float InteractionRadius = 20f;
 
@@ -126,7 +116,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         _warpEffectSystem.Initialize();
 
         // Dynamic NPC spawn manager — handles both initial wave and runtime warp-ins
-        _npcSpawnManager = new NpcSpawnManager(EcsWorld, EnemyEntities, Content.NpcSpawnConfig);
+        _npcSpawnManager = new NpcShipSpawnManager(EcsWorld, EnemyEntities, Content.NpcShipSpawnConfig);
         _npcSpawnManager.SpawnInitialWave();
     }
 
@@ -147,23 +137,32 @@ public class SolarSystemSimulation : CombatSimulationBase
         var t = _debugTimer;
         t.Begin();
 
-        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Orbits", () => _orbitSystem.Update(in globalTime)); // Orbits depend on global time, not dt
         t.Time("Warp", () => UpdateWarpEffects(dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Ships", () => _shipSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
-        t.Time("Proximity", UpdateProximity);
-        t.Time("Combat", () => ProcessCombatResults(dt));
+        t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
+        t.Time("Shields", () => _shieldRegenSystem.Update(in dt));
         t.Time("NpcSpawn", () => _npcSpawnManager.Update(dt));
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Proximity", UpdateProximity);
 
         // Death / respawn timer
         UpdateDeathTimer(dt);
 
         // Sync player health to PlayerData
-        SyncAllPlayerHealth();
+        SyncPlayersHealth();
 
-        // Mining-specific timers (all players)
+        // Tick message timers
+        UpdateCombatTimers(dt);
+
+        // Mining-specific timers
+        UpdateMiningTimers(dt);
+    }
+
+    private void UpdateMiningTimers(float dt)
+    {
         foreach (var player in Players)
         {
             var ss = GetSolarState(player);
@@ -174,7 +173,6 @@ public class SolarSystemSimulation : CombatSimulationBase
                 if (ss.MiningMessageTimer <= 0) ss.MiningMessage = null;
             }
         }
-        UpdateCombatTimers(dt);
     }
 
     public override IReadOnlyList<string>? GetDebugInfo()
@@ -400,12 +398,7 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     // ── Virtual hook overrides ────────────────────────────────────
 
-    protected override void OnPostProjectileUpdate(float dt)
-    {
-        _shieldRegenSystem.Update(in dt);
-    }
-
-    protected override void OnDamageEvent(DamageEvent evt)
+    protected override void OnProjectileDamageEvent(DamageEvent evt)
     {
         // Track last asteroid hit for mining HUD
         if (evt.OwnerFaction == Faction.Player
@@ -423,26 +416,15 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
-        if (resourceMsg != null && miner != null)
-        {
-            var ss = GetSolarState(miner);
-            ss.MiningMessage = resourceMsg;
-            ss.MiningMessageTimer = 2.5f;
-        }
-
         // Clear mining HUD for any player tracking this asteroid
         foreach (var player in Players)
         {
             var ss = GetSolarState(player);
-            if (EcsWorld.IsAlive(destroyed.Entity) && destroyed.Entity == ss.LastHitAsteroid)
+            if (destroyed.Entity == ss.LastHitAsteroid)
                 ss.MiningHudTimer = 0;
         }
 
-        if (EcsWorld.IsAlive(destroyed.Entity))
-        {
-            AsteroidEntities.Remove(destroyed.Entity);
-            EcsWorld.Destroy(destroyed.Entity);
-        }
+        base.OnAsteroidDestroyed(destroyed, miner, resourceMsg);
     }
 
     protected override string? ApplyDeathPenalties(SimulationPlayer player)
@@ -532,8 +514,13 @@ public class SolarSystemSimulation : CombatSimulationBase
         state.CombatMessageTimer = 3f;
 
         // Expose respawn station index for state to auto-open station menu
-        var solarState = GetSolarState(player);
-        solarState.RespawnSpaceStationIndex = nearestSpaceStationIdx;
+        GetSolarState(player).RespawnSpaceStationIndex = nearestSpaceStationIdx;
+    }
+
+    public void ResetLocalPlayerRespawnStation()
+    {
+        if (LocalPlayer != null)
+            GetSolarState(LocalPlayer).RespawnSpaceStationIndex = -1;
     }
 
     protected override void SyncPlayerHealth(SimulationPlayer player, float hull)

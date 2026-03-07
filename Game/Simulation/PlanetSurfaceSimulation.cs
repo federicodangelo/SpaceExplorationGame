@@ -26,37 +26,20 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     public PlanetSurfaceData SurfaceData { get; private init; }
     public IReadOnlyList<SettlementData> Settlements => SurfaceData.Settlements;
 
-    // ── Per-player state (delegates to local player for backward compat) ──
-    private SurfacePlayerState? LocalSurfaceState =>
-        LocalPlayer != null && TryGetCombatState(LocalPlayer, out var s) ? (SurfacePlayerState)s : null;
-
-    public Entity LocalShipEntity
-    {
-        get => LocalSurfaceState?.ShipEntity ?? default;
-        set { if (LocalSurfaceState is { } s) s.ShipEntity = value; }
-    }
-    public Entity LocalVehicleEntity
-    {
-        get => LocalSurfaceState?.VehicleEntity ?? default;
-        set { if (LocalSurfaceState is { } s) s.VehicleEntity = value; }
-    }
-    public bool LocalVehicleDeployed
-    {
-        get => LocalSurfaceState?.VehicleDeployed ?? false;
-        set { if (LocalSurfaceState is { } s) s.VehicleDeployed = value; }
-    }
-
-    // ── Proximity state ─────────────────────────────────────────────
-    public SettlementData? NearSettlement => LocalSurfaceState?.NearSettlement;
-    public bool NearShip => LocalSurfaceState?.NearShip ?? false;
-    public bool NearVehicle => LocalSurfaceState?.NearVehicle ?? false;
+    public Entity LocalShipEntity => LocalSurfaceState?.ShipEntity ?? default;
+    public Entity LocalVehicleEntity => LocalSurfaceState?.VehicleEntity ?? default;
+    public bool LocalVehicleDeployed => LocalSurfaceState?.VehicleDeployed ?? false;
+    public SettlementData? LocalNearSettlement => LocalSurfaceState?.NearSettlement;
+    public bool LocalNearShip => LocalSurfaceState?.NearShip ?? false;
+    public bool LocalNearVehicle => LocalSurfaceState?.NearVehicle ?? false;
 
     private const float BoardShipRadius = 30f;
     protected override float RespawnDelay => 2.5f;
-    protected override CombatPlayerState CreateCombatPlayerState() => new SurfacePlayerState();
 
-    /// <summary>Get the surface-specific per-player state.</summary>
-    public SurfacePlayerState GetSurfaceState(SimulationPlayer player) => (SurfacePlayerState)GetCombatState(player);
+    // ── Combat state (surface-specific) ─────────────────────────────
+    protected override CombatPlayerState CreateCombatPlayerState() => new SurfacePlayerState();
+    private SurfacePlayerState? LocalSurfaceState => LocalPlayer != null ? GetSurfaceState(LocalPlayer) : null;
+    private SurfacePlayerState GetSurfaceState(SimulationPlayer player) => (SurfacePlayerState)GetCombatState(player);
 
     // ── System event outputs (planet-surface-specific) ─────────────
     /// <summary>All avatar projectiles spawned last tick (player + NPC). Read by state for SFX; use Faction to distinguish.</summary>
@@ -67,9 +50,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     private AvatarSystem _avatarSystem = null!;
     private VehicleSystem _vehicleSystem = null!;
     private AvatarEnemyAISystem _enemyAISystem = null!;
-    private SurfaceNpcManager _surfaceNpcManager = null!;
-
-
+    private NpcAvatarSpawnManager _npcSpawnManager = null!;
 
     public PlanetSurfaceSimulation(Game game, StarSystemData starSystem, PlanetData planet,
         PlanetSurfaceData? preGeneratedSurfaceData = null, ISimulation? parent = null)
@@ -98,9 +79,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         _enemyAISystem.Initialize();
 
         // Initialize surface NPC manager and spawn initial wave
-        _surfaceNpcManager = new SurfaceNpcManager(EcsWorld, SurfaceData,
-            SurfaceData.NpcSpawnConfig, CanMoveToTerrain);
-        _surfaceNpcManager.SpawnInitialWave();
+        _npcSpawnManager = new NpcAvatarSpawnManager(EcsWorld, SurfaceData,
+            SurfaceData.NpcAvatarSpawnConfig, CanMoveToTerrain);
+        _npcSpawnManager.SpawnInitialWave();
     }
 
     public override void Destroy()
@@ -114,14 +95,30 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         var t = _debugTimer;
         t.Begin();
 
-        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Avatars", () => _avatarSystem.Update(in dt));
         t.Time("Vehicles", () => _vehicleSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
-        t.Time("Surface NPCs", () => _surfaceNpcManager.Update(dt));
+        t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
+        t.Time("NpcSpawn", () => _npcSpawnManager.Update(dt));
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
+        t.Time("Proximity", UpdateProximity);
 
-        // Sync vehicle position/rotation when driving (all players)
+        // Sync vehicle position/rotation when driving
+        SyncPlayersVehicles();
+
+        // Death / respawn timer
+        UpdateDeathTimer(dt);
+
+        // Sync player health to PlayerData
+        SyncPlayersHealth();
+
+        // Tick message timers
+        UpdateCombatTimers(dt);
+    }
+
+    private void SyncPlayersVehicles()
+    {
         foreach (var p in Players)
         {
             var ss = GetSurfaceState(p);
@@ -133,27 +130,14 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
                 vehicleTf.Rotation = avatarTf.Rotation;
             }
         }
-
-        t.Time("Proximity", UpdateProximity);
-        t.Time("Combat", () => ProcessCombatResults(dt));
-
-        // Death / respawn timer
-        UpdateDeathTimer(dt);
-
-        // Sync avatar health to PlayerData
-        SyncAllPlayerHealth();
-
-        // Tick message timers
-        UpdateCombatTimers(dt);
     }
-
 
     public override IReadOnlyList<string>? GetDebugInfo()
     {
         _debugInfo.Begin();
         _debugInfo.Add($"Planet: {Planet.Name}  Type: {Planet.Type}");
         _debugInfo.Add($"Players: {Players.Count}");
-        _debugInfo.Add($"NearShip: {NearShip}  NearVehicle: {NearVehicle}");
+        _debugInfo.Add($"NearShip: {LocalNearShip}  NearVehicle: {LocalNearVehicle}");
         return _debugInfo.Entries;
     }
 
@@ -407,20 +391,10 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     protected override ulong CombatRngSeed => 0xBEEFCAFE;
 
-    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
-    {
-        if (resourceMsg != null && miner != null && TryGetCombatState(miner, out var minerState))
-        {
-            minerState.CombatMessage = resourceMsg;
-            minerState.CombatMessageTimer = 2.5f;
-        }
-        base.OnAsteroidDestroyed(destroyed, miner, resourceMsg);
-    }
-
     protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
     {
         // Notify spawn manager so it can schedule a replacement
-        _surfaceNpcManager.NotifyDestroyed(destroyed.Faction, destroyed.Entity);
+        _npcSpawnManager.NotifyDestroyed(destroyed.Faction, destroyed.Entity);
 
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);

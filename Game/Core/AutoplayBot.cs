@@ -735,7 +735,7 @@ public class AutoplayBot
         // ── Check proximity interactions ──
         if (_actionCooldown <= 0)
         {
-            if (sim.NearSettlement != null && _surfaceGoal == SurfaceGoal.GoToSettlement && sim.NearSettlement.Index == _surfaceSettlementsVisited)
+            if (sim.LocalNearSettlement != null && _surfaceGoal == SurfaceGoal.GoToSettlement && sim.LocalNearSettlement.Index == _surfaceSettlementsVisited)
             {
                 action = PlanetSurfaceAction.EnterSettlement;
                 _statusAction = "Entering settlement";
@@ -745,7 +745,7 @@ public class AutoplayBot
                 return true;
             }
 
-            if (sim.NearShip && _surfaceGoal == SurfaceGoal.GoToShip)
+            if (sim.LocalNearShip && _surfaceGoal == SurfaceGoal.GoToShip)
             {
                 action = PlanetSurfaceAction.BoardShip;
                 _statusAction = "Boarding ship";

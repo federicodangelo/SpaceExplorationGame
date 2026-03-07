@@ -126,10 +126,6 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
         return null;
     }
 
-    /// <summary>Returns true if the given entity belongs to the local player.</summary>
-    public bool IsLocalPlayerEntity(Entity entity)
-        => LocalPlayer != null && entity == LocalPlayer.Entity;
-
     /// <summary>
     /// Returns the <see cref="SimulationPlayer"/> for the given entity only if it is the
     /// local player; otherwise returns null.

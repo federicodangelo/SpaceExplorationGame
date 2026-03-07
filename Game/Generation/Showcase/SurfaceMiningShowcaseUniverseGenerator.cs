@@ -48,7 +48,7 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
             ],
             AsteroidBelts: [],
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
-            NpcSpawnConfig: default,
+            NpcShipSpawnConfig: default,
             StartingPosition: new Vector2(
                 WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
                 WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f));
@@ -62,7 +62,7 @@ public class SurfaceMiningShowcaseUniverseGenerator : ProceduralUniverseGenerato
             return surfaceData;
 
         // Override NPC spawn config to have no NPCs — just rocks for the showcase
-        surfaceData.NpcSpawnConfig = new SurfaceNpcSpawnConfig(0, 0, 0, 1);
+        surfaceData.NpcAvatarSpawnConfig = new NpcAvatarSpawnConfig(0, 0, 0, 1);
 
         var rng = new SeededRandom(Seeds.GetPlanetSurfaceRandom(starSystem.Index, planet.Index).DeriveChildSeed(8100));
         var resources = new[] { ResourceType.Iron, ResourceType.Nickel, ResourceType.Gold, ResourceType.Platinum };

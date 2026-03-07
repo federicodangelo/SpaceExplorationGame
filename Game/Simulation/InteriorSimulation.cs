@@ -102,9 +102,9 @@ public class InteriorSimulation : SimulationBase
         var t = _debugTimer;
         t.Begin();
 
-        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Avatars", () => _avatarSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
     }
 

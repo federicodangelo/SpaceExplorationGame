@@ -269,7 +269,7 @@ public class SolarSystemState : GameState
         if (_sim.LocalRespawnSpaceStationIndex >= 0)
         {
             int idx = _sim.LocalRespawnSpaceStationIndex;
-            _sim.LocalRespawnSpaceStationIndex = -1;
+            _sim.ResetLocalPlayerRespawnStation();
             _camera.Position = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
 
             if (idx < _sim.SpaceStations.Count)
@@ -572,8 +572,6 @@ public class SolarSystemState : GameState
         float starCenterX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
         float starCenterY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         Vector2 starCenter = new(starCenterX, starCenterY);
-
-        float globalTime = (float)game.GlobalTime;
 
         // HUD
         {

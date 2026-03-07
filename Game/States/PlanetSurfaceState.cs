@@ -221,12 +221,12 @@ public class PlanetSurfaceState : GameState
                     HandleStarshipMenuChoice(game, StarshipMenuOption.DisembarkOnVehicle);
                     break;
                 case PlanetSurfaceAction.EnterSettlement:
-                    if (_sim.NearSettlement != null)
+                    if (_sim.LocalNearSettlement != null)
                     {
                         SaveSurfacePositions(game);
                         game.ChangeState(new InteriorState(
                             InteriorOrigin.Settlement, _starSystem,
-                            planet: _planetOrMoon, settlement: _sim.NearSettlement));
+                            planet: _planetOrMoon, settlement: _sim.LocalNearSettlement));
                     }
                     break;
                 case PlanetSurfaceAction.BoardShip:
@@ -418,7 +418,7 @@ public class PlanetSurfaceState : GameState
 
         if (_inVehicle)
         {
-            if (_sim.NearShip)
+            if (_sim.LocalNearShip)
             {
                 // In vehicle near ship → stow vehicle, board ship
                 DismountVehicle(game);
@@ -431,20 +431,20 @@ public class PlanetSurfaceState : GameState
                 DismountVehicle(game);
             }
         }
-        else if (_sim.NearShip)
+        else if (_sim.LocalNearShip)
         {
             BoardShip(game);
         }
-        else if (_sim.NearVehicle && _sim.LocalVehicleDeployed)
+        else if (_sim.LocalNearVehicle && _sim.LocalVehicleDeployed)
         {
             MountVehicle(game);
         }
-        else if (_sim.NearSettlement != null)
+        else if (_sim.LocalNearSettlement != null)
         {
             SaveSurfacePositions(game);
             game.ChangeState(new InteriorState(
                 InteriorOrigin.Settlement, _starSystem,
-                planet: _planetOrMoon, settlement: _sim.NearSettlement));
+                planet: _planetOrMoon, settlement: _sim.LocalNearSettlement));
         }
     }
 
@@ -642,7 +642,7 @@ public class PlanetSurfaceState : GameState
         if (!_sim.LocalPlayerDead && !_playerInsideShip)
         {
             HudRenderer.RenderPlanetSurfacePrompt(renderer,
-                _inVehicle, _sim.NearShip, _sim.NearVehicle, _sim.LocalVehicleDeployed, _sim.NearSettlement,
+                _inVehicle, _sim.LocalNearShip, _sim.LocalNearVehicle, _sim.LocalVehicleDeployed, _sim.LocalNearSettlement,
                 game.Input.GetActionHelpText(InputAction.Interact));
         }
 

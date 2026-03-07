@@ -241,7 +241,7 @@ public static class SolarSystemGenerator
         return new SolarSystemContent(planets, asteroidBelts, stations, npcSpawnConfig, startingPosition);
     }
 
-    private static NpcSpawnConfig GenerateNpcSpawnConfig(
+    private static NpcShipSpawnConfig GenerateNpcSpawnConfig(
         SeededRandom rng,
         StarSystemData starSystem,
         List<PlanetData> planets)
@@ -266,7 +266,7 @@ public static class SolarSystemGenerator
         int patrolCount = enemyRng.NextInt(NpcConfig.MinPatrolsPerSystem, NpcConfig.MaxPatrolsPerSystem + 1);
         int qualityTier = NpcShipLoadoutHelper.GetNpcQualityTier(dangerLevel);
 
-        return new NpcSpawnConfig(
+        return new NpcShipSpawnConfig(
             TargetPirates: pirateCount,
             TargetTraders: traderCount,
             TargetPatrols: patrolCount,

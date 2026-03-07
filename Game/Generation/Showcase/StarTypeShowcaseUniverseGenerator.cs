@@ -31,7 +31,7 @@ public class StarTypeShowcaseUniverseGenerator : ProceduralUniverseGenerator
             Planets: ShowcaseUniverseGeneratorHelpers.BuildPlanetTypeShowcasePlanets(),
             AsteroidBelts: [],
             SpaceStations: ShowcaseUniverseGeneratorHelpers.BuildDebugStations(),
-            NpcSpawnConfig: default,
+            NpcShipSpawnConfig: default,
             StartingPosition: new Vector2(
                 WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f - (starSystem.StarRadius * 2f + 100f),
                 WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f));
