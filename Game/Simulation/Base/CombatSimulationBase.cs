@@ -33,6 +33,7 @@ public abstract class CombatSimulationBase : SimulationBase
     protected DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     protected VelocitySystem _velocitySystem = null!;
     protected ProjectileSystem _projectileSystem = null!;
+    protected NetInterpolationSystem _netInterpolationSystem = null!;
 
     // ── Network NPC tracking (multiplayer client) ───────────────────
     /// <summary>Maps server NPC IDs to local ECS entities (only on multiplayer clients).</summary>
@@ -85,6 +86,9 @@ public abstract class CombatSimulationBase : SimulationBase
 
         _projectileSystem = new ProjectileSystem(EcsWorld);
         _projectileSystem.Initialize();
+
+        _netInterpolationSystem = new NetInterpolationSystem(EcsWorld);
+        _netInterpolationSystem.Initialize();
     }
 
     public override void Destroy()
@@ -364,6 +368,10 @@ public abstract class CombatSimulationBase : SimulationBase
                 entity = CreateNpcFromNetState(npcState);
                 if (entity == Entity.Null) continue;
                 _netNpcEntities[npcState.NpcId] = entity;
+
+                // Attach interpolation component so NPCs move smoothly on the client
+                if (!EcsWorld.Has<NetInterpolation>(entity))
+                    EcsWorld.Add(entity, new NetInterpolation());
             }
 
             // Update existing NPC entity
@@ -392,9 +400,21 @@ public abstract class CombatSimulationBase : SimulationBase
     /// <summary>Update a local NPC entity with server state. Override in subclasses.</summary>
     protected virtual void UpdateNpcFromNetState(Entity entity, NetNpcState state)
     {
-        ref var transform = ref EcsWorld.Get<Transform>(entity);
-        transform.Position = state.Position;
-        transform.Rotation = state.Rotation;
+        if (EcsWorld.Has<NetInterpolation>(entity))
+        {
+            ref var interp = ref EcsWorld.Get<NetInterpolation>(entity);
+            interp.TargetPosition = state.Position;
+            interp.TargetRotation = state.Rotation;
+            interp.TargetVelocity = state.Velocity;
+            interp.TimeSinceUpdate = 0f;
+            interp.HasTarget = true;
+        }
+        else
+        {
+            ref var transform = ref EcsWorld.Get<Transform>(entity);
+            transform.Position = state.Position;
+            transform.Rotation = state.Rotation;
+        }
 
         if (EcsWorld.Has<Velocity>(entity))
         {
@@ -455,6 +475,10 @@ public abstract class CombatSimulationBase : SimulationBase
             HandlePlayerRespawn(player);
             // Update reference to new entity after respawn
             entity = player.Entity;
+
+            // Re-attach interpolation component for remote players after respawn
+            if (player.Type == PlayerType.Remote && world.IsAlive(entity) && !world.Has<NetInterpolation>(entity))
+                world.Add(entity, new NetInterpolation());
         }
 
         if (!world.IsAlive(entity))

@@ -47,6 +47,7 @@ public class InteriorSimulation : SimulationBase
     private DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     private VelocitySystem _velocitySystem = null!;
     private AvatarSystem _avatarSystem = null!;
+    private NetInterpolationSystem _netInterpolationSystem = null!;
 
     public InteriorSimulation(Game game, InteriorOrigin origin, StarSystemData starSystem,
         SpaceStationData? spaceStation = null, PlanetData? planet = null, SettlementData? settlement = null,
@@ -78,6 +79,9 @@ public class InteriorSimulation : SimulationBase
 
         _avatarSystem = new AvatarSystem(EcsWorld);
         _avatarSystem.Initialize();
+
+        _netInterpolationSystem = new NetInterpolationSystem(EcsWorld);
+        _netInterpolationSystem.Initialize();
     }
 
     public override void Destroy()
@@ -104,6 +108,7 @@ public class InteriorSimulation : SimulationBase
 
         t.Time("Avatars", () => _avatarSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("NetInterp", () => _netInterpolationSystem.Update(in dt));
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
     }
@@ -266,11 +271,24 @@ public class InteriorSimulation : SimulationBase
             return;
         }
 
-        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
-        if (transformFound)
+        // Write position/rotation to interpolation targets for smooth movement
+        ref var interpRef = ref world.TryGetRef<NetInterpolation>(entity, out var interpFound);
+        if (interpFound)
         {
-            transformRef.Position = state.Position;
-            transformRef.Rotation = state.Rotation;
+            interpRef.TargetPosition = state.Position;
+            interpRef.TargetRotation = state.Rotation;
+            interpRef.TargetVelocity = state.Velocity;
+            interpRef.TimeSinceUpdate = 0f;
+            interpRef.HasTarget = true;
+        }
+        else
+        {
+            ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+            if (transformFound)
+            {
+                transformRef.Position = state.Position;
+                transformRef.Rotation = state.Rotation;
+            }
         }
 
         ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);

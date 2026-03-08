@@ -143,6 +143,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         t.Time("Enemy AI", () => _enemyAISystem.Update(in dt));
         t.Time("Ships", () => _shipSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("NetInterp", () => _netInterpolationSystem.Update(in dt));
         t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
         t.Time("Shields", () => _shieldRegenSystem.Update(in dt));
         t.Time("NpcSpawn", () => { if (!IsMultiplayerClient) _npcSpawnManager.Update(dt); });
@@ -588,11 +589,24 @@ public class SolarSystemSimulation : CombatSimulationBase
         var world = EcsWorld;
         var entity = player.Entity;
 
-        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
-        if (transformFound)
+        // Write position/rotation to interpolation targets for smooth movement
+        ref var interpRef = ref world.TryGetRef<NetInterpolation>(entity, out var interpFound);
+        if (interpFound)
         {
-            transformRef.Position = netState.Position;
-            transformRef.Rotation = netState.Rotation;
+            interpRef.TargetPosition = netState.Position;
+            interpRef.TargetRotation = netState.Rotation;
+            interpRef.TargetVelocity = netState.Velocity;
+            interpRef.TimeSinceUpdate = 0f;
+            interpRef.HasTarget = true;
+        }
+        else
+        {
+            ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+            if (transformFound)
+            {
+                transformRef.Position = netState.Position;
+                transformRef.Rotation = netState.Rotation;
+            }
         }
 
         ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);

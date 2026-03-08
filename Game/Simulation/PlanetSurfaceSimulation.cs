@@ -100,6 +100,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         t.Time("Avatars", () => _avatarSystem.Update(in dt));
         t.Time("Vehicles", () => _vehicleSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
+        t.Time("NetInterp", () => _netInterpolationSystem.Update(in dt));
         t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
         t.Time("NpcSpawn", () => { if (!IsMultiplayerClient) _npcSpawnManager.Update(dt); });
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
@@ -535,11 +536,24 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         var world = EcsWorld;
         var entity = player.Entity;
 
-        ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
-        if (transformFound)
+        // Write position/rotation to interpolation targets for smooth movement
+        ref var interpRef = ref world.TryGetRef<NetInterpolation>(entity, out var interpFound);
+        if (interpFound)
         {
-            transformRef.Position = netState.Position;
-            transformRef.Rotation = netState.Rotation;
+            interpRef.TargetPosition = netState.Position;
+            interpRef.TargetRotation = netState.Rotation;
+            interpRef.TargetVelocity = netState.Velocity;
+            interpRef.TimeSinceUpdate = 0f;
+            interpRef.HasTarget = true;
+        }
+        else
+        {
+            ref var transformRef = ref world.TryGetRef<Transform>(entity, out var transformFound);
+            if (transformFound)
+            {
+                transformRef.Position = netState.Position;
+                transformRef.Rotation = netState.Rotation;
+            }
         }
 
         ref var velocityRef = ref world.TryGetRef<Velocity>(entity, out var velocityFound);

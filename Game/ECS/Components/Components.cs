@@ -488,6 +488,26 @@ public struct NetNpcId
 }
 
 /// <summary>
+/// Drives smooth interpolation of remote entities (other players and NPCs)
+/// between network state updates. The system lerps position/rotation toward
+/// the target each tick over the expected broadcast interval.
+/// </summary>
+[Component]
+public struct NetInterpolation
+{
+    /// <summary>Target position from the latest server snapshot.</summary>
+    public Vector2 TargetPosition;
+    /// <summary>Target rotation (degrees) from the latest server snapshot.</summary>
+    public float TargetRotation;
+    /// <summary>Last known velocity from the server (used for dead-reckoning).</summary>
+    public Vector2 TargetVelocity;
+    /// <summary>Seconds since the last server update was received.</summary>
+    public float TimeSinceUpdate;
+    /// <summary>True once at least one server update has been applied.</summary>
+    public bool HasTarget;
+}
+
+/// <summary>
 /// Tracks the lifecycle phase of a surface NPC that arrives / departs by ship.
 /// The NPC's foot avatar and landed ship entity are cross-referenced.
 /// </summary>

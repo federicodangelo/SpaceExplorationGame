@@ -3,6 +3,7 @@ using Arch.Core;
 using Engine.Network;
 using Engine.Network.Client;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Simulation.Base;
 
@@ -189,6 +190,10 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
                     newPlayerData.SwitchShipType(shipType);
 
                 player = AddPlayer(newPlayerData);
+
+                // Attach interpolation component so remote players move smoothly
+                if (EcsWorld.IsAlive(player.Entity) && !EcsWorld.Has<NetInterpolation>(player.Entity))
+                    EcsWorld.Add(player.Entity, new NetInterpolation());
             }
 
             ApplyNetPlayerState(player, remote.State);
