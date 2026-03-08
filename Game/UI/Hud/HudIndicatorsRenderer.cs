@@ -1,11 +1,13 @@
 using System.Numerics;
 using Arch.Core;
+using Engine.Network;
 using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
 using Engine.Rendering.Base;
 using SpaceExplorationGame.Core.Config;
+using SpaceExplorationGame.Simulation;
 
 namespace SpaceExplorationGame.UI.Hud;
 
@@ -139,6 +141,27 @@ public static class HudIndicatorsRenderer
 
             var (targetPos, label, color) = indicator.Value;
             RenderLabeledOffscreenIndicator(renderer, camera, targetPos, label, color, arrowSize: 9.5f);
+        }
+    }
+
+    /// <summary>Render off-screen indicators for remote players sharing the current planet-surface simulation.</summary>
+    public static void RenderRemotePlayerSurfaceOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
+        ClientNetworkManager net, NetPlayerLocation localPlayerLocation, World ecsWorld,
+        IReadOnlyList<SimulationPlayer> players)
+    {
+        foreach (var player in players)
+        {
+            if (player.Type != PlayerType.Remote) continue;
+            if (!net.RemotePlayers.TryGetValue(player.RemotePlayerId, out var remote)) continue;
+            if (remote.PlayerId == net.LocalPlayerId || remote.Location != localPlayerLocation) continue;
+            if (remote.State is not { Alive: true }) continue;
+
+            Vector2 targetPos = ecsWorld.IsAlive(player.Entity)
+                ? ecsWorld.Get<Transform>(player.Entity).Position
+                : remote.State.Position;
+            string label = remote.Name.ToUpperInvariant();
+            RenderLabeledOffscreenIndicator(renderer, camera, targetPos,
+                label, new Color3(200, 200, 255), arrowSize: 9.5f);
         }
     }
 

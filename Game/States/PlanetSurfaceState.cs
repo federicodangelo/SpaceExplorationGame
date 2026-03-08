@@ -685,6 +685,11 @@ public class PlanetSurfaceState : GameState
             if (!(game.Player.Navigation.HasTarget && game.Player.Navigation.Type == NavigationTargetType.SurfaceTarget
                 && game.Player.Navigation.Name == "SHIP"))
                 HudIndicatorsRenderer.RenderShipOffscreenIndicator(renderer, camera, shipTf.Position);
+            if (game.Network is { IsJoined: true } net)
+            {
+                HudIndicatorsRenderer.RenderRemotePlayerSurfaceOffscreenIndicators(renderer, camera,
+                    net, _sim.GetNetPlayerLocation(), world, _sim.Players);
+            }
             HudIndicatorsRenderer.RenderPlanetSurfaceMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _planetOrMoon.Index, _sim.SurfaceData.Settlements);
 
