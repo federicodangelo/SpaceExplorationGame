@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Engine.Network;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Audio;
 using SpaceExplorationGame.ECS.Components;
@@ -47,6 +48,7 @@ public class SolarSystemState : GameState
     // ── Visual effects (rendering-only) ─────────────────────────────
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
+    private readonly Dictionary<int, PlanetSurfaceData> _planetSurfaceCache = [];
 
     // ── Combat music ────────────────────────────────────────────────
     private string _activeMusicTheme = AudioThemes.SolarSystem;
@@ -606,6 +608,13 @@ public class SolarSystemState : GameState
             HudIndicatorsRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
                 _sim.SpaceStationEntities, _sim.SpaceStations, 5000f, game.Player);
+            if (game.Network is { IsJoined: true } net)
+            {
+                HudIndicatorsRenderer.RenderRemotePlayerOffscreenIndicators(renderer, camera,
+                    net, _starSystem.Index, world,
+                    _sim.Planets, _sim.PlanetEntities, _sim.MoonEntities,
+                    _sim.SpaceStations, _sim.SpaceStationEntities);
+            }
             HudIndicatorsRenderer.RenderSolarSystemMissionOffscreenIndicators(renderer, camera,
                 game.Player, _starSystem.Index, _sim.SpaceStationEntities, _sim.PlanetEntities, world);
 

@@ -1,5 +1,6 @@
 using System.Numerics;
 using Arch.Core;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.Generation;
@@ -113,6 +114,34 @@ public static class HudIndicatorsRenderer
         RenderOffscreenIndicator(renderer, camera, shipWorldPos, new Color3(120, 200, 255), prefix: "SHIP ", arrowSize: 10f);
     }
 
+    /// <summary>Render an off-screen indicator with a custom label and color.</summary>
+    public static void RenderLabeledOffscreenIndicator(ISpriteRenderer renderer, Camera camera,
+        Vector2 targetWorldPos, string label, Color3 color, float arrowSize = 9f)
+    {
+        RenderOffscreenIndicator(renderer, camera, targetWorldPos, color, prefix: label, arrowSize: arrowSize);
+    }
+
+    /// <summary>Render off-screen indicators for remote players located in the current solar system.</summary>
+    public static void RenderRemotePlayerOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
+        ClientNetworkManager net, int systemIndex, World ecsWorld,
+        List<PlanetData> planets, List<Entity> planetEntities, List<List<Entity>> moonEntities,
+        List<SpaceStationData> spaceStations, List<Entity> spaceStationEntities)
+    {
+        foreach (var remote in net.RemotePlayers.Values)
+        {
+            if (remote.PlayerId == net.LocalPlayerId || remote.Location.SolarSystemIndex != systemIndex)
+                continue;
+
+            var indicator = ResolveRemotePlayerIndicator(remote, ecsWorld,
+                planets, planetEntities, moonEntities, spaceStations, spaceStationEntities);
+            if (!indicator.HasValue)
+                continue;
+
+            var (targetPos, label, color) = indicator.Value;
+            RenderLabeledOffscreenIndicator(renderer, camera, targetPos, label, color, arrowSize: 9.5f);
+        }
+    }
+
     /// <summary>Render off-screen indicators for settlements on a planet surface.</summary>
     public static void RenderSettlementOffscreenIndicators(ISpriteRenderer renderer, Camera camera,
         List<SettlementData> settlements, PlayerData? player = null)
@@ -211,6 +240,58 @@ public static class HudIndicatorsRenderer
                 }
             }
         }
+    }
+
+    private static (Vector2 Position, string Label, Color3 Color)? ResolveRemotePlayerIndicator(RemotePlayer remote,
+        World ecsWorld,
+        List<PlanetData> planets, List<Entity> planetEntities, List<List<Entity>> moonEntities,
+        List<SpaceStationData> spaceStations, List<Entity> spaceStationEntities)
+    {
+        if (remote.State is not { Alive: true })
+            return null;
+
+        string? targetLabel;
+        Entity? targetEntity;
+        Color3 targetColor;
+
+        if (remote.Location.SpaceStationIndex >= 0)
+        {
+            targetEntity = spaceStationEntities.ElementAtOrDefault(remote.Location.SpaceStationIndex);
+            targetLabel = spaceStations.ElementAtOrDefault(remote.Location.SpaceStationIndex)?.Name.ToUpperInvariant();
+            targetColor = new Color3(110, 210, 255);
+        }
+        else if (remote.Location.PlanetIndex >= 0)
+        {
+            if (remote.Location.MoonIndex >= 0)
+            {
+                targetEntity = moonEntities.ElementAtOrDefault(remote.Location.PlanetIndex)?.ElementAtOrDefault(remote.Location.MoonIndex);
+                targetLabel = planets.ElementAtOrDefault(remote.Location.PlanetIndex)?.Moons.ElementAtOrDefault(remote.Location.MoonIndex)?.Name.ToUpperInvariant();
+                targetColor = new Color3(210, 230, 255);
+            }
+            else
+            {
+                targetEntity = planetEntities.ElementAtOrDefault(remote.Location.PlanetIndex);
+                targetLabel = planets.ElementAtOrDefault(remote.Location.PlanetIndex)?.Name.ToUpperInvariant();
+                targetColor = planets.ElementAtOrDefault(remote.Location.PlanetIndex)?.Color ?? new Color3(200, 200, 200);
+            }
+        }
+        else
+        {
+            targetEntity = null;
+            targetLabel = null;
+            targetColor = new Color3(200, 200, 200);
+        }
+
+        if ((!targetEntity.HasValue || !ecsWorld.IsAlive(targetEntity.Value)) && !remote.HasReceivedState)
+            return null;
+
+        var position = targetEntity.HasValue && ecsWorld.IsAlive(targetEntity.Value)
+            ? ecsWorld.Get<Transform>(targetEntity.Value).Position
+            : remote.State.Position;
+        var label = targetLabel != null
+            ? $"{remote.Name.ToUpperInvariant()} {targetLabel}"
+            : remote.Name.ToUpperInvariant();
+        return (position, label, targetColor);
     }
 
     /// <summary>Shared helper: renders a single off-screen edge indicator arrow with distance label.</summary>
