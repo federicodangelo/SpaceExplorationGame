@@ -269,7 +269,7 @@ internal sealed class ServerState : GameState
             else
             {
                 var planetSimulation = _game.Coordinator.FindOrCreate<PlanetSurfaceSimulation>(
-                    s => s.StarSystem.Index == starSystem.Index && s.Planet.Index == location.PlanetIndex,
+                    s => s.StarSystem.Index == starSystem.Index && s.Planet.Index == location.PlanetIndex && s.Planet.MoonIndex == location.MoonIndex,
                     () =>
                     {
                         Console.WriteLine($"[Server] Creating planet surface simulation for {location}");
