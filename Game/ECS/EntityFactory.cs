@@ -242,7 +242,7 @@ public static class EntityFactory
     // ── NPC Ships ───────────────────────────────────────────────────
 
     /// <summary>Create any NPC ship entity from spawn data.</summary>
-    public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn)
+    public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn, int npcId = -1)
     {
         var stats = spawn.Stats;
         var (thrusterColor, aiConfig, shieldRegenRate, healthMultiplier) = GetNpcShipProfile(spawn);
@@ -258,6 +258,9 @@ public static class EntityFactory
             new Health(stats.MaxHull * healthMultiplier, stats.MaxShield * healthMultiplier, shieldRegenRate, ShipConfig.ShieldRegenDelay),
             new EnemyAI { Config = aiConfig, State = AIState.Patrol }
         );
+
+        if (npcId >= 0)
+            world.Add(ship, new NetNpcId { Id = npcId });
 
         if (spawn.LootCredits > 0)
         {
@@ -440,7 +443,7 @@ public static class EntityFactory
 
     /// <summary>Create a surface NPC entity on foot (pirate, trader, or patrol).</summary>
     public static Entity CreateSurfaceNpc(World world, Vector2 position, float wanderAngle,
-        Faction faction, int dangerLevel, Func<Vector2, bool>? canMoveTo = null)
+        Faction faction, int dangerLevel, Func<Vector2, bool>? canMoveTo = null, int npcId = -1)
     {
         // Scale stats by danger level
         float healthMultiplier = DangerConfig.GetHealthMultiplier(dangerLevel);
@@ -448,7 +451,7 @@ public static class EntityFactory
 
         var (config, loot, spriteSize, avatarComp) = GetSurfaceNpcProfile(faction, dangerLevel, damageMultiplier);
 
-        return world.Create(
+        var entity = world.Create(
             new Transform(position),
             Sprite.Build(spriteSize, spriteSize),
             new Velocity(config.MoveSpeed) { CanMoveTo = canMoveTo },
@@ -464,6 +467,11 @@ public static class EntityFactory
             avatarComp,
             loot
         );
+
+        if (npcId >= 0)
+            world.Add(entity, new NetNpcId { Id = npcId });
+
+        return entity;
     }
 
     private static (SurfaceAIConfig Config, LootDrop Loot, int SpriteSize, AvatarComponent AvatarComp) GetSurfaceNpcProfile(
@@ -552,10 +560,10 @@ public static class EntityFactory
 
     /// <summary>Create a landed NPC ship entity on a planet surface (static marker with animation state).</summary>
     public static Entity CreateLandedNpcShip(World world, Vector2 position, Faction faction,
-        bool isLanding, float animProgress = 0f)
+        bool isLanding, float animProgress = 0f, int npcId = -1)
     {
         int size = (int)NpcConfig.SurfaceNpcShipSize;
-        return world.Create(
+        var entity = world.Create(
             new Transform(position),
             Sprite.Build(size, size),
             new LandedNpcShip
@@ -566,5 +574,10 @@ public static class EntityFactory
                 Faction = faction
             }
         );
+
+        if (npcId >= 0)
+            world.Add(entity, new NetNpcId { Id = npcId });
+
+        return entity;
     }
 }

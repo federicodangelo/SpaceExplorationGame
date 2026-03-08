@@ -81,7 +81,8 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         // Initialize surface NPC manager and spawn initial wave
         _npcSpawnManager = new NpcAvatarSpawnManager(EcsWorld, SurfaceData,
             SurfaceData.NpcAvatarSpawnConfig, CanMoveToTerrain);
-        _npcSpawnManager.SpawnInitialWave();
+        if (!IsMultiplayerClient)
+            _npcSpawnManager.SpawnInitialWave();
     }
 
     public override void Destroy()
@@ -100,7 +101,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         t.Time("Vehicles", () => _vehicleSystem.Update(in dt));
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
-        t.Time("NpcSpawn", () => _npcSpawnManager.Update(dt));
+        t.Time("NpcSpawn", () => { if (!IsMultiplayerClient) _npcSpawnManager.Update(dt); });
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
 
@@ -559,6 +560,126 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
         {
             inputRef.Shoot = netState.Shooting;
             inputRef.AimDirection = netState.AimDirection;
+        }
+    }
+
+    // ── Network NPC overrides ────────────────────────────────────────
+
+    public override NetNpcState[] CollectNpcStates()
+    {
+        var states = new List<NetNpcState>();
+        foreach (var (npc, ship) in _npcSpawnManager.NpcEntities)
+        {
+            // Collect landed ship state
+            if (EcsWorld.IsAlive(ship) && EcsWorld.Has<NetNpcId>(ship) && EcsWorld.Has<LandedNpcShip>(ship))
+            {
+                var shipNpcId = EcsWorld.Get<NetNpcId>(ship).Id;
+                var shipTransform = EcsWorld.Get<Transform>(ship);
+                ref var landed = ref EcsWorld.Get<LandedNpcShip>(ship);
+
+                states.Add(new NetNpcState
+                {
+                    NpcId = shipNpcId,
+                    NpcType = NetNpcType.LandedShip,
+                    Faction = (byte)landed.Faction,
+                    ShipTypeId = "",
+                    QualityTier = 0,
+                    DangerLevel = SurfaceData.NpcAvatarSpawnConfig.DangerLevel,
+                    Position = shipTransform.Position,
+                    Rotation = 0f,
+                    Velocity = Vector2.Zero,
+                    Hull = 0f,
+                    Shield = 0f,
+                    Dead = false,
+                    LandedAnimProgress = landed.AnimProgress,
+                    LandedIsLanding = landed.IsLanding,
+                });
+            }
+
+            // Collect surface avatar state
+            if (npc != Entity.Null && EcsWorld.IsAlive(npc) && EcsWorld.Has<NetNpcId>(npc))
+            {
+                var npcId = EcsWorld.Get<NetNpcId>(npc).Id;
+                var transform = EcsWorld.Get<Transform>(npc);
+                var health = EcsWorld.Get<Health>(npc);
+                var vel = EcsWorld.Has<Velocity>(npc) ? EcsWorld.Get<Velocity>(npc).Linear : Vector2.Zero;
+
+                bool shooting = false;
+                var aimDir = Vector2.Zero;
+                if (EcsWorld.Has<AvatarInputComponent>(npc))
+                {
+                    ref var input = ref EcsWorld.Get<AvatarInputComponent>(npc);
+                    shooting = input.Shoot;
+                    aimDir = input.AimDirection;
+                }
+
+                var faction = EcsWorld.Has<SurfaceAI>(npc) ? EcsWorld.Get<SurfaceAI>(npc).Config.Faction : Faction.Pirate;
+
+                states.Add(new NetNpcState
+                {
+                    NpcId = npcId,
+                    NpcType = NetNpcType.SurfaceAvatar,
+                    Faction = (byte)faction,
+                    ShipTypeId = "",
+                    QualityTier = 0,
+                    DangerLevel = SurfaceData.NpcAvatarSpawnConfig.DangerLevel,
+                    Position = transform.Position,
+                    Rotation = transform.Rotation,
+                    Velocity = vel,
+                    Hull = health.Hull,
+                    Shield = health.Shield,
+                    Dead = false,
+                    Shooting = shooting,
+                    AimDirection = aimDir,
+                });
+            }
+        }
+        return states.ToArray();
+    }
+
+    protected override Entity CreateNpcFromNetState(NetNpcState state)
+    {
+        var faction = (Faction)state.Faction;
+
+        if (state.NpcType == NetNpcType.SurfaceAvatar)
+        {
+            var entity = EntityFactory.CreateSurfaceNpc(EcsWorld, state.Position, state.Rotation,
+                faction, state.DangerLevel, CanMoveToTerrain, npcId: state.NpcId);
+            return entity;
+        }
+
+        if (state.NpcType == NetNpcType.LandedShip)
+        {
+            var entity = EntityFactory.CreateLandedNpcShip(EcsWorld, state.Position, faction,
+                isLanding: state.LandedIsLanding, animProgress: state.LandedAnimProgress,
+                npcId: state.NpcId);
+            return entity;
+        }
+
+        return Entity.Null;
+    }
+
+    protected override void UpdateNpcFromNetState(Entity entity, NetNpcState state)
+    {
+        base.UpdateNpcFromNetState(entity, state);
+
+        if (state.NpcType == NetNpcType.SurfaceAvatar)
+        {
+            if (EcsWorld.Has<AvatarInputComponent>(entity))
+            {
+                ref var input = ref EcsWorld.Get<AvatarInputComponent>(entity);
+                input.Shoot = state.Shooting;
+                input.AimDirection = state.AimDirection;
+            }
+        }
+        else if (state.NpcType == NetNpcType.LandedShip)
+        {
+            if (EcsWorld.Has<LandedNpcShip>(entity))
+            {
+                ref var landed = ref EcsWorld.Get<LandedNpcShip>(entity);
+                landed.AnimProgress = state.LandedAnimProgress;
+                landed.IsLanding = state.LandedIsLanding;
+            }
         }
     }
 }

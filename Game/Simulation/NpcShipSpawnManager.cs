@@ -20,6 +20,9 @@ public class NpcShipSpawnManager
     private readonly NpcShipSpawnConfig _config;
     private readonly Random _rng = new();
 
+    // NPC ID generation
+    private int _nextNpcId;
+
     // Per-faction respawn tracking
     private float _pirateRespawnTimer;
     private float _traderRespawnTimer;
@@ -31,11 +34,15 @@ public class NpcShipSpawnManager
     // System center (for position calculations)
     private readonly Vector2 _systemCenter;
 
-    public NpcShipSpawnManager(World world, List<Entity> enemyEntities, NpcShipSpawnConfig config)
+    /// <summary>Allocate the next unique NPC ID.</summary>
+    public int AllocateNpcId() => _nextNpcId++;
+
+    public NpcShipSpawnManager(World world, List<Entity> enemyEntities, NpcShipSpawnConfig config, int startingNpcId = 0)
     {
         _world = world;
         _enemyEntities = enemyEntities;
         _config = config;
+        _nextNpcId = startingNpcId;
 
         float centerX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
         float centerY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
@@ -134,7 +141,8 @@ public class NpcShipSpawnManager
 
     private void SpawnShip(Faction faction, bool useInitialRadius, bool withWarpEffect)
     {
-        var rng = new SeededRandom((ulong)(_rng.Next() ^ Environment.TickCount64));
+        int npcId = AllocateNpcId();
+        var rng = NpcShipLoadoutHelper.CreateNpcRng(npcId);
 
         var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(faction, _config.DangerLevel, rng);
         var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, faction, _config.QualityTier, rng);
@@ -144,14 +152,16 @@ public class NpcShipSpawnManager
             ? NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout)
             : 0;
 
+        // Use a secondary RNG for position so the NPC-ID-based rng is consumed consistently
+        var posRng = new SeededRandom((ulong)(_rng.Next() ^ Environment.TickCount64));
         var position = useInitialRadius
-            ? RandomPosition(rng, _config.InitialMinSpawnRadius, _config.InitialMaxSpawnRadius)
-            : RandomPosition(rng, _config.WarpInMinRadius, _config.WarpInMaxRadius);
+            ? RandomPosition(posRng, _config.InitialMinSpawnRadius, _config.InitialMaxSpawnRadius)
+            : RandomPosition(posRng, _config.WarpInMinRadius, _config.WarpInMaxRadius);
 
         var spawnData = new NpcShipSpawnData
         {
             Position = position,
-            Rotation = rng.NextFloat(0, 360),
+            Rotation = posRng.NextFloat(0, 360),
             Faction = faction,
             Stats = stats,
             Weapons = weapons,
@@ -159,7 +169,7 @@ public class NpcShipSpawnManager
             LootCredits = lootCredits
         };
 
-        var entity = EntityFactory.CreateNpcShip(_world, spawnData);
+        var entity = EntityFactory.CreateNpcShip(_world, spawnData, npcId);
 
         if (withWarpEffect)
         {

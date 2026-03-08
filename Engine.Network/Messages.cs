@@ -213,3 +213,127 @@ public struct S_WorldStateMessage
     /// <summary>Per-player ID + state pairs.</summary>
     public (byte PlayerId, NetPlayerState State)[] Players;
 }
+
+// ────────────────────────────────────────────────────────────────
+//  NPC synchronization messages
+// ────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Describes the type of NPC entity for synchronization.
+/// </summary>
+public enum NetNpcType : byte
+{
+    /// <summary>A ship in a solar system (EnemyAI + ShipComponent).</summary>
+    Ship = 0,
+    /// <summary>A foot NPC on a planet surface (SurfaceAI + AvatarComponent).</summary>
+    SurfaceAvatar = 1,
+    /// <summary>A landed NPC ship on a planet surface.</summary>
+    LandedShip = 2,
+}
+
+/// <summary>
+/// Per-NPC state snapshot sent from server to clients. Contains everything needed
+/// to create, update, or destroy an NPC entity on the client side.
+/// </summary>
+public struct NetNpcState
+{
+    /// <summary>Unique NPC identifier (auto-incrementing int assigned by the server).</summary>
+    public int NpcId;
+    /// <summary>The type of NPC entity.</summary>
+    public NetNpcType NpcType;
+    /// <summary>Faction affiliation (pirate, trader, patrol).</summary>
+    public byte Faction;
+    /// <summary>Ship type ID (e.g. "scout", "fighter") for ships; empty for surface NPCs.</summary>
+    public string ShipTypeId;
+    /// <summary>Quality tier for equipment loadout (used with NpcId seed for deterministic loadout).</summary>
+    public int QualityTier;
+    /// <summary>Danger level of the NPC.</summary>
+    public int DangerLevel;
+    /// <summary>World position.</summary>
+    public Vector2 Position;
+    /// <summary>Rotation in degrees.</summary>
+    public float Rotation;
+    /// <summary>Linear velocity.</summary>
+    public Vector2 Velocity;
+    /// <summary>Current hull HP.</summary>
+    public float Hull;
+    /// <summary>Current shield HP.</summary>
+    public float Shield;
+    /// <summary>True if the NPC was destroyed (final message).</summary>
+    public bool Dead;
+    /// <summary>Whether the NPC has an active warp effect.</summary>
+    public bool Warping;
+    /// <summary>True = warping in, false = warping out (only relevant if Warping is true).</summary>
+    public bool WarpingIn;
+    /// <summary>Warp animation progress 0→1 (only relevant if Warping is true).</summary>
+    public float WarpProgress;
+    /// <summary>Warp animation total duration (only relevant if Warping is true).</summary>
+    public float WarpDuration;
+    /// <summary>For surface avatars: whether the NPC is shooting.</summary>
+    public bool Shooting;
+    /// <summary>For surface avatars: aim direction.</summary>
+    public Vector2 AimDirection;
+    /// <summary>For landed ships: landing/takeoff animation progress 0→1.</summary>
+    public float LandedAnimProgress;
+    /// <summary>For landed ships: true = landing, false = taking off.</summary>
+    public bool LandedIsLanding;
+}
+
+/// <summary>Server sends batch of NPC states for the client's current location.</summary>
+public struct S_NpcStatesMessage
+{
+    /// <summary>Number of NPC entries.</summary>
+    public int NpcCount;
+    /// <summary>NPC state snapshots.</summary>
+    public NetNpcState[] Npcs;
+}
+
+/// <summary>Client reports hitting an NPC.</summary>
+public struct C_NpcHitMessage
+{
+    /// <summary>The NPC that was hit.</summary>
+    public int NpcId;
+    /// <summary>Damage dealt to the NPC.</summary>
+    public float Damage;
+    /// <summary>Remaining hull after the hit.</summary>
+    public float RemainingHull;
+    /// <summary>Remaining shield after the hit.</summary>
+    public float RemainingShield;
+    /// <summary>True if the NPC was killed by this hit.</summary>
+    public bool Killed;
+}
+
+/// <summary>Server broadcasts that an NPC was hit by a player.</summary>
+public struct S_NpcHitMessage
+{
+    /// <summary>The NPC that was hit.</summary>
+    public int NpcId;
+    /// <summary>The player who hit the NPC.</summary>
+    public byte PlayerId;
+    /// <summary>Damage dealt.</summary>
+    public float Damage;
+    /// <summary>Remaining hull after the hit.</summary>
+    public float RemainingHull;
+    /// <summary>Remaining shield after the hit.</summary>
+    public float RemainingShield;
+    /// <summary>True if the NPC was killed by this hit.</summary>
+    public bool Killed;
+}
+
+/// <summary>Server notifies a player about NPC kill rewards.</summary>
+public struct S_NpcKillRewardMessage
+{
+    /// <summary>The NPC that was killed.</summary>
+    public int NpcId;
+    /// <summary>Credits rewarded to the killer.</summary>
+    public int Credits;
+    /// <summary>Display message (e.g. "+500 CREDITS +3 IRON").</summary>
+    public string RewardMessage;
+}
+
+/// <summary>Client reports that the local player was killed by an NPC.</summary>
+public struct C_PlayerKilledByNpcMessage
+{
+    /// <summary>The NPC that killed the player (-1 if unknown).</summary>
+    public int NpcId;
+}

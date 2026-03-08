@@ -7,7 +7,7 @@ namespace Engine.Network.Server;
 /// <summary>
 /// Event types queued by background receive threads and dispatched on the main thread.
 /// </summary>
-public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged }
+public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged, NpcHit, PlayerKilledByNpc }
 
 /// <summary>
 /// A server-side network event, enqueued from background threads and
@@ -21,6 +21,8 @@ public readonly struct ServerEvent
     public C_PlayerStateMessage PlayerState { get; init; }
     public C_DisconnectMessage Disconnect { get; init; }
     public C_LocationChangedMessage LocationChanged { get; init; }
+    public C_NpcHitMessage NpcHit { get; init; }
+    public C_PlayerKilledByNpcMessage PlayerKilledByNpc { get; init; }
 }
 
 /// <summary>
@@ -211,6 +213,26 @@ public sealed class GameServer : IDisposable
                             Type = ServerEventType.LocationChanged,
                             PlayerId = playerId,
                             LocationChanged = locChanged,
+                        });
+                        break;
+
+                    case MessageType.C_NpcHit:
+                        var npcHit = NetSerializer.ReadNpcHit(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.NpcHit,
+                            PlayerId = playerId,
+                            NpcHit = npcHit,
+                        });
+                        break;
+
+                    case MessageType.C_PlayerKilledByNpc:
+                        var killedByNpc = NetSerializer.ReadPlayerKilledByNpc(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.PlayerKilledByNpc,
+                            PlayerId = playerId,
+                            PlayerKilledByNpc = killedByNpc,
                         });
                         break;
 

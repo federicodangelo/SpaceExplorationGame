@@ -117,7 +117,8 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         // Dynamic NPC spawn manager — handles both initial wave and runtime warp-ins
         _npcSpawnManager = new NpcShipSpawnManager(EcsWorld, EnemyEntities, Content.NpcShipSpawnConfig);
-        _npcSpawnManager.SpawnInitialWave();
+        if (!IsMultiplayerClient)
+            _npcSpawnManager.SpawnInitialWave();
     }
 
     public override void Destroy()
@@ -144,7 +145,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         t.Time("Physics", () => _velocitySystem.Update(in dt));
         t.Time("Combat", () => ProcessProjectilesAndDispatchEvents(dt));
         t.Time("Shields", () => _shieldRegenSystem.Update(in dt));
-        t.Time("NpcSpawn", () => _npcSpawnManager.Update(dt));
+        t.Time("NpcSpawn", () => { if (!IsMultiplayerClient) _npcSpawnManager.Update(dt); });
         t.Time("Cleanup", () => _dependentEntityCleanupSystem.Update(in dt));
         t.Time("Proximity", UpdateProximity);
 
@@ -611,6 +612,129 @@ public class SolarSystemSimulation : CombatSimulationBase
             inputRef.Shoot = netState.Shooting;
             inputRef.RotationSpeed = netState.RotationSpeed;
             inputRef.AccelerationDirection = netState.AccelerationDirection;
+        }
+    }
+
+    // ── Network NPC overrides ────────────────────────────────────────
+
+    public override NetNpcState[] CollectNpcStates()
+    {
+        var states = new List<NetNpcState>();
+        foreach (var entity in EnemyEntities)
+        {
+            if (!EcsWorld.IsAlive(entity)) continue;
+            if (!EcsWorld.Has<NetNpcId>(entity)) continue;
+
+            var npcId = EcsWorld.Get<NetNpcId>(entity).Id;
+            var transform = EcsWorld.Get<Transform>(entity);
+            var health = EcsWorld.Get<Health>(entity);
+            var ship = EcsWorld.Get<ShipComponent>(entity);
+
+            var vel = EcsWorld.Has<Velocity>(entity) ? EcsWorld.Get<Velocity>(entity).Linear : Vector2.Zero;
+
+            bool warping = EcsWorld.Has<WarpEffect>(entity);
+            bool warpIn = false;
+            float warpProgress = 0f;
+            float warpDuration = 0f;
+            if (warping)
+            {
+                ref var warp = ref EcsWorld.Get<WarpEffect>(entity);
+                warpIn = warp.IsWarpingIn;
+                warpProgress = warp.Progress;
+                warpDuration = warp.Duration;
+            }
+
+            states.Add(new NetNpcState
+            {
+                NpcId = npcId,
+                NpcType = NetNpcType.Ship,
+                Faction = (byte)ship.Faction,
+                ShipTypeId = "",
+                QualityTier = Content.NpcShipSpawnConfig.QualityTier,
+                DangerLevel = Content.NpcShipSpawnConfig.DangerLevel,
+                Position = transform.Position,
+                Rotation = transform.Rotation,
+                Velocity = vel,
+                Hull = health.Hull,
+                Shield = health.Shield,
+                Dead = false,
+                Warping = warping,
+                WarpingIn = warpIn,
+                WarpProgress = warpProgress,
+                WarpDuration = warpDuration,
+            });
+        }
+        return states.ToArray();
+    }
+
+    protected override Entity CreateNpcFromNetState(NetNpcState state)
+    {
+        if (state.NpcType != NetNpcType.Ship) return Entity.Null;
+
+        var faction = (Faction)state.Faction;
+        var rng = NpcShipLoadoutHelper.CreateNpcRng(state.NpcId);
+        var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(faction, state.DangerLevel, rng);
+        var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, faction, state.QualityTier, rng);
+        var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+        var weapons = CombatHelper.BuildWeaponSpecs(loadout);
+        int lootCredits = faction == Faction.Pirate
+            ? NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout)
+            : 0;
+
+        var spawnData = new NpcShipSpawnData
+        {
+            Position = state.Position,
+            Rotation = state.Rotation,
+            Faction = faction,
+            Stats = stats,
+            Weapons = weapons,
+            DangerLevel = state.DangerLevel,
+            LootCredits = lootCredits
+        };
+
+        var entity = EntityFactory.CreateNpcShip(EcsWorld, spawnData, state.NpcId);
+
+        if (state.Warping)
+        {
+            EcsWorld.Add(entity, new WarpEffect
+            {
+                IsWarpingIn = state.WarpingIn,
+                Progress = state.WarpProgress,
+                Duration = state.WarpDuration
+            });
+        }
+
+        EnemyEntities.Add(entity);
+        return entity;
+    }
+
+    protected override void UpdateNpcFromNetState(Entity entity, NetNpcState state)
+    {
+        base.UpdateNpcFromNetState(entity, state);
+
+        // Update warp effect
+        if (state.Warping)
+        {
+            if (EcsWorld.Has<WarpEffect>(entity))
+            {
+                ref var warp = ref EcsWorld.Get<WarpEffect>(entity);
+                warp.IsWarpingIn = state.WarpingIn;
+                warp.Progress = state.WarpProgress;
+                warp.Duration = state.WarpDuration;
+            }
+            else
+            {
+                EcsWorld.Add(entity, new WarpEffect
+                {
+                    IsWarpingIn = state.WarpingIn,
+                    Progress = state.WarpProgress,
+                    Duration = state.WarpDuration
+                });
+            }
+        }
+        else if (EcsWorld.Has<WarpEffect>(entity))
+        {
+            EcsWorld.Remove<WarpEffect>(entity);
         }
     }
 }

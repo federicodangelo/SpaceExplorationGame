@@ -5,7 +5,7 @@ namespace Engine.Network.Client;
 /// <summary>
 /// Event types produced by <see cref="ClientNetworkManager"/> after processing inbound messages.
 /// </summary>
-public enum ClientEventType { PlayerJoined, PlayerLeft, PlayerLocationChanged }
+public enum ClientEventType { PlayerJoined, PlayerLeft, PlayerLocationChanged, NpcStates, NpcHit, NpcKillReward }
 
 /// <summary>
 /// A client-side network event, queued by <see cref="ClientNetworkManager.ProcessMessages"/>
@@ -17,6 +17,9 @@ public readonly struct ClientEvent
     public S_PlayerJoinedMessage PlayerJoined { get; init; }
     public S_PlayerLeftMessage PlayerLeft { get; init; }
     public S_PlayerLocationChangedMessage PlayerLocationChanged { get; init; }
+    public S_NpcStatesMessage NpcStates { get; init; }
+    public S_NpcHitMessage NpcHit { get; init; }
+    public S_NpcKillRewardMessage NpcKillReward { get; init; }
 }
 
 /// <summary>
@@ -53,6 +56,9 @@ public sealed class ClientNetworkManager : IDisposable
 
     /// <summary>Remote player states received from the server, keyed by player ID.</summary>
     public Dictionary<byte, RemotePlayer> RemotePlayers { get; } = new();
+
+    /// <summary>Latest NPC state snapshot received from the server. Null until first broadcast.</summary>
+    public NetNpcState[]? LatestNpcStates { get; private set; }
 
     /// <summary>
     /// Connect to the server and send a join request.
@@ -95,6 +101,24 @@ public sealed class ClientNetworkManager : IDisposable
     }
 
     /// <summary>
+    /// Send an NPC hit report to the server.
+    /// </summary>
+    public void SendNpcHit(C_NpcHitMessage msg)
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(msg));
+    }
+
+    /// <summary>
+    /// Send a player-killed-by-NPC notification to the server.
+    /// </summary>
+    public void SendPlayerKilledByNpc(C_PlayerKilledByNpcMessage msg)
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(msg));
+    }
+
+    /// <summary>
     /// Drain all inbound messages from the network receive queue.
     /// Call once per frame from the game loop. After calling, use
     /// <see cref="DrainEvents"/> to get any join/leave events.
@@ -120,6 +144,15 @@ public sealed class ClientNetworkManager : IDisposable
                     break;
                 case MessageType.S_PlayerLocationChanged:
                     HandlePlayerLocationChanged(data);
+                    break;
+                case MessageType.S_NpcStates:
+                    HandleNpcStates(data);
+                    break;
+                case MessageType.S_NpcHit:
+                    HandleNpcHit(data);
+                    break;
+                case MessageType.S_NpcKillReward:
+                    HandleNpcKillReward(data);
                     break;
             }
         }
@@ -220,5 +253,36 @@ public sealed class ClientNetworkManager : IDisposable
                 Console.WriteLine($"[Net] Warning: received state for unknown player {id}");
             }
         }
+    }
+
+    private void HandleNpcStates(byte[] data)
+    {
+        var msg = NetSerializer.ReadNpcStates(data);
+        LatestNpcStates = msg.Npcs;
+        _events.Add(new ClientEvent
+        {
+            Type = ClientEventType.NpcStates,
+            NpcStates = msg,
+        });
+    }
+
+    private void HandleNpcHit(byte[] data)
+    {
+        var msg = NetSerializer.ReadServerNpcHit(data);
+        _events.Add(new ClientEvent
+        {
+            Type = ClientEventType.NpcHit,
+            NpcHit = msg,
+        });
+    }
+
+    private void HandleNpcKillReward(byte[] data)
+    {
+        var msg = NetSerializer.ReadNpcKillReward(data);
+        _events.Add(new ClientEvent
+        {
+            Type = ClientEventType.NpcKillReward,
+            NpcKillReward = msg,
+        });
     }
 }

@@ -14,6 +14,12 @@ public static class NpcShipLoadoutHelper
         return Math.Clamp(1 + (dangerLevel - 1) / 2, 1, 3);
     }
 
+    /// <summary>
+    /// Create a deterministic <see cref="SeededRandom"/> from an NPC ID.
+    /// Both server and client use this to produce identical loadouts for the same NPC.
+    /// </summary>
+    public static SeededRandom CreateNpcRng(int npcId) => new((ulong)npcId * 2654435761UL ^ 0xA5A5A5A5UL);
+
     public static ShipType ChooseNpcShipType(Faction faction, int dangerLevel, SeededRandom rng)
     {
         ShipType[] options = faction switch

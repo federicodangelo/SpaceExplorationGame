@@ -230,6 +230,7 @@ public class Game : GameBase
         if (Network is { IsJoined: true } net)
         {
             SyncRemotePlayersInSimulations(net, Coordinator.Simulations);
+            SyncNpcStatesInSimulations(net, Coordinator.Simulations);
             SendLocalPlayerStateToServer(net, Coordinator.Simulations);
         }
 
@@ -299,6 +300,15 @@ public class Game : GameBase
     {
         foreach (var entry in simulations)
             entry.SyncRemotePlayers(net);
+    }
+
+    private void SyncNpcStatesInSimulations(ClientNetworkManager net, IEnumerable<ISimulation> simulations)
+    {
+        foreach (var entry in simulations)
+        {
+            if (entry is SpaceExplorationGame.Simulation.Base.CombatSimulationBase combatSim)
+                combatSim.SyncNpcStates(net);
+        }
     }
 
     private NetPlayerLocation lastSentLocalPlayerLocation = NetPlayerLocation.ForUnknown();

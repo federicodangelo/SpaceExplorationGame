@@ -1,7 +1,10 @@
+using System.Numerics;
 using Arch.Core;
 using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
+using SpaceExplorationGame.ECS;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.Combat;
@@ -30,6 +33,10 @@ public abstract class CombatSimulationBase : SimulationBase
     protected DependentEntityCleanupSystem _dependentEntityCleanupSystem = null!;
     protected VelocitySystem _velocitySystem = null!;
     protected ProjectileSystem _projectileSystem = null!;
+
+    // ── Network NPC tracking (multiplayer client) ───────────────────
+    /// <summary>Maps server NPC IDs to local ECS entities (only on multiplayer clients).</summary>
+    private readonly Dictionary<int, Entity> _netNpcEntities = new();
 
     // ── System event outputs ────────────────────────────────────────
     public IReadOnlyList<DamageEvent> DamageEventsLastUpdate =>
@@ -110,6 +117,23 @@ public abstract class CombatSimulationBase : SimulationBase
             if (targetPlayer != null && _combatStates.TryGetValue(targetPlayer, out var targetState))
                 targetState.CombatMusicTimer = AudioConfig.CombatMusicDelay;
 
+            // Report NPC hits to server in multiplayer
+            if (IsMultiplayerClient && evt.OwnerFaction == Faction.Player
+                && FindLocalPlayerByEntity(evt.OwnerEntity) != null
+                && EcsWorld.IsAlive(evt.Target) && EcsWorld.Has<NetNpcId>(evt.Target))
+            {
+                var npcId = EcsWorld.Get<NetNpcId>(evt.Target).Id;
+                ref var targetHealth = ref EcsWorld.Get<Health>(evt.Target);
+                _game.Network!.SendNpcHit(new C_NpcHitMessage
+                {
+                    NpcId = npcId,
+                    Damage = evt.Damage,
+                    RemainingHull = targetHealth.Hull,
+                    RemainingShield = targetHealth.Shield,
+                    Killed = false
+                });
+            }
+
             OnProjectileDamageEvent(evt);
         }
 
@@ -137,11 +161,39 @@ public abstract class CombatSimulationBase : SimulationBase
                 // and synchronized via ApplyNetPlayerState()
                 if (deadPlayer != null && deadPlayer.Type == PlayerType.Local)
                 {
+                    // Report player death by NPC to server in multiplayer
+                    if (IsMultiplayerClient && destroyed.KillerFaction != Faction.Player
+                        && EcsWorld.IsAlive(destroyed.KillerEntity)
+                        && EcsWorld.Has<NetNpcId>(destroyed.KillerEntity))
+                    {
+                        var npcId = EcsWorld.Get<NetNpcId>(destroyed.KillerEntity).Id;
+                        _game.Network!.SendPlayerKilledByNpc(new C_PlayerKilledByNpcMessage
+                        {
+                            NpcId = npcId
+                        });
+                    }
+
                     HandlePlayerDeath(deadPlayer);
                 }
             }
             else
             {
+                // Report NPC kill to server in multiplayer
+                if (IsMultiplayerClient && destroyed.KillerFaction == Faction.Player
+                    && FindLocalPlayerByEntity(destroyed.KillerEntity) != null
+                    && EcsWorld.IsAlive(destroyed.Entity) && EcsWorld.Has<NetNpcId>(destroyed.Entity))
+                {
+                    var npcId = EcsWorld.Get<NetNpcId>(destroyed.Entity).Id;
+                    _game.Network!.SendNpcHit(new C_NpcHitMessage
+                    {
+                        NpcId = npcId,
+                        Damage = 0,
+                        RemainingHull = 0,
+                        RemainingShield = 0,
+                        Killed = true
+                    });
+                }
+
                 if (destroyed.KillerFaction == Faction.Player && destroyed.Loot.HasValue)
                 {
                     var killer = FindPlayerByEntity(destroyed.KillerEntity);
@@ -275,6 +327,102 @@ public abstract class CombatSimulationBase : SimulationBase
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);
     }
+
+    // ── Network NPC synchronization (multiplayer client) ──────────
+
+    /// <summary>
+    /// Apply NPC states received from the server. Creates, updates, or destroys
+    /// NPC entities on the client side to match the server's authoritative state.
+    /// Called from the game loop when connected to a multiplayer server.
+    /// </summary>
+    public void SyncNpcStates(ClientNetworkManager net)
+    {
+        var states = net.LatestNpcStates;
+        if (states == null) return;
+
+        var receivedIds = new HashSet<int>();
+
+        foreach (var npcState in states)
+        {
+            receivedIds.Add(npcState.NpcId);
+
+            if (npcState.Dead)
+            {
+                // NPC was destroyed on the server
+                if (_netNpcEntities.TryGetValue(npcState.NpcId, out var deadEntity))
+                {
+                    if (EcsWorld.IsAlive(deadEntity))
+                        EcsWorld.Destroy(deadEntity);
+                    _netNpcEntities.Remove(npcState.NpcId);
+                }
+                continue;
+            }
+
+            if (!_netNpcEntities.TryGetValue(npcState.NpcId, out var entity) || !EcsWorld.IsAlive(entity))
+            {
+                // New NPC — create it
+                entity = CreateNpcFromNetState(npcState);
+                if (entity == Entity.Null) continue;
+                _netNpcEntities[npcState.NpcId] = entity;
+            }
+
+            // Update existing NPC entity
+            UpdateNpcFromNetState(entity, npcState);
+        }
+
+        // Destroy NPCs no longer present in the server snapshot
+        List<int>? toRemove = null;
+        foreach (var (npcId, entity) in _netNpcEntities)
+        {
+            if (!receivedIds.Contains(npcId))
+            {
+                if (EcsWorld.IsAlive(entity))
+                    EcsWorld.Destroy(entity);
+                (toRemove ??= []).Add(npcId);
+            }
+        }
+        if (toRemove != null)
+            foreach (var id in toRemove)
+                _netNpcEntities.Remove(id);
+    }
+
+    /// <summary>Create a local NPC entity from a server state snapshot. Override in subclasses.</summary>
+    protected virtual Entity CreateNpcFromNetState(NetNpcState state) => Entity.Null;
+
+    /// <summary>Update a local NPC entity with server state. Override in subclasses.</summary>
+    protected virtual void UpdateNpcFromNetState(Entity entity, NetNpcState state)
+    {
+        ref var transform = ref EcsWorld.Get<Transform>(entity);
+        transform.Position = state.Position;
+        transform.Rotation = state.Rotation;
+
+        if (EcsWorld.Has<Velocity>(entity))
+        {
+            ref var vel = ref EcsWorld.Get<Velocity>(entity);
+            vel.Linear = state.Velocity;
+        }
+
+        if (EcsWorld.Has<Health>(entity))
+        {
+            ref var health = ref EcsWorld.Get<Health>(entity);
+            health.Hull = state.Hull;
+            health.Shield = state.Shield;
+        }
+    }
+
+    /// <summary>Find the NPC ID for a given entity, or -1 if not a networked NPC.</summary>
+    protected int GetNetNpcId(Entity entity)
+    {
+        if (EcsWorld.Has<NetNpcId>(entity))
+            return EcsWorld.Get<NetNpcId>(entity).Id;
+        return -1;
+    }
+
+    /// <summary>
+    /// Collect all NPC states from this simulation for network broadcasting.
+    /// Called by the server to build the S_NpcStates message.
+    /// </summary>
+    public virtual NetNpcState[] CollectNpcStates() => [];
 
     public sealed override void ApplyNetPlayerState(SimulationPlayer player, NetPlayerState netState)
     {

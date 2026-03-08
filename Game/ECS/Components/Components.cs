@@ -478,6 +478,16 @@ public struct Particle
 }
 
 /// <summary>
+/// Marks an NPC entity with a unique network ID for multiplayer synchronization.
+/// Assigned at creation time so the server and all clients can reference the same NPC.
+/// </summary>
+[Component]
+public struct NetNpcId
+{
+    public int Id;
+}
+
+/// <summary>
 /// Tracks the lifecycle phase of a surface NPC that arrives / departs by ship.
 /// The NPC's foot avatar and landed ship entity are cross-referenced.
 /// </summary>

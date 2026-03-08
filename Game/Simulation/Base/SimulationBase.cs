@@ -25,6 +25,9 @@ public abstract class SimulationBase : ISimulation, IDebugInfoProvider
     // ── Game reference ──────────────────────────────────────────────
     protected readonly Game _game;
 
+    /// <summary>True when running on a multiplayer client (server sends NPC states).</summary>
+    public bool IsMultiplayerClient => _game.Network != null;
+
     // ── Debug ───────────────────────────────────────────────────────
     protected readonly DebugTimer _debugTimer = new();
     protected readonly DebugInfo _debugInfo = new();

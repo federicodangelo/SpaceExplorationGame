@@ -301,4 +301,196 @@ public static class NetSerializer
             RotationSpeed = r.ReadSingle(),
         };
     }
+
+    // ────────────────────────────────────────────────────────────
+    //  NPC sync write helpers
+    // ────────────────────────────────────────────────────────────
+
+    public static byte[] Write(in S_NpcStatesMessage msg)
+    {
+        int estimatedSize = 5 + msg.NpcCount * 80;
+        using var ms = new MemoryStream(estimatedSize);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_NpcStates);
+        w.Write(msg.NpcCount);
+        for (int i = 0; i < msg.NpcCount; i++)
+            WriteNpcState(w, msg.Npcs[i]);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in C_NpcHitMessage msg)
+    {
+        using var ms = new MemoryStream(32);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_NpcHit);
+        w.Write(msg.NpcId);
+        w.Write(msg.Damage);
+        w.Write(msg.RemainingHull);
+        w.Write(msg.RemainingShield);
+        w.Write(msg.Killed);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in S_NpcHitMessage msg)
+    {
+        using var ms = new MemoryStream(32);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_NpcHit);
+        w.Write(msg.NpcId);
+        w.Write(msg.PlayerId);
+        w.Write(msg.Damage);
+        w.Write(msg.RemainingHull);
+        w.Write(msg.RemainingShield);
+        w.Write(msg.Killed);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in S_NpcKillRewardMessage msg)
+    {
+        using var ms = new MemoryStream(64);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_NpcKillReward);
+        w.Write(msg.NpcId);
+        w.Write(msg.Credits);
+        w.Write(msg.RewardMessage ?? string.Empty);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in C_PlayerKilledByNpcMessage msg)
+    {
+        using var ms = new MemoryStream(8);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_PlayerKilledByNpc);
+        w.Write(msg.NpcId);
+        return ms.ToArray();
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  NPC sync read helpers
+    // ────────────────────────────────────────────────────────────
+
+    public static S_NpcStatesMessage ReadNpcStates(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        int count = r.ReadInt32();
+        var npcs = new NetNpcState[count];
+        for (int i = 0; i < count; i++)
+            npcs[i] = ReadNpcState(r);
+        return new S_NpcStatesMessage { NpcCount = count, Npcs = npcs };
+    }
+
+    public static C_NpcHitMessage ReadNpcHit(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new C_NpcHitMessage
+        {
+            NpcId = r.ReadInt32(),
+            Damage = r.ReadSingle(),
+            RemainingHull = r.ReadSingle(),
+            RemainingShield = r.ReadSingle(),
+            Killed = r.ReadBoolean(),
+        };
+    }
+
+    public static S_NpcHitMessage ReadServerNpcHit(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new S_NpcHitMessage
+        {
+            NpcId = r.ReadInt32(),
+            PlayerId = r.ReadByte(),
+            Damage = r.ReadSingle(),
+            RemainingHull = r.ReadSingle(),
+            RemainingShield = r.ReadSingle(),
+            Killed = r.ReadBoolean(),
+        };
+    }
+
+    public static S_NpcKillRewardMessage ReadNpcKillReward(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new S_NpcKillRewardMessage
+        {
+            NpcId = r.ReadInt32(),
+            Credits = r.ReadInt32(),
+            RewardMessage = r.ReadString(),
+        };
+    }
+
+    public static C_PlayerKilledByNpcMessage ReadPlayerKilledByNpc(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new C_PlayerKilledByNpcMessage
+        {
+            NpcId = r.ReadInt32(),
+        };
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  NPC state sub-serialization
+    // ────────────────────────────────────────────────────────────
+
+    private static void WriteNpcState(BinaryWriter w, in NetNpcState s)
+    {
+        w.Write(s.NpcId);
+        w.Write((byte)s.NpcType);
+        w.Write(s.Faction);
+        w.Write(s.ShipTypeId ?? string.Empty);
+        w.Write(s.QualityTier);
+        w.Write(s.DangerLevel);
+        w.Write(s.Position.X);
+        w.Write(s.Position.Y);
+        w.Write(s.Rotation);
+        w.Write(s.Velocity.X);
+        w.Write(s.Velocity.Y);
+        w.Write(s.Hull);
+        w.Write(s.Shield);
+        w.Write(s.Dead);
+        w.Write(s.Warping);
+        w.Write(s.WarpingIn);
+        w.Write(s.WarpProgress);
+        w.Write(s.WarpDuration);
+        w.Write(s.Shooting);
+        w.Write(s.AimDirection.X);
+        w.Write(s.AimDirection.Y);
+        w.Write(s.LandedAnimProgress);
+        w.Write(s.LandedIsLanding);
+    }
+
+    private static NetNpcState ReadNpcState(BinaryReader r)
+    {
+        return new NetNpcState
+        {
+            NpcId = r.ReadInt32(),
+            NpcType = (NetNpcType)r.ReadByte(),
+            Faction = r.ReadByte(),
+            ShipTypeId = r.ReadString(),
+            QualityTier = r.ReadInt32(),
+            DangerLevel = r.ReadInt32(),
+            Position = new Vector2(r.ReadSingle(), r.ReadSingle()),
+            Rotation = r.ReadSingle(),
+            Velocity = new Vector2(r.ReadSingle(), r.ReadSingle()),
+            Hull = r.ReadSingle(),
+            Shield = r.ReadSingle(),
+            Dead = r.ReadBoolean(),
+            Warping = r.ReadBoolean(),
+            WarpingIn = r.ReadBoolean(),
+            WarpProgress = r.ReadSingle(),
+            WarpDuration = r.ReadSingle(),
+            Shooting = r.ReadBoolean(),
+            AimDirection = new Vector2(r.ReadSingle(), r.ReadSingle()),
+            LandedAnimProgress = r.ReadSingle(),
+            LandedIsLanding = r.ReadBoolean(),
+        };
+    }
 }

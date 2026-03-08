@@ -118,6 +118,12 @@ internal sealed class ServerState : GameState
                 case ServerEventType.LocationChanged:
                     HandleLocationChanged(evt.PlayerId, evt.LocationChanged);
                     break;
+                case ServerEventType.NpcHit:
+                    HandleNpcHit(evt.PlayerId, evt.NpcHit);
+                    break;
+                case ServerEventType.PlayerKilledByNpc:
+                    HandlePlayerKilledByNpc(evt.PlayerId, evt.PlayerKilledByNpc);
+                    break;
             }
         }
     }
@@ -394,6 +400,35 @@ internal sealed class ServerState : GameState
         SendOtherPlayersState(netPlayer);
     }
 
+    private void HandleNpcHit(byte playerId, C_NpcHitMessage msg)
+    {
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer)) return;
+
+        // Broadcast the hit to other players in the same location
+        var hitMsg = new S_NpcHitMessage
+        {
+            NpcId = msg.NpcId,
+            PlayerId = playerId,
+            Damage = msg.Damage,
+            RemainingHull = msg.RemainingHull,
+            RemainingShield = msg.RemainingShield,
+            Killed = msg.Killed
+        };
+        var hitData = NetSerializer.Write(hitMsg);
+
+        foreach (var other in _netPlayers.Values)
+        {
+            if (other.PlayerId != playerId && other.PlayerLocation == netPlayer.PlayerLocation)
+                _server.Send(other.PlayerId, hitData);
+        }
+    }
+
+    private void HandlePlayerKilledByNpc(byte playerId, C_PlayerKilledByNpcMessage msg)
+    {
+        // Log for now; the client handles its own death locally
+        Console.WriteLine($"[Server] Player {playerId} killed by NPC {msg.NpcId}");
+    }
+
     // ────────────────────────────────────────────────────────────
     //  World state broadcast
     // ────────────────────────────────────────────────────────────
@@ -406,6 +441,7 @@ internal sealed class ServerState : GameState
         foreach (var netPlayer in _netPlayers.Values)
         {
             SendOtherPlayersState(netPlayer);
+            SendNpcStates(netPlayer);
         }
     }
 
@@ -423,5 +459,20 @@ internal sealed class ServerState : GameState
             Players = inSystem,
         };
         _server.Send(netPlayer.PlayerId, NetSerializer.Write(worldMsg));
+    }
+
+    private void SendNpcStates(NetPlayer netPlayer)
+    {
+        if (netPlayer.Simulation is not CombatSimulationBase combatSim) return;
+
+        var npcStates = combatSim.CollectNpcStates();
+        if (npcStates.Length == 0) return;
+
+        var msg = new S_NpcStatesMessage
+        {
+            NpcCount = npcStates.Length,
+            Npcs = npcStates
+        };
+        _server.Send(netPlayer.PlayerId, NetSerializer.Write(msg));
     }
 }

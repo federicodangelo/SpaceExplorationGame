@@ -20,6 +20,7 @@ public class NpcAvatarSpawnManager
     private readonly NpcAvatarSpawnConfig _config;
     private readonly Func<Vector2, bool> _canMoveTo;
     private readonly Random _rng = new();
+    private int _nextNpcId;
 
     // Per-faction respawn tracking
     private float _enemyRespawnTimer;
@@ -36,15 +37,19 @@ public class NpcAvatarSpawnManager
     public IReadOnlyList<(Entity Npc, Entity Ship)> NpcEntities => _npcEntities;
 
     public NpcAvatarSpawnManager(World world, PlanetSurfaceData surfaceData,
-        NpcAvatarSpawnConfig config, Func<Vector2, bool> canMoveTo)
+        NpcAvatarSpawnConfig config, Func<Vector2, bool> canMoveTo, int startingNpcId = 0)
     {
         _world = world;
         _surfaceData = surfaceData;
         _config = config;
         _canMoveTo = canMoveTo;
+        _nextNpcId = startingNpcId;
 
         _spawnCheckTimer = NpcConfig.SurfaceNpcSpawnCheckInterval * 0.5f;
     }
+
+    /// <summary>Allocate a unique NPC identifier for network synchronization.</summary>
+    public int AllocateNpcId() => _nextNpcId++;
 
     // ── Initial Wave ────────────────────────────────────────────────
 
@@ -179,15 +184,18 @@ public class NpcAvatarSpawnManager
     {
         if (!TryFindSpawnPosition(out var pos)) return;
 
+        int shipNpcId = AllocateNpcId();
+        int avatarNpcId = AllocateNpcId();
+
         // Create landed ship (already grounded, animation complete)
         var shipEntity = EntityFactory.CreateLandedNpcShip(_world, pos, faction,
-            isLanding: false, animProgress: 1f);
+            isLanding: false, animProgress: 1f, npcId: shipNpcId);
 
         // Create on-foot NPC near the ship
         float wanderAngle = _rng.NextSingle() * MathF.PI * 2f;
         var npcOffset = new Vector2(MathF.Cos(wanderAngle), MathF.Sin(wanderAngle)) * 20f;
         var npcEntity = EntityFactory.CreateSurfaceNpc(_world, pos + npcOffset, wanderAngle,
-            faction, _config.DangerLevel, _canMoveTo);
+            faction, _config.DangerLevel, _canMoveTo, npcId: avatarNpcId);
 
         // Add lifecycle state to the NPC
         _world.Add(npcEntity, new SurfaceNpcState
@@ -212,9 +220,11 @@ public class NpcAvatarSpawnManager
     {
         if (!TryFindSpawnPosition(out var pos)) return;
 
+        int shipNpcId = AllocateNpcId();
+
         // Create ship entity at spawn position with landing animation
         var shipEntity = EntityFactory.CreateLandedNpcShip(_world, pos, faction,
-            isLanding: true, animProgress: 0f);
+            isLanding: true, animProgress: 0f, npcId: shipNpcId);
 
         // NPC entity is created when the landing completes (see UpdateLandingAnimations)
         _npcEntities.Add((Entity.Null, shipEntity));
@@ -241,11 +251,12 @@ public class NpcAvatarSpawnManager
                 if (landed.AnimProgress >= 1f)
                 {
                     // Landing complete — create foot NPC
+                    int avatarNpcId = AllocateNpcId();
                     var shipPos = _world.Get<Transform>(ship).Position;
                     float wanderAngle = _rng.NextSingle() * MathF.PI * 2f;
                     var offset = new Vector2(MathF.Cos(wanderAngle), MathF.Sin(wanderAngle)) * 20f;
                     var npcEntity = EntityFactory.CreateSurfaceNpc(_world, shipPos + offset, wanderAngle,
-                        landed.Faction, _config.DangerLevel, _canMoveTo);
+                        landed.Faction, _config.DangerLevel, _canMoveTo, npcId: avatarNpcId);
 
                     _world.Add(npcEntity, new SurfaceNpcState
                     {

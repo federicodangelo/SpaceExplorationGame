@@ -14,6 +14,10 @@ public enum MessageType : byte
     C_LocationChanged = 3,
     /// <summary>Client is disconnecting gracefully.</summary>
     C_Disconnect = 4,
+    /// <summary>Client reports hitting an NPC (damage, remaining health, killed).</summary>
+    C_NpcHit = 5,
+    /// <summary>Client reports the local player was killed by an NPC.</summary>
+    C_PlayerKilledByNpc = 6,
 
     // ── Server → Client ─────────────────────────────────────────
     /// <summary>Server acknowledges join, assigns player ID, sends world info.</summary>
@@ -26,4 +30,10 @@ public enum MessageType : byte
     S_WorldState = 131,
     /// <summary>A player changed location (star system).</summary>
     S_PlayerLocationChanged = 132,
+    /// <summary>Batch of NPC state snapshots for the client's current location.</summary>
+    S_NpcStates = 133,
+    /// <summary>An NPC was hit by a player (broadcast to all clients in the location).</summary>
+    S_NpcHit = 134,
+    /// <summary>An NPC was killed; includes reward info for the killer.</summary>
+    S_NpcKillReward = 135,
 }
