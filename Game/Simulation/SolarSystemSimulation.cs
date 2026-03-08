@@ -425,6 +425,8 @@ public class SolarSystemSimulation : CombatSimulationBase
                 ss.MiningHudTimer = 0;
         }
 
+        AsteroidEntities.Remove(destroyed.Entity);
+
         base.OnAsteroidDestroyed(destroyed, miner, resourceMsg);
     }
 
