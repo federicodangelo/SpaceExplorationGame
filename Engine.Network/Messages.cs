@@ -134,7 +134,6 @@ public struct C_JoinMessage
 {
     public string PlayerName;
     public NetPlayerInfo PlayerInfo;
-    public NetPlayerLocation PlayerLocation;
 }
 
 /// <summary>Client sends its own player state each tick.</summary>

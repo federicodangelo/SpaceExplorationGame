@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.WebSockets;
 
@@ -39,6 +40,28 @@ public sealed class GameServer : IDisposable
     private byte _nextPlayerId;
     private Task? _listenTask;
 
+    // Simulated latency / jitter (applied to all server → client sends)
+    public int SimulatedLatencyMs { get; set; }
+    public int SimulatedJitterMs { get; set; }
+
+    // Bandwidth tracking (thread-safe via Interlocked)
+    private long _totalBytesSent;
+    private long _totalBytesReceived;
+    private long _bytesSentAccum;
+    private long _bytesReceivedAccum;
+
+    // Bandwidth update timer
+    private Stopwatch _bandwithUpdateWatch = new Stopwatch();
+
+    /// <summary>Total bytes sent to all clients since start.</summary>
+    public long TotalBytesSent => Interlocked.Read(ref _totalBytesSent);
+    /// <summary>Total bytes received from all clients since start.</summary>
+    public long TotalBytesReceived => Interlocked.Read(ref _totalBytesReceived);
+    /// <summary>Bytes sent in the most recently completed 1-second window.</summary>
+    public long BytesSentPerSecond { get; private set; }
+    /// <summary>Bytes received in the most recently completed 1-second window.</summary>
+    public long BytesReceivedPerSecond { get; private set; }
+
     public int MaxPlayers { get; }
     public int Port { get; }
 
@@ -74,20 +97,30 @@ public sealed class GameServer : IDisposable
     /// <summary>Broadcast a raw message to all connected clients.</summary>
     public void Broadcast(byte[] data)
     {
+        int count = 0;
+        int delay = GetSimulatedDelay();
         foreach (var kv in _clients)
         {
-            _ = kv.Value.SendAsync(data, _cts.Token);
+            count++;
+            kv.Value.EnqueueSend(data, delay);
         }
+        if (count > 0) TrackBytesSent(data.Length * count);
     }
 
     /// <summary>Broadcast a raw message to all clients except the one with the given ID.</summary>
     public void BroadcastExcept(byte[] data, byte excludePlayerId)
     {
+        int count = 0;
+        int delay = GetSimulatedDelay();
         foreach (var kv in _clients)
         {
             if (kv.Key != excludePlayerId)
-                _ = kv.Value.SendAsync(data, _cts.Token);
+            {
+                count++;
+                kv.Value.EnqueueSend(data, delay);
+            }
         }
+        if (count > 0) TrackBytesSent(data.Length * count);
     }
 
     /// <summary>Send a raw message to a specific client.</summary>
@@ -95,8 +128,39 @@ public sealed class GameServer : IDisposable
     {
         if (_clients.TryGetValue(playerId, out var client))
         {
-            _ = client.SendAsync(data, _cts.Token);
+            TrackBytesSent(data.Length);
+            client.EnqueueSend(data, GetSimulatedDelay());
         }
+    }
+
+    /// <summary>
+    /// Update per-second bandwidth stats.
+    /// </summary>
+    public void UpdateStats()
+    {
+        if (!_bandwithUpdateWatch.IsRunning)
+        {
+            _bandwithUpdateWatch.Start();
+        }
+        else if (_bandwithUpdateWatch.Elapsed.TotalSeconds >= 1.0)
+        {
+            BytesSentPerSecond = Interlocked.Exchange(ref _bytesSentAccum, 0);
+            BytesReceivedPerSecond = Interlocked.Exchange(ref _bytesReceivedAccum, 0);
+            _bandwithUpdateWatch.Restart();
+        }
+    }
+
+    private void TrackBytesSent(int bytes)
+    {
+        Interlocked.Add(ref _totalBytesSent, bytes);
+        Interlocked.Add(ref _bytesSentAccum, bytes);
+    }
+
+    private int GetSimulatedDelay()
+    {
+        if (SimulatedLatencyMs == 0 && SimulatedJitterMs == 0) return 0;
+        int jitter = SimulatedJitterMs > 0 ? Random.Shared.Next(-SimulatedJitterMs, SimulatedJitterMs + 1) : 0;
+        return Math.Max(0, SimulatedLatencyMs + jitter);
     }
 
     public void Dispose()
@@ -167,6 +231,9 @@ public sealed class GameServer : IDisposable
                 return;
             }
 
+            Interlocked.Add(ref _totalBytesReceived, data.Length);
+            Interlocked.Add(ref _bytesReceivedAccum, data.Length);
+
             if (_clients.Count >= MaxPlayers)
             {
                 await ws.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Server full", ct).ConfigureAwait(false);
@@ -175,7 +242,7 @@ public sealed class GameServer : IDisposable
 
             var join = NetSerializer.ReadJoin(data);
             playerId = GetNextPlayerId();
-            var client = new ConnectedClient(playerId, join.PlayerName, ws);
+            var client = new ConnectedClient(playerId, join.PlayerName, ws, ct);
             _clients[playerId] = client;
             registered = true;
 
@@ -191,6 +258,9 @@ public sealed class GameServer : IDisposable
             {
                 var msg = await ReceiveMessageAsync(ws, ct).ConfigureAwait(false);
                 if (msg == null) break;
+
+                Interlocked.Add(ref _totalBytesReceived, msg.Length);
+                Interlocked.Add(ref _bytesReceivedAccum, msg.Length);
 
                 var type = NetSerializer.PeekType(msg);
                 switch (type)

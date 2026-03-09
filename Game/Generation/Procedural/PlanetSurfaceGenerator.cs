@@ -121,7 +121,7 @@ public static class PlanetSurfaceGenerator
                     sx = rng.NextInt(20, Math.Max(21, width - 20 - sw));
                     sy = rng.NextInt(20, Math.Max(21, height - 20 - sh));
                     attempts++;
-                } while ((SurfaceTerrainRules.IsBlockedForTraversal(tiles[sx, sy])
+                } while ((AreSettlementsTilesInRegion(tiles, width, height, sx, sy, sw, sh, margin: 2)
                     || !IsRectInsidePlanetBoundary(sx, sy, sw, sh, width, height, margin: 2))
                     && attempts < 50);
 
@@ -472,6 +472,28 @@ public static class PlanetSurfaceGenerator
                 }
             }
         }
+    }
+
+    public static bool AreSettlementsTilesInRegion(TerrainType[,] tiles, int mapW, int mapH,
+        int topLeftX, int topLeftY, int areaW, int areaH, int margin)
+    {
+        int x0 = Math.Max(0, topLeftX - margin);
+        int y0 = Math.Max(0, topLeftY - margin);
+        int x1 = Math.Min(mapW - 1, topLeftX + areaW - 1 + margin);
+        int y1 = Math.Min(mapH - 1, topLeftY + areaH - 1 + margin);
+
+        for (int x = x0; x <= x1; x++)
+        {
+            for (int y = y0; y <= y1; y++)
+            {
+                if (tiles[x, y] == TerrainType.Settlement)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Generates the visual layout (buildings, streets, lights) for a settlement.</summary>

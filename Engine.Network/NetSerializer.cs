@@ -15,12 +15,11 @@ public static class NetSerializer
 
     public static byte[] Write(in C_JoinMessage msg)
     {
-        using var ms = new MemoryStream(96);
+        using var ms = new MemoryStream(64);
         using var w = new BinaryWriter(ms);
         w.Write((byte)MessageType.C_Join);
         w.Write(msg.PlayerName ?? string.Empty);
         WritePlayerInfo(w, msg.PlayerInfo);
-        WritePlayerLocation(w, msg.PlayerLocation);
         return ms.ToArray();
     }
 
@@ -132,7 +131,6 @@ public static class NetSerializer
         {
             PlayerName = r.ReadString(),
             PlayerInfo = ReadPlayerInfo(r),
-            PlayerLocation = ReadPlayerLocation(r),
         };
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using Engine.Network.Server;
 
@@ -17,6 +18,41 @@ public sealed class GameClient : IDisposable
     private Task? _receiveTask;
 
     private readonly ConcurrentQueue<byte[]> _inbound = new();
+
+    // Bandwidth tracking (thread-safe via Interlocked)
+    private long _totalBytesSent;
+    private long _totalBytesReceived;
+    private long _sentAccum;
+    private long _recvAccum;
+
+    // Bandwidth update timer
+    private Stopwatch _bandwithUpdateWatch = new Stopwatch();
+
+    /// <summary>Total bytes sent since connect.</summary>
+    public long TotalBytesSent => Interlocked.Read(ref _totalBytesSent);
+    /// <summary>Total bytes received since connect.</summary>
+    public long TotalBytesReceived => Interlocked.Read(ref _totalBytesReceived);
+    /// <summary>Bytes sent in the most recently completed 1-second window. Updated by <see cref="UpdateBandwidthWindow"/>.</summary>
+    public long BytesSentLastSecond { get; private set; }
+    /// <summary>Bytes received in the most recently completed 1-second window. Updated by <see cref="UpdateBandwidthWindow"/>.</summary>
+    public long BytesReceivedLastSecond { get; private set; }
+
+    /// <summary>
+    /// Update per-second bandwidth stats.
+    /// </summary>
+    public void UpdateStats()
+    {
+        if (!_bandwithUpdateWatch.IsRunning)
+        {
+            _bandwithUpdateWatch.Start();
+        }
+        else if (_bandwithUpdateWatch.Elapsed.TotalSeconds >= 1.0)
+        {
+            BytesSentLastSecond = Interlocked.Exchange(ref _sentAccum, 0);
+            BytesReceivedLastSecond = Interlocked.Exchange(ref _recvAccum, 0);
+            _bandwithUpdateWatch.Restart();
+        }
+    }
 
     /// <summary>True once the WebSocket connection is open.</summary>
     public bool IsConnected => _ws?.State == WebSocketState.Open;
@@ -40,6 +76,8 @@ public sealed class GameClient : IDisposable
     public void Send(byte[] data)
     {
         if (_ws == null || _ws.State != WebSocketState.Open) return;
+        Interlocked.Add(ref _totalBytesSent, data.Length);
+        Interlocked.Add(ref _sentAccum, data.Length);
         // Fire-and-forget send; small messages finish almost instantly over loopback/LAN.
         _ = _ws.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Binary, true, _cts?.Token ?? CancellationToken.None);
     }
@@ -94,7 +132,10 @@ public sealed class GameClient : IDisposable
                     ms.Write(buffer, 0, result.Count);
                 } while (!result.EndOfMessage);
 
-                _inbound.Enqueue(ms.ToArray());
+                var msg = ms.ToArray();
+                Interlocked.Add(ref _totalBytesReceived, msg.Length);
+                Interlocked.Add(ref _recvAccum, msg.Length);
+                _inbound.Enqueue(msg);
             }
         }
         catch (WebSocketException) { /* disconnected */ }

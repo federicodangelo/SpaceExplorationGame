@@ -54,6 +54,15 @@ public sealed class ClientNetworkManager : IDisposable
     /// <summary>Server's global time at the moment of the welcome message.</summary>
     public double ServerGlobalTime { get; private set; }
 
+    /// <summary>Total bytes sent to the server since connect.</summary>
+    public long TotalBytesSent => _client.TotalBytesSent;
+    /// <summary>Total bytes received from the server since connect.</summary>
+    public long TotalBytesReceived => _client.TotalBytesReceived;
+    /// <summary>Bytes sent in the most recently completed 1-second window.</summary>
+    public long BytesSentPerSecond => _client.BytesSentLastSecond;
+    /// <summary>Bytes received in the most recently completed 1-second window.</summary>
+    public long BytesReceivedPerSecond => _client.BytesReceivedLastSecond;
+
     /// <summary>Remote player states received from the server, keyed by player ID.</summary>
     public Dictionary<byte, RemotePlayer> RemotePlayers { get; } = new();
 
@@ -64,10 +73,10 @@ public sealed class ClientNetworkManager : IDisposable
     /// Connect to the server and send a join request.
     /// Blocks until the connection is established (but the join handshake is async).
     /// </summary>
-    public async Task ConnectAsync(string url, string playerName, NetPlayerInfo info, NetPlayerLocation location)
+    public async Task ConnectAsync(string url, string playerName, NetPlayerInfo info)
     {
         await _client.ConnectAsync(url);
-        var joinMsg = new C_JoinMessage { PlayerName = playerName, PlayerInfo = info, PlayerLocation = location };
+        var joinMsg = new C_JoinMessage { PlayerName = playerName, PlayerInfo = info };
         _client.Send(NetSerializer.Write(joinMsg));
     }
 
@@ -125,6 +134,8 @@ public sealed class ClientNetworkManager : IDisposable
     /// </summary>
     public void ProcessMessages()
     {
+        _client.UpdateStats();
+
         while (_client.TryReceive(out var data))
         {
             var type = NetSerializer.PeekType(data);

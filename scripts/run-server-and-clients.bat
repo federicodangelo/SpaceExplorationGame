@@ -13,11 +13,17 @@ if errorlevel 1 (
 	exit /b 1
 )
 
+REM Extract the first argument and the rest of the arguments
+for /f "tokens=1*" %%a in ("%*") do (
+    REM Store all remaining arguments
+    SET TheRest=%%b
+)
+
 echo Compiling server and client...
 dotnet build --no-restore
 
 echo Starting server...
-start "SpaceExplorationGame Server" cmd /c call "%SCRIPT_DIR%run-server.bat"
+start "SpaceExplorationGame Server" cmd /k call "%SCRIPT_DIR%run-server.bat" %TheRest%
 
 echo Waiting 2 seconds for server startup...
 timeout /t 2 /nobreak >nul

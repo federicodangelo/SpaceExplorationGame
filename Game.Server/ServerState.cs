@@ -60,10 +60,14 @@ internal sealed class ServerState : GameState
     // Reusable buffer for draining network events each tick
     private readonly List<ServerEvent> _pendingEvents = new();
 
-    public ServerState(GameServer server, Game game)
+    // Starting location assigned to every new player that joins
+    private readonly NetPlayerLocation _startingLocation;
+
+    public ServerState(GameServer server, Game game, NetPlayerLocation startingLocation)
     {
         _server = server;
         _game = game;
+        _startingLocation = startingLocation;
     }
 
     public override void Enter(Game game) { }
@@ -73,6 +77,7 @@ internal sealed class ServerState : GameState
 
     public override void Update(Game game)
     {
+        _server.UpdateStats();
         HandleServerEvents();
 
         _tickCounter++;
@@ -88,7 +93,7 @@ internal sealed class ServerState : GameState
             _logTimer -= LogIntervalSeconds;
             var sims = game.Coordinator.Simulations;
             int clientCount = _server.Clients.Count;
-            Console.WriteLine($"[{game.GlobalTime:F1}s] Clients: {clientCount}, Simulations: {sims.Count()}");
+            Console.WriteLine($"[{game.GlobalTime:F1}s] Clients: {clientCount}, Simulations: {sims.Count()}  |  Net TX: {FormatBps(_server.BytesSentPerSecond)} ({FormatBytes(_server.TotalBytesSent)} total)  RX: {FormatBps(_server.BytesReceivedPerSecond)} ({FormatBytes(_server.TotalBytesReceived)} total)");
             foreach (var sim in sims)
             {
                 int entityCount = sim.EcsWorld.Size;
@@ -139,7 +144,7 @@ internal sealed class ServerState : GameState
     {
         Console.WriteLine($"[Server] Player {playerId} ({join.PlayerName}) joining...");
 
-        var joinedSimulation = GetLocationSimulation(playerId, join.PlayerLocation);
+        var joinedSimulation = GetLocationSimulation(playerId, _startingLocation);
 
         // Create a new PlayerData for this remote player
         var remotePlayerData = PlayerData.CreateRemote(playerId);
@@ -475,4 +480,14 @@ internal sealed class ServerState : GameState
         };
         _server.Send(netPlayer.PlayerId, NetSerializer.Write(msg));
     }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2} MB";
+        return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+    }
+
+    private static string FormatBps(long bytesPerSecond) => FormatBytes(bytesPerSecond) + "/s";
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Simulation;
 
@@ -35,7 +36,7 @@ public sealed class DebugOverlay
 
     /// <summary>Render the debug overlay on top of everything.</summary>
     public void Render(ISpriteRenderer renderer, GameState? state, SimulationCoordinator coordinator,
-        DebugTimer gameTimer, double frameTotalMs)
+        DebugTimer gameTimer, double frameTotalMs, ClientNetworkManager? network = null)
     {
         // First pass: compute all lines to determine panel height
         var lines = new List<(string text, Color4 color, int indent)>();
@@ -67,6 +68,16 @@ public sealed class DebugOverlay
             gcParts.Append($"  Gen{g}={GC.CollectionCount(g)}");
         lines.Add((gcParts.ToString(), MemColor, 1));
         lines.Add(("", SeparatorColor, 0));
+
+        // Network stats (multiplayer only)
+        if (network != null && network.IsJoined)
+        {
+            lines.Add(("-- Network --", HeaderColor, 0));
+            lines.Add(($"Player ID    : {network.LocalPlayerId}", InfoColor, 1));
+            lines.Add(($"TX Rate      : {FormatBytes(network.BytesSentPerSecond)}/s  (total: {FormatBytes(network.TotalBytesSent)})", InfoColor, 1));
+            lines.Add(($"RX Rate      : {FormatBytes(network.BytesReceivedPerSecond)}/s  (total: {FormatBytes(network.TotalBytesReceived)})", InfoColor, 1));
+            lines.Add(("", SeparatorColor, 0));
+        }
 
         // State debug info
         if (state is IDebugInfoProvider stateProvider)

@@ -52,10 +52,8 @@ public sealed class MultiplayerConnectState : GameState
             MaxShield = (int)shipStats.ShieldStrength,
         };
 
-        NetPlayerLocation location = NetPlayerLocation.ForSolarSystem(0);
-
         // Begin async connect; we'll poll IsJoined each frame
-        _connectTask = _net.ConnectAsync(_url, playerName, info, location);
+        _connectTask = _net.ConnectAsync(_url, playerName, info);
     }
 
     public override void Exit(Game game) { }

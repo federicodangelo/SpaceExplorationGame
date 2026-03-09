@@ -272,7 +272,7 @@ public class Game : GameBase
 
         if (_debugOverlayVisible)
         {
-            _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0);
+            _debugOverlay.Render(SpriteRenderer, _currentState, Coordinator, _debugTimer, elapsed * 1000.0, Network);
         }
 
         // Screenshot toast
