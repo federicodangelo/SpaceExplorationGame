@@ -93,7 +93,7 @@ internal sealed class ServerState : GameState
             {
                 int entityCount = sim.EcsWorld.Size;
                 int playerCount = sim.HasPlayers ? ((SimulationBase)sim).Players.Count : 0;
-                Console.WriteLine($"  {sim.GetType().Name}: {playerCount} player(s), {entityCount} entities");
+                Console.WriteLine($"  {sim.GetType().Name} [{sim.GetNetPlayerLocation()}]: {playerCount} player(s), {entityCount} entities");
             }
         }
     }
