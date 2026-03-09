@@ -6,6 +6,8 @@ using SpaceExplorationGame.States;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Core.Config;
 using Engine.Network.Client;
+using Engine.Platform.Null;
+using Engine.Platform;
 
 namespace SpaceExplorationGame;
 
@@ -48,6 +50,7 @@ internal static class Program
         bool autoplay = false;
         string? connectUrl = null;
         string? playerNameArg = null;
+        bool noUI = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -109,6 +112,10 @@ internal static class Program
                 playerNameArg = args[i + 1];
                 i++;
             }
+            else if (arg is "--no-ui" or "-nu")
+            {
+                noUI = true;
+            }
             else
             {
                 throw new ArgumentException($"Unknown argument: {arg}");
@@ -145,11 +152,12 @@ internal static class Program
         // Create platform
         var musicProvider = new GameMusicProvider(SdlAudioManager.SampleRate);
         var sfxProvider = new GameSfxProvider(SdlAudioManager.SampleRate);
-        using var platform = new SdlPlatform(
-            WindowConfig.WindowTitle,
-            WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
-            musicProvider, sfxProvider,
-            AudioConfig.AudioMasterVolume, AudioConfig.AudioMusicVolume, AudioConfig.AudioSfxVolume);
+        using IPlatform platform =
+            noUI ?
+                new NullPlatform(WindowConfig.WindowTitle, WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight) :
+                new SdlPlatform(WindowConfig.WindowTitle, WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight,
+                    musicProvider, sfxProvider,
+                    AudioConfig.AudioMasterVolume, AudioConfig.AudioMusicVolume, AudioConfig.AudioSfxVolume);
 
         using var game = new Game();
         game.Initialize(platform, galaxySeed);
