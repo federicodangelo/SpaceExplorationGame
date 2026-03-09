@@ -33,8 +33,8 @@ public enum InteriorAction
 internal sealed class InteriorBot : BotBase
 {
     // ── Timing ──────────────────────────────────────────────────────
-    private const float InteriorExitTimeMin = 20.0f;
-    private const float InteriorExitTimeMax = 60.0f;
+    private const float InteriorExitTimeMin = 15.0f;
+    private const float InteriorExitTimeMax = 40.0f;
 
     // ── State ────────────────────────────────────────────────────────
     private enum InteriorGoal { VisitInteractables, Exit }
@@ -218,7 +218,7 @@ internal sealed class InteriorBot : BotBase
 
         _statusGoal = _interiorGoal switch
         {
-            InteriorGoal.VisitInteractables => "VISITING INTERACTABLES",
+            InteriorGoal.VisitInteractables => $"VISITING INTERACTABLES ({Math.Max(0f, _interiorExitTime - _interiorTimer):F0}s to exit)",
             InteriorGoal.Exit => "HEADING TO EXIT",
             _ => "INTERIOR"
         };

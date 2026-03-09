@@ -30,7 +30,7 @@ public enum PlanetSurfaceAction
 internal sealed class PlanetSurfaceBot : BotBase
 {
     // ── Timing ──────────────────────────────────────────────────────
-    private const float SurfaceReturnTimeMin = 20.0f;
+    private const float SurfaceReturnTimeMin = 30.0f;
     private const float SurfaceReturnTimeMax = 60.0f;
     private const float SurfaceSettleStartTime = 5.0f;
     private const float SurfaceSettleEndTime = 15.0f;
@@ -209,15 +209,16 @@ internal sealed class PlanetSurfaceBot : BotBase
         else
             _surfaceGoal = SurfaceGoal.Explore;
 
+        float _surfaceRemaining = Math.Max(0f, _surfaceReturnTime - _surfaceTimer);
         _statusGoal = _surfaceGoal switch
         {
             SurfaceGoal.Explore => _surfaceExploreSubGoal switch
             {
-                SurfaceExploreSubGoal.Enemy => "HUNTING ENEMY",
-                SurfaceExploreSubGoal.Rock => "MINING ROCK",
-                _ => "EXPLORING SURFACE"
+                SurfaceExploreSubGoal.Enemy => $"HUNTING ENEMY ({_surfaceRemaining:F0}s to return)",
+                SurfaceExploreSubGoal.Rock => $"MINING ROCK ({_surfaceRemaining:F0}s to return)",
+                _ => $"EXPLORING SURFACE ({_surfaceRemaining:F0}s to return)"
             },
-            SurfaceGoal.GoToSettlement => "HEADING TO SETTLEMENT",
+            SurfaceGoal.GoToSettlement => $"HEADING TO SETTLEMENT ({_surfaceRemaining:F0}s to return)",
             SurfaceGoal.GoToShip => "RETURNING TO SHIP",
             _ => "PLANET SURFACE"
         };

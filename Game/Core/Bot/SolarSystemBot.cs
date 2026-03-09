@@ -133,7 +133,7 @@ internal sealed class SolarSystemBot : BotBase
         {
             SolarGoal.FlyToStation => $"FLY TO STATION [{_solarVisitPlanIndex + 1}/{_solarVisitPlan.Count}]",
             SolarGoal.FlyToPlanet => $"FLY TO PLANET  [{_solarVisitPlanIndex + 1}/{_solarVisitPlan.Count}]",
-            SolarGoal.Explore => "EXPLORING SYSTEM",
+            SolarGoal.Explore => $"EXPLORING SYSTEM ({Math.Max(0f, SolarSystemFtlDelay - _solarSystemTimer):F0}s to FTL)",
             SolarGoal.FTLJump => "PREPARING FTL JUMP",
             _ => "SOLAR SYSTEM"
         };
