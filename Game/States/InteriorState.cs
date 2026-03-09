@@ -11,6 +11,7 @@ using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Customization;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Core.Config;
+using SpaceExplorationGame.Core.Bot;
 
 namespace SpaceExplorationGame.States;
 

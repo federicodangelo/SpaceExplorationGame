@@ -12,6 +12,7 @@ using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Core.Config;
 using Arch.Core;
+using SpaceExplorationGame.Core.Bot;
 
 namespace SpaceExplorationGame.States;
 
