@@ -341,10 +341,11 @@ public abstract class CombatSimulationBase : SimulationBase
     /// </summary>
     public void SyncNpcStates(ClientNetworkManager net)
     {
+        var statesLocation = net.LatestNpcStateLocation;
         var states = net.LatestNpcStates;
         var notSentStates = net.LatestNotSentNpcStates;
 
-        if (states == null || notSentStates == null) return;
+        if (states == null || notSentStates == null || statesLocation != GetNetPlayerLocation()) return;
 
         var receivedIds = new HashSet<int>();
 

@@ -67,6 +67,7 @@ public sealed class ClientNetworkManager : IDisposable
     public Dictionary<byte, RemotePlayer> RemotePlayers { get; } = new();
 
     /// <summary>Latest NPC state snapshot received from the server. Null until first broadcast.</summary>
+    public NetPlayerLocation LatestNpcStateLocation { get; private set; } = NetPlayerLocation.ForUnknown();
     public NetNpcState[]? LatestNpcStates { get; private set; }
     public NetNotSentNpcState[]? LatestNotSentNpcStates { get; private set; }
 
@@ -270,6 +271,7 @@ public sealed class ClientNetworkManager : IDisposable
     private void HandleNpcStates(byte[] data)
     {
         var msg = NetSerializer.ReadNpcStates(data);
+        LatestNpcStateLocation = msg.Location;
         LatestNpcStates = msg.Npcs;
         LatestNotSentNpcStates = msg.NotSentNpcs;
         _events.Add(new ClientEvent

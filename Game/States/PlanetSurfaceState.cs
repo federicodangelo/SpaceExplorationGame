@@ -11,6 +11,7 @@ using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Map;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.Core.Config;
+using Arch.Core;
 
 namespace SpaceExplorationGame.States;
 
@@ -564,16 +565,19 @@ public class PlanetSurfaceState : GameState
         game.EnemyShipRenderer.RenderLandedShips(renderer, camera, world);
 
         // Ship
-        var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
-        game.SpaceshipRenderer.RenderShadow(renderer, camera, shipTf.Position, game.Player.CurrentShipType.SpriteSize);
-        game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
-            game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+        if (world.IsAlive(_sim.LocalShipEntity))
+        {
+            var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
+            game.SpaceshipRenderer.RenderShadow(renderer, camera, shipTf.Position, game.Player.CurrentShipType.SpriteSize);
+            game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
+                game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+        }
 
         // Tire marks (drawn above terrain, below vehicle)
         _tireMarkRenderer.Render(renderer, camera);
 
         // Vehicle
-        if (_sim.LocalVehicleDeployed)
+        if (_sim.LocalVehicleDeployed && world.IsAlive(_sim.LocalVehicleEntity))
         {
             var vehicleTf = world.Get<Transform>(_sim.LocalVehicleEntity);
             // Derive visual steering angle from current rotation velocity (lives on player entity).

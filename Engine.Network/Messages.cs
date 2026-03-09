@@ -287,6 +287,8 @@ public struct NetNotSentNpcState
 /// <summary>Server sends batch of NPC states for the client's current location.</summary>
 public struct S_NpcStatesMessage
 {
+    /// <summary>Player location these NPCs belong to (clients can ignore NPCs that don't match their current location).</summary>
+    public NetPlayerLocation Location;
     /// <summary>Number of NPC entries.</summary>
     public int NpcCount;
     /// <summary>NPC state snapshots.</summary>

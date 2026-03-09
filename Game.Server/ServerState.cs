@@ -511,6 +511,7 @@ internal sealed class ServerState : GameState
 
         var msg = new S_NpcStatesMessage
         {
+            Location = combatSim.GetNetPlayerLocation(),
             NpcCount = npcStates.Length,
             Npcs = npcStates,
             NotSentNpcCount = notSentNpcStates.Length,

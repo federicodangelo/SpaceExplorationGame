@@ -310,6 +310,7 @@ public static class NetSerializer
         using var ms = new MemoryStream(estimatedSize);
         using var w = new BinaryWriter(ms);
         w.Write((byte)MessageType.S_NpcStates);
+        WritePlayerLocation(w, msg.Location);
         w.Write(msg.NpcCount);
         for (int i = 0; i < msg.NpcCount; i++)
             WriteNpcState(w, msg.Npcs[i]);
@@ -375,6 +376,7 @@ public static class NetSerializer
         using var ms = new MemoryStream(data.ToArray());
         using var r = new BinaryReader(ms);
         r.ReadByte(); // skip type
+        var location = ReadPlayerLocation(r);
         int count = r.ReadInt32();
         var npcs = new NetNpcState[count];
         for (int i = 0; i < count; i++)
@@ -383,7 +385,7 @@ public static class NetSerializer
         var notSentNpcs = new NetNotSentNpcState[notSentCount];
         for (int i = 0; i < notSentCount; i++)
             notSentNpcs[i] = ReadNotSentNpcState(r);
-        return new S_NpcStatesMessage { NpcCount = count, Npcs = npcs, NotSentNpcCount = notSentCount, NotSentNpcs = notSentNpcs };
+        return new S_NpcStatesMessage { Location = location, NpcCount = count, Npcs = npcs, NotSentNpcCount = notSentCount, NotSentNpcs = notSentNpcs };
     }
 
     public static C_NpcHitMessage ReadNpcHit(ReadOnlySpan<byte> data)
