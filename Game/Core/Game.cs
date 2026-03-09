@@ -154,6 +154,26 @@ public class Game : GameBase
         }
     }
 
+    public void RunAtTargetFps(int targetFps)
+    {
+        InitializeLoop();
+        Stopwatch targetFrameStopwatch = Stopwatch.StartNew();
+        while (IsRunning)
+        {
+            RunOneFrame();
+
+            // Sleep to cap framerate if we're running faster than the target
+            double targetFrameTime = 1000.0 / targetFps;
+            double elapsedMs = targetFrameStopwatch.Elapsed.TotalMilliseconds;
+            if (elapsedMs < targetFrameTime)
+            {
+                int sleepMs = (int)(targetFrameTime - elapsedMs);
+                Thread.Sleep(sleepMs);
+            }
+            targetFrameStopwatch.Restart();
+        }
+    }
+
     /// <summary>
     /// Initialize the game loop timing. Called once before the first frame.
     /// </summary>

@@ -68,6 +68,7 @@ public sealed class ClientNetworkManager : IDisposable
 
     /// <summary>Latest NPC state snapshot received from the server. Null until first broadcast.</summary>
     public NetNpcState[]? LatestNpcStates { get; private set; }
+    public NetNotSentNpcState[]? LatestNotSentNpcStates { get; private set; }
 
     /// <summary>
     /// Connect to the server and send a join request.
@@ -270,6 +271,7 @@ public sealed class ClientNetworkManager : IDisposable
     {
         var msg = NetSerializer.ReadNpcStates(data);
         LatestNpcStates = msg.Npcs;
+        LatestNotSentNpcStates = msg.NotSentNpcs;
         _events.Add(new ClientEvent
         {
             Type = ClientEventType.NpcStates,

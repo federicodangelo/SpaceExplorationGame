@@ -313,6 +313,9 @@ public static class NetSerializer
         w.Write(msg.NpcCount);
         for (int i = 0; i < msg.NpcCount; i++)
             WriteNpcState(w, msg.Npcs[i]);
+        w.Write(msg.NotSentNpcCount);
+        for (int i = 0; i < msg.NotSentNpcCount; i++)
+            WriteNotSentNpcState(w, msg.NotSentNpcs[i]);
         return ms.ToArray();
     }
 
@@ -376,7 +379,11 @@ public static class NetSerializer
         var npcs = new NetNpcState[count];
         for (int i = 0; i < count; i++)
             npcs[i] = ReadNpcState(r);
-        return new S_NpcStatesMessage { NpcCount = count, Npcs = npcs };
+        int notSentCount = r.ReadInt32();
+        var notSentNpcs = new NetNotSentNpcState[notSentCount];
+        for (int i = 0; i < notSentCount; i++)
+            notSentNpcs[i] = ReadNotSentNpcState(r);
+        return new S_NpcStatesMessage { NpcCount = count, Npcs = npcs, NotSentNpcCount = notSentCount, NotSentNpcs = notSentNpcs };
     }
 
     public static C_NpcHitMessage ReadNpcHit(ReadOnlySpan<byte> data)
@@ -489,6 +496,24 @@ public static class NetSerializer
             AimDirection = new Vector2(r.ReadSingle(), r.ReadSingle()),
             LandedAnimProgress = r.ReadSingle(),
             LandedIsLanding = r.ReadBoolean(),
+        };
+    }
+
+
+    // ────────────────────────────────────────────────────────────
+    //  NPC state sub-serialization
+    // ────────────────────────────────────────────────────────────
+
+    private static void WriteNotSentNpcState(BinaryWriter w, in NetNotSentNpcState s)
+    {
+        w.Write(s.NpcId);
+    }
+
+    private static NetNotSentNpcState ReadNotSentNpcState(BinaryReader r)
+    {
+        return new NetNotSentNpcState
+        {
+            NpcId = r.ReadInt32(),
         };
     }
 }

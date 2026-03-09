@@ -278,6 +278,12 @@ public struct NetNpcState
     public bool LandedIsLanding;
 }
 
+// Used for NPCs that the server hasn't sent a state update for yet
+public struct NetNotSentNpcState
+{
+    public int NpcId;
+}
+
 /// <summary>Server sends batch of NPC states for the client's current location.</summary>
 public struct S_NpcStatesMessage
 {
@@ -285,6 +291,10 @@ public struct S_NpcStatesMessage
     public int NpcCount;
     /// <summary>NPC state snapshots.</summary>
     public NetNpcState[] Npcs;
+    /// <summary>Number of not sent NPC entries.</summary>
+    public int NotSentNpcCount;
+    /// <summary>Ids of the npcs whose information was not sent, to keep them alive in the clients</summary>
+    public NetNotSentNpcState[] NotSentNpcs; // NPCs that exist but haven't had their full state sent yet (e.g. just spawned)
 }
 
 /// <summary>Client reports hitting an NPC.</summary>

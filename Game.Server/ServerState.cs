@@ -55,7 +55,18 @@ internal sealed class ServerState : GameState
 
     // Tick counter for world-state broadcast rate (every N ticks)
     private int _tickCounter;
+    public const int TargetFps = 60;
     private const int BroadcastEveryNTicks = 3; // ~20 Hz at 60 tick
+    private const int BroadcastsPerSecond = TargetFps / BroadcastEveryNTicks;
+
+    // There are 20 broadcasts per second ( so )with BroadcastEveryNTicks = 3 and TargetFps = 60)
+    private const float CloseDistance = 500f; // Always send NPCs within this distance
+    private const float MediumDistance = 1000f; // Send NPCs within this distance with lower frequency
+
+    private const int CloseFrequency = 1; // Send every update (20 times per second)
+    private const int MediumFrequency = 2; // Send every 2 updates (10 times per second)
+    private const int FarFrequency = 5; // Send every 5 updates (4 times per second)
+
 
     // Reusable buffer for draining network events each tick
     private readonly List<ServerEvent> _pendingEvents = new();
@@ -403,6 +414,7 @@ internal sealed class ServerState : GameState
 
         // Send the new simulation state to the player
         SendOtherPlayersState(netPlayer);
+        SendNpcStates(netPlayer, -1);
     }
 
     private void HandleNpcHit(byte playerId, C_NpcHitMessage msg)
@@ -438,6 +450,8 @@ internal sealed class ServerState : GameState
     //  World state broadcast
     // ────────────────────────────────────────────────────────────
 
+    private int broadcastCounter = 0;
+
     private void BroadcastWorldState()
     {
         if (_netPlayers.Count == 0) return;
@@ -446,8 +460,10 @@ internal sealed class ServerState : GameState
         foreach (var netPlayer in _netPlayers.Values)
         {
             SendOtherPlayersState(netPlayer);
-            SendNpcStates(netPlayer);
+            SendNpcStates(netPlayer, broadcastCounter);
         }
+
+        broadcastCounter++;
     }
 
     private void SendOtherPlayersState(NetPlayer netPlayer)
@@ -466,17 +482,39 @@ internal sealed class ServerState : GameState
         _server.Send(netPlayer.PlayerId, NetSerializer.Write(worldMsg));
     }
 
-    private void SendNpcStates(NetPlayer netPlayer)
+    private void SendNpcStates(NetPlayer netPlayer, int broadcastCounter)
     {
         if (netPlayer.Simulation is not CombatSimulationBase combatSim) return;
 
         var npcStates = combatSim.CollectNpcStates();
+        var notSentNpcStates = new NetNotSentNpcState[0];
+
+        if (broadcastCounter >= 0)
+        {
+            // We perform distance based optimizations for NPC updates, so we can skip sending NPC states that are far away from the player for a few seconds without causing noticeable issues. This reduces bandwidth and CPU usage on both server and client, especially in crowded areas with many NPCs.
+
+            var playerPosition = netPlayer.PlayerState.Position;
+            var groups = npcStates.GroupBy(npc =>
+            {
+                float distance = Vector2.Distance(playerPosition, npc.Position);
+                if (npc.Dead) return true; // Always send dead NPCs so they disappear immediately
+                if (distance < CloseDistance) return broadcastCounter % CloseFrequency == 0;
+                if (distance < MediumDistance) return broadcastCounter % MediumFrequency == 0;
+                return broadcastCounter % FarFrequency == 0;
+            });
+
+            npcStates = groups.Where(g => g.Key).SelectMany(g => g).ToArray();
+            notSentNpcStates = groups.Where(g => !g.Key).SelectMany(g => g).Select(npc => new NetNotSentNpcState { NpcId = npc.NpcId }).ToArray();
+        }
+
         if (npcStates.Length == 0) return;
 
         var msg = new S_NpcStatesMessage
         {
             NpcCount = npcStates.Length,
-            Npcs = npcStates
+            Npcs = npcStates,
+            NotSentNpcCount = notSentNpcStates.Length,
+            NotSentNpcs = notSentNpcStates
         };
         _server.Send(netPlayer.PlayerId, NetSerializer.Write(msg));
     }

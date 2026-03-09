@@ -342,7 +342,9 @@ public abstract class CombatSimulationBase : SimulationBase
     public void SyncNpcStates(ClientNetworkManager net)
     {
         var states = net.LatestNpcStates;
-        if (states == null) return;
+        var notSentStates = net.LatestNotSentNpcStates;
+
+        if (states == null || notSentStates == null) return;
 
         var receivedIds = new HashSet<int>();
 
@@ -376,6 +378,11 @@ public abstract class CombatSimulationBase : SimulationBase
 
             // Update existing NPC entity
             UpdateNpcFromNetState(entity, npcState);
+        }
+
+        foreach (var notReceivedNpcState in notSentStates)
+        {
+            receivedIds.Add(notReceivedNpcState.NpcId);
         }
 
         // Destroy NPCs no longer present in the server snapshot

@@ -127,7 +127,7 @@ internal static class Program
         Console.WriteLine("Server ticking. Press Ctrl+C to stop.");
 
         game.ChangeState(serverState);
-        game.Run();
+        game.RunAtTargetFps(ServerState.TargetFps);
     }
 
     private static NetPlayerLocation ResolveStartingLocation(string? location, string? subLocation, int dangerLevel, Game game)
