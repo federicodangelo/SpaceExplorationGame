@@ -52,8 +52,6 @@ public class AutoplayBot
     private const float ShipBrakingMargin = 1.8f;
     /// <summary>World-space range at which the bot notices and fires at enemies.</summary>
     private const float EnemyDetectRange = 800f;
-    /// <summary>Distance threshold at which on-foot movement is considered arrived.</summary>
-    private const float SurfaceWalkThreshold = 20f;
     /// <summary>Wander radius used when exploring a planet surface.</summary>
     private const float SurfaceWanderDistance = 400f;
     /// <summary>Range within which the bot targets pirate NPCs while exploring.</summary>
@@ -767,7 +765,12 @@ public class AutoplayBot
         if (surfaceGoalTile != _surfacePathTarget)
         {
             _surfacePath.Clear();
-            _surfacePath.AddRange(BfsSurfacePath(sim.SurfaceData, surfaceFromTile, surfaceGoalTile));
+            var newPath = BfsSurfacePath(sim.SurfaceData, surfaceFromTile, surfaceGoalTile);
+            if (newPath.Count == 0 && _surfaceGoal == SurfaceGoal.GoToShip)
+            {
+                Console.WriteLine($"[Bot] Warning: no path found from {surfaceFromTile} to ship at {surfaceGoalTile}. Origin tile blocked: {SurfaceTerrainRules.IsBlockedForTraversal(sim.SurfaceData.Tiles[surfaceFromTile.X, surfaceFromTile.Y])}, Goal tile blocked: {SurfaceTerrainRules.IsBlockedForTraversal(sim.SurfaceData.Tiles[surfaceGoalTile.X, surfaceGoalTile.Y])}");
+            }
+            _surfacePath.AddRange(newPath);
             _surfacePathTarget = surfaceGoalTile;
             _surfaceStuckTimer = 0;
         }
@@ -776,7 +779,7 @@ public class AutoplayBot
         while (_surfacePath.Count > 0)
         {
             Vector2 wpWorld = TilePosToWorld(_surfacePath[0]);
-            if (Vector2.Distance(avatarPos, wpWorld) < WindowConfig.TileSize * 0.1f)
+            if (Vector2.Distance(avatarPos, wpWorld) < WindowConfig.TileSize * 0.2f)
             {
                 _surfacePath.RemoveAt(0);
                 _surfaceStuckTimer = 0;
@@ -835,7 +838,7 @@ public class AutoplayBot
             _surfacePath.Clear();
             _surfacePathTarget = new TilePos(-1, -1);
         }
-        else if (dist > SurfaceWalkThreshold)
+        else if (dist >= WindowConfig.TileSize * 0.2f)
         {
             Vector2 dir = toTarget / dist;
             float speed = game.Player.AvatarWalkSpeed;
