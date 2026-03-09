@@ -776,7 +776,7 @@ public class AutoplayBot
         while (_surfacePath.Count > 0)
         {
             Vector2 wpWorld = TilePosToWorld(_surfacePath[0]);
-            if (Vector2.Distance(avatarPos, wpWorld) < WindowConfig.TileSize * 0.6f)
+            if (Vector2.Distance(avatarPos, wpWorld) < WindowConfig.TileSize * 0.1f)
             {
                 _surfacePath.RemoveAt(0);
                 _surfaceStuckTimer = 0;
