@@ -357,9 +357,8 @@ public abstract class CombatSimulationBase : SimulationBase
                 // NPC was destroyed on the server
                 if (_netNpcEntities.TryGetValue(npcState.NpcId, out var deadEntity))
                 {
-                    if (EcsWorld.IsAlive(deadEntity))
-                        EcsWorld.Destroy(deadEntity);
                     _netNpcEntities.Remove(npcState.NpcId);
+                    DestroyNPCFromNetState(deadEntity); // TODO
                 }
                 continue;
             }
@@ -403,6 +402,13 @@ public abstract class CombatSimulationBase : SimulationBase
 
     /// <summary>Create a local NPC entity from a server state snapshot. Override in subclasses.</summary>
     protected virtual Entity CreateNpcFromNetState(NetNpcState state) => Entity.Null;
+
+    /// <summary>Destroy a local NPC entity based on server state (e.g. when the server reports it as dead).</summary>
+    protected virtual void DestroyNPCFromNetState(Entity entity)
+    {
+        if (EcsWorld.IsAlive(entity))
+            EcsWorld.Destroy(entity);
+    }
 
     /// <summary>Update a local NPC entity with server state. Override in subclasses.</summary>
     protected virtual void UpdateNpcFromNetState(Entity entity, NetNpcState state)

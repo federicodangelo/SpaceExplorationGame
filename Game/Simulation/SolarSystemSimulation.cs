@@ -453,6 +453,8 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
     {
+        EnemyEntities.Remove(destroyed.Entity);
+
         if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate
             && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } pirateStopper)
         {
@@ -462,11 +464,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         // Notify spawn manager so it can schedule a replacement
         _npcSpawnManager.NotifyDestroyed(destroyed.Faction);
 
-        if (EcsWorld.IsAlive(destroyed.Entity))
-        {
-            EnemyEntities.Remove(destroyed.Entity);
-            EcsWorld.Destroy(destroyed.Entity);
-        }
+        base.OnEnemyDestroyed(destroyed);
     }
 
     /// <summary>Tick warp animations and clean up ships that finished warping out.</summary>
@@ -722,6 +720,13 @@ public class SolarSystemSimulation : CombatSimulationBase
 
         EnemyEntities.Add(entity);
         return entity;
+    }
+
+    protected override void DestroyNPCFromNetState(Entity entity)
+    {
+        EnemyEntities.Remove(entity);
+
+        base.DestroyNPCFromNetState(entity);
     }
 
     protected override void UpdateNpcFromNetState(Entity entity, NetNpcState state)
