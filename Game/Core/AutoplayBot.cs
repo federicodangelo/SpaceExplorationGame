@@ -765,7 +765,7 @@ public class AutoplayBot
         if (surfaceGoalTile != _surfacePathTarget)
         {
             _surfacePath.Clear();
-            var newPath = BfsSurfacePath(sim.SurfaceData, surfaceFromTile, surfaceGoalTile);
+            var newPath = FindSurfacePath(sim.SurfaceData, surfaceFromTile, surfaceGoalTile);
             if (newPath.Count == 0 && _surfaceGoal == SurfaceGoal.GoToShip)
             {
                 Console.WriteLine($"[Bot] Warning: no path found from {surfaceFromTile} to ship at {surfaceGoalTile}. Origin tile blocked: {SurfaceTerrainRules.IsBlockedForTraversal(sim.SurfaceData.Tiles[surfaceFromTile.X, surfaceFromTile.Y])}, Goal tile blocked: {SurfaceTerrainRules.IsBlockedForTraversal(sim.SurfaceData.Tiles[surfaceGoalTile.X, surfaceGoalTile.Y])}");
@@ -980,51 +980,102 @@ public class AutoplayBot
     /// Caps expansion at <paramref name="maxNodes"/> to keep large maps fast.
     /// Returns an empty list if no path is found within the budget.
     /// </summary>
-    private static List<TilePos> BfsSurfacePath(PlanetSurfaceData surface, TilePos from, TilePos to,
+    /// <summary>
+    /// Finds a path on the planet surface tile grid using A*.
+    /// Caps expansion at <paramref name="maxNodes"/> to keep large maps fast.
+    /// Returns an empty list if no path is found within the budget.
+    /// </summary>
+    private static List<TilePos> FindSurfacePath(PlanetSurfaceData surface, TilePos from, TilePos to,
         int maxNodes = 4000)
     {
-        int w = surface.Width;
-        int h = surface.Height;
+        int w = surface.Width, h = surface.Height;
+        return AStarTilePath(w, h,
+            (x, y) => SurfaceTerrainRules.IsTraversable(surface.Tiles[x, y]),
+            from, to, maxNodes);
+    }
 
-        bool IsSurfaceWalkable(int x, int y) =>
-            x >= 0 && x < w && y >= 0 && y < h &&
-            SurfaceTerrainRules.IsTraversable(surface.Tiles[x, y]);
+    /// <summary>
+    /// Finds a path on the interior tile grid using A*.
+    /// Returns an empty list if no path is found.
+    /// </summary>
+    private static List<TilePos> FindInteriorPath(InteriorData interior, TilePos from, TilePos to) =>
+        AStarTilePath(interior.Width, interior.Height,
+            (x, y) => IsInteriorTileWalkable(interior.Tiles[x, y]),
+            from, to);
 
-        // If goal is on impassable terrain, find nearest traversable neighbour
-        if (!IsSurfaceWalkable(to.X, to.Y))
+    private static bool IsInteriorTileWalkable(InteriorTileType tile) => tile switch
+    {
+        InteriorTileType.Void => false,
+        InteriorTileType.Wall => false,
+        InteriorTileType.Crate => false,
+        InteriorTileType.Table => false,
+        InteriorTileType.Plant => false,
+        InteriorTileType.Window => false,
+        InteriorTileType.Pipe => false,
+        InteriorTileType.Shelf => false,
+        InteriorTileType.Bed => false,
+        InteriorTileType.BarCounter => false,
+        InteriorTileType.Generator => false,
+        InteriorTileType.Antenna => false,
+        _ => true,
+    };
+
+    /// <summary>
+    /// Unified A* pathfinder on a 2D tile grid. Uses Manhattan distance as heuristic to
+    /// prioritise nodes closer to the goal, exploring far fewer nodes than plain BFS.
+    /// If the goal tile is impassable, the nearest walkable neighbour within radius 4 is used.
+    /// Returns an empty list if no path is found within <paramref name="maxNodes"/> expansions.
+    /// </summary>
+    private static List<TilePos> AStarTilePath(
+        int width, int height,
+        Func<int, int, bool> isWalkable,
+        TilePos from, TilePos to,
+        int maxNodes = int.MaxValue)
+    {
+        // Redirect impassable goal to nearest walkable neighbour
+        if (!isWalkable(to.X, to.Y))
         {
             TilePos? adj = null;
             for (int r = 1; r <= 4 && adj == null; r++)
                 for (int dy = -r; dy <= r && adj == null; dy++)
                     for (int dx = -r; dx <= r && adj == null; dx++)
-                        if (Math.Abs(dx) == r || Math.Abs(dy) == r)
-                            if (IsSurfaceWalkable(to.X + dx, to.Y + dy))
-                                adj = new TilePos(to.X + dx, to.Y + dy);
+                        if ((Math.Abs(dx) == r || Math.Abs(dy) == r) && isWalkable(to.X + dx, to.Y + dy))
+                            adj = new TilePos(to.X + dx, to.Y + dy);
             if (adj == null) return [];
             to = adj.Value;
         }
 
         if (from == to) return [];
 
+        // prev also serves as the closed set: a node is settled on first discovery.
+        // This is valid because Manhattan distance is a consistent heuristic on a
+        // 4-directional unit-cost grid, so the first path found to any node is already optimal.
+        var gCost = new Dictionary<TilePos, int>();
         var prev = new Dictionary<TilePos, TilePos>();
-        var queue = new Queue<TilePos>();
+        var open = new PriorityQueue<TilePos, int>();
+
+        gCost[from] = 0;
         prev[from] = from;
-        queue.Enqueue(from);
+        open.Enqueue(from, Math.Abs(from.X - to.X) + Math.Abs(from.Y - to.Y));
 
         ReadOnlySpan<(int dx, int dy)> dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
-        while (queue.Count > 0 && prev.Count < maxNodes)
+        while (open.Count > 0 && prev.Count < maxNodes)
         {
-            var cur = queue.Dequeue();
+            var cur = open.Dequeue();
             if (cur == to) break;
+
+            int curG = gCost[cur];
             foreach (var (dx, dy) in dirs)
             {
                 var nb = new TilePos(cur.X + dx, cur.Y + dy);
-                if (!prev.ContainsKey(nb) && IsSurfaceWalkable(nb.X, nb.Y))
-                {
-                    prev[nb] = cur;
-                    queue.Enqueue(nb);
-                }
+                if ((uint)nb.X >= (uint)width || (uint)nb.Y >= (uint)height) continue;
+                if (!isWalkable(nb.X, nb.Y)) continue;
+                if (prev.ContainsKey(nb)) continue; // already settled
+                int nbG = curG + 1;
+                gCost[nb] = nbG;
+                prev[nb] = cur;
+                open.Enqueue(nb, nbG + Math.Abs(nb.X - to.X) + Math.Abs(nb.Y - to.Y));
             }
         }
 
@@ -1268,7 +1319,7 @@ public class AutoplayBot
         if (goalTile != _interiorPathTarget)
         {
             _interiorPath.Clear();
-            _interiorPath.AddRange(BfsInteriorPath(sim.Interior, fromTile, goalTile));
+            _interiorPath.AddRange(FindInteriorPath(sim.Interior, fromTile, goalTile));
             _interiorPathTarget = goalTile;
             _interiorStuckTimer = 0;
         }
@@ -1399,95 +1450,8 @@ public class AutoplayBot
         return GetInteriorGoalTile(sim);
     }
 
-    /// <summary>
-    /// BFS on the interior tile grid returning a list of tile waypoints from start to goal.
-    /// Returns an empty list if no path is found.
-    /// </summary>
-    private static List<TilePos> BfsInteriorPath(InteriorData interior, TilePos from, TilePos to)
-    {
-        int w = interior.Width;
-        int h = interior.Height;
-
-        if (!IsWalkable(interior, to.X, to.Y))
-        {
-            // Goal is impassable (e.g., NPC/interactable tile); find the nearest walkable neighbour
-            TilePos? adj = FindNearestWalkableAdjacentTo(interior, to.X, to.Y);
-            if (adj == null) return [];
-            to = adj.Value;
-        }
-
-        if (from == to) return [];
-
-        var prev = new Dictionary<TilePos, TilePos>();
-        var queue = new Queue<TilePos>();
-        prev[from] = from;
-        queue.Enqueue(from);
-
-        // 4-directional BFS
-        Span<(int dx, int dy)> dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-
-        while (queue.Count > 0)
-        {
-            var cur = queue.Dequeue();
-            if (cur == to) break;
-
-            foreach (var (dx, dy) in dirs)
-            {
-                var next = new TilePos(cur.X + dx, cur.Y + dy);
-                if (next.X < 0 || next.X >= w || next.Y < 0 || next.Y >= h) continue;
-                if (prev.ContainsKey(next)) continue;
-                if (!IsWalkable(interior, next.X, next.Y)) continue;
-                prev[next] = cur;
-                queue.Enqueue(next);
-            }
-        }
-
-        if (!prev.ContainsKey(to)) return []; // no path
-
-        // Reconstruct path (skip the starting tile)
-        var path = new List<TilePos>();
-        var step = to;
-        while (step != from)
-        {
-            path.Add(step);
-            step = prev[step];
-        }
-        path.Reverse();
-        return path;
-    }
-
-    private static bool IsWalkable(InteriorData interior, int x, int y)
-    {
-        if (x < 0 || x >= interior.Width || y < 0 || y >= interior.Height) return false;
-        return interior.Tiles[x, y] switch
-        {
-            InteriorTileType.Void => false,
-            InteriorTileType.Wall => false,
-            InteriorTileType.Crate => false,
-            InteriorTileType.Table => false,
-            InteriorTileType.Plant => false,
-            InteriorTileType.Window => false,
-            InteriorTileType.Pipe => false,
-            InteriorTileType.Shelf => false,
-            InteriorTileType.Bed => false,
-            InteriorTileType.BarCounter => false,
-            InteriorTileType.Generator => false,
-            InteriorTileType.Antenna => false,
-            _ => true,
-        };
-    }
-
-    private static TilePos? FindNearestWalkableAdjacentTo(InteriorData interior, int tx, int ty)
-    {
-        for (int r = 1; r <= 3; r++)
-            for (int dy = -r; dy <= r; dy++)
-                for (int dx = -r; dx <= r; dx++)
-                    if (Math.Abs(dx) == r || Math.Abs(dy) == r)
-                        if (IsWalkable(interior, tx + dx, ty + dy))
-                            return new TilePos(tx + dx, ty + dy);
-        return null;
-    }
 }
+
 
 // ── Action enums returned by bot to states ──────────────────────
 
