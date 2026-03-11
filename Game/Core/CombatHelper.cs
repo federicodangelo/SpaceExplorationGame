@@ -120,28 +120,28 @@ public static class CombatHelper
     }
 
     /// <summary>
-    /// Process destroyed entities → explosions + SFX.
+    /// Play fxs for killed entities → explosions + SFX.
     /// </summary>
     /// <param name="audio">Audio manager for SFX.</param>
     /// <param name="explosions">Explosion list to append to.</param>
-    /// <param name="destroyed">Destroyed entity events.</param>
+    /// <param name="killed">Destroyed entity events.</param>
     /// <param name="listenerPos">Listener position for distance attenuation.</param>
     /// <param name="npcExplosionColor">Callback that returns explosion color for an NPC faction.</param>
     /// <param name="asteroidSize">Explosion radius for asteroids.</param>
     /// <param name="playerSize">Explosion radius for player death.</param>
     /// <param name="npcSize">Explosion radius for NPC death.</param>
     /// <param name="playerExplosionColor">Explosion color for player death.</param>
-    public static void ProcessDestroyedEntities(
+    public static void PlayKilledEntitiesFxs(
         IAudioManager audio, List<Explosion> explosions,
-        IReadOnlyList<DestroyedEntity> destroyed, Vector2 listenerPos,
+        IReadOnlyList<KilledEntity> killed, Vector2 listenerPos,
         Func<Faction, Color3> npcExplosionColor,
         float asteroidSize = 15f, float playerSize = 50f, float npcSize = 30f,
         Color3? playerExplosionColor = null, float npcSfxVolume = 1f)
     {
         var playerColor = playerExplosionColor ?? new Color3(255, 200, 80);
-        for (int i = 0; i < destroyed.Count; i++)
+        for (int i = 0; i < killed.Count; i++)
         {
-            var d = destroyed[i];
+            var d = killed[i];
             if (d.Asteroid.HasValue)
             {
                 explosions.Add(new Explosion(d.Position, asteroidSize, new Color3(140, 120, 100)));

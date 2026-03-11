@@ -416,7 +416,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
-    protected override void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
+    protected override void OnAsteroidDestroyed(KilledEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
         // Clear mining HUD for any player tracking this asteroid
         foreach (var player in Players)
@@ -451,7 +451,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         => CombatHelper.ProcessLootDrop(_game, killer.Data, loot, rng,
             resourceAmountMax: 5 + loot.DangerLevel * 2, enablePartDrops: true);
 
-    protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
+    protected override void OnEnemyDestroyed(KilledEntity destroyed)
     {
         EnemyEntities.Remove(destroyed.Entity);
 
@@ -475,11 +475,10 @@ public class SolarSystemSimulation : CombatSimulationBase
         // Remove entities that completed warp-out
         foreach (var entity in _warpEffectSystem.WarpOutCompleted)
         {
+            EnemyEntities.Remove(entity);
+
             if (EcsWorld.IsAlive(entity))
-            {
-                EnemyEntities.Remove(entity);
                 EcsWorld.Destroy(entity);
-            }
         }
     }
 

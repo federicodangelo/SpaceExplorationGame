@@ -330,8 +330,8 @@ public class SolarSystemState : GameState
         CombatHelper.PlayDamageSfx(game.Audio, _sim.DamageEventsLastUpdate, _camera.Position, 0.6f);
 
         // Destroyed entities → explosions + SFX
-        CombatHelper.ProcessDestroyedEntities(game.Audio, _explosions,
-            _sim.DestroyedEntitiesLastUpdate, _camera.Position,
+        CombatHelper.PlayKilledEntitiesFxs(game.Audio, _explosions,
+            _sim.KilledEntitiesLastUpdate, _camera.Position,
             faction => faction == Faction.Pirate
                 ? new Color3(255, 120, 80) : new Color3(200, 200, 200));
     }

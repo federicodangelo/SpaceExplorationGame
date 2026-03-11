@@ -393,7 +393,7 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
 
     protected override ulong CombatRngSeed => 0xBEEFCAFE;
 
-    protected override void OnEnemyDestroyed(DestroyedEntity destroyed)
+    protected override void OnEnemyDestroyed(KilledEntity destroyed)
     {
         // Notify spawn manager so it can schedule a replacement
         _npcSpawnManager.NotifyDestroyed(destroyed.Faction, destroyed.Entity);

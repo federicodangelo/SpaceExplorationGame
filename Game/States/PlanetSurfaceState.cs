@@ -398,9 +398,9 @@ public class PlanetSurfaceState : GameState
         CombatHelper.CreateDamagePopups(_damagePopups, _sim.DamageEventsLastUpdate);
         CombatHelper.PlayDamageSfx(game.Audio, _sim.DamageEventsLastUpdate, playerPos, 0.5f);
 
-        // Destroyed entities → explosions + SFX
-        CombatHelper.ProcessDestroyedEntities(game.Audio, _explosions,
-            _sim.DestroyedEntitiesLastUpdate, playerPos,
+        // Killed entities → explosions + SFX
+        CombatHelper.PlayKilledEntitiesFxs(game.Audio, _explosions,
+            _sim.KilledEntitiesLastUpdate, playerPos,
             faction => faction == Faction.Pirate
                 ? new Color3(255, 100, 50) : new Color3(200, 180, 100),
             asteroidSize: 12f, playerSize: 25f, npcSize: 15f,

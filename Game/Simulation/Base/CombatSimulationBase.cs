@@ -42,8 +42,8 @@ public abstract class CombatSimulationBase : SimulationBase
     // ── System event outputs ────────────────────────────────────────
     public IReadOnlyList<DamageEvent> DamageEventsLastUpdate =>
         _projectileSystem?.DamageEventsLastUpdate ?? (IReadOnlyList<DamageEvent>)[];
-    public IReadOnlyList<DestroyedEntity> DestroyedEntitiesLastUpdate =>
-        _projectileSystem?.DestroyedLastUpdate ?? (IReadOnlyList<DestroyedEntity>)[];
+    public IReadOnlyList<KilledEntity> KilledEntitiesLastUpdate =>
+        _projectileSystem?.KilledLastUpdate ?? (IReadOnlyList<KilledEntity>)[];
 
     // ── Abstract hooks ──────────────────────────────────────────────
 
@@ -143,7 +143,7 @@ public abstract class CombatSimulationBase : SimulationBase
 
         // Process destroyed entities
         var combatRng = new SeededRandom((ulong)(_game.GlobalTime * 1000) ^ CombatRngSeed);
-        foreach (var destroyed in _projectileSystem.DestroyedLastUpdate)
+        foreach (var destroyed in _projectileSystem.KilledLastUpdate)
         {
             if (destroyed.Asteroid.HasValue)
             {
@@ -305,7 +305,7 @@ public abstract class CombatSimulationBase : SimulationBase
     /// destroyed it (null if non-player). <paramref name="resourceMsg"/> is non-null if the
     /// miner collected resources from it.
     /// </summary>
-    protected virtual void OnAsteroidDestroyed(DestroyedEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
+    protected virtual void OnAsteroidDestroyed(KilledEntity destroyed, SimulationPlayer? miner, string? resourceMsg)
     {
         if (miner != null && resourceMsg != null)
         {
@@ -326,7 +326,7 @@ public abstract class CombatSimulationBase : SimulationBase
         => CombatHelper.ProcessLootDrop(_game, killer.Data, loot, rng);
 
     /// <summary>Called when an enemy entity is destroyed (cleanup lists, notify missions, etc.).</summary>
-    protected virtual void OnEnemyDestroyed(DestroyedEntity destroyed)
+    protected virtual void OnEnemyDestroyed(KilledEntity destroyed)
     {
         if (EcsWorld.IsAlive(destroyed.Entity))
             EcsWorld.Destroy(destroyed.Entity);
@@ -359,7 +359,7 @@ public abstract class CombatSimulationBase : SimulationBase
                 if (_netNpcEntities.TryGetValue(npcState.NpcId, out var deadEntity))
                 {
                     _netNpcEntities.Remove(npcState.NpcId);
-                    DestroyNPCFromNetState(deadEntity); // TODO
+                    DestroyNPCFromNetState(deadEntity);
                 }
                 continue;
             }
@@ -386,19 +386,14 @@ public abstract class CombatSimulationBase : SimulationBase
         }
 
         // Destroy NPCs no longer present in the server snapshot
-        List<int>? toRemove = null;
         foreach (var (npcId, entity) in _netNpcEntities)
         {
             if (!receivedIds.Contains(npcId))
             {
-                if (EcsWorld.IsAlive(entity))
-                    EcsWorld.Destroy(entity);
-                (toRemove ??= []).Add(npcId);
+                _netNpcEntities.Remove(npcId);
+                DestroyNPCFromNetState(entity);
             }
         }
-        if (toRemove != null)
-            foreach (var id in toRemove)
-                _netNpcEntities.Remove(id);
     }
 
     /// <summary>Create a local NPC entity from a server state snapshot. Override in subclasses.</summary>

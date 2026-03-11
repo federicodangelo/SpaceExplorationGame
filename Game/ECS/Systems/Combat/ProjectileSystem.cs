@@ -15,8 +15,8 @@ public readonly record struct ProjectileSnapshot(Entity Entity, Vector2 Position
 /// <summary>Per-frame snapshot of a potential hit target.</summary>
 public readonly record struct TargetSnapshot(Entity Entity, Vector2 Position, float Radius, Faction? Faction);
 
-/// <summary>An entity destroyed by projectile damage this frame.</summary>
-public readonly record struct DestroyedEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction, Entity KillerEntity);
+/// <summary>An entity killed by projectile damage this frame.</summary>
+public readonly record struct KilledEntity(Entity Entity, Vector2 Position, Faction Faction, LootDrop? Loot, AsteroidField? Asteroid, Faction KillerFaction, Entity KillerEntity);
 
 /// <summary>A damage event from a projectile hit (for visual effects).</summary>
 public readonly record struct DamageEvent(Vector2 Position, float Damage, bool ShieldHit, Entity Target, Faction OwnerFaction, Entity OwnerEntity);
@@ -37,7 +37,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
     private float _dt;
 
     /// <summary>Entities destroyed by projectile hits last update.</summary>
-    public List<DestroyedEntity> DestroyedLastUpdate { get; } = [];
+    public List<KilledEntity> KilledLastUpdate { get; } = [];
 
     /// <summary>Damage events from last update.</summary>
     public List<DamageEvent> DamageEventsLastUpdate { get; } = [];
@@ -48,7 +48,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
     public override void Update(in float dt)
     {
-        DestroyedLastUpdate.Clear();
+        KilledLastUpdate.Clear();
         DamageEventsLastUpdate.Clear();
         _hits.Clear();
         _expired.Clear();
@@ -141,7 +141,7 @@ public partial class ProjectileSystem : BaseSystem<World, float>
                     faction = Faction.Player;
                 }
 
-                DestroyedLastUpdate.Add(new DestroyedEntity(hit.Target, targetPos, faction, loot, asteroid, hit.OwnerFaction, hit.OwnerEntity));
+                KilledLastUpdate.Add(new KilledEntity(hit.Target, targetPos, faction, loot, asteroid, hit.OwnerFaction, hit.OwnerEntity));
             }
         }
 
