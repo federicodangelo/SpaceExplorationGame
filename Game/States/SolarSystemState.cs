@@ -105,8 +105,6 @@ public class SolarSystemState : GameState
         _nebulaBackground = new NebulaBackgroundRenderer();
         _nebulaBackground.Generate(0f, 0f, totalW, totalH, seed: game.Seeds.GalaxySeed);
 
-        game.Player.ShipHealth = 10;
-
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
 
