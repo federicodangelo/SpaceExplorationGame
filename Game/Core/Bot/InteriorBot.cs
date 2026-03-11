@@ -148,9 +148,14 @@ internal sealed class InteriorBot : BotBase
                 _starshipMenuWasOpen = true;
             }
 
+            bool willTakeOff = _interiorTimer > _interiorExitTime + 2.0f || _interiorGoal == InteriorGoal.Exit;
+            StarshipMenuOption preSelect = willTakeOff ? StarshipMenuOption.TakeOff : StarshipMenuOption.DisembarkOnFoot;
+            int preSelectIdx = starshipMenu.FindMenuOptionIndex(preSelect);
+            if (preSelectIdx >= 0) starshipMenu.MenuSelectedIndex = preSelectIdx;
+
             if (_actionCooldown <= 0)
             {
-                if (_interiorTimer > _interiorExitTime + 2.0f || _interiorGoal == InteriorGoal.Exit)
+                if (willTakeOff)
                 {
                     action = InteriorAction.TakeOff;
                     _statusAction = "Taking off from interior";
