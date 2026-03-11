@@ -9,8 +9,6 @@ namespace SpaceExplorationGame.UI.Overlays.Menu;
 /// </summary>
 public class RepairOverlay : PanelOverlayBase
 {
-    private const int RepairCostPerPoint = 2;
-
     protected override string Title => "REPAIR STATION";
     protected override Color3 TitleColor => new(100, 255, 100);
     protected override float PanelWidth => 500;
@@ -29,20 +27,14 @@ public class RepairOverlay : PanelOverlayBase
 
     protected override void OnConfirmAction(Game game)
     {
-        float damage = game.Player.ShipMaxHealth - game.Player.ShipHealth;
-        int cost = (int)(damage * RepairCostPerPoint);
-        if (cost > 0 && game.Player.Credits >= cost)
-        {
-            game.Player.Credits -= cost;
-            game.Player.ShipHealth = game.Player.ShipMaxHealth;
-        }
+        ShipRepairService.TryRepairFull(game.Player);
     }
 
     protected override void RenderPanelContent(Game game, ISpriteRenderer renderer,
         float panelX, float contentY, float panelW, float contentH)
     {
-        float damage = game.Player.ShipMaxHealth - game.Player.ShipHealth;
-        int cost = (int)(damage * RepairCostPerPoint);
+        float damage = ShipRepairService.GetDamage(game.Player);
+        int cost = ShipRepairService.GetFullRepairCost(game.Player);
 
         renderer.DrawTextScreen(panelX + 20, contentY + 5,
             $"SHIP HULL: {game.Player.ShipHealth:F0} / {game.Player.ShipMaxHealth:F0}",

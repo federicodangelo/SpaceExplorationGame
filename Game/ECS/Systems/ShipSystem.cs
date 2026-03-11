@@ -46,6 +46,10 @@ public partial class ShipSystem : BaseSystem<World, float>
         Vector2 wantedAccelerationDirection = input.AccelerationDirection;
         if (wantedAccelerationDirection != Vector2.Zero)
         {
+            var accelerationLen = wantedAccelerationDirection.Length();
+            if (accelerationLen > 1f)
+                wantedAccelerationDirection /= accelerationLen;
+
             ApplyDirectionalBrake(
                 ref velocity,
                 wantedAccelerationDirection,

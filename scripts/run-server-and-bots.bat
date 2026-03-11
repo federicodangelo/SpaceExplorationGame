@@ -30,7 +30,7 @@ timeout /t 2 /nobreak >nul
 
 for /l %%I in (1,1,%CLIENT_COUNT%) do (
 	echo Starting client %%I...
-	start "SpaceExplorationGame Client %%I" cmd /c call "%SCRIPT_DIR%run-client.bat" --name "Player-%%I" --autoplay
+	start "SpaceExplorationGame Client %%I" cmd /k call "%SCRIPT_DIR%run-client.bat" --name "Player-%%I" --autoplay
 )
 
 endlocal
