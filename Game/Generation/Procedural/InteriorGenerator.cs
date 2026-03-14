@@ -308,8 +308,8 @@ public static class InteriorGenerator
         data.SpawnPoint = new TilePos(docking.CenterX, docking.CenterY);
         data.LandingPadTilePos = new TilePos(docking.CenterX, docking.CenterY);
 
-        // Cargo terminal (sell mined resources)
-        PlaceInteractable(data, "CARGO TERMINAL", InteractableType.CargoTerminal,
+        // Trade terminal (buy / sell mined resources)
+        PlaceInteractable(data, "TRADE TERMINAL", InteractableType.CargoTerminal,
             trading.CenterX, trading.TileRect.Y + 1);
 
         PlaceInteractable(data, "HEALTH STATION", InteractableType.HealthStation,
@@ -457,7 +457,7 @@ public static class InteriorGenerator
         data.SpawnPoint = new TilePos(landing.CenterX, landing.CenterY);
 
         // Place interactables
-        PlaceInteractable(data, "CARGO TERMINAL", InteractableType.CargoTerminal,
+        PlaceInteractable(data, "TRADE TERMINAL", InteractableType.CargoTerminal,
             market.CenterX, market.TileRect.Y + 1);
 
         PlaceInteractable(data, "MISSION BOARD", InteractableType.MissionBoard,

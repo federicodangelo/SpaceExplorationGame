@@ -72,13 +72,13 @@ public class InteriorState : GameState
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
-    private readonly SellCargoOverlay _sellCargo = new();
+    private readonly TradeOverlay _trade = new();
     private readonly HealthStationOverlay _healthStationOverlay = new();
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
 
     private bool AnyOverlayOpen => _inGameMenuOverlay.IsOpen || _showingDialogue || _repairOverlay.IsOpen || _missionOverlay.IsOpen
             || _shipCustomization.IsOpen || _avatarCustomization.IsOpen
-            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _sellCargo.IsOpen || _healthStationOverlay.IsOpen
+            || _vehicleCustomization.IsOpen || _shipDealer.IsOpen || _trade.IsOpen || _healthStationOverlay.IsOpen
             || _starshipMenuOverlay.IsOpen;
 
     public InteriorState(InteriorOrigin origin, StarSystemData starSystem,
@@ -195,7 +195,7 @@ public class InteriorState : GameState
                     if (_avatarCustomization.IsOpen) _avatarCustomization.Close();
                     if (_vehicleCustomization.IsOpen) _vehicleCustomization.Close();
                     if (_shipDealer.IsOpen) _shipDealer.Close();
-                    if (_sellCargo.IsOpen) _sellCargo.Close();
+                    if (_trade.IsOpen) _trade.Close();
                     break;
             }
             return;
@@ -211,7 +211,7 @@ public class InteriorState : GameState
         if (_avatarCustomization.UpdateInput(game)) return;
         if (_vehicleCustomization.UpdateInput(game)) return;
         if (_shipDealer.UpdateInput(game)) return;
-        if (_sellCargo.UpdateInput(game)) return;
+        if (_trade.UpdateInput(game)) return;
 
         // Starship menu (while player is inside their ship on the landing pad)
         if (_starshipMenuOverlay.UpdateInput(game))
@@ -310,7 +310,7 @@ public class InteriorState : GameState
             _avatarCustomization.Update(game);
             _vehicleCustomization.Update(game);
             _shipDealer.Update(game);
-            _sellCargo.Update(game);
+            _trade.Update(game);
             _inGameMenuOverlay.Update(game);
         });
 
@@ -398,7 +398,10 @@ public class InteriorState : GameState
                 _shipDealer.Open();
                 break;
             case InteractableType.CargoTerminal:
-                _sellCargo.Open();
+                var tradeKey = _origin == InteriorOrigin.SpaceStation && _spaceStation != null
+                    ? LocationKey.ForStation(_starSystem.Index, _spaceStation.Index)
+                    : LocationKey.ForSettlement(_starSystem.Index, _planet!.Index, _settlement!.Index);
+                _trade.Open(game, _starSystem.Index, tradeKey);
                 break;
             case InteractableType.HealthStation:
                 _healthStationOverlay.Open();
@@ -601,7 +604,7 @@ public class InteriorState : GameState
         _avatarCustomization.Render(game);
         _vehicleCustomization.Render(game);
         _shipDealer.Render(game);
-        _sellCargo.Render(game);
+        _trade.Render(game);
         _inGameMenuOverlay.Render(game);
         _starshipMenuOverlay.Render(game);
     }

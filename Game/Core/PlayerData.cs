@@ -2,6 +2,7 @@ namespace SpaceExplorationGame.Core;
 
 using System.Numerics;
 using SpaceExplorationGame.Core.Config;
+using SpaceExplorationGame.Generation;
 
 /// <summary>
 /// Distinguishes the locally-controlled player from remote (networked) players.
@@ -277,6 +278,67 @@ public class PlayerData
     // Cargo hold
     public Dictionary<ResourceType, int> Cargo { get; set; } = new();
 
+    /// <summary>Tracks how many units the player has purchased from each system. Key: systemIndex, Value: resource → amount bought.</summary>
+    public Dictionary<int, Dictionary<ResourceType, int>> StationPurchases { get; set; } = new();
+
+    /// <summary>Stock adjustment data for a location-resource pair.</summary>
+    public class StockEntry
+    {
+        public int Delta { get; set; }              // positive = depleted from max, negative = excess from selling
+        public double LastChangeTime { get; set; }  // PlayTimeSeconds when last changed
+    }
+
+    /// <summary>Per-location stock tracking. Key: location key (e.g. "S:3:0"), Value: resource → stock state.</summary>
+    public Dictionary<string, Dictionary<ResourceType, StockEntry>> LocationStock { get; set; } = new();
+
+    private const double StockRegenIntervalSeconds = 120.0; // 1 unit regenerates every 2 minutes
+
+    /// <summary>Get the effective stock delta after time-based regeneration.</summary>
+    private static int GetEffectiveDelta(StockEntry entry, double currentTime)
+    {
+        double elapsed = Math.Max(0, currentTime - entry.LastChangeTime);
+        int regenUnits = (int)(elapsed / StockRegenIntervalSeconds);
+
+        if (entry.Delta > 0)
+            return Math.Max(0, entry.Delta - regenUnits);
+        if (entry.Delta < 0)
+            return Math.Min(0, entry.Delta + regenUnits);
+        return 0;
+    }
+
+    /// <summary>Get how many units of a resource are available to buy at a location.</summary>
+    public int GetAvailableStock(SeedManager seeds, int systemIndex, string locationKey, ResourceType resource, double currentTime)
+    {
+        int maxStock = SystemEconomy.GetMaxStock(seeds, systemIndex, locationKey, resource);
+        if (!LocationStock.TryGetValue(locationKey, out var entries) ||
+            !entries.TryGetValue(resource, out var entry))
+            return maxStock;
+
+        int effectiveDelta = GetEffectiveDelta(entry, currentTime);
+        return Math.Clamp(maxStock - effectiveDelta, 0, maxStock * 2);
+    }
+
+    /// <summary>Record a stock change at a location. Positive delta = bought (stock decreases), negative = sold (stock increases).</summary>
+    public void RecordStockChange(string locationKey, ResourceType resource, int delta, double currentTime)
+    {
+        if (!LocationStock.TryGetValue(locationKey, out var entries))
+        {
+            entries = new Dictionary<ResourceType, StockEntry>();
+            LocationStock[locationKey] = entries;
+        }
+
+        // Bake in any regeneration that has happened since last change
+        int currentDelta = 0;
+        if (entries.TryGetValue(resource, out var existing))
+            currentDelta = GetEffectiveDelta(existing, currentTime);
+
+        entries[resource] = new StockEntry
+        {
+            Delta = currentDelta + delta,
+            LastChangeTime = currentTime,
+        };
+    }
+
     /// <summary>Total units currently in the cargo hold.</summary>
     public int CargoUsed
     {
@@ -306,26 +368,32 @@ public class PlayerData
         return toAdd;
     }
 
-    /// <summary>Sell all cargo and return credits earned.</summary>
-    public int SellAllCargo()
+    /// <summary>Buy resources at a given unit price. Returns actual amount bought (limited by credits and cargo space).</summary>
+    public int BuyCargo(ResourceType resource, int unitPrice, int amount = 1)
     {
-        int total = 0;
-        foreach (var (resource, amount) in Cargo)
-        {
-            total += amount * ResourceCatalog.Get(resource).ValuePerUnit;
-        }
-        EarnCredits(total);
-        Cargo.Clear();
-        return total;
+        int affordable = unitPrice > 0 ? Credits / unitPrice : 0;
+        int toBuy = Math.Min(amount, Math.Min(affordable, CargoFree));
+        if (toBuy <= 0) return 0;
+
+        int cost = toBuy * unitPrice;
+        SpendCredits(cost);
+        Cargo.TryGetValue(resource, out int current);
+        Cargo[resource] = current + toBuy;
+        return toBuy;
     }
 
-    /// <summary>Sell a specific resource and return credits earned.</summary>
-    public int SellCargo(ResourceType resource)
+    /// <summary>Sell a specific resource and return credits earned. Uses unitPrice if provided.</summary>
+    public int SellCargo(ResourceType resource, int sellAmount, int? unitPrice = null)
     {
-        if (!Cargo.TryGetValue(resource, out int amount) || amount <= 0) return 0;
-        int earned = amount * ResourceCatalog.Get(resource).ValuePerUnit;
+        if (!Cargo.TryGetValue(resource, out int cargoAmount) || cargoAmount <= 0) return 0;
+        int price = unitPrice ?? ResourceCatalog.Get(resource).ValuePerUnit;
+        int finalAmount = Math.Min(sellAmount, cargoAmount);
+        int earned = finalAmount * price;
         EarnCredits(earned);
-        Cargo.Remove(resource);
+        if (finalAmount == cargoAmount)
+            Cargo.Remove(resource);
+        else
+            Cargo[resource] = cargoAmount - finalAmount;
         return earned;
     }
 

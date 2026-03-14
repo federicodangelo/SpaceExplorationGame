@@ -93,6 +93,10 @@ public class SaveGameData
     // ── Reputation ──
     public Dictionary<string, int> ReputationStandings { get; set; } = new();
 
+    // ── Station Stock ──
+    /// <summary>Per-location stock adjustments (delta + last-change time).</summary>
+    public List<SavedStockEntry> LocationStock { get; set; } = [];
+
     /// <summary>Create a SaveGameData snapshot from live PlayerData.</summary>
     public static SaveGameData FromPlayerData(PlayerData player, string playerName, ulong galaxySeed, string locationDescription)
     {
@@ -192,6 +196,21 @@ public class SaveGameData
 
         // Reputation
         data.ReputationStandings = player.Reputation.SaveStandings();
+
+        // Station purchases (stock tracking)
+        foreach (var (locationKey, entries) in player.LocationStock)
+        {
+            foreach (var (resource, stockEntry) in entries)
+            {
+                data.LocationStock.Add(new SavedStockEntry
+                {
+                    Location = locationKey,
+                    Resource = resource.ToString(),
+                    Delta = stockEntry.Delta,
+                    LastChangeTime = stockEntry.LastChangeTime,
+                });
+            }
+        }
 
         return data;
     }
@@ -354,6 +373,23 @@ public class SaveGameData
 
         // Reputation
         player.Reputation.LoadStandings(ReputationStandings);
+
+        // Station purchases (stock tracking)
+        player.LocationStock.Clear();
+        foreach (var entry in LocationStock)
+        {
+            if (!Enum.TryParse<ResourceType>(entry.Resource, out var resource)) continue;
+            if (!player.LocationStock.TryGetValue(entry.Location, out var entries))
+            {
+                entries = new Dictionary<ResourceType, PlayerData.StockEntry>();
+                player.LocationStock[entry.Location] = entries;
+            }
+            entries[resource] = new PlayerData.StockEntry
+            {
+                Delta = entry.Delta,
+                LastChangeTime = entry.LastChangeTime,
+            };
+        }
     }
 }
 
@@ -485,6 +521,17 @@ public class SavedMission
             NextChainMission = NextChainMission?.ToMission(),
         };
     }
+}
+
+/// <summary>
+/// Serializable stock entry for a single location-resource pair.
+/// </summary>
+public class SavedStockEntry
+{
+    public string Location { get; set; } = "";
+    public string Resource { get; set; } = "";
+    public int Delta { get; set; }
+    public double LastChangeTime { get; set; }
 }
 
 /// <summary>

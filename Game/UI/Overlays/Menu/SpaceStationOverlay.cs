@@ -10,7 +10,7 @@ public enum StationMenuOption
     Repair,
     RestoreHealth,
     Missions,
-    SellCargo,
+    Trade,
     ShipCustomization,
     ShipDealer,
     AvatarCustomization,
@@ -33,7 +33,7 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
     private readonly AvatarCustomizationOverlay _avatarCustomization = new();
     private readonly VehicleCustomizationOverlay _vehicleCustomization = new();
     private readonly ShipDealerOverlay _shipDealer = new();
-    private readonly SellCargoOverlay _sellCargo = new();
+    private readonly TradeOverlay _trade = new();
 
     // ── Panel configuration ──
 
@@ -73,14 +73,15 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
         RegisterSubOverlay(_avatarCustomization);
         RegisterSubOverlay(_vehicleCustomization);
         RegisterSubOverlay(_shipDealer);
-        RegisterSubOverlay(_sellCargo);
+        RegisterSubOverlay(_shipDealer);
+        RegisterSubOverlay(_trade);
     }
 
     private static MenuWidget<StationMenuOption> CreateMenu() => new([
         new(StationMenuOption.Repair, "REPAIR SHIP"),
         new(StationMenuOption.RestoreHealth, "RESTORE HEALTH"),
         new(StationMenuOption.Missions, "MISSIONS"),
-        new(StationMenuOption.SellCargo, "SELL CARGO"),
+        new(StationMenuOption.Trade, "TRADE TERMINAL"),
         new(StationMenuOption.ShipCustomization, "SHIP CUSTOMIZATION"),
         new(StationMenuOption.ShipDealer, "SHIP DEALER"),
         new(StationMenuOption.AvatarCustomization, "AVATAR CUSTOMIZATION"),
@@ -135,8 +136,8 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
                 var boardSeed = MissionGenerator.GetSpaceStationBoardSeed(game.Seeds, _starSystem.Index, _spaceStation.Index);
                 _missionOverlay.Open(game, _starSystem, boardSeed);
                 break;
-            case StationMenuOption.SellCargo:
-                _sellCargo.Open();
+            case StationMenuOption.Trade:
+                _trade.Open(game, _starSystem.Index, LocationKey.ForStation(_starSystem.Index, _spaceStation.Index));
                 break;
             case StationMenuOption.ShipCustomization:
                 _shipCustomization.Open(game.Player);
