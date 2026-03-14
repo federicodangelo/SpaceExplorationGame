@@ -86,7 +86,8 @@ public record ShipPart(
     int BuyCost,
     int SellValue,
     string Description,
-    ShipPartStats Stats
+    ShipPartStats Stats,
+    Rarity Rarity = Rarity.Common
 ) : ICustomizablePart;
 
 /// <summary>
@@ -108,7 +109,10 @@ public record ShipPartStats(
     float FuelEfficiency = 0f,   // multiplier reduction on fuel cost (0.1 = 10% less fuel)
     float CargoCapacity = 0f,    // bonus cargo capacity (added to ship base)
     float WeaponEnergyCost = 0f, // energy consumed per shot
-    WeaponBehavior WeaponBehavior = WeaponBehavior.Standard
+    WeaponBehavior WeaponBehavior = WeaponBehavior.Standard,
+    float ShieldPierce = 0f,     // fraction of weapon damage that bypasses shields (0-1)
+    float ShieldRegenDelay = 0f, // if > 0 overrides default regen delay (seconds)
+    float ShieldRegenRate = 0f   // bonus shield regen per second
 );
 
 /// <summary>
@@ -221,6 +225,28 @@ public static class ShipPartCatalog
         new("util_cargo_large", "Cargo Bay",          ShipSlotType.Utility, 2, 500, 250,
             "Large cargo expansion. +80 capacity.",
             new ShipPartStats(CargoCapacity: 80f)),
+
+        // ── Rare / Legendary ─────────────────────────────────────
+        new("engine_phantom",  "Phantom Drive",      ShipSlotType.Engine, 3, 0, 800,
+            "Legendary stealth engine. Unmatched speed and agility.",
+            new ShipPartStats(Acceleration: 450f, MaxSpeed: 1600f, RotationSpeed: 280f),
+            Rarity.Legendary),
+
+        new("shield_void",     "Void Shield",        ShipSlotType.Shield, 3, 0, 600,
+            "Self-repairing shield with ultra-fast regen.",
+            new ShipPartStats(ShieldStrength: 100f, ShieldRegenDelay: 1.5f, ShieldRegenRate: 4f),
+            Rarity.Rare),
+
+        new("weapon_sunfire",  "Sunfire Cannon",     ShipSlotType.Weapon1, 3, 0, 900,
+            "Legendary weapon. Extreme heat partially bypasses shields.",
+            new ShipPartStats(WeaponDamage: 15f, WeaponFireRate: 0.8f, WeaponRange: 350f, ProjectileSpeed: 580f,
+                WeaponEnergyCost: 18f, ShieldPierce: 0.3f),
+            Rarity.Legendary),
+
+        new("ftl_quantum",     "Quantum Core",       ShipSlotType.FtlDrive, 3, 0, 700,
+            "Rare quantum-tunneling drive. Extraordinary range.",
+            new ShipPartStats(FtlRange: 8000f * 5.0f, MaxFuel: 300f, FuelEfficiency: 0.15f),
+            Rarity.Rare),
     ];
 
     /// <summary>Find a part by its ID.</summary>
@@ -236,14 +262,22 @@ public static class ShipPartCatalog
         for (int tier = 0; tier <= 3; tier++)
         {
             int maxTier = tier;
-            result[tier] = Array.FindAll(AllParts, p => p.Tier > 0 && p.Tier <= maxTier);
+            result[tier] = Array.FindAll(AllParts, p => p.Tier > 0 && p.Tier <= maxTier && p.Rarity == Rarity.Common);
         }
         return result;
     }
 
-    /// <summary>Get all droppable parts up to the given max tier (cached, no allocation).</summary>
+    /// <summary>Get all droppable common parts up to the given max tier (cached, no allocation).</summary>
     public static ShipPart[] GetPartsUpToTier(int maxTier) =>
         PartsByMaxTier[Math.Clamp(maxTier, 0, 3)];
+
+    /// <summary>Get all rare parts.</summary>
+    public static ShipPart[] GetRareParts() =>
+        Array.FindAll(AllParts, p => p.Rarity == Rarity.Rare);
+
+    /// <summary>Get all legendary parts.</summary>
+    public static ShipPart[] GetLegendaryParts() =>
+        Array.FindAll(AllParts, p => p.Rarity == Rarity.Legendary);
 
     /// <summary>Get all parts that fit a given slot type.</summary>
     public static ShipPart[] GetPartsForSlot(ShipSlotType slot) =>

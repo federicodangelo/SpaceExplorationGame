@@ -144,7 +144,8 @@ public partial class ProjectileSystem : BaseSystem<World, float>
 
             ref var health = ref World.Get<Health>(hit.Target);
             bool hadShield = health.Shield > 0;
-            health.TakeDamage(hit.Damage);
+            float shieldPierce = World.Get<Projectile>(hit.Projectile).ShieldPierce;
+            health.TakeDamage(hit.Damage, shieldPierce);
 
             var targetPos = World.Get<Transform>(hit.Target).Position;
             DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target, hit.OwnerFaction, hit.OwnerEntity));

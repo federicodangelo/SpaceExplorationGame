@@ -132,8 +132,12 @@ public static class EntityFactory
     public static Entity CreatePlayerShip(World world, Vector2 position, int spriteSize,
         float maxHull, float currentHull, float maxShield,
         float maxSpeed, float rotationSpeed, float acceleration, float brakeMultiplier,
-        ShipWeaponSpec[] weapons, PlayerType playerType)
+        ShipWeaponSpec[] weapons, PlayerType playerType,
+        float shieldRegenRate = 0f, float shieldRegenDelay = 0f)
     {
+        float regenRate = shieldRegenRate > 0f ? shieldRegenRate : ShipConfig.BaseShieldRegenRate;
+        float regenDelay = shieldRegenDelay > 0f ? shieldRegenDelay : ShipConfig.ShieldRegenDelay;
+
         var ship = world.Create(
             new Transform(position),
             Sprite.Build(spriteSize, spriteSize),
@@ -142,8 +146,7 @@ public static class EntityFactory
                 playerType, weapons),
             ShipInputComponent.Default(),
             new PlayerControlled(),
-            new Health(maxHull, maxShield,
-                ShipConfig.BaseShieldRegenRate, ShipConfig.ShieldRegenDelay)
+            new Health(maxHull, maxShield, regenRate, regenDelay)
             {
                 Hull = currentHull,
                 Shield = maxShield // Start with full shields
@@ -434,7 +437,8 @@ public static class EntityFactory
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Entity ownerEntity, Vector2 position, Vector2 direction,
         float damage, float speed, Faction ownerFaction, Color3 color,
-        float lifetime, Vector2 inheritedVelocity, WeaponBehavior behavior = WeaponBehavior.Standard)
+        float lifetime, Vector2 inheritedVelocity, WeaponBehavior behavior = WeaponBehavior.Standard,
+        float shieldPierce = 0f)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
         var projectileVelocity = behavior == WeaponBehavior.Beam ? Vector2.Zero : direction * speed + inheritedVelocity;
@@ -451,7 +455,8 @@ public static class EntityFactory
                 OwnerEntity = ownerEntity,
                 Color = color,
                 Behavior = behavior,
-                TrackingTurnRate = behavior == WeaponBehavior.Tracking ? CombatConfig.TrackingTurnRate : 0f
+                TrackingTurnRate = behavior == WeaponBehavior.Tracking ? CombatConfig.TrackingTurnRate : 0f,
+                ShieldPierce = shieldPierce
             }
         );
     }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using SpaceExplorationGame.Audio;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.ECS.Systems.Combat;
 using SpaceExplorationGame.Generation;
@@ -102,7 +103,37 @@ public static class CombatHelper
             }
         }
 
+        // Rare / Legendary part drops (space combat only, danger gated)
+        if (enablePartDrops)
+        {
+            if (loot.DangerLevel >= CombatConfig.LegendaryMinDangerLevel &&
+                rng.NextFloat() < CombatConfig.LegendaryDropChance)
+            {
+                var legendaryParts = ShipPartCatalog.GetLegendaryParts();
+                message = TryDropRarePart(killer, legendaryParts, rng, message);
+            }
+            else if (loot.DangerLevel >= CombatConfig.RareMinDangerLevel &&
+                     rng.NextFloat() < CombatConfig.RareDropChance)
+            {
+                var rareParts = ShipPartCatalog.GetRareParts();
+                message = TryDropRarePart(killer, rareParts, rng, message);
+            }
+        }
+
         return message != "" ? message : null;
+    }
+
+    private static string TryDropRarePart(PlayerData killer, ShipPart[] candidates, SeededRandom rng, string message)
+    {
+        if (candidates.Length == 0) return message;
+        var part = candidates[rng.NextInt(0, candidates.Length)];
+        if (!killer.OwnedParts.Contains(part) && !killer.EquippedParts.ContainsValue(part))
+        {
+            killer.OwnedParts.Add(part);
+            killer.Stats.PartsFound++;
+            message += $"  +{part.Name.ToUpper()}!!!";
+        }
+        return message;
     }
 
     /// <summary>
@@ -219,7 +250,8 @@ public static class CombatHelper
             stats.WeaponRange,
             stats.ProjectileSpeed,
             stats.WeaponBehavior,
-            stats.WeaponEnergyCost));
+            stats.WeaponEnergyCost,
+            stats.ShieldPierce));
     }
 
 }

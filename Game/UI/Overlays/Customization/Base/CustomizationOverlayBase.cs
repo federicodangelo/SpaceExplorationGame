@@ -247,11 +247,9 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
                 new Color3(nR, nG, nB), 1.8f);
 
             string partName = equipped?.Name ?? "(Empty)";
-            byte pR = equipped?.Tier switch { 3 => 255, 2 => 100, _ => 130 };
-            byte pG = equipped?.Tier switch { 3 => 180, 2 => 220, _ => 130 };
-            byte pB = equipped?.Tier switch { 3 => 80, 2 => 255, _ => 150 };
+            var partColor = equipped != null ? GetRarityColor(equipped.Rarity) : new Color3(130, 130, 150);
             renderer.DrawTextScreen(panelX + 30, slotY + 22, partName,
-                new Color3(pR, pG, pB), 1.5f);
+                partColor, 1.5f);
 
             slotY += itemH;
         }
@@ -280,8 +278,9 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
             byte tg = selected ? (byte)255 : (byte)180;
             byte tb = selected ? (byte)200 : (byte)200;
             string tag = isEquipped ? " [EQUIPPED]" : inInventory ? " [OWNED]" : "";
+            var nameColor = selected ? new Color3(tr, tg, tb) : GetRarityColor(part.Rarity);
             renderer.DrawTextScreen(rightX + 5, partY,
-                $"{(selected ? "> " : "  ")}{part.Name}{tag}", new Color3(tr, tg, tb), 1.8f);
+                $"{(selected ? "> " : "  ")}{part.Name}{tag}", nameColor, 1.8f);
 
             renderer.DrawTextScreen(rightX + 20, partY + 22, part.Description,
                 new Color3(130, 130, 150), 1.3f);
@@ -421,4 +420,13 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
             renderer.DrawTextScreen(cx, y, $"[{summary}]", summaryColor, 1.2f);
         }
     }
+
+    /// <summary>Map rarity to a display color: white/green/blue/orange.</summary>
+    public static Color3 GetRarityColor(Rarity rarity) => rarity switch
+    {
+        Rarity.Uncommon => new Color3(100, 255, 100),   // green
+        Rarity.Rare => new Color3(80, 150, 255),        // blue
+        Rarity.Legendary => new Color3(255, 165, 50),   // orange
+        _ => new Color3(200, 200, 200),                 // white (Common)
+    };
 }

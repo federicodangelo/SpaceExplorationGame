@@ -22,7 +22,8 @@ public record AvatarPart(
     int BuyCost,
     int SellValue,
     string Description,
-    AvatarPartStats Stats
+    AvatarPartStats Stats,
+    Rarity Rarity = Rarity.Common
 ) : ICustomizablePart;
 
 /// <summary>
@@ -97,6 +98,17 @@ public static class AvatarPartCatalog
         new("weapon_advanced", "Plasma Cannon",     AvatarSlotType.Weapon, 3, 700, 350,
             "Heavy plasma weapon. Devastating firepower but limited ammo.",
             new AvatarPartStats(WeaponDamage: 20f, WeaponBehavior: WeaponBehavior.Standard, MaxAmmo: 20)),
+
+        // ── Rare / Legendary ─────────────────────────────────────
+        new("suit_shadow",     "Shadow Suit",       AvatarSlotType.Suit, 3, 0, 400,
+            "Rare stealth suit. Agile and armored.",
+            new AvatarPartStats(WalkSpeed: 50f, Armor: 20f),
+            Rarity.Rare),
+
+        new("weapon_nova",     "Nova Pistol",       AvatarSlotType.Weapon, 3, 0, 500,
+            "Legendary sidearm. Devastating power, infinite ammo.",
+            new AvatarPartStats(WeaponDamage: 30f, WeaponBehavior: WeaponBehavior.Standard, MaxAmmo: -1),
+            Rarity.Legendary),
     ];
 
     /// <summary>Find a part by its ID.</summary>

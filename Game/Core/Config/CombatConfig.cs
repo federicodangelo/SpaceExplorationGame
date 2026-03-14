@@ -13,6 +13,10 @@ public static class CombatConfig
     public const int BaseLootCredits = 50;             // base credits per kill
     public const float ResourceDropChance = 0.5f;      // 50% chance to drop resources
     public const float PartDropChance = 0.10f;         // 10% chance to drop a part
+    public const float RareDropChance = 0.15f;          // 15% chance (DangerLevel 3+)
+    public const float LegendaryDropChance = 0.05f;     // 5% chance (DangerLevel 5+ only)
+    public const int RareMinDangerLevel = 3;
+    public const int LegendaryMinDangerLevel = 5;
 
     // ── Ship Energy System ─────────────────────────────────────
     public const float BaseShipEnergy = 100f;

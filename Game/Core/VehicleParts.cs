@@ -21,7 +21,8 @@ public record VehiclePart(
     int BuyCost,
     int SellValue,
     string Description,
-    VehiclePartStats Stats
+    VehiclePartStats Stats,
+    Rarity Rarity = Rarity.Common
 ) : ICustomizablePart;
 
 /// <summary>

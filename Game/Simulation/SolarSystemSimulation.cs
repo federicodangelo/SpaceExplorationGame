@@ -271,7 +271,8 @@ public class SolarSystemSimulation : CombatSimulationBase
         return EntityFactory.CreatePlayerShip(EcsWorld, position, shipSize,
             player.ShipMaxHealth, player.ShipHealth, playerStats.ShieldStrength,
             playerStats.MaxSpeed, playerStats.RotationSpeed, playerStats.Acceleration,
-            ShipConfig.ShipBrakeMultiplier, playerWeapons, playerType);
+            ShipConfig.ShipBrakeMultiplier, playerWeapons, playerType,
+            playerStats.ShieldRegenRate, playerStats.ShieldRegenDelay);
     }
 
     private void SpawnStar(StarSystemData starSystem, Vector2 center)

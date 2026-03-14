@@ -28,7 +28,7 @@ public partial class ShipSystem : BaseSystem<World, float>
         foreach (var spawn in _pendingProjectiles)
         {
             EntityFactory.CreateProjectile(World, spawn.OwnerEntity, spawn.Pos, spawn.Dir, spawn.Damage, spawn.Speed,
-                spawn.Faction, spawn.Color, spawn.Lifetime, spawn.InheritedVelocity, spawn.Behavior);
+                spawn.Faction, spawn.Color, spawn.Lifetime, spawn.InheritedVelocity, spawn.Behavior, spawn.ShieldPierce);
         }
     }
 
@@ -138,7 +138,7 @@ public partial class ShipSystem : BaseSystem<World, float>
                     float sin = MathF.Sin(angle);
                     var dir = new Vector2(facing.X * cos - facing.Y * sin, facing.X * sin + facing.Y * cos);
                     FireProjectile(transform.Position, dir, weapon.Damage, weapon.ProjectileSpeed,
-                        lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, WeaponBehavior.Standard);
+                        lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, WeaponBehavior.Standard, weapon.ShieldPierce);
                 }
             }
             else if (weapon.Behavior == WeaponBehavior.Beam)
@@ -146,27 +146,27 @@ public partial class ShipSystem : BaseSystem<World, float>
                 // Beam: create a short-lived projectile that represents the beam tick
                 float lifetime = weapon.FireRate; // lives exactly one firing cycle
                 FireProjectile(transform.Position, facing, weapon.Damage, 0f,
-                    lifetime, ship.Faction, color, sideOffset, Vector2.Zero, firingEntity, WeaponBehavior.Beam);
+                    lifetime, ship.Faction, color, sideOffset, Vector2.Zero, firingEntity, WeaponBehavior.Beam, weapon.ShieldPierce);
             }
             else
             {
                 // Standard or Tracking
                 float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
                 FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                    lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, weapon.Behavior);
+                    lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, weapon.Behavior, weapon.ShieldPierce);
             }
         }
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
         float lifetime, Faction faction, Color3 color, float lateralOffset, Vector2 inheritedVelocity,
-        Entity firingEntity, WeaponBehavior behavior)
+        Entity firingEntity, WeaponBehavior behavior, float shieldPierce = 0f)
     {
         var lateral = new Vector2(-direction.Y, direction.X);
         var spawnPos = origin + direction * 20f + lateral * lateralOffset;
 
         _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed,
-            lifetime, faction, color, inheritedVelocity, firingEntity, behavior));
+            lifetime, faction, color, inheritedVelocity, firingEntity, behavior, shieldPierce));
     }
 
     private static Vector2 FacingDirection(float rotationDeg)

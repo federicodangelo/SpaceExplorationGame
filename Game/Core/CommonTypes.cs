@@ -119,19 +119,22 @@ public readonly record struct ShipWeaponSpec(
     float Range,
     float ProjectileSpeed,
     WeaponBehavior Behavior = WeaponBehavior.Standard,
-    float EnergyCost = 0f);
+    float EnergyCost = 0f,
+    float ShieldPierce = 0f);
 
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed, float Lifetime,
     Faction Faction, Color3 Color, Vector2 InheritedVelocity, Entity OwnerEntity,
-    WeaponBehavior Behavior = WeaponBehavior.Standard);
+    WeaponBehavior Behavior = WeaponBehavior.Standard,
+    float ShieldPierce = 0f);
 
 /// <summary>Pending projectile spawn data for surface combat AI (includes lifetime).</summary>
 public readonly record struct SurfaceProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed,
     Faction Faction, Color3 Color, float Lifetime, Entity OwnerEntity,
-    WeaponBehavior Behavior = WeaponBehavior.Standard);
+    WeaponBehavior Behavior = WeaponBehavior.Standard,
+    float ShieldPierce = 0f);
 
 /// <summary>Result of an AI target search.</summary>
 public readonly record struct TargetInfo(Vector2 Position, bool HasTarget, Entity? Entity);

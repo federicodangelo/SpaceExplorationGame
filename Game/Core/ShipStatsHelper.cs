@@ -12,6 +12,7 @@ public static class ShipStatsHelper
         float shield = 0, dmg = 0, fuelEff = 0, cargo = 0;
         float weaponRange = 0, projectileSpeed = 0;
         float weaponFireRate = 0f;
+        float shieldRegenDelay = 0f, shieldRegenRate = 0f;
 
         foreach (var part in parts)
         {
@@ -30,6 +31,10 @@ public static class ShipStatsHelper
             projectileSpeed = Math.Max(projectileSpeed, s.ProjectileSpeed);
             fuelEff += s.FuelEfficiency;
             cargo += s.CargoCapacity;
+            // Shield regen: use best (lowest) non-zero delay, sum rates
+            if (s.ShieldRegenDelay > 0f)
+                shieldRegenDelay = shieldRegenDelay <= 0f ? s.ShieldRegenDelay : Math.Min(shieldRegenDelay, s.ShieldRegenDelay);
+            shieldRegenRate += s.ShieldRegenRate;
         }
 
         // Apply ship weight: heavier ships are slower
@@ -38,6 +43,7 @@ public static class ShipStatsHelper
         maxSpd /= weight;
 
         return new ShipPartStats(accel, maxSpd, rot, hull, fuel, ftl, shield, dmg,
-            weaponFireRate, weaponRange, projectileSpeed, fuelEff, cargo);
+            weaponFireRate, weaponRange, projectileSpeed, fuelEff, cargo,
+            ShieldRegenDelay: shieldRegenDelay, ShieldRegenRate: shieldRegenRate);
     }
 }

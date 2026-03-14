@@ -329,15 +329,24 @@ public struct Health
     /// <summary>Apply damage: shields absorb first, remainder goes to hull. Returns actual hull damage dealt.</summary>
     public float TakeDamage(float damage)
     {
+        return TakeDamage(damage, 0f);
+    }
+
+    /// <summary>Apply damage with optional shield pierce. shieldPierce (0-1) fraction bypasses shields.</summary>
+    public float TakeDamage(float damage, float shieldPierce)
+    {
         TimeSinceLastHit = 0f;
 
-        // Shields absorb damage first
-        float shieldAbsorbed = MathF.Min(Shield, damage);
-        Shield -= shieldAbsorbed;
-        float remaining = damage - shieldAbsorbed;
+        float pierceDamage = damage * Math.Clamp(shieldPierce, 0f, 1f);
+        float shieldDamage = damage - pierceDamage;
 
-        // Remaining goes to hull
-        float hullDamage = MathF.Min(Hull, remaining);
+        // Shields absorb the non-piercing portion
+        float shieldAbsorbed = MathF.Min(Shield, shieldDamage);
+        Shield -= shieldAbsorbed;
+        float remaining = shieldDamage - shieldAbsorbed;
+
+        // Pierce + remaining go to hull
+        float hullDamage = MathF.Min(Hull, remaining + pierceDamage);
         Hull -= hullDamage;
         return hullDamage;
     }
@@ -360,6 +369,7 @@ public struct Projectile
     public Color3 Color;             // projectile color
     public WeaponBehavior Behavior;  // Standard, Tracking, Spread (after spawn), Beam
     public float TrackingTurnRate;   // degrees/sec for Tracking missiles
+    public float ShieldPierce;       // fraction of damage that bypasses shields (0-1)
 }
 
 /// <summary>Immutable configuration shared across enemies of the same type.</summary>
