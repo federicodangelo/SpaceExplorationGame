@@ -106,6 +106,9 @@ public abstract class CombatSimulationBase : SimulationBase
     /// </summary>
     protected void ProcessProjectilesAndDispatchEvents(float dt)
     {
+        // Set player reputation for faction interaction rules this frame
+        FactionRules.SetPlayerReputation(LocalPlayer?.Data.Reputation);
+
         _projectileSystem.Update(in dt);
 
         // Process damage events
@@ -214,11 +217,15 @@ public abstract class CombatSimulationBase : SimulationBase
                     }
                 }
 
-                // Track kill stats
+                // Track kill stats and reputation
                 if (destroyed.KillerFaction == Faction.Player)
                 {
                     var killerPlayer = FindPlayerByEntity(destroyed.KillerEntity);
-                    killerPlayer?.Data.Stats.RecordKill(destroyed.Faction);
+                    if (killerPlayer != null)
+                    {
+                        killerPlayer.Data.Stats.RecordKill(destroyed.Faction);
+                        killerPlayer.Data.Reputation.OnPlayerKill(destroyed.Faction);
+                    }
                 }
 
                 OnEnemyDestroyed(destroyed);

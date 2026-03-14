@@ -137,6 +137,13 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     private void UpdateHostileNpc(ref Transform transform, ref SurfaceAI ai,
         ref Health health, ref AvatarInputComponent avatarInput)
     {
+        // Pirates with Friendly+ player reputation just wander
+        if (FactionRules.PlayerReputationLevel(Faction.Pirate) >= ReputationLevel.Friendly)
+        {
+            WanderAround(ref transform, ref ai, ref avatarInput);
+            return;
+        }
+
         // Keep fleeing for a minimum duration to prevent stutter-fleeing
         bool keepFleeing = ai.State == AIState.Flee && ai.StateTimer < MinFleeStateDuration;
         if ((health.HullPercent < ai.Config.FleeHealthPercent || keepFleeing) && _playerAlive)
@@ -217,16 +224,33 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     private void UpdatePatrolNpc(ref Transform transform, ref SurfaceAI ai,
         ref AvatarInputComponent avatarInput)
     {
+        // When player has Hostile patrol reputation, patrols also target the player
+        bool targetPlayer = _playerAlive
+            && FactionRules.PlayerReputationLevel(Faction.Patrol) == ReputationLevel.Hostile
+            && Vector2.Distance(transform.Position, _playerPos) < ai.Config.DetectRange;
+
         var nearestPirate = FindNearestSurfacePirate(transform.Position, ai.Config.DetectRange);
 
-        if (!nearestPirate.HasValue)
+        // Pick closest threat: nearest pirate or hostile player
+        Vector2? targetPos = nearestPirate;
+        if (targetPlayer)
+        {
+            float playerDist = Vector2.Distance(transform.Position, _playerPos);
+            float pirateDist = nearestPirate.HasValue
+                ? Vector2.Distance(transform.Position, nearestPirate.Value)
+                : float.MaxValue;
+            if (playerDist < pirateDist)
+                targetPos = _playerPos;
+        }
+
+        if (!targetPos.HasValue)
         {
             WanderAround(ref transform, ref ai, ref avatarInput);
             return;
         }
 
-        float dist = Vector2.Distance(transform.Position, nearestPirate.Value);
-        var dir = Vector2.Normalize(nearestPirate.Value - transform.Position);
+        float dist = Vector2.Distance(transform.Position, targetPos.Value);
+        var dir = Vector2.Normalize(targetPos.Value - transform.Position);
         if (float.IsNaN(dir.X)) dir = new Vector2(1, 0);
 
         bool inAttackRange = ai.State switch
@@ -250,7 +274,7 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         if (dist < ai.Config.AttackRange)
         {
             avatarInput.AimDirection = ComputeAimWithWobble(
-                transform.Position, nearestPirate.Value,
+                transform.Position, targetPos.Value,
                 ai.Config.AimInaccuracyRadius, ai.StateTimer, dir);
             avatarInput.Shoot = true;
         }

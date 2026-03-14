@@ -1,4 +1,5 @@
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.ECS.Components;
 using SpaceExplorationGame.UI.Overlays.Menu.Base;
 
 namespace SpaceExplorationGame.UI.Overlays.Menu;
@@ -12,7 +13,7 @@ public class StatsOverlay : PanelOverlayBase
     protected override string Title => "STATISTICS";
     protected override Color3 TitleColor => new(220, 200, 100);
     protected override float PanelWidth => 520;
-    protected override float PanelHeight => 530;
+    protected override float PanelHeight => 620;
     protected override string? ControlsHint
     {
         get
@@ -66,6 +67,25 @@ public class StatsOverlay : PanelOverlayBase
         DrawStatLine(renderer, x, rX, ref y, lineH, "Planets Landed", $"{stats.PlanetsLanded}");
         DrawStatLine(renderer, x, rX, ref y, lineH, "Stations Docked", $"{stats.SpaceStationsVisited}");
         DrawStatLine(renderer, x, rX, ref y, lineH, "Play Time", FormatPlayTime(stats.PlayTimeSeconds));
+
+        y += sectionGap;
+
+        // ── Reputation ──
+        DrawSectionHeader(renderer, x, ref y, "REPUTATION");
+        var reputation = game.Player.Reputation;
+        foreach (Faction faction in new[] { Faction.Pirate, Faction.Trader, Faction.Patrol })
+        {
+            var level = reputation.GetLevel(faction);
+            int standing = reputation.GetStanding(faction);
+            var levelColor = FactionReputation.GetLevelColor(level);
+            var factionColor = FactionReputation.GetFactionColor(faction);
+
+            renderer.DrawTextScreen(x, y, faction.ToString(), factionColor, 1.4f);
+            string valueStr = $"{level} ({standing:+#;-#;0})";
+            float valueW = renderer.MeasureText(valueStr, 1.5f);
+            renderer.DrawTextScreen(rX - valueW, y, valueStr, levelColor, 1.5f);
+            y += lineH;
+        }
     }
 
     private static void DrawSectionHeader(ISpriteRenderer renderer, float x, ref float y, string title)

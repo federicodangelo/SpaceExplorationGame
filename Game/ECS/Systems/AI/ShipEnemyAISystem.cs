@@ -399,7 +399,14 @@ public partial class ShipEnemyAISystem : BaseSystem<World, float>
 
     private static bool ShouldTargetPlayer(Faction selfFaction)
     {
-        return selfFaction == Faction.Pirate;
+        return selfFaction switch
+        {
+            // Pirates only target player when reputation is below Friendly
+            Faction.Pirate => FactionRules.PlayerReputationLevel(Faction.Pirate) < ReputationLevel.Friendly,
+            // Patrols target player when reputation is Hostile
+            Faction.Patrol => FactionRules.PlayerReputationLevel(Faction.Patrol) == ReputationLevel.Hostile,
+            _ => false
+        };
     }
 
     private static bool ShouldTargetFaction(Faction selfFaction, Faction otherFaction)

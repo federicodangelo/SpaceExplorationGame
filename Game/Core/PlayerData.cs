@@ -37,6 +37,9 @@ public class PlayerData
     /// <summary>Lifetime statistics (combat, economy, exploration). Persisted across saves.</summary>
     public PlayerStats Stats { get; } = new();
 
+    /// <summary>Faction reputation standings. Persisted across saves.</summary>
+    public FactionReputation Reputation { get; } = new();
+
     // Current ship
     public ShipType CurrentShipType { get; private set; } = ShipTypeCatalog.StarterShip;
     public float ShipHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
@@ -109,6 +112,9 @@ public class PlayerData
 
         // Navigation target
         Navigation.Clear();
+
+        // Reputation
+        Reputation.Reset();
 
         // Stats
         Stats.Reset();

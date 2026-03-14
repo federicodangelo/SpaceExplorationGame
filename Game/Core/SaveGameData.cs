@@ -90,6 +90,9 @@ public class SaveGameData
     public int StatSpaceStationsVisited { get; set; }
     public double StatPlayTimeSeconds { get; set; }
 
+    // ── Reputation ──
+    public Dictionary<string, int> ReputationStandings { get; set; } = new();
+
     /// <summary>Create a SaveGameData snapshot from live PlayerData.</summary>
     public static SaveGameData FromPlayerData(PlayerData player, string playerName, ulong galaxySeed, string locationDescription)
     {
@@ -186,6 +189,9 @@ public class SaveGameData
         data.StatPlanetsLanded = stats.PlanetsLanded;
         data.StatSpaceStationsVisited = stats.SpaceStationsVisited;
         data.StatPlayTimeSeconds = stats.PlayTimeSeconds;
+
+        // Reputation
+        data.ReputationStandings = player.Reputation.SaveStandings();
 
         return data;
     }
@@ -345,6 +351,9 @@ public class SaveGameData
         stats.PlanetsLanded = StatPlanetsLanded;
         stats.SpaceStationsVisited = StatSpaceStationsVisited;
         stats.PlayTimeSeconds = StatPlayTimeSeconds;
+
+        // Reputation
+        player.Reputation.LoadStandings(ReputationStandings);
     }
 }
 
