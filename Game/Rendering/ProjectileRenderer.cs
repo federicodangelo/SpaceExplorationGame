@@ -1,5 +1,7 @@
 using System.Numerics;
 using Arch.Core;
+using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.Rendering;
@@ -17,9 +19,33 @@ public static class ProjectileRenderer
         world.Query(in query, (ref Transform transform, ref Velocity velocity, ref Projectile proj) =>
         {
             var pos = transform.Position;
-            float speed = velocity.Linear.Length();
             float rad = transform.Rotation * MathF.PI / 180f;
             var facingDir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+
+            if (proj.Behavior == WeaponBehavior.Beam)
+            {
+                // Render beam as a long glowing line from owner to max range
+                var beamEnd = pos + facingDir * CombatConfig.BeamMaxRange;
+                float halfWidth = CombatConfig.BeamWidth * 0.5f;
+                var perp = new Vector2(-facingDir.Y, facingDir.X);
+
+                // Outer glow
+                renderer.DrawLine(camera, pos + perp * (halfWidth + 2f), beamEnd + perp * (halfWidth + 2f),
+                    proj.Color.WithAlpha(40));
+                renderer.DrawLine(camera, pos - perp * (halfWidth + 2f), beamEnd - perp * (halfWidth + 2f),
+                    proj.Color.WithAlpha(40));
+
+                // Main beam body
+                renderer.DrawLine(camera, pos + perp * halfWidth, beamEnd + perp * halfWidth, proj.Color);
+                renderer.DrawLine(camera, pos, beamEnd, proj.Color);
+                renderer.DrawLine(camera, pos - perp * halfWidth, beamEnd - perp * halfWidth, proj.Color);
+
+                // Bright core
+                renderer.DrawLine(camera, pos, beamEnd, new Color4(255, 255, 255, 140));
+                return;
+            }
+
+            float speed = velocity.Linear.Length();
 
             if (speed > 10f)
             {

@@ -23,6 +23,7 @@ public enum InputAction
     Interact,
     ToggleMap,
     Screenshot,
+    DodgeRoll,
 }
 
 public enum InputActionAxis

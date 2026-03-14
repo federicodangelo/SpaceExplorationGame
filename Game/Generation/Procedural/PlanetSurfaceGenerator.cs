@@ -36,6 +36,9 @@ public class PlanetSurfaceData
     /// <summary>Spawn positions for mineable rocks (world-space coordinates + resource info).</summary>
     public List<RockSpawn> RockSpawns { get; init; } = [];
 
+    /// <summary>Spawn positions for destructible cover obstacles (world-space coordinates).</summary>
+    public List<CoverSpawn> CoverSpawns { get; init; } = [];
+
     /// <summary>Runtime NPC spawn configuration (enemies, cargo, patrols). All spawning is handled dynamically.</summary>
     public NpcAvatarSpawnConfig NpcAvatarSpawnConfig { get; set; }
 }
@@ -159,6 +162,9 @@ public static class PlanetSurfaceGenerator
 
         // Generate mineable rock spawn points on walkable terrain
         GenerateRockSpawns(rng, result, planet);
+
+        // Generate destructible cover obstacles on walkable terrain
+        GenerateCoverSpawns(rng, result);
 
         return result;
     }
@@ -339,6 +345,30 @@ public static class PlanetSurfaceGenerator
                 float size = CombatConfig.SurfaceRockMinSize + rng.NextFloat() * (CombatConfig.SurfaceRockMaxSize - CombatConfig.SurfaceRockMinSize);
                 float hp = CombatConfig.SurfaceRockMinHp + rng.NextFloat() * (CombatConfig.SurfaceRockMaxHp - CombatConfig.SurfaceRockMinHp);
                 data.RockSpawns.Add(new RockSpawn(rx, ry, resource, amount, size, hp));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generate spawn positions for destructible cover obstacles on walkable terrain,
+    /// away from the landing zone and settlements.
+    /// </summary>
+    private static void GenerateCoverSpawns(SeededRandom rng, PlanetSurfaceData data)
+    {
+        float ts = WindowConfig.TileSize;
+        float lzX = data.LandingZone.X * ts;
+        float lzY = data.LandingZone.Y * ts;
+        float safeRadius = 5 * ts;
+
+        int coverCount = rng.NextInt(CombatConfig.MinCoverPerPlanet, CombatConfig.MaxCoverPerPlanet + 1);
+
+        for (int i = 0; i < coverCount; i++)
+        {
+            if (TryFindSpawnPosition(rng, data, lzX, lzY, safeRadius, out float cx, out float cy))
+            {
+                float size = CombatConfig.CoverMinSize + rng.NextFloat() * (CombatConfig.CoverMaxSize - CombatConfig.CoverMinSize);
+                float hp = CombatConfig.CoverMinHp + rng.NextFloat() * (CombatConfig.CoverMaxHp - CombatConfig.CoverMinHp);
+                data.CoverSpawns.Add(new CoverSpawn(cx, cy, size, hp));
             }
         }
     }

@@ -192,7 +192,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             speed: avatarSpeed, maxHealth: maxHp, currentHealth: curHp, canMoveTo: CanMoveToTerrain,
             weaponDamage: CombatConfig.BaseAvatarWeaponDamage + avatarStats.WeaponDamage,
             weaponFireRate: CombatConfig.AvatarFireRate,
-            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed);
+            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed,
+            weaponBehavior: avatarStats.WeaponBehavior,
+            maxAmmo: avatarStats.MaxAmmo);
 
         // Create ship entity
         var shipEntity = EntityFactory.CreateLandedShip(EcsWorld, shipX, shipY);
@@ -331,6 +333,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
     {
         foreach (var spawn in SurfaceData.RockSpawns)
             EntityFactory.CreateSurfaceRock(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.Size, spawn.Hp, spawn.Resource, spawn.Amount);
+
+        foreach (var spawn in SurfaceData.CoverSpawns)
+            EntityFactory.CreateCoverObstacle(EcsWorld, new Vector2(spawn.X, spawn.Y), spawn.Size, spawn.Hp);
     }
 
     // ── Terrain collision ───────────────────────────────────────────
@@ -431,7 +436,9 @@ public class PlanetSurfaceSimulation : CombatSimulationBase
             canMoveTo: CanMoveToTerrain,
             weaponDamage: CombatConfig.BaseAvatarWeaponDamage + respawnAvatarStats.WeaponDamage,
             weaponFireRate: CombatConfig.AvatarFireRate,
-            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed);
+            weaponProjectileSpeed: CombatConfig.AvatarProjectileSpeed,
+            weaponBehavior: respawnAvatarStats.WeaponBehavior,
+            maxAmmo: respawnAvatarStats.MaxAmmo);
 
         player.Entity = avatarEntity;
 

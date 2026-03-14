@@ -167,6 +167,8 @@ public struct AvatarInputComponent
     public bool Shoot;
     /// <summary>Normalized direction to fire. Must be set when Shoot is true.</summary>
     public Vector2 AimDirection;
+    /// <summary>True on the frame the dodge-roll key is pressed.</summary>
+    public bool DodgeRoll;
 
     // ── Vehicle input (used when AvatarComponent.InVehicle is true) ──────────
     /// <summary>Normalized heading direction the vehicle should face. Set by vehicle input system.</summary>
@@ -196,6 +198,22 @@ public struct AvatarComponent
     public float FireCooldown;
     /// <summary>Projectile render color.</summary>
     public Color3 ProjectileColor;
+    /// <summary>Weapon behavior (Standard, Spread, Beam).</summary>
+    public WeaponBehavior WeaponBehavior;
+
+    // Ammo system (tier 1 sidearm = infinite ammo when Ammo < 0)
+    /// <summary>Current ammo count. Negative = infinite ammo (e.g. sidearm).</summary>
+    public int Ammo;
+    /// <summary>Maximum ammo capacity. Negative = infinite.</summary>
+    public int MaxAmmo;
+
+    // Dodge roll
+    /// <summary>Remaining dodge roll cooldown in seconds. 0 = ready.</summary>
+    public float DodgeCooldown;
+    /// <summary>Remaining dodge roll duration. &gt; 0 means currently rolling.</summary>
+    public float DodgeTimer;
+    /// <summary>Direction of the current dodge roll (normalized).</summary>
+    public Vector2 DodgeDirection;
 }
 
 /// <summary>Vehicle physics stats. Added to a player avatar entity when they mount a vehicle; removed on dismount.
@@ -223,9 +241,14 @@ public struct ShipComponent
     public float[] WeaponCooldowns;
     public PlayerType PlayerType;
 
+    // Energy system
+    public float Energy;
+    public float MaxEnergy;
+    public float EnergyRegenRate; // per second
+
     public ShipComponent(Faction faction, float maxSpeed, float rotationSpeed,
         float acceleration, float brakeMultiplier, PlayerType playerType,
-        ShipWeaponSpec[]? weapons = null)
+        ShipWeaponSpec[]? weapons = null, float maxEnergy = 100f, float energyRegenRate = 15f)
     {
         Faction = faction;
         MaxSpeed = maxSpeed;
@@ -235,6 +258,9 @@ public struct ShipComponent
         PlayerType = playerType;
         Weapons = weapons ?? Array.Empty<ShipWeaponSpec>();
         WeaponCooldowns = new float[Weapons.Length];
+        Energy = maxEnergy;
+        MaxEnergy = maxEnergy;
+        EnergyRegenRate = energyRegenRate;
     }
 }
 
@@ -332,6 +358,8 @@ public struct Projectile
     public Faction OwnerFaction;     // who fired it (to avoid self-hits)
     public Entity OwnerEntity;       // the entity that fired this projectile (for multi-player attribution)
     public Color3 Color;             // projectile color
+    public WeaponBehavior Behavior;  // Standard, Tracking, Spread (after spawn), Beam
+    public float TrackingTurnRate;   // degrees/sec for Tracking missiles
 }
 
 /// <summary>Immutable configuration shared across enemies of the same type.</summary>
@@ -386,6 +414,13 @@ public struct AsteroidField
     public ResourceType Resource;
     public int ResourceAmount;         // units to drop on depletion
     public float Size;                 // visual size for rendering
+}
+
+/// <summary>Marks an entity as a destructible cover obstacle on a planet surface. Blocks projectiles.</summary>
+[Component]
+public struct CoverObstacle
+{
+    public float Size;                 // visual/collision size
 }
 
 /// <summary>Immutable configuration for surface enemy AI behaviour (movement, detection, engagement ranges).</summary>

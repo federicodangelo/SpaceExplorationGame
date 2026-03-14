@@ -76,6 +76,7 @@ public class PlayerData
         OwnedParts.Clear();
 
         // Location
+        ShipWorldPosition = Vector2.Zero;
         CurrentStarSystemIndex = -1;
         SolarSystemReturnContext = ReturnContext.Default;
         ReturnSpaceStationIndex = -1;
@@ -370,7 +371,9 @@ public class PlayerData
     public AvatarPartStats GetCombinedAvatarStats()
     {
         float walkSpeed = 0f, oxygen = 0f, terrain = 0f, weaponDmg = 0f, armor = 0f;
-        foreach (var part in EquippedAvatarParts.Values)
+        var weaponBehavior = WeaponBehavior.Standard;
+        int maxAmmo = -1; // default: infinite
+        foreach (var (slot, part) in EquippedAvatarParts)
         {
             var s = part.Stats;
             walkSpeed += s.WalkSpeed;
@@ -378,8 +381,13 @@ public class PlayerData
             terrain += s.TerrainPenalty;
             weaponDmg += s.WeaponDamage;
             armor += s.Armor;
+            if (slot == AvatarSlotType.Weapon)
+            {
+                weaponBehavior = s.WeaponBehavior;
+                maxAmmo = s.MaxAmmo;
+            }
         }
-        return new AvatarPartStats(walkSpeed, oxygen, terrain, weaponDmg, armor);
+        return new AvatarPartStats(walkSpeed, oxygen, terrain, weaponDmg, armor, weaponBehavior, maxAmmo);
     }
 
     // Vehicle equipment

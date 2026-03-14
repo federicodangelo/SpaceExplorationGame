@@ -79,6 +79,7 @@ public class WebInputManager : BaseInputManager
         [InputAction.Interact] = [InputBinding.Key("KeyE"), InputBinding.Btn(GpBtnSouth)],
         [InputAction.ToggleMap] = [InputBinding.Key("KeyM"), InputBinding.Btn(GpBtnBack)],
         [InputAction.Screenshot] = [InputBinding.Key("F12")],
+        [InputAction.DodgeRoll] = [InputBinding.Key("ShiftLeft")],
     };
 
     private readonly record struct InputBinding(string? KeyCode, int? MouseBtn, int? GamepadBtn)

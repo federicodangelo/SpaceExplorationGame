@@ -34,7 +34,9 @@ public record AvatarPartStats(
     float OxygenCapacity = 0f,     // future: time before suffocation
     float TerrainPenalty = 0f,     // reduction in terrain slowdown (0.1 = 10% less penalty)
     float WeaponDamage = 0f,       // bonus weapon damage on planet surface
-    float Armor = 0f               // bonus avatar max health
+    float Armor = 0f,              // bonus avatar max health
+    WeaponBehavior WeaponBehavior = WeaponBehavior.Standard,
+    int MaxAmmo = -1               // max ammo capacity (-1 = infinite)
 );
 
 /// <summary>
@@ -85,16 +87,16 @@ public static class AvatarPartCatalog
 
         // ── Weapons ──────────────────────────────────────────────
         new("weapon_basic",    "Sidearm",           AvatarSlotType.Weapon, 1, 0,   20,
-            "Standard issue pistol. Gets the job done.",
-            new AvatarPartStats(WeaponDamage: 0f)),
+            "Standard issue pistol. Infinite ammo.",
+            new AvatarPartStats(WeaponDamage: 0f, WeaponBehavior: WeaponBehavior.Standard, MaxAmmo: -1)),
 
         new("weapon_improved", "Pulse Rifle",       AvatarSlotType.Weapon, 2, 300, 150,
-            "Rapid-fire energy weapon. Higher damage.",
-            new AvatarPartStats(WeaponDamage: 8f)),
+            "Rapid-fire spread weapon. Higher damage.",
+            new AvatarPartStats(WeaponDamage: 8f, WeaponBehavior: WeaponBehavior.Spread, MaxAmmo: 60)),
 
         new("weapon_advanced", "Plasma Cannon",     AvatarSlotType.Weapon, 3, 700, 350,
-            "Heavy plasma weapon. Devastating firepower.",
-            new AvatarPartStats(WeaponDamage: 20f)),
+            "Heavy plasma weapon. Devastating firepower but limited ammo.",
+            new AvatarPartStats(WeaponDamage: 20f, WeaponBehavior: WeaponBehavior.Standard, MaxAmmo: 20)),
     ];
 
     /// <summary>Find a part by its ID.</summary>

@@ -165,7 +165,8 @@ public static class EntityFactory
     /// <param name="weaponProjectileSpeed">Projectile speed. Pass 0 (default) for unarmed avatars.</param>
     public static Entity CreatePlayerAvatar(World world, float x, float y, PlayerType playerType, float speed,
         float maxHealth = 0f, float currentHealth = 0f, Func<Vector2, bool>? canMoveTo = null,
-        float weaponDamage = 0f, float weaponFireRate = 0f, float weaponProjectileSpeed = 0f)
+        float weaponDamage = 0f, float weaponFireRate = 0f, float weaponProjectileSpeed = 0f,
+        WeaponBehavior weaponBehavior = WeaponBehavior.Standard, int maxAmmo = -1)
     {
         var entity = world.Create(
             new Transform(x, y),
@@ -179,6 +180,9 @@ public static class EntityFactory
                 WeaponDamage = weaponDamage,
                 WeaponFireRate = weaponFireRate,
                 WeaponProjectileSpeed = weaponProjectileSpeed,
+                WeaponBehavior = weaponBehavior,
+                Ammo = maxAmmo,
+                MaxAmmo = maxAmmo,
                 ProjectileColor = new Color3(100, 255, 100)
             }
         );
@@ -240,6 +244,17 @@ public static class EntityFactory
     }
 
     // ── NPC Ships ───────────────────────────────────────────────────
+
+    /// <summary>Create a destructible cover obstacle entity on a planet surface.</summary>
+    public static Entity CreateCoverObstacle(World world, Vector2 position, float size, float hp)
+    {
+        return world.Create(
+            new Transform(position),
+            Sprite.Build((int)(size + 4), (int)(size + 4)),
+            new Health(hp, 0f, 0f, 0f),
+            new CoverObstacle { Size = size }
+        );
+    }
 
     /// <summary>Create any NPC ship entity from spawn data.</summary>
     public static Entity CreateNpcShip(World world, NpcShipSpawnData spawn, int npcId = -1)
@@ -419,10 +434,10 @@ public static class EntityFactory
     /// <summary>Create a projectile entity fired in a given direction.</summary>
     public static Entity CreateProjectile(World world, Entity ownerEntity, Vector2 position, Vector2 direction,
         float damage, float speed, Faction ownerFaction, Color3 color,
-        float lifetime, Vector2 inheritedVelocity)
+        float lifetime, Vector2 inheritedVelocity, WeaponBehavior behavior = WeaponBehavior.Standard)
     {
         float angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
-        var projectileVelocity = direction * speed + inheritedVelocity;
+        var projectileVelocity = behavior == WeaponBehavior.Beam ? Vector2.Zero : direction * speed + inheritedVelocity;
         return world.Create(
             new Transform(position, angle),
             new Velocity(0f) { Linear = projectileVelocity },
@@ -434,7 +449,9 @@ public static class EntityFactory
                 CollisionRadius = CombatConfig.ProjectileRadius,
                 OwnerFaction = ownerFaction,
                 OwnerEntity = ownerEntity,
-                Color = color
+                Color = color,
+                Behavior = behavior,
+                TrackingTurnRate = behavior == WeaponBehavior.Tracking ? CombatConfig.TrackingTurnRate : 0f
             }
         );
     }

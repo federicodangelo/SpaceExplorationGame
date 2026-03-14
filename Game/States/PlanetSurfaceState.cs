@@ -633,6 +633,7 @@ public class PlanetSurfaceState : GameState
 
         // Rocks, enemies, NPC ships, projectiles
         SurfaceRockRenderer.RenderRocks(renderer, camera, world);
+        SurfaceRockRenderer.RenderCoverObstacles(renderer, camera, world);
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Damage/explosions

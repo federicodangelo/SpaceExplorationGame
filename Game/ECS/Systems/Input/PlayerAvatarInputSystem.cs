@@ -43,6 +43,7 @@ public partial class PlayerAvatarInputSystem : BaseSystem<World, float>
 
         input.DesiredVelocity = LocalSnapshot.MovementDirection * _speed;
         input.Shoot = LocalSnapshot.Shoot;
+        input.DodgeRoll = LocalSnapshot.DodgeRoll;
 
         if (input.Shoot)
         {

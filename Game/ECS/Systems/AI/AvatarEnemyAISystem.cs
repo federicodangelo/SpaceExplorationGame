@@ -27,12 +27,16 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
     private const float TargetMemoryDuration = 2.0f;
     private const float MinFleeStateDuration = 1.0f;
     private const float TraderFleeRange = 300f;
+    private const float CoverSeekRange = 250f;
 
     private static readonly QueryDescription _playerAvatarQuery =
         new QueryDescription().WithAll<PlayerControlled, Transform, Velocity, Health>();
 
     private static readonly QueryDescription _surfaceAIQuery =
         new QueryDescription().WithAll<Transform, SurfaceAI, Health>();
+
+    private static readonly QueryDescription _coverQuery =
+        new QueryDescription().WithAll<Transform, CoverObstacle, Health>();
 
     // Per-frame cached state for [Query] method access
     private float _dt;
@@ -138,9 +142,25 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         if ((health.HullPercent < ai.Config.FleeHealthPercent || keepFleeing) && _playerAlive)
         {
             SetState(ref ai, AIState.Flee);
-            var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
-            if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
-            avatarInput.DesiredVelocity = fleeDir * ai.Config.MoveSpeed * 1.2f;
+
+            // Try to find nearby cover and move behind it relative to the player
+            var coverPos = FindNearestCover(transform.Position, CoverSeekRange);
+            if (coverPos.HasValue)
+            {
+                // Move to a point on the far side of the cover from the player
+                var coverToPlayer = Vector2.Normalize(_playerPos - coverPos.Value);
+                if (float.IsNaN(coverToPlayer.X)) coverToPlayer = new Vector2(1, 0);
+                var hideSpot = coverPos.Value - coverToPlayer * 24f;
+                var toHide = Vector2.Normalize(hideSpot - transform.Position);
+                if (float.IsNaN(toHide.X)) toHide = new Vector2(1, 0);
+                avatarInput.DesiredVelocity = toHide * ai.Config.MoveSpeed * 1.2f;
+            }
+            else
+            {
+                var fleeDir = Vector2.Normalize(transform.Position - _playerPos);
+                if (float.IsNaN(fleeDir.X)) fleeDir = new Vector2(1, 0);
+                avatarInput.DesiredVelocity = fleeDir * ai.Config.MoveSpeed * 1.2f;
+            }
             return;
         }
 
@@ -339,6 +359,26 @@ public partial class AvatarEnemyAISystem : BaseSystem<World, float>
         World.Query(in q, (ref Transform t, ref SurfaceAI surfaceAi, ref Health h) =>
         {
             if (h.IsDead || surfaceAi.Config.Faction != Faction.Pirate) return;
+            float dist = Vector2.Distance(selfPos, t.Position);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                bestPos = t.Position;
+            }
+        });
+
+        return bestPos;
+    }
+
+    private Vector2? FindNearestCover(Vector2 selfPos, float range)
+    {
+        float bestDist = range;
+        Vector2? bestPos = null;
+
+        var q = _coverQuery;
+        World.Query(in q, (ref Transform t, ref Health h) =>
+        {
+            if (h.IsDead) return;
             float dist = Vector2.Distance(selfPos, t.Position);
             if (dist < bestDist)
             {

@@ -86,4 +86,61 @@ public static class SurfaceRockRenderer
             }
         });
     }
+
+    /// <summary>Render all cover obstacles (destructible barriers) and their health bars.</summary>
+    public static void RenderCoverObstacles(ISpriteRenderer renderer, Camera camera, World world)
+    {
+        var query = new QueryDescription().WithAll<Transform, CoverObstacle, Health>();
+        world.Query(in query, (ref Transform transform, ref CoverObstacle cover, ref Health health) =>
+        {
+            if (health.IsDead) return;
+
+            var pos = transform.Position;
+            float size = cover.Size;
+            float half = size / 2f;
+
+            // Shadow
+            renderer.DrawRect(camera, new Vector2(pos.X - half * 0.9f, pos.Y + half * 0.6f),
+                (int)(size * 1.1f), Math.Max(3, (int)(size * 0.2f)), new Color4(0, 0, 0, 70));
+
+            // Dark outline
+            renderer.DrawRect(camera, new Vector2(pos.X - half - 1, pos.Y - half - 1),
+                (int)size + 2, (int)size + 2, new Color3(30, 30, 40));
+
+            // Main body — steel gray
+            renderer.DrawRect(camera, new Vector2(pos.X - half, pos.Y - half),
+                (int)size, (int)size, new Color3(90, 95, 100));
+
+            // Panel lines (horizontal)
+            renderer.DrawRect(camera, new Vector2(pos.X - half + 2, pos.Y - 1),
+                (int)size - 4, 2, new Color3(55, 58, 62));
+
+            // Top highlight
+            renderer.DrawRect(camera, new Vector2(pos.X - half + 1, pos.Y - half + 1),
+                (int)size - 2, (int)(size * 0.22f), new Color3(120, 128, 135));
+
+            // Damage tint when low health
+            if (health.HullPercent < 0.4f)
+            {
+                renderer.DrawRect(camera, new Vector2(pos.X - half, pos.Y - half),
+                    (int)size, (int)size, new Color4(120, 60, 0, 60));
+            }
+
+            // Health bar above cover (only when damaged)
+            if (health.Hull < health.MaxHull)
+            {
+                float barWidth = size + 4;
+                float barHeight = 3;
+                float barY = pos.Y - half - 6;
+                float barX = pos.X - barWidth / 2f;
+
+                renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, RenderColors.HealthBarBackground);
+                float fillWidth = barWidth * health.HullPercent;
+                var barColor = health.HullPercent > 0.5f ? new Color3(80, 200, 80)
+                             : health.HullPercent > 0.25f ? new Color3(230, 180, 0)
+                             : new Color3(220, 60, 60);
+                renderer.DrawRect(camera, new Vector2(barX, barY), (int)fillWidth, (int)barHeight, barColor);
+            }
+        });
+    }
 }

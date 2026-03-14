@@ -64,6 +64,7 @@ public class SdlInputManager : BaseInputManager
         [InputAction.Interact] = [InputBinding.Key(SDL.Scancode.E), InputBinding.Gamepad(SDL.GamepadButton.South)],
         [InputAction.ToggleMap] = [InputBinding.Key(SDL.Scancode.M), InputBinding.Gamepad(SDL.GamepadButton.Back)],
         [InputAction.Screenshot] = [InputBinding.Key(SDL.Scancode.F12)],
+        [InputAction.DodgeRoll] = [InputBinding.Key(SDL.Scancode.LShift), InputBinding.Gamepad(SDL.GamepadButton.East)],
     };
 
     private bool _quitRequested;

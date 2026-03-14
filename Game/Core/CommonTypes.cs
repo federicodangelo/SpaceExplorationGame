@@ -99,22 +99,39 @@ public readonly record struct SystemPlanetSettlement(
 
 // ── Projectiles ──────────────────────────────────────────────────
 
+/// <summary>Weapon firing behaviour.</summary>
+public enum WeaponBehavior
+{
+    /// <summary>Standard straight-line projectile.</summary>
+    Standard,
+    /// <summary>Homing missile that steers toward the nearest enemy.</summary>
+    Tracking,
+    /// <summary>Fires multiple projectiles in a fan arc.</summary>
+    Spread,
+    /// <summary>Continuous beam that deals damage per second while held.</summary>
+    Beam
+}
+
 /// <summary>Weapon stats for a single ship weapon mount.</summary>
 public readonly record struct ShipWeaponSpec(
     float Damage,
     float FireRate,
     float Range,
-    float ProjectileSpeed);
+    float ProjectileSpeed,
+    WeaponBehavior Behavior = WeaponBehavior.Standard,
+    float EnergyCost = 0f);
 
 /// <summary>Pending projectile spawn data for space combat AI.</summary>
 public readonly record struct ProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed, float Lifetime,
-    Faction Faction, Color3 Color, Vector2 InheritedVelocity, Entity OwnerEntity);
+    Faction Faction, Color3 Color, Vector2 InheritedVelocity, Entity OwnerEntity,
+    WeaponBehavior Behavior = WeaponBehavior.Standard);
 
 /// <summary>Pending projectile spawn data for surface combat AI (includes lifetime).</summary>
 public readonly record struct SurfaceProjectileSpawn(
     Vector2 Pos, Vector2 Dir, float Damage, float Speed,
-    Faction Faction, Color3 Color, float Lifetime, Entity OwnerEntity);
+    Faction Faction, Color3 Color, float Lifetime, Entity OwnerEntity,
+    WeaponBehavior Behavior = WeaponBehavior.Standard);
 
 /// <summary>Result of an AI target search.</summary>
 public readonly record struct TargetInfo(Vector2 Position, bool HasTarget, Entity? Entity);
@@ -136,6 +153,9 @@ public readonly record struct NpcShipStats(
 
 /// <summary>Spawn data for a mineable rock on a planet surface.</summary>
 public readonly record struct RockSpawn(float X, float Y, ResourceType Resource, int Amount, float Size, float Hp);
+
+/// <summary>Spawn data for a destructible cover obstacle on a planet surface.</summary>
+public readonly record struct CoverSpawn(float X, float Y, float Size, float Hp);
 
 /// <summary>
 /// Runtime configuration for the dynamic surface NPC spawn manager.

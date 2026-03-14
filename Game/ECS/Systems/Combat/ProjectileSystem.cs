@@ -2,6 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems.Combat;
@@ -57,12 +58,12 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         _processedProjectiles.Clear();
         _dt = dt;
 
-        // 1. Collect projectile data and find expired — via source-generated query
-        CollectProjectilesQuery(World);
+        // 1. Collect potential targets first (needed for tracking missile steering)
+        CollectTargetsQuery(World);
 
-        // 2. Collect potential targets (only if there are projectiles)
-        if (_projectileData.Count > 0)
-            CollectTargetsQuery(World);
+        // 2. Collect projectile data and find expired — via source-generated query
+        // (tracking missiles need target data to steer)
+        CollectProjectilesQuery(World);
 
         // 2b. Build spatial hash from targets for fast neighbour lookup
         _spatialHash.Clear();
@@ -76,8 +77,41 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             var projPos = snapshot.Position;
             var proj = snapshot.Proj;
 
-            float queryRadius = proj.CollisionRadius + SpatialHash.CellSize; // generous query range
-            foreach (int targetIdx in _spatialHash.Query(projPos, queryRadius))
+            if (proj.Behavior == WeaponBehavior.Beam)
+            {
+                // Beam collision: line segment from projPos in the facing direction
+                float rad = 0f;
+                if (World.IsAlive(projEntity))
+                {
+                    var tf = World.Get<Transform>(projEntity);
+                    rad = tf.Rotation * MathF.PI / 180f;
+                }
+                var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+                var beamEnd = projPos + dir * CombatConfig.BeamMaxRange;
+                float beamDps = proj.Damage;
+                float frameDamage = beamDps * _dt;
+
+                // Check all targets along the beam line
+                float queryRadius = CombatConfig.BeamMaxRange + SpatialHash.CellSize;
+                var beamMid = (projPos + beamEnd) * 0.5f;
+                foreach (int targetIdx in _spatialHash.Query(beamMid, queryRadius))
+                {
+                    var target = _targetData[targetIdx];
+                    if (!FactionRules.CanHit(proj.OwnerFaction, target.Faction))
+                        continue;
+
+                    // Point-to-line-segment distance
+                    float dist = PointToSegmentDistance(target.Position, projPos, beamEnd);
+                    if (dist < CombatConfig.BeamWidth + target.Radius)
+                    {
+                        _hits.Add(new ProjectileHit(projEntity, target.Entity, frameDamage, proj.OwnerFaction, proj.OwnerEntity));
+                    }
+                }
+                continue; // Beams don't get destroyed on hit
+            }
+
+            float queryRadius2 = proj.CollisionRadius + SpatialHash.CellSize; // generous query range
+            foreach (int targetIdx in _spatialHash.Query(projPos, queryRadius2))
             {
                 var target = _targetData[targetIdx];
                 if (target.Entity == projEntity) continue;
@@ -97,11 +131,16 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         // 4. Process hits
         foreach (var hit in _hits)
         {
-            if (_processedProjectiles.Contains(hit.Projectile)) continue;
+            // Beam projectiles can hit multiple targets per frame, don't track them as single-use
+            bool isBeam = World.IsAlive(hit.Projectile) && World.Has<Projectile>(hit.Projectile) &&
+                          World.Get<Projectile>(hit.Projectile).Behavior == WeaponBehavior.Beam;
+
+            if (!isBeam && _processedProjectiles.Contains(hit.Projectile)) continue;
             if (!World.IsAlive(hit.Target)) continue;
             if (!World.IsAlive(hit.Projectile)) continue;
 
-            _processedProjectiles.Add(hit.Projectile);
+            if (!isBeam)
+                _processedProjectiles.Add(hit.Projectile);
 
             ref var health = ref World.Get<Health>(hit.Target);
             bool hadShield = health.Shield > 0;
@@ -110,8 +149,9 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             var targetPos = World.Get<Transform>(hit.Target).Position;
             DamageEventsLastUpdate.Add(new DamageEvent(targetPos, hit.Damage, hadShield, hit.Target, hit.OwnerFaction, hit.OwnerEntity));
 
-            // Destroy the projectile (HashSet handles duplicates automatically)
-            _expired.Add(hit.Projectile);
+            // Destroy the projectile (HashSet handles duplicates automatically) — not for beams
+            if (!isBeam)
+                _expired.Add(hit.Projectile);
 
             // Check if target died
             if (health.IsDead)
@@ -153,10 +193,10 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         }
     }
 
-    /// <summary>Source-generated query: collects projectile data and marks expired projectiles.</summary>
+    /// <summary>Source-generated query: collects projectile data, steers tracking missiles, and marks expired projectiles.</summary>
     [Query]
     [All(typeof(Transform), typeof(Velocity), typeof(Projectile))]
-    public void CollectProjectiles(Entity entity, ref Transform transform, ref Projectile proj)
+    public void CollectProjectiles(Entity entity, ref Transform transform, ref Velocity velocity, ref Projectile proj)
     {
         proj.Lifetime -= _dt;
         if (proj.Lifetime <= 0)
@@ -165,8 +205,68 @@ public partial class ProjectileSystem : BaseSystem<World, float>
             return;
         }
 
+        // Tracking missiles: steer toward nearest valid target
+        if (proj.Behavior == WeaponBehavior.Tracking && proj.TrackingTurnRate > 0f && _dt > 0f)
+        {
+            SteerTrackingMissile(ref transform, ref velocity, ref proj);
+        }
+
+        // Beam projectiles: stay attached to owner and face owner's direction
+        if (proj.Behavior == WeaponBehavior.Beam && World.IsAlive(proj.OwnerEntity))
+        {
+            var ownerTf = World.Get<Transform>(proj.OwnerEntity);
+            float rad = ownerTf.Rotation * MathF.PI / 180f;
+            var dir = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+            transform.Position = ownerTf.Position + dir * 20f;
+            transform.Rotation = ownerTf.Rotation;
+            velocity.Linear = Vector2.Zero;
+        }
+
         // Collect for collision phase (copy values out of the ref context)
         _projectileData.Add(new ProjectileSnapshot(entity, transform.Position, proj));
+    }
+
+    private void SteerTrackingMissile(ref Transform transform, ref Velocity velocity, ref Projectile proj)
+    {
+        // Find nearest valid target
+        Vector2 bestTarget = default;
+        float bestDist = float.MaxValue;
+        bool hasTarget = false;
+
+        for (int i = 0; i < _targetData.Count; i++)
+        {
+            var t = _targetData[i];
+            if (!FactionRules.CanHit(proj.OwnerFaction, t.Faction)) continue;
+            float d = Vector2.Distance(transform.Position, t.Position);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                bestTarget = t.Position;
+                hasTarget = true;
+            }
+        }
+
+        // If no target data yet (first pass), query targets before steering
+        if (!hasTarget && _targetData.Count == 0)
+            return;
+
+        if (!hasTarget) return;
+
+        var toTarget = Vector2.Normalize(bestTarget - transform.Position);
+        if (float.IsNaN(toTarget.X)) return;
+
+        float currentAngle = MathF.Atan2(velocity.Linear.Y, velocity.Linear.X);
+        float desiredAngle = MathF.Atan2(toTarget.Y, toTarget.X);
+        float delta = desiredAngle - currentAngle;
+        // Normalize to [-PI, PI]
+        delta = ((delta + MathF.PI * 3f) % (MathF.PI * 2f)) - MathF.PI;
+
+        float maxTurn = proj.TrackingTurnRate * MathF.PI / 180f * _dt;
+        float turn = Math.Clamp(delta, -maxTurn, maxTurn);
+        float newAngle = currentAngle + turn;
+
+        velocity.Linear = new Vector2(MathF.Cos(newAngle), MathF.Sin(newAngle)) * proj.Speed;
+        transform.Rotation = newAngle * 180f / MathF.PI;
     }
 
     /// <summary>Source-generated query: collects potential hit targets for this update.</summary>
@@ -195,5 +295,16 @@ public partial class ProjectileSystem : BaseSystem<World, float>
         }
 
         _targetData.Add(new TargetSnapshot(target, targetTransform.Position, targetRadius, targetFaction));
+    }
+
+    /// <summary>Shortest distance from point P to line segment AB.</summary>
+    private static float PointToSegmentDistance(Vector2 p, Vector2 a, Vector2 b)
+    {
+        var ab = b - a;
+        float abLenSq = ab.LengthSquared();
+        if (abLenSq < 0.001f) return Vector2.Distance(p, a);
+        float t = Math.Clamp(Vector2.Dot(p - a, ab) / abLenSq, 0f, 1f);
+        var closest = a + ab * t;
+        return Vector2.Distance(p, closest);
     }
 }

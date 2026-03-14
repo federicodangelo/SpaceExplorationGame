@@ -40,6 +40,7 @@ public static class HudRenderer
         var tracked = player.Missions.GetTracked();
         var stats = player.GetCombinedShipStats();
         bool hasShield = stats.ShieldStrength > 0 && ecsWorld.IsAlive(playerShip) && ecsWorld.Has<Health>(playerShip);
+        bool hasEnergy = ecsWorld.IsAlive(playerShip) && ecsWorld.Has<ShipComponent>(playerShip);
 
         // Measure panel width
         float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
@@ -50,6 +51,7 @@ public static class HudRenderer
             + LineHeight + SepGap   // info + sep
             + BarHeight + 8;        // hull bar
         if (hasShield) panelH += BarHeight + 4;
+        if (hasEnergy) panelH += BarHeight + 4;
         if (tracked != null)
         {
             panelH += SepGap + LineHeight * 2 + 4;
@@ -85,6 +87,13 @@ public static class HudRenderer
             y += BarHeight + 4;
         }
 
+        if (hasEnergy)
+        {
+            ref var ship = ref ecsWorld.Get<ShipComponent>(playerShip);
+            RenderBarContent(renderer, cx, y, "NRG", ship.Energy, ship.MaxEnergy, new Color3(180, 120, 255));
+            y += BarHeight + 4;
+        }
+
         if (tracked != null)
         {
             DrawHudSeparator(renderer, HudMargin + 1, y + 1, panelW - 2);
@@ -106,6 +115,10 @@ public static class HudRenderer
         bool hasHealth = ecsWorld.IsAlive(playerAvatar) && ecsWorld.Has<Health>(playerAvatar);
         Health avatarHealth = default;
         if (hasHealth) avatarHealth = ecsWorld.Get<Health>(playerAvatar);
+        bool hasAmmo = ecsWorld.IsAlive(playerAvatar) && ecsWorld.Has<AvatarComponent>(playerAvatar);
+        AvatarComponent avatarComp = default;
+        if (hasAmmo)
+            avatarComp = ecsWorld.Get<AvatarComponent>(playerAvatar);
 
         // Measure panel width
         float panelW = MeasureHudPanelWidth(renderer, locationLine, infoLine);
@@ -115,6 +128,7 @@ public static class HudRenderer
             + LineHeight + SepGap   // location + sep
             + LineHeight + SepGap;  // info + sep
         if (hasHealth) panelH += BarHeight + 8;
+        if (hasAmmo) panelH += BarHeight + 4;
         if (tracked != null)
         {
             panelH += SepGap + LineHeight * 2 + 4;
@@ -144,6 +158,12 @@ public static class HudRenderer
             RenderBarContent(renderer, cx, y, "HP", avatarHealth.Hull, avatarHealth.MaxHull,
                 HPBarColor(avatarHealth.HullPercent));
             y += BarHeight + 8;
+        }
+
+        if (hasAmmo)
+        {
+            RenderAmmoContent(renderer, cx, y, avatarComp.Ammo, avatarComp.MaxAmmo);
+            y += BarHeight + 4;
         }
 
         if (tracked != null)
@@ -230,6 +250,33 @@ public static class HudRenderer
     private static void DrawHudSeparator(ISpriteRenderer renderer, float x, float y, float w)
     {
         renderer.DrawRectScreen(x, y, w, 1, new Color4(60, 80, 140, 150));
+    }
+
+    /// <summary>Render ammo display: bar with count for finite, "INF" label for infinite.</summary>
+    private static void RenderAmmoContent(ISpriteRenderer renderer, float x, float y,
+        int ammo, int maxAmmo)
+    {
+        var lc = new Color3(200, 200, 200);
+        var fillColor = new Color3(255, 200, 80);
+        float labelW = renderer.MeasureText("AMMO", TextScale) + 8;
+        renderer.DrawTextScreen(x, y + 2, "AMMO", lc, TextScale);
+
+        float barX = x + labelW;
+        if (maxAmmo < 0)
+        {
+            // Infinite ammo: full bar + INF text
+            renderer.DrawRectScreen(barX, y + 1, BarWidth, BarHeight, new Color3(40, 40, 40));
+            renderer.DrawRectScreen(barX, y + 1, BarWidth, BarHeight, fillColor);
+            renderer.DrawTextScreen(barX + BarWidth + 5, y + 2, "INF", lc, TextScale);
+        }
+        else
+        {
+            renderer.DrawRectScreen(barX, y + 1, BarWidth, BarHeight, new Color3(40, 40, 40));
+            float pct = maxAmmo > 0 ? (float)ammo / maxAmmo : 0f;
+            renderer.DrawRectScreen(barX, y + 1, BarWidth * pct, BarHeight, fillColor);
+            renderer.DrawTextScreen(barX + BarWidth + 5, y + 2,
+                $"{ammo}/{maxAmmo}", lc, TextScale);
+        }
     }
 
     /// <summary>Render a health/shield bar content (label + bar + numeric, no background).</summary>

@@ -37,6 +37,9 @@ public struct InputSnapshot
     /// <summary>Menu/back key pressed (Escape).</summary>
     public bool MenuBack;
 
+    /// <summary>Dodge roll key pressed (Space — surface only).</summary>
+    public bool DodgeRoll;
+
     // ── Camera (client-local, not sent over network) ──
     /// <summary>Mouse wheel delta for zoom. Zero when not scrolling.</summary>
     public float MouseWheelY;
@@ -61,6 +64,7 @@ public struct InputSnapshot
             Interact = input.IsActionPressed(Engine.Platform.InputAction.Interact),
             ToggleMap = input.IsActionPressed(Engine.Platform.InputAction.ToggleMap),
             MenuBack = input.IsActionPressed(Engine.Platform.InputAction.MenuBack),
+            DodgeRoll = input.IsActionPressed(Engine.Platform.InputAction.DodgeRoll),
             MouseWheelY = input.MouseWheelY,
         };
 

@@ -106,7 +106,9 @@ public record ShipPartStats(
     float WeaponRange = 0f,      // weapon effective range
     float ProjectileSpeed = 0f,  // weapon projectile speed
     float FuelEfficiency = 0f,   // multiplier reduction on fuel cost (0.1 = 10% less fuel)
-    float CargoCapacity = 0f     // bonus cargo capacity (added to ship base)
+    float CargoCapacity = 0f,    // bonus cargo capacity (added to ship base)
+    float WeaponEnergyCost = 0f, // energy consumed per shot
+    WeaponBehavior WeaponBehavior = WeaponBehavior.Standard
 );
 
 /// <summary>
@@ -174,16 +176,29 @@ public static class ShipPartCatalog
             new ShipPartStats()),
 
         new("weapon_laser",    "Pulse Laser",        ShipSlotType.Weapon1, 1, 0,   35,
-            "Basic energy weapon. Low damage, no ammo.",
-            new ShipPartStats(WeaponDamage: 5f, WeaponFireRate: 0.5f, WeaponRange: 320f, ProjectileSpeed: 600f)),
+            "Basic energy weapon. Low energy cost.",
+            new ShipPartStats(WeaponDamage: 5f, WeaponFireRate: 0.5f, WeaponRange: 320f, ProjectileSpeed: 600f,
+                WeaponEnergyCost: 5f)),
+
+        new("weapon_scatter",  "Scatter Gun",        ShipSlotType.Weapon1, 2, 350, 175,
+            "Fires a spread of projectiles. Good at close range.",
+            new ShipPartStats(WeaponDamage: 3f, WeaponFireRate: 0.7f, WeaponRange: 220f, ProjectileSpeed: 550f,
+                WeaponEnergyCost: 12f, WeaponBehavior: WeaponBehavior.Spread)),
 
         new("weapon_cannon",   "Kinetic Cannon",     ShipSlotType.Weapon1, 2, 350, 175,
             "Ballistic rounds with solid punch.",
-            new ShipPartStats(WeaponDamage: 7f, WeaponFireRate: 0.75f, WeaponRange: 300f, ProjectileSpeed: 520f)),
+            new ShipPartStats(WeaponDamage: 7f, WeaponFireRate: 0.75f, WeaponRange: 300f, ProjectileSpeed: 520f,
+                WeaponEnergyCost: 8f)),
 
         new("weapon_missile",  "Missile Launcher",   ShipSlotType.Weapon1, 3, 750, 375,
             "Guided missiles. High damage, slow fire rate.",
-            new ShipPartStats(WeaponDamage: 10f, WeaponFireRate: 1.0f, WeaponRange: 420f, ProjectileSpeed: 420f)),
+            new ShipPartStats(WeaponDamage: 10f, WeaponFireRate: 1.0f, WeaponRange: 420f, ProjectileSpeed: 420f,
+                WeaponEnergyCost: 15f, WeaponBehavior: WeaponBehavior.Tracking)),
+
+        new("weapon_beam",     "Plasma Beam",        ShipSlotType.Weapon1, 3, 900, 450,
+            "Continuous energy beam. Drains energy while firing.",
+            new ShipPartStats(WeaponDamage: 12f, WeaponFireRate: 0.1f, WeaponRange: 280f, ProjectileSpeed: 0f,
+                WeaponEnergyCost: 20f, WeaponBehavior: WeaponBehavior.Beam)),
 
         // ── Utility ──────────────────────────────────────────────
         new("util_none",       "(Empty)",            ShipSlotType.Utility, 0, 0, 0,

@@ -207,15 +207,19 @@ public static class CombatHelper
             return;
 
         var stats = part.Stats;
+        // Beam weapons don't need projectile speed
+        bool isBeam = stats.WeaponBehavior == WeaponBehavior.Beam;
         if (stats.WeaponDamage <= 0f || stats.WeaponFireRate <= 0f ||
-            stats.WeaponRange <= 0f || stats.ProjectileSpeed <= 0f)
+            stats.WeaponRange <= 0f || (!isBeam && stats.ProjectileSpeed <= 0f))
             return;
 
         weapons.Add(new ShipWeaponSpec(
             stats.WeaponDamage,
             stats.WeaponFireRate,
             stats.WeaponRange,
-            stats.ProjectileSpeed));
+            stats.ProjectileSpeed,
+            stats.WeaponBehavior,
+            stats.WeaponEnergyCost));
     }
 
 }

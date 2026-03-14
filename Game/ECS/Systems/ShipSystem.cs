@@ -2,6 +2,7 @@ using System.Numerics;
 using Arch.Core;
 using Arch.System;
 using SpaceExplorationGame.Core;
+using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS.Components;
 
 namespace SpaceExplorationGame.ECS.Systems;
@@ -27,7 +28,7 @@ public partial class ShipSystem : BaseSystem<World, float>
         foreach (var spawn in _pendingProjectiles)
         {
             EntityFactory.CreateProjectile(World, spawn.OwnerEntity, spawn.Pos, spawn.Dir, spawn.Damage, spawn.Speed,
-                spawn.Faction, spawn.Color, spawn.Lifetime, spawn.InheritedVelocity);
+                spawn.Faction, spawn.Color, spawn.Lifetime, spawn.InheritedVelocity, spawn.Behavior);
         }
     }
 
@@ -62,6 +63,10 @@ public partial class ShipSystem : BaseSystem<World, float>
         }
 
         TickWeaponCooldowns(ref ship, dt);
+        // Regenerate energy
+        if (ship.Energy < ship.MaxEnergy)
+            ship.Energy = MathF.Min(ship.MaxEnergy, ship.Energy + ship.EnergyRegenRate * dt);
+
         if (input.Shoot)
         {
             TryFireProjectiles(entity, ref transform, ref velocity, ref ship);
@@ -102,27 +107,66 @@ public partial class ShipSystem : BaseSystem<World, float>
                 continue;
 
             var weapon = ship.Weapons[i];
+            bool isBeam = weapon.Behavior == WeaponBehavior.Beam;
             if (weapon.Damage <= 0f || weapon.FireRate <= 0f ||
-                weapon.Range <= 0f || weapon.ProjectileSpeed <= 0f)
+                weapon.Range <= 0f || (!isBeam && weapon.ProjectileSpeed <= 0f))
                 continue;
 
+            // Energy check
+            if (weapon.EnergyCost > 0f && ship.Energy < weapon.EnergyCost)
+                continue;
+
+            // Consume energy
+            if (weapon.EnergyCost > 0f)
+                ship.Energy -= weapon.EnergyCost;
+
             ship.WeaponCooldowns[i] = weapon.FireRate;
-            float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
             float sideOffset = weaponCount > 1 ? (i == 0 ? -lateralOffset : lateralOffset) : 0f;
             Color3 color = CombatHelper.ResolveProjectileColor(ship.Faction);
-            FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
-                lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity);
+
+            if (weapon.Behavior == WeaponBehavior.Spread)
+            {
+                // Fire multiple projectiles in a fan arc
+                int count = CombatConfig.SpreadProjectileCount;
+                float arcRad = CombatConfig.SpreadArcDegrees * MathF.PI / 180f;
+                float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
+                for (int s = 0; s < count; s++)
+                {
+                    float t = count > 1 ? (float)s / (count - 1) : 0.5f;
+                    float angle = -arcRad / 2f + arcRad * t;
+                    float cos = MathF.Cos(angle);
+                    float sin = MathF.Sin(angle);
+                    var dir = new Vector2(facing.X * cos - facing.Y * sin, facing.X * sin + facing.Y * cos);
+                    FireProjectile(transform.Position, dir, weapon.Damage, weapon.ProjectileSpeed,
+                        lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, WeaponBehavior.Standard);
+                }
+            }
+            else if (weapon.Behavior == WeaponBehavior.Beam)
+            {
+                // Beam: create a short-lived projectile that represents the beam tick
+                float lifetime = weapon.FireRate; // lives exactly one firing cycle
+                FireProjectile(transform.Position, facing, weapon.Damage, 0f,
+                    lifetime, ship.Faction, color, sideOffset, Vector2.Zero, firingEntity, WeaponBehavior.Beam);
+            }
+            else
+            {
+                // Standard or Tracking
+                float lifetime = CombatHelper.ResolveProjectileLifetime(weapon.Range, weapon.ProjectileSpeed);
+                FireProjectile(transform.Position, facing, weapon.Damage, weapon.ProjectileSpeed,
+                    lifetime, ship.Faction, color, sideOffset, velocity.Linear, firingEntity, weapon.Behavior);
+            }
         }
     }
 
     private void FireProjectile(Vector2 origin, Vector2 direction, float damage, float speed,
-        float lifetime, Faction faction, Color3 color, float lateralOffset, Vector2 inheritedVelocity, Entity firingEntity)
+        float lifetime, Faction faction, Color3 color, float lateralOffset, Vector2 inheritedVelocity,
+        Entity firingEntity, WeaponBehavior behavior)
     {
         var lateral = new Vector2(-direction.Y, direction.X);
         var spawnPos = origin + direction * 20f + lateral * lateralOffset;
 
         _pendingProjectiles.Add(new ProjectileSpawn(spawnPos, direction, damage, speed,
-            lifetime, faction, color, inheritedVelocity, firingEntity));
+            lifetime, faction, color, inheritedVelocity, firingEntity, behavior));
     }
 
     private static Vector2 FacingDirection(float rotationDeg)
