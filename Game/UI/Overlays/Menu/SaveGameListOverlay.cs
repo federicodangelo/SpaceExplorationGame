@@ -38,7 +38,7 @@ public class SaveGameListOverlay : MenuPanelOverlayBase<SaveGameAction>
 
     protected override string Title => "SAVED GAMES";
     protected override Color3 TitleColor => new(180, 200, 255);
-    protected override float PanelWidth => 580;
+    protected override float PanelWidth => 800;
     protected override float BottomPadding => base.BottomPadding + 10;
     protected override string? ControlsHint => _confirmDeleteSlot >= 0
         ? "PRESS AGAIN TO CONFIRM DELETE  —  ANY OTHER KEY TO CANCEL"

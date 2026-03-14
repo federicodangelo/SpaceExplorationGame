@@ -707,9 +707,9 @@ public class MainMenuState : GameState
         byte glowB = (byte)(220 + 35 * MathF.Sin(_animTimer * 0.8f + 1f));
         renderer.DrawTextScreen(titleX, titleY, title, new Color3(glowR, glowG, glowB), titleScale);
 
+        _controlsPanel.Render(game, _menuOverlay.PanelRight, _menuOverlay.PanelCenterY);
         _menuOverlay.Render(game);
         _debugOverlay.Render(game);
-        _controlsPanel.Render(game, _menuOverlay.PanelRight, _menuOverlay.PanelCenterY);
 
         // Build hash + type (bottom-right corner, web builds only)
         string? buildHash = BuildInfo.ShortHash;
