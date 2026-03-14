@@ -264,6 +264,9 @@ setModuleImports('game.js', {
         load(key) {
             try { return localStorage.getItem('seg_' + key); } catch { return null; }
         },
+        remove(key) {
+            try { localStorage.removeItem('seg_' + key); } catch { }
+        },
     },
 
     // ── Launch options ────────────────────────────────────────────

@@ -50,10 +50,9 @@ public sealed class WebSaveGame : BaseSaveGame
     {
         try
         {
-            // localStorage doesn't have a "delete" via our interop, but we can save empty
-            JsSettings.Save(GetMainKey(playerId), "");
+            JsSettings.Remove(GetMainKey(playerId));
             for (int i = 1; i <= MaxBackups; i++)
-                JsSettings.Save(GetBackupKey(playerId, i), "");
+                JsSettings.Remove(GetBackupKey(playerId, i));
 
             RemoveFromIndex(playerId);
         }

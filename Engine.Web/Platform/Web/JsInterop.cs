@@ -86,6 +86,9 @@ internal static partial class JsSettings
 
     [JSImport("settings.load", "game.js")]
     internal static partial string? Load(string key);
+
+    [JSImport("settings.remove", "game.js")]
+    internal static partial void Remove(string key);
 }
 
 /// <summary>
