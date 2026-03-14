@@ -107,6 +107,72 @@ public static class EntityFactory
         );
     }
 
+    /// <summary>Create a derelict ship entity orbiting the star.</summary>
+    public static Entity CreateDerelictShip(World world, Entity starEntity, DerelictShipData derelict, int dataIndex)
+    {
+        float angle = derelict.StartAngle;
+        float x = MathF.Cos(angle) * derelict.OrbitRadius;
+        float y = MathF.Sin(angle) * derelict.OrbitRadius;
+        // Offset from parent will be set by orbit system; use zero for now
+        return world.Create(
+            new Transform(Vector2.Zero),
+            Sprite.Build(20, 20),
+            new CelestialBody
+            {
+                Type = CelestialType.DerelictShip,
+                Name = "Derelict Ship",
+                Radius = WorldEventConfig.DerelictRadius,
+                DataIndex = dataIndex,
+                HasSolidSurface = false
+            },
+            new Orbit(starEntity, derelict.OrbitRadius, derelict.OrbitSpeed, derelict.StartAngle),
+            new Label { Text = "DERELICT", OffsetY = 50 },
+            new Interactable
+            {
+                Type = InteractionType.SalvageDerelict,
+                Label = "Salvage"
+            },
+            new DerelictShipComponent
+            {
+                CreditReward = derelict.CreditReward,
+                ResourceReward = derelict.ResourceReward,
+                ResourceAmount = derelict.ResourceAmount,
+                HasRarePart = derelict.HasRarePart,
+                Salvaged = false
+            }
+        );
+    }
+
+    /// <summary>Create a distress beacon entity at a given position.</summary>
+    public static Entity CreateDistressBeacon(World world, Vector2 position, DistressSignalData signal, int dataIndex)
+    {
+        return world.Create(
+            new Transform(position),
+            Sprite.Build(16, 16),
+            new CelestialBody
+            {
+                Type = CelestialType.DistressBeacon,
+                Name = "Distress Signal",
+                Radius = WorldEventConfig.DistressBeaconRadius,
+                DataIndex = dataIndex,
+                HasSolidSurface = false
+            },
+            new Label { Text = "DISTRESS SIGNAL", OffsetY = 60 },
+            new Interactable
+            {
+                Type = InteractionType.InvestigateDistress,
+                Label = "Investigate"
+            },
+            new DistressBeaconComponent
+            {
+                IsAmbush = signal.IsAmbush,
+                RewardCredits = signal.RewardCredits,
+                AmbushPirateCount = signal.AmbushPirateCount,
+                Triggered = false
+            }
+        );
+    }
+
     // ── Player Entities ─────────────────────────────────────────────
 
     /// <summary>Create a mineable asteroid entity orbiting the star.</summary>

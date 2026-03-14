@@ -38,7 +38,7 @@ internal static class Program
         int jitterMs = 0;
         string? location = null;
         string? subLocation = null;
-        int dangerLevel = 1;
+        int dangerLevel = 0;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -133,7 +133,7 @@ internal static class Program
     private static NetPlayerLocation ResolveStartingLocation(string? location, string? subLocation, int dangerLevel, Game game)
     {
         // Default starting star system: first danger-1 system, or system 0 as fallback
-        var starSystems = game.GalaxyData.FindAll(s => s.DangerLevel == dangerLevel).ToList();
+        var starSystems = game.GalaxyData.FindAll(s => dangerLevel <= 0 || s.DangerLevel == dangerLevel).ToList();
 
         if (starSystems.Count == 0)
         {
@@ -150,7 +150,10 @@ internal static class Program
             "station" or "space-station" => ResolveStation(sub, starSystems, game.UniverseGenerator),
             "planet" => ResolvePlanet(sub, starSystems, game.UniverseGenerator),
             "settlement" => ResolveSettlement(sub, starSystems, game.UniverseGenerator),
-            _ => throw new ArgumentException($"Invalid --location '{location}'. Valid values: system, station, planet, settlement")
+            "derelict" or "derelict-ship" => ResolveDerelict(starSystems, game.UniverseGenerator),
+            "distress" or "distress-beacon" => ResolveDistressBeacon(starSystems, game.UniverseGenerator, ambushOnly: false),
+            "distress-ambush" or "ambush" => ResolveDistressBeacon(starSystems, game.UniverseGenerator, ambushOnly: true),
+            _ => throw new ArgumentException($"Invalid --location '{location}'. Valid values: system, station, planet, settlement, derelict, distress-beacon, distress-ambush")
         };
     }
 
@@ -244,6 +247,33 @@ internal static class Program
         };
     }
 
+    private static NetPlayerLocation ResolveDerelict(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
+    {
+        var system = starSystems.FirstOrDefault(s =>
+        {
+            var content = universeGenerator.GenerateSolarSystem(s);
+            return content.DerelictShips is { Count: > 0 };
+        });
+        if (system == null)
+            throw new ArgumentException("No star systems with derelict ships found. Adjust the galaxy generation settings.");
+        return NetPlayerLocation.ForSolarSystem(system.Index);
+    }
+
+    private static NetPlayerLocation ResolveDistressBeacon(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator, bool ambushOnly)
+    {
+        var system = starSystems.FirstOrDefault(s =>
+        {
+            var content = universeGenerator.GenerateSolarSystem(s);
+            return content.DistressSignals is { Count: > 0 } signals
+                && (!ambushOnly || signals.Exists(sig => sig.IsAmbush));
+        });
+        if (system == null)
+            throw new ArgumentException(ambushOnly
+                ? "No star systems with distress ambush found. Adjust the galaxy generation settings."
+                : "No star systems with distress beacons found. Adjust the galaxy generation settings.");
+        return NetPlayerLocation.ForSolarSystem(system.Index);
+    }
+
     private static string Normalize(string value) => value.Trim().ToLowerInvariant();
 
     private static void PrintHelp()
@@ -264,13 +294,14 @@ internal static class Program
         Console.WriteLine("  --latency, --lat <ms>          Simulated one-way send latency in ms (default: 0)");
         Console.WriteLine("  --jitter, --jit <ms>           Simulated jitter ± ms added to latency (default: 0)");
         Console.WriteLine("  --location, -l <location>      Starting location for new players:");
-        Console.WriteLine("                                   system | station | planet | settlement");
+        Console.WriteLine("                                   system | station | planet | settlement | derelict | distress-beacon | distress-ambush");
         Console.WriteLine("                                   (default: system, first danger-1 star system)");
         Console.WriteLine("  --sublocation, -sl <subloc>    Sublocation within --location:");
         Console.WriteLine("                                   system:     none (or omit)");
         Console.WriteLine("                                   station:    orbit | menu | inside");
         Console.WriteLine("                                   planet:     orbit | landed | on-foot | on-vehicle");
         Console.WriteLine("                                   settlement: above | inside | on-foot | on-vehicle");
+        Console.WriteLine("                                   derelict / distress-beacon / distress-ambush: none (or omit)");
         Console.WriteLine("  --danger-level, -d <level>     (Optional) Minimum danger level for the default starting star system when --location is 'system'. Default: 1");
         Console.WriteLine();
         Console.WriteLine("Examples:");

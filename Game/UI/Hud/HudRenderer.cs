@@ -388,9 +388,10 @@ public static class HudRenderer
         }
     }
 
-    /// <summary>Render solar system interaction prompts (planet, moon, station panels).</summary>
+    /// <summary>Render solar system interaction prompts (planet, moon, station, derelict, distress panels).</summary>
     public static void RenderSolarSystemPrompt(ISpriteRenderer renderer,
         int nearbyPlanetIndex, int nearbyMoonIndex, int nearbyMoonPlanetIndex, int nearbySpaceStationIndex,
+        int nearbyDerelictIndex, bool nearbyDistressBeacon,
         List<PlanetData> planets, List<SpaceStationData> stations,
         string interactHelpText)
     {
@@ -444,6 +445,14 @@ public static class HudRenderer
         {
             RenderPrompt(renderer, $"[{interactHelpText}] {stations[nearbySpaceStationIndex].Name.ToUpper()} MENU",
                 100, 200, 255);
+        }
+        else if (nearbyDerelictIndex >= 0)
+        {
+            RenderPrompt(renderer, $"[{interactHelpText}] SALVAGE DERELICT SHIP", 200, 180, 100);
+        }
+        else if (nearbyDistressBeacon)
+        {
+            RenderPrompt(renderer, $"[{interactHelpText}] INVESTIGATE DISTRESS SIGNAL", 255, 100, 100);
         }
     }
 

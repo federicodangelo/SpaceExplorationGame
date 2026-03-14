@@ -68,7 +68,27 @@ public readonly record struct SolarSystemContent(
     List<AsteroidBeltData> AsteroidBelts,
     List<SpaceStationData> SpaceStations,
     NpcShipSpawnConfig NpcShipSpawnConfig,
-    Vector2 StartingPosition);
+    Vector2 StartingPosition,
+    List<DerelictShipData> DerelictShips = default!,
+    List<DistressSignalData> DistressSignals = default!);
+
+/// <summary>Data for a derelict ship placed in a solar system.</summary>
+public readonly record struct DerelictShipData(
+    float OrbitRadius,
+    float OrbitSpeed,
+    float StartAngle,
+    int CreditReward,
+    ResourceType ResourceReward,
+    int ResourceAmount,
+    bool HasRarePart);
+
+/// <summary>Data for a distress signal beacon placed in a solar system.</summary>
+public readonly record struct DistressSignalData(
+    float Angle,
+    float Distance,
+    bool IsAmbush,
+    int RewardCredits,
+    int AmbushPirateCount);
 
 /// <summary>
 /// Runtime configuration for the dynamic NPC spawn manager.

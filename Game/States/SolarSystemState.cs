@@ -230,6 +230,16 @@ public class SolarSystemState : GameState
                 _planetLandingOverlay.Open(_starSystem, moonData.ToPlanetData(_sim.LocalNearbyMoonPlanetIndex), game,
                     isMoon: true, moonPlanetIndex: _sim.LocalNearbyMoonPlanetIndex, moonIndex: _sim.LocalNearbyMoonIndex);
             }
+            else if (_sim.LocalNearbyDerelictIndex >= 0)
+            {
+                string? msg = _sim.SalvageDerelict(_simPlayer, _sim.LocalNearbyDerelictIndex);
+                if (msg != null) _sim.SetLocalCombatMessage(msg);
+            }
+            else if (_sim.LocalNearbyDistressBeaconIndex >= 0)
+            {
+                string? msg = _sim.TriggerDistressSignal(_simPlayer, _sim.LocalNearbyDistressBeaconIndex);
+                if (msg != null) _sim.SetLocalCombatMessage(msg);
+            }
         }
 
         // Open galaxy map
@@ -512,6 +522,14 @@ public class SolarSystemState : GameState
         game.SpaceStationRenderer.RenderSpaceStations(renderer, camera, world,
             _sim.SpaceStationEntities, game.GlobalTime);
 
+        // Derelict ships
+        SolarSystemRenderer.RenderDerelictShips(renderer, camera, world,
+            _sim.DerelictEntities, globalTime);
+
+        // Distress beacons
+        SolarSystemRenderer.RenderDistressBeacons(renderer, camera, world,
+            _sim.DistressBeaconEntities, globalTime);
+
         // Labels
         _labelRenderer.Render();
 
@@ -606,6 +624,7 @@ public class SolarSystemState : GameState
         // Minimap
         HudMinimapRenderer.RenderSolarSystemMinimap(renderer, _sim.Planets, _sim.PlanetEntities,
             _sim.MoonEntities, _sim.SpaceStationEntities, _sim.AsteroidEntities, _sim.EnemyEntities,
+            _sim.DerelictEntities, _sim.DistressBeaconEntities,
             _simPlayer.Entity, _sim.StarEntity, world);
 
         // Multiplayer player list (below minimap, only when connected)
@@ -623,7 +642,9 @@ public class SolarSystemState : GameState
                 HudIndicatorsRenderer.RenderStarOffscreenIndicator(renderer, camera, starCenter);
             HudIndicatorsRenderer.RenderSolarSystemObjectOffscreenIndicators(renderer, camera,
                 _simPlayer.Entity, world, _sim.PlanetEntities, _sim.Planets,
-                _sim.SpaceStationEntities, _sim.SpaceStations, 5000f, game.Player);
+                _sim.SpaceStationEntities, _sim.SpaceStations,
+                _sim.DerelictEntities, _sim.DistressBeaconEntities,
+                5000f, game.Player);
             if (game.Network is { IsJoined: true } net)
             {
                 HudIndicatorsRenderer.RenderRemotePlayerOffscreenIndicators(renderer, camera,
@@ -671,7 +692,8 @@ public class SolarSystemState : GameState
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,
             _sim.LocalNearbyPlanetIndex, _sim.LocalNearbyMoonIndex, _sim.LocalNearbyMoonPlanetIndex,
-            _sim.LocalNearbySpaceStationIndex, _sim.Planets, _sim.SpaceStations,
+            _sim.LocalNearbySpaceStationIndex, _sim.LocalNearbyDerelictIndex, _sim.LocalNearbyDistressBeaconIndex >= 0,
+            _sim.Planets, _sim.SpaceStations,
             game.Input.GetActionHelpText(InputAction.Interact));
 
         // Overlays
@@ -706,6 +728,16 @@ public class SolarSystemState : GameState
                 if (player.Navigation.SpaceStationIndex >= 0 && player.Navigation.SpaceStationIndex < _sim.SpaceStationEntities.Count
                     && world.IsAlive(_sim.SpaceStationEntities[player.Navigation.SpaceStationIndex]))
                     return world.Get<Transform>(_sim.SpaceStationEntities[player.Navigation.SpaceStationIndex]).Position;
+                break;
+            case NavigationTargetType.DerelictShip:
+                if (player.Navigation.DerelictShipIndex >= 0 && player.Navigation.DerelictShipIndex < _sim.DerelictEntities.Count
+                    && world.IsAlive(_sim.DerelictEntities[player.Navigation.DerelictShipIndex]))
+                    return world.Get<Transform>(_sim.DerelictEntities[player.Navigation.DerelictShipIndex]).Position;
+                break;
+            case NavigationTargetType.DistressBeacon:
+                if (player.Navigation.DistressBeaconIndex >= 0 && player.Navigation.DistressBeaconIndex < _sim.DistressBeaconEntities.Count
+                    && world.IsAlive(_sim.DistressBeaconEntities[player.Navigation.DistressBeaconIndex]))
+                    return world.Get<Transform>(_sim.DistressBeaconEntities[player.Navigation.DistressBeaconIndex]).Position;
                 break;
         }
         return null;

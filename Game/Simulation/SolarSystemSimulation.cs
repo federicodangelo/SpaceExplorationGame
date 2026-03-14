@@ -35,6 +35,8 @@ public class SolarSystemSimulation : CombatSimulationBase
     public List<List<Entity>> MoonEntities { get; } = [];
     public List<Entity> AsteroidEntities { get; } = [];
     public List<Entity> EnemyEntities { get; } = [];
+    public List<Entity> DerelictEntities { get; } = [];
+    public List<Entity> DistressBeaconEntities { get; } = [];
 
     public int LocalNearbyPlanetIndex => LocalSolarState?.NearbyPlanetIndex ?? -1;
     public int LocalNearbySpaceStationIndex => LocalSolarState?.NearbySpaceStationIndex ?? -1;
@@ -45,6 +47,8 @@ public class SolarSystemSimulation : CombatSimulationBase
     public string? LocalMiningMessage => LocalSolarState?.MiningMessage;
     public float LocalMiningMessageTimer => LocalSolarState?.MiningMessageTimer ?? 0;
     public int LocalRespawnSpaceStationIndex => LocalSolarState?.RespawnSpaceStationIndex ?? -1;
+    public int LocalNearbyDerelictIndex => LocalSolarState?.NearbyDerelictIndex ?? -1;
+    public int LocalNearbyDistressBeaconIndex => LocalSolarState?.NearbyDistressBeaconIndex ?? -1;
 
     // ── Combat state (solar-system-specific) ─────────────────────
     protected override float RespawnDelay => 3f;
@@ -67,6 +71,15 @@ public class SolarSystemSimulation : CombatSimulationBase
 
     /// <summary>Apply bounty mission world impact — temporarily reduces pirate spawn budget.</summary>
     public void ApplyBountyImpact() => _npcSpawnManager.ApplyBountyImpact();
+
+    /// <summary>Set the local player's combat message (shown centered on-screen).</summary>
+    public void SetLocalCombatMessage(string message, float duration = 3f)
+    {
+        if (LocalPlayer == null) return;
+        var state = GetCombatState(LocalPlayer);
+        state.CombatMessage = message;
+        state.CombatMessageTimer = duration;
+    }
 
     private const float InteractionRadius = 20f;
 
@@ -96,6 +109,8 @@ public class SolarSystemSimulation : CombatSimulationBase
         SpawnPlanets(Content.Planets, center, globalTime);
         SpawnSpaceStations(Content.SpaceStations, globalTime);
         SpawnAsteroids(Content.AsteroidBelts, new SeededRandom(rng.DeriveChildSeed(999)));
+        SpawnDerelicts(Content.DerelictShips);
+        SpawnDistressBeacons(Content.DistressSignals);
         // Initialize ECS systems
         // Shared systems (velocity, projectiles, cleanup)
         InitCoreSystems();
@@ -131,6 +146,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         MoonEntities.Clear();
         AsteroidEntities.Clear();
         EnemyEntities.Clear();
+        DerelictEntities.Clear();
         base.Destroy();
     }
 
@@ -350,6 +366,8 @@ public class SolarSystemSimulation : CombatSimulationBase
                     _ => ResourceType.Crystal
                 };
                 int resourceAmount = (int)Math.Ceiling(size * asteroidRng.NextFloat(0.1f, 0.3f));
+                if (StarSystem.AnomalyType == AnomalyType.ResourceSurge)
+                    resourceAmount = (int)(resourceAmount * WorldEventConfig.ResourceSurgeMultiplier);
 
                 var entity = EntityFactory.CreateAsteroid(EcsWorld, StarEntity, size, hp,
                     resource, resourceAmount,
@@ -362,7 +380,32 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
     }
 
+    private void SpawnDerelicts(List<DerelictShipData>? derelicts)
+    {
+        if (derelicts == null) return;
+        for (int i = 0; i < derelicts.Count; i++)
+        {
+            var entity = EntityFactory.CreateDerelictShip(EcsWorld, StarEntity, derelicts[i], i);
+            DerelictEntities.Add(entity);
+        }
+    }
 
+    private void SpawnDistressBeacons(List<DistressSignalData> signals)
+    {
+        if (signals is not { Count: > 0 }) return;
+
+        float centerX = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float centerY = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
+
+        for (int i = 0; i < signals.Count; i++)
+        {
+            var signal = signals[i];
+            var pos = new Vector2(
+                centerX + MathF.Cos(signal.Angle) * signal.Distance,
+                centerY + MathF.Sin(signal.Angle) * signal.Distance);
+            DistressBeaconEntities.Add(EntityFactory.CreateDistressBeacon(EcsWorld, pos, signal, i));
+        }
+    }
 
 
 
@@ -375,6 +418,8 @@ public class SolarSystemSimulation : CombatSimulationBase
             ss.NearbySpaceStationIndex = -1;
             ss.NearbyMoonPlanetIndex = -1;
             ss.NearbyMoonIndex = -1;
+            ss.NearbyDerelictIndex = -1;
+            ss.NearbyDistressBeaconIndex = -1;
 
             if (!EcsWorld.IsAlive(player.Entity)) continue;
 
@@ -400,6 +445,12 @@ public class SolarSystemSimulation : CombatSimulationBase
                         break;
                     case CelestialType.SpaceStation:
                         ss.NearbySpaceStationIndex = SpaceStationEntities.IndexOf(_proximitySystem.NearestEntity);
+                        break;
+                    case CelestialType.DerelictShip:
+                        ss.NearbyDerelictIndex = DerelictEntities.IndexOf(_proximitySystem.NearestEntity);
+                        break;
+                    case CelestialType.DistressBeacon:
+                        ss.NearbyDistressBeaconIndex = DistressBeaconEntities.IndexOf(_proximitySystem.NearestEntity);
                         break;
                 }
             }
@@ -487,6 +538,91 @@ public class SolarSystemSimulation : CombatSimulationBase
 
             if (EcsWorld.IsAlive(entity))
                 EcsWorld.Destroy(entity);
+        }
+    }
+
+    // ── World event interactions ──────────────────────────────────
+
+    /// <summary>Salvage a derelict ship, giving the player credits, resources, and possibly a rare part.</summary>
+    public string? SalvageDerelict(SimulationPlayer player, int derelictIndex)
+    {
+        if (derelictIndex < 0 || derelictIndex >= DerelictEntities.Count) return null;
+        var entity = DerelictEntities[derelictIndex];
+        if (!EcsWorld.IsAlive(entity)) return null;
+
+        ref var derelict = ref EcsWorld.Get<DerelictShipComponent>(entity);
+        if (derelict.Salvaged) return null;
+        derelict.Salvaged = true;
+
+        var pd = player.Data;
+        pd.EarnCredits(derelict.CreditReward);
+
+        int added = pd.AddCargo(derelict.ResourceReward, derelict.ResourceAmount);
+        string msg = $"+{derelict.CreditReward} CREDITS";
+        if (added > 0)
+            msg += $"  +{added} {derelict.ResourceReward.ToString().ToUpper()}";
+
+        if (derelict.HasRarePart)
+        {
+            var rng = new SeededRandom((ulong)(derelictIndex * 7919 + StarSystem.Index * 104729));
+            var rareParts = ShipPartCatalog.GetRareParts();
+            var legendaryParts = ShipPartCatalog.GetLegendaryParts();
+            var pool = rng.NextBool(0.3f) ? legendaryParts : rareParts;
+            if (pool.Length > 0)
+            {
+                var part = pool[rng.NextInt(0, pool.Length)];
+                if (!pd.OwnedParts.Contains(part) && !pd.EquippedParts.ContainsValue(part))
+                {
+                    pd.OwnedParts.Add(part);
+                    msg += $"  +{part.Name.ToUpper()}!";
+                }
+            }
+        }
+
+        // Remove interactable so it can't be salvaged again
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        return msg;
+    }
+
+    /// <summary>Trigger a distress signal event — either a rescue or an ambush.</summary>
+    public string? TriggerDistressSignal(SimulationPlayer player, int beaconIndex)
+    {
+        if (beaconIndex < 0 || beaconIndex >= DistressBeaconEntities.Count) return null;
+        var entity = DistressBeaconEntities[beaconIndex];
+        if (!EcsWorld.IsAlive(entity)) return null;
+        if (!EcsWorld.Has<DistressBeaconComponent>(entity)) return null;
+
+        ref var beacon = ref EcsWorld.Get<DistressBeaconComponent>(entity);
+        if (beacon.Triggered) return null;
+        beacon.Triggered = true;
+
+        var beaconPos = EcsWorld.Get<Transform>(entity).Position;
+
+        // Remove interactable
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        if (beacon.IsAmbush)
+        {
+            // Spawn pirates around the beacon
+            int pirateCount = beacon.AmbushPirateCount;
+            for (int i = 0; i < pirateCount; i++)
+            {
+                float angle = MathF.PI * 2f * i / pirateCount;
+                var spawnPos = beaconPos + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 300f;
+                _npcSpawnManager.SpawnShipAt(spawnPos, Faction.Pirate);
+            }
+            return "AMBUSH! PIRATES ATTACKING!";
+        }
+        else
+        {
+            // Peaceful rescue — award credits and reputation
+            var pd = player.Data;
+            pd.EarnCredits(beacon.RewardCredits);
+            pd.Reputation.AdjustStanding(Faction.Trader, WorldEventConfig.DistressHelpReputation);
+            return $"TRADER RESCUED! +{beacon.RewardCredits} CREDITS  +{WorldEventConfig.DistressHelpReputation} TRADER REP";
         }
     }
 

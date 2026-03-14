@@ -297,6 +297,88 @@ public static class SolarSystemRenderer
         }
     }
 
+    // ── Derelict Ships & Distress Beacons ──────────────────────────
+
+    /// <summary>Render derelict ship entities as broken hull silhouettes.</summary>
+    public static void RenderDerelictShips(ISpriteRenderer renderer, Camera camera, World ecsWorld,
+        List<Entity> derelictEntities, float globalTime)
+    {
+        foreach (var entity in derelictEntities)
+        {
+            if (!ecsWorld.IsAlive(entity)) continue;
+            bool salvaged = ecsWorld.Has<DerelictShipComponent>(entity) && ecsWorld.Get<DerelictShipComponent>(entity).Salvaged;
+
+            var pos = ecsWorld.Get<Transform>(entity).Position;
+            float pulse = 0.85f + 0.15f * MathF.Sin(globalTime * 1.2f + pos.X * 0.001f);
+            byte baseAlpha = salvaged ? (byte)60 : (byte)200;
+
+            // Outer glow
+            renderer.DrawFilledCircle(camera, pos, 50f,
+                new Color4(180, 140, 60, (byte)(40 * pulse)));
+            // Hull shape – two overlapping circles to suggest a broken ship
+            renderer.DrawFilledCircle(camera, pos + new Vector2(-8, 0), 28f,
+                new Color4(120, 100, 60, (byte)(baseAlpha * pulse)));
+            renderer.DrawFilledCircle(camera, pos + new Vector2(12, 4), 20f,
+                new Color4(100, 80, 50, (byte)(baseAlpha * pulse)));
+            // Outline ring
+            renderer.DrawCircle(camera, pos, 36f,
+                new Color4(200, 160, 70, (byte)(baseAlpha * pulse * 0.6f)), 16);
+
+            // Label
+            if (!salvaged)
+            {
+                string label = "DERELICT";
+                float labelW = renderer.MeasureText(label, 1.0f) / camera.Zoom;
+                renderer.DrawText(camera, pos + new Vector2(-labelW / 2, -50f),
+                    label, new Color3(200, 170, 80), 1.0f);
+            }
+            else
+            {
+                string label = "SALVAGED";
+                float labelW = renderer.MeasureText(label, 1.0f) / camera.Zoom;
+                renderer.DrawText(camera, pos + new Vector2(-labelW / 2, -50f),
+                    label, new Color3(100, 90, 60), 1.0f);
+            }
+        }
+    }
+
+    /// <summary>Render all distress beacons as pulsing distress signals.</summary>
+    public static void RenderDistressBeacons(ISpriteRenderer renderer, Camera camera, World ecsWorld,
+        List<Entity> beaconEntities, float globalTime)
+    {
+        foreach (var beaconEntity in beaconEntities)
+        {
+            if (!ecsWorld.IsAlive(beaconEntity)) continue;
+            bool triggered = ecsWorld.Has<DistressBeaconComponent>(beaconEntity) && ecsWorld.Get<DistressBeaconComponent>(beaconEntity).Triggered;
+            if (triggered) continue;
+
+            var pos = ecsWorld.Get<Transform>(beaconEntity).Position;
+
+            // Pulsing radio rings
+            for (int i = 0; i < 3; i++)
+            {
+                float phase = (globalTime * 1.5f + i * 0.8f) % 2.4f;
+                float ringRadius = 20f + phase * 40f;
+                byte ringAlpha = (byte)Math.Clamp((int)(160 * (1f - phase / 2.4f)), 0, 255);
+                renderer.DrawCircle(camera, pos, ringRadius,
+                    new Color4(255, 100, 80, ringAlpha), 24);
+            }
+
+            // Central beacon dot
+            float blink = 0.6f + 0.4f * MathF.Sin(globalTime * 5f);
+            renderer.DrawFilledCircle(camera, pos, 12f,
+                new Color4(255, 60, 60, (byte)(220 * blink)));
+            renderer.DrawFilledCircle(camera, pos, 6f,
+                new Color4(255, 200, 150, (byte)(255 * blink)));
+
+            // Label
+            string label = "DISTRESS SIGNAL";
+            float labelW = renderer.MeasureText(label, 1.0f) / camera.Zoom;
+            renderer.DrawText(camera, pos + new Vector2(-labelW / 2, -50f),
+                label, new Color3(255, 120, 100), 1.0f);
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private static int HashAngle(float angle, float radius)

@@ -19,6 +19,20 @@ public class StarSystemData
     public int PlanetCount { get; init; }
     public bool HasSpaceStation { get; init; }
     public int DangerLevel { get; init; }   // 1-5, determines enemy count/strength
+    public bool HasAnomaly { get; init; }
+    public AnomalyType AnomalyType { get; init; }
+}
+
+/// <summary>Types of anomalies that can affect a star system.</summary>
+public enum AnomalyType
+{
+    None,
+    /// <summary>Asteroids yield double resources.</summary>
+    ResourceSurge,
+    /// <summary>Enemies are stronger (danger bonus).</summary>
+    GravityStorm,
+    /// <summary>Derelicts may contain unique equipment.</summary>
+    TemporalRift
 }
 
 /// <summary>
@@ -148,6 +162,11 @@ public static class GalaxyGenerator
                 DangerConfig.MinDangerLevel,
                 DangerConfig.MaxDangerLevel);
 
+            bool hasAnomaly = rng.NextBool(WorldEventConfig.AnomalyChance);
+            var anomalyType = hasAnomaly
+                ? (AnomalyType)(rng.NextInt(1, 4)) // 1-3: ResourceSurge, GravityStorm, TemporalRift
+                : AnomalyType.None;
+
             systems.Add(new StarSystemData
             {
                 Index = i,
@@ -158,7 +177,9 @@ public static class GalaxyGenerator
                 StarColor = color,
                 PlanetCount = planetCount,
                 HasSpaceStation = rng.NextBool(0.75f),  // 75% chance of having a station
-                DangerLevel = dangerLevel
+                DangerLevel = dangerLevel,
+                HasAnomaly = hasAnomaly,
+                AnomalyType = anomalyType
             });
         }
 

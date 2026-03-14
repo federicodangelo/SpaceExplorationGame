@@ -8,6 +8,8 @@ public enum NavigationTargetType
     Planet,
     Moon,
     SpaceStation,
+    DerelictShip,
+    DistressBeacon,
     SurfaceTarget
 }
 
@@ -28,6 +30,12 @@ public class NavigationTarget
 
     /// <summary>Index of the target space station (if targeting a space station).</summary>
     public int SpaceStationIndex { get; set; } = -1;
+
+    /// <summary>Index of the target derelict ship (if targeting a derelict).</summary>
+    public int DerelictShipIndex { get; set; } = -1;
+
+    /// <summary>Index of the target distress beacon (if targeting a distress beacon).</summary>
+    public int DistressBeaconIndex { get; set; } = -1;
 
     /// <summary>Name of the navigation target (for display).</summary>
     public string Name { get; set; } = "";
@@ -53,6 +61,8 @@ public class NavigationTarget
         PlanetIndex = -1;
         MoonIndex = -1;
         SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
         Name = name;
         Color = color;
     }
@@ -64,6 +74,8 @@ public class NavigationTarget
         PlanetIndex = planetIndex;
         MoonIndex = -1;
         SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
         Name = name;
         Color = color;
     }
@@ -75,6 +87,8 @@ public class NavigationTarget
         PlanetIndex = planetIndex;
         MoonIndex = moonIndex;
         SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
         Name = name;
         Color = color;
     }
@@ -86,6 +100,34 @@ public class NavigationTarget
         PlanetIndex = -1;
         MoonIndex = -1;
         SpaceStationIndex = spaceStationIndex;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
+        Name = name;
+        Color = color;
+    }
+
+    /// <summary>Set a derelict ship as the nav target.</summary>
+    public void SetDerelict(int derelictShipIndex, string name, Color3 color)
+    {
+        Type = NavigationTargetType.DerelictShip;
+        PlanetIndex = -1;
+        MoonIndex = -1;
+        SpaceStationIndex = -1;
+        DerelictShipIndex = derelictShipIndex;
+        DistressBeaconIndex = -1;
+        Name = name;
+        Color = color;
+    }
+
+    /// <summary>Set a distress beacon as the nav target.</summary>
+    public void SetDistressBeacon(int distressBeaconIndex, string name, Color3 color)
+    {
+        Type = NavigationTargetType.DistressBeacon;
+        PlanetIndex = -1;
+        MoonIndex = -1;
+        SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = distressBeaconIndex;
         Name = name;
         Color = color;
     }
@@ -97,6 +139,8 @@ public class NavigationTarget
         PlanetIndex = -1;
         MoonIndex = -1;
         SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
         Name = name;
         Color = color;
         WorldX = worldX;
@@ -110,6 +154,8 @@ public class NavigationTarget
         PlanetIndex = -1;
         MoonIndex = -1;
         SpaceStationIndex = -1;
+        DerelictShipIndex = -1;
+        DistressBeaconIndex = -1;
         Name = "";
         Color = new Color3(255, 200, 100);
         WorldX = 0;

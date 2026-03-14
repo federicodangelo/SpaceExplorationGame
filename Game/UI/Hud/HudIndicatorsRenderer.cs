@@ -58,6 +58,7 @@ public static class HudIndicatorsRenderer
         Entity playerShip, World ecsWorld,
         List<Entity> planetEntities, List<PlanetData> planets,
         List<Entity> stationEntities, List<SpaceStationData> stations,
+        List<Entity> derelictEntities, List<Entity> distressBeaconEntities,
         float maxDistance = 5000f, PlayerData? player = null)
     {
         Vector2 playerPos = ecsWorld.IsAlive(playerShip)
@@ -99,6 +100,40 @@ public static class HudIndicatorsRenderer
             string name = i < stations.Count ? stations[i].Name.ToUpper() : "SPACE STATION";
             RenderOffscreenIndicator(renderer, camera, pos, new Color4(100, 200, 255, alpha),
                 prefix: name + " ", arrowSize: 9f);
+        }
+
+        // Derelict ships (amber indicators)
+        for (int i = 0; i < derelictEntities.Count; i++)
+        {
+            var entity = derelictEntities[i];
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.DerelictShip, DerelictShipIndex: var di } } && di == i)
+                continue;
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (ecsWorld.Has<DerelictShipComponent>(entity) && ecsWorld.Get<DerelictShipComponent>(entity).Salvaged) continue;
+            var pos = ecsWorld.Get<Transform>(entity).Position;
+            float dist = Vector2.Distance(playerPos, pos);
+            if (dist > maxDistance) continue;
+            float distFraction = dist / maxDistance;
+            byte alpha = (byte)(255 * (1f - distFraction * distFraction));
+            RenderOffscreenIndicator(renderer, camera, pos, new Color4(200, 160, 70, alpha),
+                prefix: "DERELICT ", arrowSize: 9f);
+        }
+
+        // Distress beacons (red indicators)
+        for (int i = 0; i < distressBeaconEntities.Count; i++)
+        {
+            var entity = distressBeaconEntities[i];
+            if (player is { Navigation: { HasTarget: true, Type: NavigationTargetType.DistressBeacon, DistressBeaconIndex: var dbi } } && dbi == i)
+                continue;
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (ecsWorld.Has<DistressBeaconComponent>(entity) && ecsWorld.Get<DistressBeaconComponent>(entity).Triggered) continue;
+            var pos = ecsWorld.Get<Transform>(entity).Position;
+            float dist = Vector2.Distance(playerPos, pos);
+            if (dist > maxDistance) continue;
+            float distFraction = dist / maxDistance;
+            byte alpha = (byte)(255 * (1f - distFraction * distFraction));
+            RenderOffscreenIndicator(renderer, camera, pos, new Color4(255, 100, 80, alpha),
+                prefix: "DISTRESS ", arrowSize: 9f);
         }
     }
 

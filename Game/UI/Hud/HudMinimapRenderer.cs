@@ -43,6 +43,7 @@ public static class HudMinimapRenderer
         List<PlanetData> planets, List<Entity> planetEntities,
         List<List<Entity>> moonEntities, List<Entity> stationEntities,
         List<Entity> asteroidEntities, List<Entity> enemyEntities,
+        List<Entity> derelictEntities, List<Entity> distressBeaconEntities,
         Entity playerShip, Entity starEntity, World ecsWorld)
     {
         float mapW = WorldConfig.SolarSystemWidth * WindowConfig.TileSize;
@@ -107,6 +108,26 @@ public static class HudMinimapRenderer
             markers.Add(new MinimapMarker(stationPos, new Color4(100, 200, 255, 80), Size: 9f, Shape: MinimapMarkerShape.Circle));
             // Main station dot
             markers.Add(new MinimapMarker(stationPos, new Color3(100, 200, 255), Size: 5f));
+        }
+
+        // Derelict ships (amber)
+        foreach (var entity in derelictEntities)
+        {
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (ecsWorld.Has<DerelictShipComponent>(entity) && ecsWorld.Get<DerelictShipComponent>(entity).Salvaged) continue;
+            var pos = ecsWorld.Get<Transform>(entity).Position;
+            markers.Add(new MinimapMarker(pos, new Color4(200, 160, 70, 80), Size: 7f, Shape: MinimapMarkerShape.Circle));
+            markers.Add(new MinimapMarker(pos, new Color3(200, 160, 70), Size: 4f));
+        }
+
+        // Distress beacons (red-orange, pulsing)
+        foreach (var entity in distressBeaconEntities)
+        {
+            if (!ecsWorld.IsAlive(entity)) continue;
+            if (ecsWorld.Has<DistressBeaconComponent>(entity) && ecsWorld.Get<DistressBeaconComponent>(entity).Triggered) continue;
+            var pos = ecsWorld.Get<Transform>(entity).Position;
+            markers.Add(new MinimapMarker(pos, new Color4(255, 100, 80, 100), Size: 8f, Shape: MinimapMarkerShape.Circle));
+            markers.Add(new MinimapMarker(pos, new Color3(255, 100, 80), Size: 4f));
         }
 
         // Enemies (1px, subdued — only pirates get slightly more visibility)

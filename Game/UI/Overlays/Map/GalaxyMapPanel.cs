@@ -263,6 +263,15 @@ public class GalaxyMapPanel : MapPanelBase
                 renderer.DrawSolidRing(camera, sys.GalaxyPosition, displayRadius * 1.22f, displayRadius * 1.45f, new Color4(sys.StarColor.R, sys.StarColor.G, sys.StarColor.B, ca3), 48);
             }
 
+            // Anomaly indicator — pulsing magenta ring
+            if (sys.HasAnomaly)
+            {
+                float aPulse = 0.5f + 0.5f * MathF.Sin((float)game.GlobalTime * 2.0f + i * 0.73f);
+                byte aa = (byte)Math.Clamp((int)(100 + 100 * aPulse) * alpha / 255, 0, 255);
+                renderer.DrawCircle(camera, sys.GalaxyPosition, displayRadius * 1.6f,
+                    new Color4(200, 80, 255, aa));
+            }
+
             if (inRange && !reachable && !isCurrentSystem)
                 renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f, new Color4(255, 40, 40, 60));
 
@@ -389,11 +398,23 @@ public class GalaxyMapPanel : MapPanelBase
             byte dangerB = sys.DangerLevel <= 2 ? (byte)100 : sys.DangerLevel <= 3 ? (byte)50 : (byte)80;
             renderer.DrawTextScreen(cx, selY + 112, dangerText, new Color3(dangerR, dangerG, dangerB), 1.5f, InfoPanelW - 24);
 
+            if (sys.HasAnomaly)
+            {
+                string anomalyLabel = sys.AnomalyType switch
+                {
+                    AnomalyType.ResourceSurge => "ANOMALY: RESOURCE SURGE",
+                    AnomalyType.GravityStorm => "ANOMALY: GRAVITY STORM",
+                    AnomalyType.TemporalRift => "ANOMALY: TEMPORAL RIFT",
+                    _ => "ANOMALY: UNKNOWN"
+                };
+                renderer.DrawTextScreen(cx, selY + 132, anomalyLabel, new Color3(200, 80, 255), 1.5f, InfoPanelW - 24);
+            }
+
             var missionsHere = game.Player.Missions.Active.Where(m =>
                 m.Target.IsSystem(_selectedSystemIndex) ||
                 (m.Status == MissionStatus.Completed && m.TurnIn.IsSystem(_selectedSystemIndex))).ToList();
 
-            float missionY = selY + 136;
+            float missionY = selY + (sys.HasAnomaly ? 156 : 136);
             if (missionsHere.Count > 0)
             {
                 renderer.DrawRectScreen(cx, missionY - 4, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));

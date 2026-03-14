@@ -8,11 +8,11 @@ using SpaceExplorationGame.Core.Config;
 namespace SpaceExplorationGame.UI.Overlays.Map;
 
 /// <summary>Type of object hovered/selected in the solar system map.</summary>
-public enum SolarMapObjectType { None, Star, Planet, Moon, SpaceStation }
+public enum SolarMapObjectType { None, Star, Planet, Moon, SpaceStation, DerelictShip, DistressBeacon }
 
 /// <summary>Identifies a clickable object in the solar system map.</summary>
 public readonly record struct SolarMapSelection(
-    SolarMapObjectType Type, int PlanetIndex = -1, int MoonIndex = -1, int SpaceStationIndex = -1);
+    SolarMapObjectType Type, int PlanetIndex = -1, int MoonIndex = -1, int SpaceStationIndex = -1, int DerelictShipIndex = -1, int DistressBeaconIndex = -1);
 
 /// <summary>
 /// Map panel showing the current solar system with interactive planets, moons, and stations.
@@ -29,6 +29,8 @@ public class SolarSystemMapPanel : MapPanelBase
     private StarSystemData? _currentStarSystem;
     private List<PlanetData> _planets = [];
     private List<SpaceStationData> _spaceStations = [];
+    private List<DerelictShipData> _derelicts = [];
+    private List<DistressSignalData> _distressSignals = [];
     private SolarMapSelection _hoveredObject = new(SolarMapObjectType.None);
     private SolarMapSelection _selectedObject = new(SolarMapObjectType.None);
 
@@ -45,6 +47,8 @@ public class SolarSystemMapPanel : MapPanelBase
             var content = game.UniverseGenerator.GenerateSolarSystem(_currentStarSystem);
             _planets = content.Planets;
             _spaceStations = content.SpaceStations;
+            _derelicts = content.DerelictShips ?? [];
+            _distressSignals = content.DistressSignals ?? [];
         }
 
         _hoveredObject = new(SolarMapObjectType.None);
@@ -144,6 +148,34 @@ public class SolarSystemMapPanel : MapPanelBase
                     _hoveredObject = new(SolarMapObjectType.SpaceStation, SpaceStationIndex: spaceStation.Index);
                 }
             }
+
+            // Derelict ships
+            for (int i = 0; i < _derelicts.Count; i++)
+            {
+                var dPos = GetDerelictWorldPos(_derelicts[i], time);
+                var dScreen = Camera.WorldToScreen(dPos);
+                float dHitR = MathF.Max(6f * Camera.Zoom, 10f);
+                float dDist = (selectionPoint - dScreen).LengthSquared();
+                if (dDist < dHitR * dHitR && dDist < bestDist)
+                {
+                    bestDist = dDist;
+                    _hoveredObject = new(SolarMapObjectType.DerelictShip, DerelictShipIndex: i);
+                }
+            }
+
+            // Distress beacons
+            for (int i = 0; i < _distressSignals.Count; i++)
+            {
+                var bPos = GetDistressBeaconWorldPos(_distressSignals[i]);
+                var bScreen = Camera.WorldToScreen(bPos);
+                float bHitR = MathF.Max(6f * Camera.Zoom, 10f);
+                float bDist = (selectionPoint - bScreen).LengthSquared();
+                if (bDist < bHitR * bHitR && bDist < bestDist)
+                {
+                    bestDist = bDist;
+                    _hoveredObject = new(SolarMapObjectType.DistressBeacon, DistressBeaconIndex: i);
+                }
+            }
         }
 
         // Click to select / click same object again to set target and close
@@ -215,6 +247,23 @@ public class SolarSystemMapPanel : MapPanelBase
                                        MathF.Sin(angle) * station.OrbitRadius);
     }
 
+    private Vector2 GetDerelictWorldPos(DerelictShipData derelict, float time)
+    {
+        float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
+        float angle = derelict.StartAngle + derelict.OrbitSpeed * time;
+        return new Vector2(cx + MathF.Cos(angle) * derelict.OrbitRadius,
+                           cy + MathF.Sin(angle) * derelict.OrbitRadius);
+    }
+
+    private static Vector2 GetDistressBeaconWorldPos(DistressSignalData signal)
+    {
+        float cx = WorldConfig.SolarSystemWidth * WindowConfig.TileSize / 2f;
+        float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
+        return new Vector2(cx + MathF.Cos(signal.Angle) * signal.Distance,
+                           cy + MathF.Sin(signal.Angle) * signal.Distance);
+    }
+
     private static bool IsCurrentNavTarget(PlayerData player, SolarMapSelection sel)
     {
         return sel.Type switch
@@ -227,6 +276,10 @@ public class SolarSystemMapPanel : MapPanelBase
                                       && player.Navigation.MoonIndex == sel.MoonIndex,
             SolarMapObjectType.SpaceStation => player.Navigation.Type == NavigationTargetType.SpaceStation
                                          && player.Navigation.SpaceStationIndex == sel.SpaceStationIndex,
+            SolarMapObjectType.DerelictShip => player.Navigation.Type == NavigationTargetType.DerelictShip
+                                         && player.Navigation.DerelictShipIndex == sel.DerelictShipIndex,
+            SolarMapObjectType.DistressBeacon => player.Navigation.Type == NavigationTargetType.DistressBeacon
+                                         && player.Navigation.DistressBeaconIndex == sel.DistressBeaconIndex,
             _ => false
         };
     }
@@ -254,6 +307,12 @@ public class SolarSystemMapPanel : MapPanelBase
             case SolarMapObjectType.SpaceStation when _selectedObject.SpaceStationIndex >= 0 && _selectedObject.SpaceStationIndex < _spaceStations.Count:
                 var spaceStation = _spaceStations[_selectedObject.SpaceStationIndex];
                 player.Navigation.SetStation(_selectedObject.SpaceStationIndex, spaceStation.Name, new Color3(100, 200, 255));
+                break;
+            case SolarMapObjectType.DerelictShip when _selectedObject.DerelictShipIndex >= 0 && _selectedObject.DerelictShipIndex < _derelicts.Count:
+                player.Navigation.SetDerelict(_selectedObject.DerelictShipIndex, $"DERELICT #{_selectedObject.DerelictShipIndex + 1}", new Color3(200, 160, 70));
+                break;
+            case SolarMapObjectType.DistressBeacon when _selectedObject.DistressBeaconIndex >= 0 && _selectedObject.DistressBeaconIndex < _distressSignals.Count:
+                player.Navigation.SetDistressBeacon(_selectedObject.DistressBeaconIndex, "DISTRESS SIGNAL", new Color3(255, 100, 80));
                 break;
         }
     }
@@ -371,6 +430,52 @@ public class SolarSystemMapPanel : MapPanelBase
 
             renderer.DrawTextCentered(camera, sPos + new Vector2(0, ds + labelOffset),
                 spaceStation.Name, new Color3(100, 200, 255), Math.Max(1f, camera.Zoom * 12f));
+        }
+
+        // Derelict ships (amber)
+        for (int i = 0; i < _derelicts.Count; i++)
+        {
+            var dPos = GetDerelictWorldPos(_derelicts[i], time);
+            float dd = Math.Max(6f, 2.5f / camera.Zoom);
+
+            renderer.DrawFilledCircle(camera, dPos, dd * 0.6f, new Color4(200, 160, 70, 200));
+            renderer.DrawCircle(camera, dPos, dd, new Color4(200, 160, 70, 120), 12);
+
+            bool isDHovered = _hoveredObject.Type == SolarMapObjectType.DerelictShip && _hoveredObject.DerelictShipIndex == i;
+            bool isDSelected = _selectedObject.Type == SolarMapObjectType.DerelictShip && _selectedObject.DerelictShipIndex == i;
+            bool isDTarget = game.Player.Navigation.Type == NavigationTargetType.DerelictShip && game.Player.Navigation.DerelictShipIndex == i;
+
+            if (isDHovered || isDSelected)
+                renderer.DrawCircle(camera, dPos, dd + 4, new Color3(200, 170, 80));
+            if (isDTarget)
+                DrawTargetBrackets(renderer, camera, dPos, dd + 8, game);
+
+            renderer.DrawTextCentered(camera, dPos + new Vector2(0, dd + labelOffset),
+                "DERELICT", new Color3(200, 160, 70), Math.Max(1f, camera.Zoom * 10f));
+        }
+
+        // Distress beacons (red-orange, pulsing rings)
+        for (int bi = 0; bi < _distressSignals.Count; bi++)
+        {
+            var bPos = GetDistressBeaconWorldPos(_distressSignals[bi]);
+            float bd = Math.Max(6f, 2.5f / camera.Zoom);
+            float bPulse = 0.7f + 0.3f * MathF.Sin(time * 3f);
+
+            renderer.DrawFilledCircle(camera, bPos, bd * 0.5f, new Color4(255, 100, 80, (byte)(220 * bPulse)));
+            renderer.DrawCircle(camera, bPos, bd * 1.2f, new Color4(255, 100, 80, (byte)(140 * bPulse)), 16);
+            renderer.DrawCircle(camera, bPos, bd * 2f, new Color4(255, 100, 80, (byte)(60 * bPulse)), 16);
+
+            bool isBHovered = _hoveredObject is { Type: SolarMapObjectType.DistressBeacon } && _hoveredObject.DistressBeaconIndex == bi;
+            bool isBSelected = _selectedObject is { Type: SolarMapObjectType.DistressBeacon } && _selectedObject.DistressBeaconIndex == bi;
+            bool isBTarget = game.Player.Navigation is { Type: NavigationTargetType.DistressBeacon } && game.Player.Navigation.DistressBeaconIndex == bi;
+
+            if (isBHovered || isBSelected)
+                renderer.DrawCircle(camera, bPos, bd + 4, new Color3(255, 120, 100));
+            if (isBTarget)
+                DrawTargetBrackets(renderer, camera, bPos, bd + 8, game);
+
+            renderer.DrawTextCentered(camera, bPos + new Vector2(0, bd + labelOffset),
+                "DISTRESS SIGNAL", new Color3(255, 100, 80), Math.Max(1f, camera.Zoom * 10f));
         }
 
         // Mission markers on planets/stations
@@ -613,6 +718,41 @@ public class SolarSystemMapPanel : MapPanelBase
                 renderer.DrawTextScreen(px, py,
                     $"DOCK: FLY NEAR & PRESS {game.Input.GetActionHelpText(InputAction.Interact).ToUpper()}",
                     new Color3(100, 200, 255), 1.5f, InfoPanelW - 24);
+                py += 28;
+                RenderTargetButton(game, renderer, px, py, isTarget);
+                break;
+
+            case SolarMapObjectType.DerelictShip when sel.DerelictShipIndex >= 0 && sel.DerelictShipIndex < _derelicts.Count:
+                renderer.DrawTextScreen(px, py, "SELECTED: DERELICT SHIP", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py, $"DERELICT #{sel.DerelictShipIndex + 1}" + targetTag,
+                    isTarget ? new Color3(255, 200, 50) : new Color3(200, 160, 70), 1.8f, InfoPanelW - 24);
+                py += 26;
+                renderer.DrawTextScreen(px, py, "STATUS: ABANDONED", new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py, "SALVAGEABLE: YES", new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py,
+                    $"FLY NEAR & PRESS {game.Input.GetActionHelpText(InputAction.Interact).ToUpper()} TO SALVAGE",
+                    new Color3(200, 160, 70), 1.5f, InfoPanelW - 24);
+                py += 28;
+                RenderTargetButton(game, renderer, px, py, isTarget);
+                break;
+
+            case SolarMapObjectType.DistressBeacon:
+                renderer.DrawTextScreen(px, py, "SELECTED: DISTRESS SIGNAL", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py, "DISTRESS BEACON" + targetTag,
+                    isTarget ? new Color3(255, 200, 50) : new Color3(255, 100, 80), 1.8f, InfoPanelW - 24);
+                py += 26;
+                renderer.DrawTextScreen(px, py, "ORIGIN: UNKNOWN", new Color3(200, 200, 200), 1.5f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py, "WARNING: MAY BE A TRAP",
+                    new Color3(255, 80, 80), 1.5f, InfoPanelW - 24);
+                py += 20;
+                renderer.DrawTextScreen(px, py,
+                    $"FLY NEAR & PRESS {game.Input.GetActionHelpText(InputAction.Interact).ToUpper()} TO INVESTIGATE",
+                    new Color3(255, 100, 80), 1.5f, InfoPanelW - 24);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;

@@ -26,6 +26,9 @@ public enum StartOption
     SettlementOnFoot,
     SettlementOnVehicle,
     SettlementInside,
+    DerelictShip,
+    DistressBeacon,
+    DistressAmbush,
 }
 
 /// <summary>
@@ -394,6 +397,30 @@ public class MainMenuState : GameState
                 break;
             }
 
+            case StartOption.DerelictShip:
+            {
+                var system = _previewSystem ?? PickRandomDerelictSystem(game, dangerFilter);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.ChangeState(new SolarSystemState(system));
+                break;
+            }
+
+            case StartOption.DistressBeacon:
+            {
+                var system = _previewSystem ?? PickRandomDistressSystem(game, dangerFilter);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.ChangeState(new SolarSystemState(system));
+                break;
+            }
+
+            case StartOption.DistressAmbush:
+            {
+                var system = _previewSystem ?? PickRandomDistressAmbushSystem(game, dangerFilter);
+                game.Player.CurrentStarSystemIndex = system.Index;
+                game.ChangeState(new SolarSystemState(system));
+                break;
+            }
+
             default:
             {
                 var starSystem = _previewSystem ?? PickRandomSystem(game, dangerFilter);
@@ -548,6 +575,42 @@ public class MainMenuState : GameState
                 _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nPlanet: {planet.Name} ({planet.Type}) (Settlement){settlementMode}";
                 break;
             }
+
+            case StartOption.DerelictShip:
+            {
+                var system = PickRandomDerelictSystem(game, danger);
+                _previewSystem = system;
+                _previewPlanet = null;
+                _previewSpaceStation = null;
+                var content = game.UniverseGenerator.GenerateSolarSystem(system);
+                int count = content.DerelictShips?.Count ?? 0;
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nDerelict Ships: {count}";
+                break;
+            }
+
+            case StartOption.DistressBeacon:
+            {
+                var system = PickRandomDistressSystem(game, danger);
+                _previewSystem = system;
+                _previewPlanet = null;
+                _previewSpaceStation = null;
+                var content = game.UniverseGenerator.GenerateSolarSystem(system);
+                int count = content.DistressSignals?.Count ?? 0;
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nDistress Signals: {count}";
+                break;
+            }
+
+            case StartOption.DistressAmbush:
+            {
+                var system = PickRandomDistressAmbushSystem(game, danger);
+                _previewSystem = system;
+                _previewPlanet = null;
+                _previewSpaceStation = null;
+                var content = game.UniverseGenerator.GenerateSolarSystem(system);
+                int ambushCount = content.DistressSignals?.Count(s => s.IsAmbush) ?? 0;
+                _menuOverlay.LocationPreview = $"System: {system.Name} (Danger {system.DangerLevel})\nDistress Ambush: {ambushCount}";
+                break;
+            }
         }
     }
 
@@ -592,6 +655,7 @@ public class MainMenuState : GameState
                 return new SystemPlanet(system, landable[rng.NextInt(0, landable.Count)]);
         }
 
+        Console.WriteLine("No landable planets found with current filters, falling back to random planet.");
         var fb = systems[0];
         var fbPlanets = game.UniverseGenerator.GenerateSolarSystem(fb).Planets;
         return new SystemPlanet(fb, fbPlanets[0]);
@@ -619,6 +683,7 @@ public class MainMenuState : GameState
                 return new SystemSpaceStation(system, stations[0]);
         }
 
+        Console.WriteLine("No space stations found with current filters, falling back to random system.");
         var fb = game.GalaxyData[0];
         var fbStations = game.UniverseGenerator.GenerateSolarSystem(fb).SpaceStations;
         return new SystemSpaceStation(fb, fbStations[0]);
@@ -640,6 +705,7 @@ public class MainMenuState : GameState
                 return new SystemPlanet(system, settled[rng.NextInt(0, settled.Count)]);
         }
 
+        Console.WriteLine("No settled planets found with current filters, falling back to random planet.");
         return PickRandomPlanet(game, dangerFilter);
     }
 
@@ -667,9 +733,64 @@ public class MainMenuState : GameState
             }
         }
 
+        Console.WriteLine("No settlements found with current filters, falling back to random planet.");
         var (fbSystem, fbPlanet) = PickRandomSettlement(game, dangerFilter);
         var fbSurface = game.UniverseGenerator.GeneratePlanetSurface(fbSystem, fbPlanet);
         return new SystemPlanetSettlement(fbSystem, fbPlanet, fbSurface.Settlements[0]);
+    }
+
+    private StarSystemData PickRandomDerelictSystem(Game game, int dangerFilter)
+    {
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(7 + _rerollCounter * 7));
+
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            var system = systems[rng.NextInt(0, systems.Count)];
+            var content = game.UniverseGenerator.GenerateSolarSystem(system);
+            if (content.DerelictShips is { Count: > 0 })
+                return system;
+        }
+
+        Console.WriteLine("No derelict ship systems found with current filters, falling back to random system.");
+        return PickRandomSystem(game, dangerFilter);
+    }
+
+    private StarSystemData PickRandomDistressSystem(Game game, int dangerFilter)
+    {
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(8 + _rerollCounter * 7));
+
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            var system = systems[rng.NextInt(0, systems.Count)];
+            var content = game.UniverseGenerator.GenerateSolarSystem(system);
+            if (content.DistressSignals is { Count: > 0 })
+                return system;
+        }
+
+        Console.WriteLine("No distress signal systems found with current filters, falling back to random system.");
+        return PickRandomSystem(game, dangerFilter);
+    }
+
+    private StarSystemData PickRandomDistressAmbushSystem(Game game, int dangerFilter)
+    {
+        var systems = GetFilteredSystems(game, dangerFilter);
+        if (systems.Count == 0) systems = game.GalaxyData;
+        var rng = new SeededRandom(game.Seeds.GalaxySeed ^ (ulong)(9 + _rerollCounter * 7));
+
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            var system = systems[rng.NextInt(0, systems.Count)];
+            var content = game.UniverseGenerator.GenerateSolarSystem(system);
+            if (content.DistressSignals is { Count: > 0 } signals && signals.Exists(s => s.IsAmbush))
+                return system;
+        }
+
+        Console.WriteLine("No distress ambush systems found with current filters, falling back to random system.");
+        return PickRandomDistressSystem(game, dangerFilter);
     }
 
     // ── Render ──

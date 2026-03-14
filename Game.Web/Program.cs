@@ -174,7 +174,10 @@ public partial class WebMain
             "space-station" or "station" => ResolveStation(sub),
             "planet" => ResolvePlanet(sub),
             "settlement" => ResolveSettlement(sub),
-            _ => LogAndReturnNull($"Unknown ?location value '{location}'. Valid: system, station, planet, settlement."),
+            "derelict" or "derelict-ship" => StartOption.DerelictShip,
+            "distress" or "distress-beacon" => StartOption.DistressBeacon,
+            "distress-ambush" or "ambush" => StartOption.DistressAmbush,
+            _ => LogAndReturnNull($"Unknown ?location value '{location}'. Valid: system, station, planet, settlement, derelict, distress-beacon, distress-ambush."),
         };
     }
 

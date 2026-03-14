@@ -207,6 +207,41 @@ public class NpcShipSpawnManager
         _enemyEntities.Add(entity);
     }
 
+    /// <summary>Spawn a ship of the given faction at a specific position (used for event-triggered spawns).</summary>
+    public void SpawnShipAt(Vector2 position, Faction faction)
+    {
+        int npcId = AllocateNpcId();
+        var rng = NpcShipLoadoutHelper.CreateNpcRng(npcId);
+
+        var shipType = NpcShipLoadoutHelper.ChooseNpcShipType(faction, _config.DangerLevel, rng);
+        var loadout = NpcShipLoadoutHelper.BuildNpcLoadout(shipType, faction, _config.QualityTier, rng);
+        var stats = NpcShipLoadoutHelper.BuildNpcShipStats(shipType, loadout);
+        var weapons = CombatHelper.BuildWeaponSpecs(loadout);
+        int lootCredits = faction == Faction.Pirate
+            ? NpcShipLoadoutHelper.ComputeNpcLootCredits(shipType, loadout)
+            : 0;
+
+        var spawnData = new NpcShipSpawnData
+        {
+            Position = position,
+            Rotation = rng.NextFloat(0, 360),
+            Faction = faction,
+            Stats = stats,
+            Weapons = weapons,
+            DangerLevel = _config.DangerLevel,
+            LootCredits = lootCredits
+        };
+
+        var entity = EntityFactory.CreateNpcShip(_world, spawnData, npcId);
+        _world.Add(entity, new WarpEffect
+        {
+            IsWarpingIn = true,
+            Progress = 0f,
+            Duration = NpcConfig.NpcWarpDuration
+        });
+        _enemyEntities.Add(entity);
+    }
+
     private Vector2 RandomPosition(SeededRandom rng, float minRadius, float maxRadius)
     {
         float angle = rng.NextFloat(0, MathF.PI * 2f);

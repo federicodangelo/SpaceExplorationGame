@@ -89,7 +89,9 @@ public enum CelestialType
     Planet,
     Moon,
     Asteroid,
-    SpaceStation
+    SpaceStation,
+    DerelictShip,
+    DistressBeacon
 }
 
 /// <summary>Orbital mechanics around a parent body.</summary>
@@ -135,7 +137,9 @@ public struct Interactable
 public enum InteractionType
 {
     LandOnPlanet,
-    DockAtSpaceStation
+    DockAtSpaceStation,
+    SalvageDerelict,
+    InvestigateDistress
 }
 
 /// <summary>Per-frame ship input intent used by both player and NPC ships.</summary>
@@ -431,6 +435,27 @@ public struct AsteroidField
 public struct CoverObstacle
 {
     public float Size;                 // visual/collision size
+}
+
+/// <summary>Marks an entity as a derelict ship that can be salvaged for loot.</summary>
+[Component]
+public struct DerelictShipComponent
+{
+    public int CreditReward;
+    public ResourceType ResourceReward;
+    public int ResourceAmount;
+    public bool HasRarePart;           // whether salvaging grants a rare/legendary part
+    public bool Salvaged;              // already looted
+}
+
+/// <summary>Marks an entity as a distress beacon that triggers an event when approached.</summary>
+[Component]
+public struct DistressBeaconComponent
+{
+    public bool IsAmbush;              // true = pirate trap, false = trader in need
+    public int RewardCredits;          // credit reward for helping
+    public int AmbushPirateCount;      // number of pirates to spawn on ambush trigger
+    public bool Triggered;             // already activated
 }
 
 /// <summary>Immutable configuration for surface enemy AI behaviour (movement, detection, engagement ranges).</summary>

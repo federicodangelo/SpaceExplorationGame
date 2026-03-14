@@ -48,13 +48,16 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
     private int StartGameIdx => _startGameIdx;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
-    private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
+    private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT", "DERELICT SHIP", "DISTRESS BEACON", "DISTRESS AMBUSH"];
     private static readonly (string Label, StartOption Value)[][] SubLocationOptions =
     [
         [("-", StartOption.StarSystem)],
         [("ORBIT", StartOption.SpaceStation), ("MENU", StartOption.SpaceStationMenu), ("INSIDE", StartOption.SpaceStationInside)],
         [("ORBIT", StartOption.Planet), ("LANDED", StartOption.PlanetSurface), ("ON FOOT", StartOption.PlanetSurfaceOnFoot), ("ON VEHICLE", StartOption.PlanetSurfaceOnVehicle)],
         [("ABOVE", StartOption.Settlement), ("INSIDE", StartOption.SettlementInside), ("ON FOOT", StartOption.SettlementOnFoot), ("ON VEHICLE", StartOption.SettlementOnVehicle)],
+        [("-", StartOption.DerelictShip)],
+        [("-", StartOption.DistressBeacon)],
+        [("-", StartOption.DistressAmbush)],
     ];
 
     private static MenuOption<MenuAction>[] BuildOptions(bool canQuit, bool debugEnabled)

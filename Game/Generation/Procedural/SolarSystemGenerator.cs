@@ -238,7 +238,65 @@ public static class SolarSystemGenerator
         float starDisplayRadius = starSystem.StarRadius * 2f;
         Vector2 startingPosition = new(centerX - (starDisplayRadius + 100f), centerY);
 
-        return new SolarSystemContent(planets, asteroidBelts, stations, npcSpawnConfig, startingPosition);
+        var derelicts = GenerateDerelicts(rng, starSystem, planetCount);
+        var distressSignals = GenerateDistressSignals(rng, starSystem);
+
+        return new SolarSystemContent(planets, asteroidBelts, stations, npcSpawnConfig, startingPosition,
+            derelicts, distressSignals);
+    }
+
+    private static List<DerelictShipData> GenerateDerelicts(SeededRandom rng, StarSystemData starSystem, int planetCount)
+    {
+        var derelicts = new List<DerelictShipData>();
+        int maxDerelicts = Math.Min(starSystem.DangerLevel, WorldEventConfig.MaxDerelictsPerSystem);
+
+        for (int i = 0; i < maxDerelicts; i++)
+        {
+            if (!rng.NextBool(WorldEventConfig.DerelictSpawnChance))
+                continue;
+
+            float orbitRadius = BaseOrbitRadius + rng.NextFloat(0, planetCount * OrbitSpacing);
+            float orbitSpeed = rng.NextFloat(0.0005f, 0.003f);
+            float startAngle = rng.NextFloat(0, MathF.PI * 2);
+            int credits = rng.NextInt(WorldEventConfig.DerelictMinCredits,
+                WorldEventConfig.DerelictMaxCredits + 1);
+            credits += starSystem.DangerLevel * 50; // scale with danger
+
+            var resource = rng.NextFloat() switch
+            {
+                < 0.30f => ResourceType.Iron,
+                < 0.50f => ResourceType.Nickel,
+                < 0.65f => ResourceType.Gold,
+                < 0.80f => ResourceType.Platinum,
+                _ => ResourceType.Crystal
+            };
+            int resourceAmount = rng.NextInt(2, 8 + starSystem.DangerLevel * 2);
+            bool hasRarePart = starSystem.HasAnomaly && starSystem.AnomalyType == AnomalyType.TemporalRift
+                ? rng.NextBool(WorldEventConfig.DerelictRarePartChance * 3f)
+                : rng.NextBool(WorldEventConfig.DerelictRarePartChance);
+
+            derelicts.Add(new DerelictShipData(orbitRadius, orbitSpeed, startAngle,
+                credits, resource, resourceAmount, hasRarePart));
+        }
+
+        return derelicts;
+    }
+
+    private static List<DistressSignalData> GenerateDistressSignals(SeededRandom rng, StarSystemData starSystem)
+    {
+        var signals = new List<DistressSignalData>();
+        if (!rng.NextBool(WorldEventConfig.DistressSignalChance))
+            return signals;
+
+        bool isAmbush = rng.NextBool(WorldEventConfig.DistressAmbushChance);
+        float angle = rng.NextFloat(0, MathF.PI * 2);
+        float distance = rng.NextFloat(2000f, 6000f);
+        int rewardCredits = isAmbush ? 0 : rng.NextInt(WorldEventConfig.DistressHelpCreditsMin,
+            WorldEventConfig.DistressHelpCreditsMax + 1);
+        int pirateCount = isAmbush ? WorldEventConfig.AmbushBasePirates + starSystem.DangerLevel / 2 : 0;
+
+        signals.Add(new DistressSignalData(angle, distance, isAmbush, rewardCredits, pirateCount));
+        return signals;
     }
 
     private static NpcShipSpawnConfig GenerateNpcSpawnConfig(
@@ -248,6 +306,8 @@ public static class SolarSystemGenerator
     {
         var enemyRng = new SeededRandom(rng.DeriveChildSeed(5000));
         int dangerLevel = starSystem.DangerLevel;
+        if (starSystem.AnomalyType == AnomalyType.GravityStorm)
+            dangerLevel = Math.Min(dangerLevel + WorldEventConfig.GravityStormDangerBonus, 7);
 
         float maxOrbit = 0f;
         foreach (var planet in planets)

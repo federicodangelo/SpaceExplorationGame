@@ -230,7 +230,10 @@ internal static class Program
             "space-station" or "station" => ResolveStation(sub),
             "planet" => ResolvePlanet(sub),
             "settlement" => ResolveSettlement(sub),
-            _ => throw new ArgumentException($"Invalid --location: {location}. Valid values: system, station, planet, settlement")
+            "derelict" or "derelict-ship" => StartOption.DerelictShip,
+            "distress" or "distress-beacon" => StartOption.DistressBeacon,
+            "distress-ambush" or "ambush" => StartOption.DistressAmbush,
+            _ => throw new ArgumentException($"Invalid --location: {location}. Valid values: system, station, planet, settlement, derelict, distress-beacon, distress-ambush")
         };
     }
 
@@ -295,12 +298,13 @@ internal static class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --help, -h, /?                 Show this help message and exit");
         Console.WriteLine("  --seed, -s <seed>              Explicit galaxy seed (ulong)");
-        Console.WriteLine("  --location, -l <location>      system | station | planet | settlement");
+        Console.WriteLine("  --location, -l <location>      system | station | planet | settlement | derelict | distress-beacon | distress-ambush");
         Console.WriteLine("  --sublocation, -sl <subloc>    Depends on --location:");
         Console.WriteLine("                              system: none (or omit)");
         Console.WriteLine("                              station: orbit | docked | inside");
         Console.WriteLine("                              planet: orbit | landed | on-foot | on-vehicle");
         Console.WriteLine("                              settlement: above | inside | on-foot | on-vehicle");
+        Console.WriteLine("                              derelict / distress-beacon / distress-ambush: none (or omit)");
         Console.WriteLine("  --showcase, -sc <showcase>     debug showcase: star-type | planet-type | asteroid | surface-mining");
         Console.WriteLine("  --star-type, -st <type>        optional for star-type showcase (default: G)");
         Console.WriteLine("  --debug, -d                    enable the DEBUG menu in the main menu");

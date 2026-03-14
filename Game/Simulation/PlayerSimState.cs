@@ -26,6 +26,8 @@ public class SolarPlayerState : CombatPlayerState
     public int NearbySpaceStationIndex = -1;
     public int NearbyMoonPlanetIndex = -1;
     public int NearbyMoonIndex = -1;
+    public int NearbyDerelictIndex = -1;
+    public int NearbyDistressBeaconIndex = -1;
 
     public Entity LastHitAsteroid;
     public float MiningHudTimer;
