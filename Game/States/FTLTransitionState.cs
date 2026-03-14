@@ -99,6 +99,9 @@ public class FTLTransitionState : GameState
 
         if (_elapsed >= TotalDuration)
         {
+            // Clear the saved world position so the player spawns near the target star
+            // instead of appearing at the same coordinates as the previous system.
+            game.Player.ShipWorldPosition = System.Numerics.Vector2.Zero;
             game.ChangeState(new SolarSystemState(_targetSystem));
             return;
         }
