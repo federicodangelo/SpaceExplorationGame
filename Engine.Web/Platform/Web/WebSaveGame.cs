@@ -54,6 +54,8 @@ public sealed class WebSaveGame : BaseSaveGame
             JsSettings.Save(GetMainKey(playerId), "");
             for (int i = 1; i <= MaxBackups; i++)
                 JsSettings.Save(GetBackupKey(playerId, i), "");
+
+            RemoveFromIndex(playerId);
         }
         catch (Exception ex)
         {
@@ -109,6 +111,24 @@ public sealed class WebSaveGame : BaseSaveGame
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[SaveGame] Failed to update save index for player {playerId}: {ex.Message}");
+        }
+    }
+
+    private void RemoveFromIndex(string playerId)
+    {
+        try
+        {
+            var indexJson = ReadRaw(Prefix + "index");
+            if (indexJson == null) return;
+            List<string> playerIds;
+            try { playerIds = JsonSerializer.Deserialize(indexJson, SaveGameIndexJsonContext.Default.ListString) ?? new(); }
+            catch { return; }
+            if (playerIds.Remove(playerId))
+                JsSettings.Save(Prefix + "index", JsonSerializer.Serialize(playerIds, SaveGameIndexJsonContext.Default.ListString));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[SaveGame] Failed to remove player {playerId} from save index: {ex.Message}");
         }
     }
 }
