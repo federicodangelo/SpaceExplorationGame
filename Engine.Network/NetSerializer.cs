@@ -443,6 +443,100 @@ public static class NetSerializer
         };
     }
 
+    public static byte[] Write(in C_InteractDerelictMessage msg)
+    {
+        using var ms = new MemoryStream(10);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_InteractDerelict);
+        w.Write(msg.SolarSystemIndex);
+        w.Write(msg.DerelictIndex);
+        return ms.ToArray();
+    }
+
+    public static C_InteractDerelictMessage ReadInteractDerelict(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new C_InteractDerelictMessage
+        {
+            SolarSystemIndex = r.ReadInt32(),
+            DerelictIndex = r.ReadInt32(),
+        };
+    }
+
+    public static byte[] Write(in C_InteractDistressMessage msg)
+    {
+        using var ms = new MemoryStream(10);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_InteractDistress);
+        w.Write(msg.SolarSystemIndex);
+        w.Write(msg.BeaconIndex);
+        return ms.ToArray();
+    }
+
+    public static C_InteractDistressMessage ReadInteractDistress(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new C_InteractDistressMessage
+        {
+            SolarSystemIndex = r.ReadInt32(),
+            BeaconIndex = r.ReadInt32(),
+        };
+    }
+
+    public static byte[] Write(in S_InteractDerelictResultMessage msg)
+    {
+        using var ms = new MemoryStream(14);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_InteractDerelictResult);
+        w.Write(msg.Success);
+        w.Write(msg.SolarSystemIndex);
+        w.Write(msg.DerelictIndex);
+        return ms.ToArray();
+    }
+
+    public static S_InteractDerelictResultMessage ReadInteractDerelictResult(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new S_InteractDerelictResultMessage
+        {
+            Success = r.ReadBoolean(),
+            SolarSystemIndex = r.ReadInt32(),
+            DerelictIndex = r.ReadInt32(),
+        };
+    }
+
+    public static byte[] Write(in S_InteractDistressResultMessage msg)
+    {
+        using var ms = new MemoryStream(14);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_InteractDistressResult);
+        w.Write(msg.Success);
+        w.Write(msg.SolarSystemIndex);
+        w.Write(msg.BeaconIndex);
+        w.Write(msg.IsAmbush);
+        return ms.ToArray();
+    }
+
+    public static S_InteractDistressResultMessage ReadInteractDistressResult(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new S_InteractDistressResultMessage
+        {
+            Success = r.ReadBoolean(),
+            SolarSystemIndex = r.ReadInt32(),
+            BeaconIndex = r.ReadInt32(),
+            IsAmbush = r.ReadBoolean(),
+        };
+    }
+
     // ────────────────────────────────────────────────────────────
     //  NPC state sub-serialization
     // ────────────────────────────────────────────────────────────

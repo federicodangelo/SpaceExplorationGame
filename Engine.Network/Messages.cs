@@ -348,3 +348,55 @@ public struct C_PlayerKilledByNpcMessage
     /// <summary>The NPC that killed the player (-1 if unknown).</summary>
     public int NpcId;
 }
+
+// ────────────────────────────────────────────────────────────────
+//  World interaction messages (derelicts / distress signals)
+// ────────────────────────────────────────────────────────────────
+
+/// <summary>Client requests to salvage a derelict ship in the given solar system.</summary>
+public struct C_InteractDerelictMessage
+{
+    /// <summary>The star system the derelict belongs to.</summary>
+    public int SolarSystemIndex;
+    /// <summary>Index into the solar system's derelict list.</summary>
+    public int DerelictIndex;
+}
+
+/// <summary>Client requests to trigger a distress signal beacon.</summary>
+public struct C_InteractDistressMessage
+{
+    /// <summary>The star system the beacon belongs to.</summary>
+    public int SolarSystemIndex;
+    /// <summary>Index into the solar system's distress beacon list.</summary>
+    public int BeaconIndex;
+}
+
+/// <summary>
+/// Server responds to a derelict salvage request.
+/// On success the client is expected to apply rewards using its local simulation data.
+/// </summary>
+public struct S_InteractDerelictResultMessage
+{
+    /// <summary>True if this client was first to salvage; false if already claimed.</summary>
+    public bool Success;
+    /// <summary>Solar system the derelict belongs to (echoed from the request for location validation).</summary>
+    public int SolarSystemIndex;
+    /// <summary>Index of the derelict (echoed back so the client knows which one to reward).</summary>
+    public int DerelictIndex;
+}
+
+/// <summary>
+/// Server responds to a distress signal trigger request.
+/// On success the client shows results; pirates are spawned server-side and synced via NPC state.
+/// </summary>
+public struct S_InteractDistressResultMessage
+{
+    /// <summary>True if this client was first to trigger; false if already claimed.</summary>
+    public bool Success;
+    /// <summary>Solar system the beacon belongs to (echoed from the request for location validation).</summary>
+    public int SolarSystemIndex;
+    /// <summary>Index of the beacon (echoed back so the client knows which one to reward).</summary>
+    public int BeaconIndex;
+    /// <summary>True if the beacon was an ambush (pirates); false if a genuine rescue.</summary>
+    public bool IsAmbush;
+}

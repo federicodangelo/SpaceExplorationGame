@@ -263,6 +263,7 @@ public class Game : GameBase
         {
             SyncRemotePlayersInSimulations(net, Coordinator.Simulations);
             SyncNpcStatesInSimulations(net, Coordinator.Simulations);
+            ProcessInteractionResultsInSimulations(net, Coordinator.Simulations);
             SendLocalPlayerStateToServer(net, Coordinator.Simulations);
         }
 
@@ -340,6 +341,15 @@ public class Game : GameBase
         {
             if (entry is SpaceExplorationGame.Simulation.Base.CombatSimulationBase combatSim)
                 combatSim.SyncNpcStates(net);
+        }
+    }
+
+    private void ProcessInteractionResultsInSimulations(ClientNetworkManager net, IEnumerable<ISimulation> simulations)
+    {
+        foreach (var entry in simulations)
+        {
+            if (entry is SpaceExplorationGame.Simulation.SolarSystemSimulation solarSim)
+                solarSim.ProcessNetworkInteractionResults(net);
         }
     }
 

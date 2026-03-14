@@ -18,6 +18,10 @@ public enum MessageType : byte
     C_NpcHit = 5,
     /// <summary>Client reports the local player was killed by an NPC.</summary>
     C_PlayerKilledByNpc = 6,
+    /// <summary>Client requests to salvage a derelict ship.</summary>
+    C_InteractDerelict = 7,
+    /// <summary>Client requests to trigger a distress signal beacon.</summary>
+    C_InteractDistress = 8,
 
     // ── Server → Client ─────────────────────────────────────────
     /// <summary>Server acknowledges join, assigns player ID, sends world info.</summary>
@@ -36,4 +40,8 @@ public enum MessageType : byte
     S_NpcHit = 134,
     /// <summary>An NPC was killed; includes reward info for the killer.</summary>
     S_NpcKillReward = 135,
+    /// <summary>Server responds to a derelict salvage request (success or already claimed).</summary>
+    S_InteractDerelictResult = 136,
+    /// <summary>Server responds to a distress signal trigger request (success or already claimed).</summary>
+    S_InteractDistressResult = 137,
 }

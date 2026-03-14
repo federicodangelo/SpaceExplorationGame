@@ -71,6 +71,46 @@ public sealed class ClientNetworkManager : IDisposable
     public NetNpcState[]? LatestNpcStates { get; private set; }
     public NetNotSentNpcState[]? LatestNotSentNpcStates { get; private set; }
 
+    // Pending interaction results (set by ProcessMessages, consumed once by the simulation).
+    private readonly List<S_InteractDerelictResultMessage> _pendingDerelictResults = new();
+    private readonly List<S_InteractDistressResultMessage> _pendingDistressResults = new();
+
+    /// <summary>
+    /// Take the first pending derelict interaction result for the given solar system (if any) and remove it.
+    /// Returns null if no matching result is waiting.
+    /// </summary>
+    public S_InteractDerelictResultMessage? TakeDerelictResult(int solarSystemIndex)
+    {
+        for (int i = 0; i < _pendingDerelictResults.Count; i++)
+        {
+            if (_pendingDerelictResults[i].SolarSystemIndex == solarSystemIndex)
+            {
+                var r = _pendingDerelictResults[i];
+                _pendingDerelictResults.RemoveAt(i);
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Take the first pending distress signal interaction result for the given solar system (if any) and remove it.
+    /// Returns null if no matching result is waiting.
+    /// </summary>
+    public S_InteractDistressResultMessage? TakeDistressResult(int solarSystemIndex)
+    {
+        for (int i = 0; i < _pendingDistressResults.Count; i++)
+        {
+            if (_pendingDistressResults[i].SolarSystemIndex == solarSystemIndex)
+            {
+                var r = _pendingDistressResults[i];
+                _pendingDistressResults.RemoveAt(i);
+                return r;
+            }
+        }
+        return null;
+    }
+
     /// <summary>
     /// Connect to the server and send a join request.
     /// Blocks until the connection is established (but the join handshake is async).
@@ -130,6 +170,24 @@ public sealed class ClientNetworkManager : IDisposable
     }
 
     /// <summary>
+    /// Send a derelict ship salvage request to the server.
+    /// </summary>
+    public void SendInteractDerelict(C_InteractDerelictMessage msg)
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(msg));
+    }
+
+    /// <summary>
+    /// Send a distress signal trigger request to the server.
+    /// </summary>
+    public void SendInteractDistress(C_InteractDistressMessage msg)
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(msg));
+    }
+
+    /// <summary>
     /// Drain all inbound messages from the network receive queue.
     /// Call once per frame from the game loop. After calling, use
     /// <see cref="DrainEvents"/> to get any join/leave events.
@@ -166,6 +224,12 @@ public sealed class ClientNetworkManager : IDisposable
                     break;
                 case MessageType.S_NpcKillReward:
                     HandleNpcKillReward(data);
+                    break;
+                case MessageType.S_InteractDerelictResult:
+                    HandleInteractDerelictResult(data);
+                    break;
+                case MessageType.S_InteractDistressResult:
+                    HandleInteractDistressResult(data);
                     break;
             }
         }
@@ -299,5 +363,15 @@ public sealed class ClientNetworkManager : IDisposable
             Type = ClientEventType.NpcKillReward,
             NpcKillReward = msg,
         });
+    }
+
+    private void HandleInteractDerelictResult(byte[] data)
+    {
+        _pendingDerelictResults.Add(NetSerializer.ReadInteractDerelictResult(data));
+    }
+
+    private void HandleInteractDistressResult(byte[] data)
+    {
+        _pendingDistressResults.Add(NetSerializer.ReadInteractDistressResult(data));
     }
 }

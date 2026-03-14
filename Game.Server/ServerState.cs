@@ -140,6 +140,12 @@ internal sealed class ServerState : GameState
                 case ServerEventType.PlayerKilledByNpc:
                     HandlePlayerKilledByNpc(evt.PlayerId, evt.PlayerKilledByNpc);
                     break;
+                case ServerEventType.InteractDerelict:
+                    HandleInteractDerelict(evt.PlayerId, evt.InteractDerelict);
+                    break;
+                case ServerEventType.InteractDistress:
+                    HandleInteractDistress(evt.PlayerId, evt.InteractDistress);
+                    break;
             }
         }
     }
@@ -444,6 +450,60 @@ internal sealed class ServerState : GameState
     {
         // Log for now; the client handles its own death locally
         Console.WriteLine($"[Server] Player {playerId} killed by NPC {msg.NpcId}");
+    }
+
+    private void HandleInteractDerelict(byte playerId, C_InteractDerelictMessage msg)
+    {
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer)) return;
+
+        // Find the authoritative solar system simulation for this system index
+        var solarSim = _game.Coordinator.Find<SolarSystemSimulation>(
+            s => s.StarSystem.Index == msg.SolarSystemIndex);
+
+        bool success = solarSim != null && solarSim.SalvageDerelictServerSide(msg.DerelictIndex);
+
+        if (success)
+            Console.WriteLine($"[Server] Player {playerId} salvaged derelict {msg.DerelictIndex} in system {msg.SolarSystemIndex}.");
+        else
+            Console.WriteLine($"[Server] Player {playerId} failed to salvage derelict {msg.DerelictIndex} in system {msg.SolarSystemIndex} (already claimed or invalid).");
+
+        var result = new S_InteractDerelictResultMessage
+        {
+            Success = success,
+            SolarSystemIndex = msg.SolarSystemIndex,
+            DerelictIndex = msg.DerelictIndex,
+        };
+        _server.Send(playerId, NetSerializer.Write(result));
+    }
+
+    private void HandleInteractDistress(byte playerId, C_InteractDistressMessage msg)
+    {
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer)) return;
+
+        var solarSim = _game.Coordinator.Find<SolarSystemSimulation>(
+            s => s.StarSystem.Index == msg.SolarSystemIndex);
+
+        bool isAmbush = false;
+        bool success = false;
+
+        if (solarSim != null)
+        {
+            (success, isAmbush) = solarSim.TriggerDistressSignalServerSide(msg.BeaconIndex);
+        }
+
+        if (success)
+            Console.WriteLine($"[Server] Player {playerId} triggered distress beacon {msg.BeaconIndex} in system {msg.SolarSystemIndex} ({(isAmbush ? "ambush" : "rescue")}).");
+        else
+            Console.WriteLine($"[Server] Player {playerId} failed to trigger distress beacon {msg.BeaconIndex} in system {msg.SolarSystemIndex} (already triggered or invalid).");
+
+        var result = new S_InteractDistressResultMessage
+        {
+            Success = success,
+            SolarSystemIndex = msg.SolarSystemIndex,
+            BeaconIndex = msg.BeaconIndex,
+            IsAmbush = isAmbush,
+        };
+        _server.Send(playerId, NetSerializer.Write(result));
     }
 
     // ────────────────────────────────────────────────────────────

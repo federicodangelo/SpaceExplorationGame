@@ -1,6 +1,7 @@
 using System.Numerics;
 using Arch.Core;
 using Engine.Network;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Core.Config;
 using SpaceExplorationGame.ECS;
@@ -554,7 +555,207 @@ public class SolarSystemSimulation : CombatSimulationBase
         if (derelict.Salvaged) return null;
         derelict.Salvaged = true;
 
-        var pd = player.Data;
+        // Remove interactable so it can't be salvaged again
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        if (IsMultiplayerClient)
+        {
+            // Request the server to authorize the salvage; rewards are applied when the server confirms.
+            _game.Network!.SendInteractDerelict(new C_InteractDerelictMessage
+            {
+                SolarSystemIndex = StarSystem.Index,
+                DerelictIndex = derelictIndex,
+            });
+            return null;
+        }
+
+        // Singleplayer: apply rewards immediately.
+        return ApplyDerelictRewards(player.Data, derelictIndex, ref derelict);
+    }
+
+    /// <summary>Trigger a distress signal event — either a rescue or an ambush.</summary>
+    public string? TriggerDistressSignal(SimulationPlayer player, int beaconIndex)
+    {
+        if (beaconIndex < 0 || beaconIndex >= DistressBeaconEntities.Count) return null;
+        var entity = DistressBeaconEntities[beaconIndex];
+        if (!EcsWorld.IsAlive(entity)) return null;
+        if (!EcsWorld.Has<DistressBeaconComponent>(entity)) return null;
+
+        ref var beacon = ref EcsWorld.Get<DistressBeaconComponent>(entity);
+        if (beacon.Triggered) return null;
+        beacon.Triggered = true;
+
+        // Remove interactable
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        // Remove label
+        if (EcsWorld.Has<Label>(entity))
+            EcsWorld.Remove<Label>(entity);
+
+        if (IsMultiplayerClient)
+        {
+            // Server handles NPC spawning and confirms the result; we just mark locally and wait.
+            _game.Network!.SendInteractDistress(new C_InteractDistressMessage
+            {
+                SolarSystemIndex = StarSystem.Index,
+                BeaconIndex = beaconIndex,
+            });
+            return null;
+        }
+
+        // Singleplayer: apply effects immediately.
+        return ApplyDistressRewards(player.Data, beaconIndex, ref beacon,
+            EcsWorld.Get<Transform>(entity).Position);
+    }
+
+    // ── Server-side interaction helpers (called from ServerState) ──
+
+    /// <summary>
+    /// Authorize a derelict salvage on the server: marks the derelict as salvaged if not already taken.
+    /// Returns true if this call claimed the derelict; false if it was already salvaged.
+    /// Spawning and reward-sending remain the caller's responsibility.
+    /// </summary>
+    public bool SalvageDerelictServerSide(int derelictIndex)
+    {
+        if (derelictIndex < 0 || derelictIndex >= DerelictEntities.Count) return false;
+        var entity = DerelictEntities[derelictIndex];
+        if (!EcsWorld.IsAlive(entity)) return false;
+
+        ref var derelict = ref EcsWorld.Get<DerelictShipComponent>(entity);
+        if (derelict.Salvaged) return false;
+        derelict.Salvaged = true;
+
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Authorize a distress signal trigger on the server: marks the beacon as triggered if not already done.
+    /// Returns (success, isAmbush). On ambush, pirates are spawned server-side into this simulation.
+    /// </summary>
+    public (bool success, bool isAmbush) TriggerDistressSignalServerSide(int beaconIndex)
+    {
+        if (beaconIndex < 0 || beaconIndex >= DistressBeaconEntities.Count) return (false, false);
+        var entity = DistressBeaconEntities[beaconIndex];
+        if (!EcsWorld.IsAlive(entity)) return (false, false);
+        if (!EcsWorld.Has<DistressBeaconComponent>(entity)) return (false, false);
+
+        ref var beacon = ref EcsWorld.Get<DistressBeaconComponent>(entity);
+        if (beacon.Triggered) return (false, false);
+        beacon.Triggered = true;
+
+        if (EcsWorld.Has<Interactable>(entity))
+            EcsWorld.Remove<Interactable>(entity);
+
+        if (EcsWorld.Has<Label>(entity))
+            EcsWorld.Remove<Label>(entity);
+
+        if (beacon.IsAmbush)
+        {
+            var beaconPos = EcsWorld.Get<Transform>(entity).Position;
+            int pirateCount = beacon.AmbushPirateCount;
+            for (int i = 0; i < pirateCount; i++)
+            {
+                float angle = MathF.PI * 2f * i / pirateCount;
+                var spawnPos = beaconPos + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 300f;
+                _npcSpawnManager.SpawnShipAt(spawnPos, Faction.Pirate);
+            }
+            return (true, true);
+        }
+
+        return (true, false);
+    }
+
+    /// <summary>
+    /// Process pending interaction result messages from the server (multiplayer client only).
+    /// Applies rewards for successful derelict/distress interactions and shows HUD messages.
+    /// Called once per frame from the game loop.
+    /// </summary>
+    public void ProcessNetworkInteractionResults(Engine.Network.Client.ClientNetworkManager net)
+    {
+        if (LocalPlayer == null) return;
+
+        if (net.TakeDerelictResult(StarSystem.Index) is { } derelictResult)
+        {
+            string msg;
+            if (derelictResult.Success)
+            {
+                int idx = derelictResult.DerelictIndex;
+                if (idx >= 0 && idx < DerelictEntities.Count)
+                {
+                    var entity = DerelictEntities[idx];
+                    if (EcsWorld.IsAlive(entity) && EcsWorld.Has<DerelictShipComponent>(entity))
+                    {
+                        ref var derelict = ref EcsWorld.Get<DerelictShipComponent>(entity);
+                        msg = ApplyDerelictRewards(LocalPlayer.Data, idx, ref derelict);
+                    }
+                    else
+                    {
+                        msg = "SALVAGED";
+                    }
+                }
+                else
+                {
+                    msg = "SALVAGED";
+                }
+            }
+            else
+            {
+                msg = "ALREADY SALVAGED BY ANOTHER PLAYER";
+            }
+            SetLocalCombatMessage(msg);
+        }
+
+        if (net.TakeDistressResult(StarSystem.Index) is { } distressResult)
+        {
+            string msg;
+            if (distressResult.Success)
+            {
+                if (distressResult.IsAmbush)
+                {
+                    msg = "AMBUSH! PIRATES ATTACKING!";
+                }
+                else
+                {
+                    int idx = distressResult.BeaconIndex;
+                    if (idx >= 0 && idx < DistressBeaconEntities.Count)
+                    {
+                        var entity = DistressBeaconEntities[idx];
+                        if (EcsWorld.IsAlive(entity) && EcsWorld.Has<DistressBeaconComponent>(entity))
+                        {
+                            ref var beacon = ref EcsWorld.Get<DistressBeaconComponent>(entity);
+                            var pd = LocalPlayer.Data;
+                            pd.EarnCredits(beacon.RewardCredits);
+                            pd.Reputation.AdjustStanding(Faction.Trader, WorldEventConfig.DistressHelpReputation);
+                            msg = $"TRADER RESCUED! +{beacon.RewardCredits} CREDITS  +{WorldEventConfig.DistressHelpReputation} TRADER REP";
+                        }
+                        else
+                        {
+                            msg = "TRADER RESCUED!";
+                        }
+                    }
+                    else
+                    {
+                        msg = "TRADER RESCUED!";
+                    }
+                }
+            }
+            else
+            {
+                msg = "ALREADY RESPONDED BY ANOTHER PLAYER";
+            }
+            SetLocalCombatMessage(msg);
+        }
+    }
+
+    // ── Private reward helpers ─────────────────────────────────────
+
+    private string ApplyDerelictRewards(PlayerData pd, int derelictIndex, ref DerelictShipComponent derelict)
+    {
         pd.EarnCredits(derelict.CreditReward);
 
         int added = pd.AddCargo(derelict.ResourceReward, derelict.ResourceAmount);
@@ -579,34 +780,14 @@ public class SolarSystemSimulation : CombatSimulationBase
             }
         }
 
-        // Remove interactable so it can't be salvaged again
-        if (EcsWorld.Has<Interactable>(entity))
-            EcsWorld.Remove<Interactable>(entity);
-
         return msg;
     }
 
-    /// <summary>Trigger a distress signal event — either a rescue or an ambush.</summary>
-    public string? TriggerDistressSignal(SimulationPlayer player, int beaconIndex)
+    private string ApplyDistressRewards(PlayerData pd, int beaconIndex, ref DistressBeaconComponent beacon,
+        Vector2 beaconPos)
     {
-        if (beaconIndex < 0 || beaconIndex >= DistressBeaconEntities.Count) return null;
-        var entity = DistressBeaconEntities[beaconIndex];
-        if (!EcsWorld.IsAlive(entity)) return null;
-        if (!EcsWorld.Has<DistressBeaconComponent>(entity)) return null;
-
-        ref var beacon = ref EcsWorld.Get<DistressBeaconComponent>(entity);
-        if (beacon.Triggered) return null;
-        beacon.Triggered = true;
-
-        var beaconPos = EcsWorld.Get<Transform>(entity).Position;
-
-        // Remove interactable
-        if (EcsWorld.Has<Interactable>(entity))
-            EcsWorld.Remove<Interactable>(entity);
-
         if (beacon.IsAmbush)
         {
-            // Spawn pirates around the beacon
             int pirateCount = beacon.AmbushPirateCount;
             for (int i = 0; i < pirateCount; i++)
             {
@@ -618,13 +799,12 @@ public class SolarSystemSimulation : CombatSimulationBase
         }
         else
         {
-            // Peaceful rescue — award credits and reputation
-            var pd = player.Data;
             pd.EarnCredits(beacon.RewardCredits);
             pd.Reputation.AdjustStanding(Faction.Trader, WorldEventConfig.DistressHelpReputation);
             return $"TRADER RESCUED! +{beacon.RewardCredits} CREDITS  +{WorldEventConfig.DistressHelpReputation} TRADER REP";
         }
     }
+
 
     protected override void HandlePlayerRespawn(SimulationPlayer player)
     {

@@ -8,7 +8,7 @@ namespace Engine.Network.Server;
 /// <summary>
 /// Event types queued by background receive threads and dispatched on the main thread.
 /// </summary>
-public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged, NpcHit, PlayerKilledByNpc }
+public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged, NpcHit, PlayerKilledByNpc, InteractDerelict, InteractDistress }
 
 /// <summary>
 /// A server-side network event, enqueued from background threads and
@@ -24,6 +24,8 @@ public readonly struct ServerEvent
     public C_LocationChangedMessage LocationChanged { get; init; }
     public C_NpcHitMessage NpcHit { get; init; }
     public C_PlayerKilledByNpcMessage PlayerKilledByNpc { get; init; }
+    public C_InteractDerelictMessage InteractDerelict { get; init; }
+    public C_InteractDistressMessage InteractDistress { get; init; }
 }
 
 /// <summary>
@@ -303,6 +305,26 @@ public sealed class GameServer : IDisposable
                             Type = ServerEventType.PlayerKilledByNpc,
                             PlayerId = playerId,
                             PlayerKilledByNpc = killedByNpc,
+                        });
+                        break;
+
+                    case MessageType.C_InteractDerelict:
+                        var interactDerelict = NetSerializer.ReadInteractDerelict(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.InteractDerelict,
+                            PlayerId = playerId,
+                            InteractDerelict = interactDerelict,
+                        });
+                        break;
+
+                    case MessageType.C_InteractDistress:
+                        var interactDistress = NetSerializer.ReadInteractDistress(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.InteractDistress,
+                            PlayerId = playerId,
+                            InteractDistress = interactDistress,
                         });
                         break;
 
