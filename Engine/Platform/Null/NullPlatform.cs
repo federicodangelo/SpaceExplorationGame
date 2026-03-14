@@ -16,6 +16,7 @@ public sealed class NullPlatform : IPlatform
     public IInputManager InputManager { get; }
     public IAudioManager AudioManager { get; }
     public ISettings Settings { get; }
+    public ISaveGame SaveGame { get; }
 
     public NullPlatform(string windowTitle = "Server", int width = 800, int height = 600)
     {
@@ -25,6 +26,7 @@ public sealed class NullPlatform : IPlatform
         InputManager = new NullInputManager();
         AudioManager = new NullAudioManager();
         Settings = new NullSettings();
+        SaveGame = new NullSaveGame();
     }
 
     public void Update() { }

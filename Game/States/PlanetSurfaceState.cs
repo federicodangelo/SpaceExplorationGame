@@ -31,6 +31,12 @@ public class PlanetSurfaceState : GameState
 {
     public override GameStateType Type => GameStateType.PlanetSurface;
 
+    public override string GetLocationDescription(string systemName)
+    {
+        var body = _planetOrMoon.IsMoon ? "Moon" : "Planet";
+        return $"{systemName} — {_planetOrMoon.Name} ({body} Surface)";
+    }
+
     // ── Simulation ──────────────────────────────────────────────────
     private PlanetSurfaceSimulation _sim = null!;
     private SimulationPlayer _simPlayer = null!;
@@ -195,6 +201,12 @@ public class PlanetSurfaceState : GameState
         // Remove player from simulation
         if (_sim != null && _simPlayer != null)
             _sim.RemovePlayer(_simPlayer);
+    }
+
+    public override void CapturePositionsForSave(Game game)
+    {
+        if (_sim != null && _simPlayer != null)
+            SaveSurfacePositions(game);
     }
 
     public override void UpdateInput(Game game)

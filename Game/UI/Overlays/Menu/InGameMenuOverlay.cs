@@ -18,6 +18,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         Missions,
         Cargo,
         Controls,
+        SaveGame,
         MainMenu
     }
 
@@ -28,6 +29,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         new(InGameMenuOption.Missions, "MISSIONS"),
         new(InGameMenuOption.Cargo, "CARGO"),
         new(InGameMenuOption.Controls, "CONTROLS"),
+        new(InGameMenuOption.SaveGame, "SAVE GAME"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
     ];
 
@@ -114,6 +116,10 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
                 break;
             case InGameMenuOption.Controls:
                 _controlsOverlay.Open();
+                break;
+            case InGameMenuOption.SaveGame:
+                game.SaveCurrentGame();
+                SetStatus("GAME SAVED");
                 break;
             case InGameMenuOption.MainMenu:
                 game.ChangeState(new MainMenuState());

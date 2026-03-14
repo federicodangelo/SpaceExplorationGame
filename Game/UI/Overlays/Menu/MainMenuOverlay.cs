@@ -10,6 +10,7 @@ namespace SpaceExplorationGame.UI.Overlays.Menu;
 public enum MenuAction
 {
     None = -1,
+    ContinueGame,
     DangerLevel,
     LocationType,
     SubLocationType,
@@ -29,18 +30,22 @@ public enum MenuAction
 /// </summary>
 public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 {
-    // Indices into the Options array for dynamic label updates
-    private const int LocationIdx = 0;
-    private const int SubLocationIdx = 1;
-    private const int DangerIdx = 2;
-    private const int RandomizeIdx = 3;
-    private const int EditSeedIdx = 4;
-    private const int RandomSeedIdx = 5;
-    private const int PlayerNameIdx = 6;
-    private const int DebugIdx = 7;
-    private int JoinServerIdx => _debugEnabled ? 8 : 7;
-    private int StartGameIdx => _debugEnabled ? 9 : 8;
-    private int QuitIdx => _debugEnabled ? 10 : 9;
+    // Dynamic indices — recalculated when menu is rebuilt
+    private int _locationIdx;
+    private int _subLocationIdx;
+    private int _dangerIdx;
+    private int _randomizeIdx;
+    private int _editSeedIdx;
+    private int _randomSeedIdx;
+    private int _playerNameIdx;
+    private int _startGameIdx;
+
+    // Shorthand properties for reading
+    private int LocationIdx => _locationIdx;
+    private int SubLocationIdx => _subLocationIdx;
+    private int DangerIdx => _dangerIdx;
+    private int PlayerNameIdx => _playerNameIdx;
+    private int StartGameIdx => _startGameIdx;
 
     private static readonly string[] DangerLabels = ["ANY", "1 - SAFE", "2 - LOW", "3 - MEDIUM", "4 - HIGH", "5 - EXTREME"];
     private static readonly string[] LocationLabels = ["SOLAR SYSTEM", "SPACE STATION", "PLANET", "SETTLEMENT"];
@@ -54,6 +59,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     private static MenuOption<MenuAction>[] BuildOptions(bool canQuit, bool debugEnabled)
     {
+        // Note: Continue/Delete are not included here — they're added dynamically in RebuildMenu()
         var options = new List<MenuOption<MenuAction>>
         {
             new(MenuAction.LocationType, $"LOCATION: {LocationLabels[0]}", "Adjust starting location"),
@@ -67,15 +73,74 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         if (debugEnabled)
             options.Add(new(MenuAction.Debug, "DEBUG", "Open debug utilities"));
         options.Add(new(MenuAction.JoinServer, "JOIN SERVER", "Connect to a multiplayer server"));
-        options.Add(new(MenuAction.StartGame, ">>> START GAME <<<", "Launch the game with the current settings"));
+        options.Add(new(MenuAction.StartGame, ">>> NEW GAME <<<", "Start a new game with the current settings"));
         if (canQuit)
             options.Add(new(MenuAction.Quit, "QUIT", "Exit the game"));
         return [.. options];
     }
 
+    private MenuOption<MenuAction>[] BuildOptionsWithSave(bool canQuit, bool debugEnabled, Engine.Platform.SaveGameInfo saveInfo)
+    {
+        var options = new List<MenuOption<MenuAction>>
+        {
+            new(MenuAction.ContinueGame, ">>> CONTINUE <<<", $"Continue: {saveInfo.PlayerName} — {saveInfo.LocationDescription ?? "Unknown"}"),
+            new(MenuAction.LocationType, $"LOCATION: {LocationLabels[0]}", "Adjust starting location"),
+            new(MenuAction.SubLocationType, $"SUB-LOCATION: {SubLocationOptions[0][0].Label}", "Adjust starting sub-location"),
+            new(MenuAction.DangerLevel, $"DANGER: {DangerLabels[0]}", "Adjust danger level filter"),
+            new(MenuAction.RandomizeLocation, "RANDOMIZE LOCATION", "Pick a new random starting spot matching the filters above"),
+            new(MenuAction.EditSeed, "EDIT SEED", "Enter a specific galaxy seed"),
+            new(MenuAction.RandomSeed, "NEW RANDOM SEED", "Generate a new random galaxy"),
+            new(MenuAction.PlayerName, "PLAYER NAME: < PLAYER >", "Your display name in multiplayer"),
+        };
+        if (debugEnabled)
+            options.Add(new(MenuAction.Debug, "DEBUG", "Open debug utilities"));
+        options.Add(new(MenuAction.JoinServer, "JOIN SERVER", "Connect to a multiplayer server"));
+        options.Add(new(MenuAction.StartGame, ">>> NEW GAME <<<", "Start a new game with the current settings"));
+        if (canQuit)
+            options.Add(new(MenuAction.Quit, "QUIT", "Exit the game"));
+        return [.. options];
+    }
+
+    private void RebuildMenu(Engine.Platform.SaveGameInfo? saveInfo)
+    {
+        _hasSaveGame = saveInfo != null;
+        var options = saveInfo != null
+            ? BuildOptionsWithSave(_canQuit, _debugEnabled, saveInfo)
+            : BuildOptions(_canQuit, _debugEnabled);
+
+        Menu = new MenuWidget<MenuAction>(options)
+        {
+            CenterAlign = true,
+            ItemHeight = 50f,
+            SelectedScale = 2.5f,
+            NormalScale = 2f,
+            SelectedColor = new Color3(220, 240, 255),
+            NormalColor = new Color3(140, 140, 160),
+            HighlightBg = new Color3(40, 60, 120),
+            HighlightAlpha = 180,
+            DescriptionScale = 1.5f,
+            DescriptionColor = new Color3(160, 160, 180)
+        };
+
+        // Recalculate indices
+        int offset = saveInfo != null ? 1 : 0; // Continue
+        _locationIdx = offset;
+        _subLocationIdx = offset + 1;
+        _dangerIdx = offset + 2;
+        _randomizeIdx = offset + 3;
+        _editSeedIdx = offset + 4;
+        _randomSeedIdx = offset + 5;
+        _playerNameIdx = offset + 6;
+        int idx = offset + 7;
+        if (_debugEnabled) idx++;
+        idx++; // JoinServer
+        _startGameIdx = idx;
+    }
+
     private readonly TextInputOverlay _seedInputOverlay = new();
     private readonly TextInputOverlay _playerNameInputOverlay = new();
     private readonly TextInputOverlay _serverUrlInputOverlay = new();
+    private readonly SaveGameListOverlay _saveGameListOverlay = new();
     private readonly MenuOptionsPersistence _menuOptions;
     private readonly bool _canQuit;
     private readonly bool _debugEnabled;
@@ -90,6 +155,20 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     /// <summary>When set, the player confirmed START GAME.</summary>
     public bool StartRequested { get; set; }
+
+    /// <summary>When set, the player chose a save to continue. Returns the PlayerId.</summary>
+    public string? ContinuePlayerId => _saveGameListOverlay.SelectedPlayerId;
+
+    /// <summary>When set, the player wants to delete a save. Returns the PlayerId.</summary>
+    public string? DeleteSavePlayerId => _saveGameListOverlay.DeletePlayerId;
+
+    /// <summary>Clear consumed save game actions after handling.</summary>
+    public void ClearSaveGameActions()
+    {
+        _saveGameListOverlay.ClearActions();
+    }
+
+    private bool _hasSaveGame;
 
     /// <summary>Fired when the player wants to change the seed.</summary>
     public ulong? NewSeed { get; set; }
@@ -167,26 +246,25 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         _menuOptions = menuOptions;
         _canQuit = canQuit;
         _debugEnabled = WindowConfig.Debug;
-        Menu = new MenuWidget<MenuAction>(BuildOptions(canQuit, _debugEnabled))
-        {
-            CenterAlign = true,
-            ItemHeight = 50f,
-            SelectedScale = 2.5f,
-            NormalScale = 2f,
-            SelectedColor = new Color3(220, 240, 255),
-            NormalColor = new Color3(140, 140, 160),
-            HighlightBg = new Color3(40, 60, 120),
-            HighlightAlpha = 180,
-            DescriptionScale = 1.5f,
-            DescriptionColor = new Color3(160, 160, 180)
-        };
+        RebuildMenu(null); // Will be rebuilt in Open() with save info
 
         RegisterSubOverlay(_seedInputOverlay);
         RegisterSubOverlay(_playerNameInputOverlay);
         RegisterSubOverlay(_serverUrlInputOverlay);
+        RegisterSubOverlay(_saveGameListOverlay);
     }
 
     // ── Open ──
+
+    /// <summary>Call this to detect save game state and rebuild menu accordingly.</summary>
+    public void DetectSaveGame(Game game)
+    {
+        var saveInfo = game.GetMostRecentSaveInfo();
+        RebuildMenu(saveInfo);
+        UpdateCyclingLabels();
+        UpdatePlayerNameLabel();
+        Menu.SelectedIndex = _hasSaveGame ? 0 : StartGameIdx;
+    }
 
     public override void Open()
     {
@@ -196,6 +274,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         _locationIndex = Math.Clamp(savedLocationIndex, 0, LocationLabels.Length - 1);
         _subLocationIndex = Math.Clamp(savedSubLocationIndex, 0, CurrentSubLocations.Length - 1);
         StartRequested = false;
+        _saveGameListOverlay.Close();
         NewSeed = null;
         RandomizeSeed = false;
         RandomizeLocation = false;
@@ -209,7 +288,7 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
         // Keep _dangerIndex and _locationIndex from previous session
         UpdateCyclingLabels();
         UpdatePlayerNameLabel();
-        Menu.SelectedIndex = StartGameIdx;
+        Menu.SelectedIndex = _hasSaveGame ? 0 : StartGameIdx;
     }
 
     // ── Escape does nothing on main menu ──
@@ -249,6 +328,13 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
             case MenuAction.JoinServer:
                 _serverUrlInputOverlay.Open("ENTER SERVER URL", "ws://localhost:9050/", numericOnly: false, maxLength: 256);
                 break;
+            case MenuAction.ContinueGame:
+            {
+                var saves = game.SaveGame.ListSaves();
+                if (saves.Count > 0)
+                    _saveGameListOverlay.Open(saves);
+                break;
+            }
             case MenuAction.StartGame:
                 StartRequested = true;
                 break;
@@ -392,8 +478,15 @@ public class MainMenuOverlay : MenuPanelOverlayBase<MenuAction>
 
     protected override void RenderAdditionalContent(Game game, ISpriteRenderer renderer, float panelX, float contentY, float panelW, float contentH)
     {
+        // Separator after Continue/Delete (if present)
+        if (_hasSaveGame)
+        {
+            float sepSaveY = MenuY + 1 * Menu.ItemHeight;
+            renderer.DrawLineScreen(panelX + 15, sepSaveY, panelX + panelW - 15, sepSaveY, new Color3(60, 80, 140));
+        }
+
         // Separator between config and actions
-        float sep1Y = MenuY + 3 * Menu.ItemHeight;
+        float sep1Y = MenuY + (_dangerIdx + 3) * Menu.ItemHeight;
         renderer.DrawLineScreen(panelX + 15, sep1Y, panelX + panelW - 15, sep1Y, new Color3(60, 80, 140));
 
         // Separator before START GAME

@@ -24,6 +24,7 @@ public class WebPlatform : BasePlatform
             masterVolume: masterVolume, musicVolume: musicVolume, sfxVolume: sfxVolume);
         AudioManager.Initialize();
         Settings = new WebSettings();
+        SaveGame = new WebSaveGame();
     }
 
 

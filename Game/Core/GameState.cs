@@ -22,6 +22,13 @@ public abstract class GameState : IDebugInfoProvider
     protected readonly DebugTimer _debugTimer = new();
     protected readonly DebugInfo _debugInfo = new();
 
+    /// <summary>Called just before the game state is serialized to a save file.
+    /// States should capture any live ECS/simulation positions into PlayerData here.</summary>
+    public virtual void CapturePositionsForSave(Game game) { }
+
+    /// <summary>Returns a human-readable description of the current location for save game display.</summary>
+    public virtual string GetLocationDescription(string systemName) => systemName;
+
     /// <summary>Called when this state becomes active.</summary>
     public abstract void Enter(Game game);
 

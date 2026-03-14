@@ -23,6 +23,15 @@ public class InteriorState : GameState
 {
     public override GameStateType Type => GameStateType.Interior;
 
+    public override string GetLocationDescription(string systemName)
+    {
+        if (_spaceStation != null)
+            return $"{systemName} — {_spaceStation.Name}";
+        if (_settlement != null && _planet != null)
+            return $"{systemName} — {_planet.Name}, {_settlement.Name}";
+        return $"{systemName} — Interior";
+    }
+
     // ── Simulation ──────────────────────────────────────────────────
     private InteriorSimulation _sim = null!;
     private SimulationPlayer _simPlayer = null!;
@@ -126,6 +135,11 @@ public class InteriorState : GameState
     {
         if (_sim != null && _simPlayer != null)
             _sim.RemovePlayer(_simPlayer);
+    }
+
+    public override void CapturePositionsForSave(Game game)
+    {
+        game.Player.ReturnSettlementIndex = _settlement?.Index ?? -1;
     }
 
     public override void UpdateInput(Game game)

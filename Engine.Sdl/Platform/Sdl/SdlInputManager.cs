@@ -44,7 +44,7 @@ public class SdlInputManager : BaseInputManager
         [InputAction.MenuLeft] = [InputBinding.Key(SDL.Scancode.Left), InputBinding.Key(SDL.Scancode.A), InputBinding.Gamepad(SDL.GamepadButton.DPadLeft)],
         [InputAction.MenuRight] = [InputBinding.Key(SDL.Scancode.Right), InputBinding.Key(SDL.Scancode.D), InputBinding.Gamepad(SDL.GamepadButton.DPadRight)],
         [InputAction.MenuBack] = [InputBinding.Key(SDL.Scancode.Escape), InputBinding.Gamepad(SDL.GamepadButton.East), InputBinding.Gamepad(SDL.GamepadButton.Start)],
-        [InputAction.MenuSecondaryAction] = [InputBinding.Key(SDL.Scancode.X), InputBinding.Key(SDL.Scancode.Delete)],
+        [InputAction.MenuSecondaryAction] = [InputBinding.Key(SDL.Scancode.X), InputBinding.Key(SDL.Scancode.Delete), InputBinding.Gamepad(SDL.GamepadButton.North)],
 
         [InputAction.MoveUp] = [InputBinding.Key(SDL.Scancode.W), InputBinding.Key(SDL.Scancode.Up)],
         [InputAction.MoveDown] = [InputBinding.Key(SDL.Scancode.S), InputBinding.Key(SDL.Scancode.Down)],

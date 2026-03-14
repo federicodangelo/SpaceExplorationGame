@@ -14,6 +14,7 @@ public abstract class GameBase : IDisposable
     public ITextureManager Textures => Platform.Textures;
     public IAudioManager Audio => Platform.AudioManager;
     public ISettings Settings => Platform.Settings;
+    public ISaveGame SaveGame => Platform.SaveGame;
 
     public abstract void Dispose();
 }

@@ -15,5 +15,6 @@ public interface IPlatform : IDisposable
     IInputManager InputManager { get; }
     IAudioManager AudioManager { get; }
     ISettings Settings { get; }
+    ISaveGame SaveGame { get; }
     void Update();
 }

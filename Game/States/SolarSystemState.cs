@@ -25,6 +25,8 @@ public class SolarSystemState : GameState
 {
     public override GameStateType Type => GameStateType.SolarSystem;
 
+    public override string GetLocationDescription(string systemName) => $"{systemName} — Solar System";
+
     // ── Simulation ──────────────────────────────────────────────────
     private SolarSystemSimulation _sim = null!;
     private SimulationPlayer _simPlayer = null!;

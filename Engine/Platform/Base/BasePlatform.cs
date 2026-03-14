@@ -17,6 +17,7 @@ public abstract class BasePlatform : IPlatform
     public IInputManager InputManager { get; protected set; } = null!;
     public IAudioManager AudioManager { get; protected set; } = null!;
     public ISettings Settings { get; protected set; } = null!;
+    public ISaveGame SaveGame { get; protected set; } = null!;
 
     protected BasePlatform(string windowTitle)
     {

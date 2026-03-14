@@ -25,6 +25,9 @@ public class PlayerData
     public PlayerType Type { get; private set; } = PlayerType.Local;
     public byte RemotePlayerId { get; private set; } = 255; // assigned by server for remote players, 255 means unassigned
 
+    /// <summary>Unique persistent player ID (GUID). Assigned once on first play, persisted across saves.</summary>
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
     /// <summary>Mission tracking (accept, abandon, turn-in, objective notifications).</summary>
     public MissionTracker Missions { get; } = new();
 
@@ -57,6 +60,9 @@ public class PlayerData
     /// <summary>Reset all player data to initial values (new game).</summary>
     public void Reset()
     {
+        // New identity for new games
+        Id = Guid.NewGuid().ToString();
+
         // Ship
         CurrentShipType = ShipTypeCatalog.StarterShip;
         ShipHealth = ShipTypeCatalog.StarterShip.BaseHull;
@@ -73,6 +79,7 @@ public class PlayerData
         ReturnPlanetIndex = -1;
         ReturnMoonPlanetIndex = -1;
         ReturnMoonIndex = -1;
+        ReturnSettlementIndex = -1;
         ClearSavedSurfacePositions();
 
         // Economy
@@ -192,6 +199,7 @@ public class PlayerData
     public int ReturnPlanetIndex { get; set; } = -1;
     public int ReturnMoonPlanetIndex { get; set; } = -1;  // which planet the moon belongs to
     public int ReturnMoonIndex { get; set; } = -1;        // which moon within that planet
+    public int ReturnSettlementIndex { get; set; } = -1;  // which settlement on the planet/moon (for interior save)
 
     // Planet surface position memory (preserved across settlement visits)
     /// <summary>Whether there are saved surface positions to restore (e.g. after exiting a settlement).</summary>
@@ -233,6 +241,7 @@ public class PlayerData
         ReturnPlanetIndex = -1;
         ReturnMoonPlanetIndex = -1;
         ReturnMoonIndex = -1;
+        ReturnSettlementIndex = -1;
     }
 
     // Credits

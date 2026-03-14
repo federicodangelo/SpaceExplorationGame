@@ -6,6 +6,7 @@ using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace SpaceExplorationGame.Core;
 
@@ -132,6 +133,13 @@ public class Game : GameBase
     private void ApplyPendingState()
     {
         if (_pendingState == null) return;
+
+        // Auto-save when leaving a playable state (not MainMenu → MainMenu transitions)
+        if (_currentState != null && _currentState.Type != GameStateType.MainMenu
+            && _pendingState.Type != _currentState.Type)
+        {
+            SaveCurrentGame();
+        }
 
         _currentState?.Exit(this);
 
@@ -351,6 +359,237 @@ public class Game : GameBase
         }
         var state = localPlayer.Simulation.GetNetPlayerState(localPlayer);
         net.SendLocalState(state);
+    }
+
+    // ── Save / Load ─────────────────────────────────────────────
+
+    /// <summary>Save the current game state to disk/storage.</summary>
+    public void SaveCurrentGame()
+    {
+        if (_currentState == null || _currentState.Type == GameStateType.MainMenu) return;
+
+        // Capture live positions into PlayerData before snapshotting
+        _currentState.CapturePositionsForSave(this);
+
+        var locationDesc = BuildLocationDescription();
+        var data = SaveGameData.FromPlayerData(Player, PlayerName, Seeds.GalaxySeed, locationDesc);
+        data.SavedStateType = _currentState.Type.ToString();
+        var json = JsonSerializer.Serialize(data, SaveGameJsonContext.Default.SaveGameData);
+        SaveGame.Save(Player.Id, json);
+        Console.WriteLine($"[SaveGame] Saved — {locationDesc}");
+    }
+
+    /// <summary>Load a save game and restore the game state. Returns true if successful.</summary>
+    public bool LoadSavedGame(string playerId)
+    {
+        var json = SaveGame.Load(playerId);
+        if (json == null) return false;
+
+        SaveGameData? data;
+        try
+        {
+            data = JsonSerializer.Deserialize(json, SaveGameJsonContext.Default.SaveGameData);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[SaveGame] Failed to deserialize: {ex.Message}");
+            return false;
+        }
+
+        if (data == null) return false;
+
+        // Regenerate the galaxy with the saved seed
+        RegenerateGalaxy(data.GalaxySeed);
+
+        // Restore player data (Reset was called by RegenerateGalaxy)
+        data.ApplyToPlayerData(Player);
+
+        // Launch into the saved location
+        LaunchFromSaveData(data);
+        return true;
+    }
+
+    /// <summary>Check whether any save game exists.</summary>
+    public bool HasAnySaveGame() => SaveGame.ListSaves().Count > 0;
+
+    /// <summary>Get info about the most recent save game, or null.</summary>
+    public Engine.Platform.SaveGameInfo? GetMostRecentSaveInfo()
+    {
+        var saves = SaveGame.ListSaves();
+        return saves.Count > 0 ? saves[0] : null;
+    }
+
+    private void LaunchFromSaveData(SaveGameData data)
+    {
+        UseProceduralUniverseGenerator();
+
+        var systemIndex = data.CurrentStarSystemIndex;
+        if (systemIndex < 0 || systemIndex >= GalaxyData.Count)
+            systemIndex = 0;
+
+        var starSystem = GalaxyData[systemIndex];
+
+        // Parse the saved state type so we know which state to restore into
+        var savedType = Enum.TryParse<GameStateType>(data.SavedStateType, out var st) ? st : GameStateType.SolarSystem;
+
+        switch (savedType)
+        {
+            // ── Interior (space station or settlement) ──────────────────────────────
+            case GameStateType.Interior:
+            {
+                var solarData = UniverseGenerator.GenerateSolarSystem(starSystem);
+
+                if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromSpaceStation
+                    && Player.ReturnSpaceStationIndex >= 0)
+                {
+                    var station = solarData.SpaceStations.FirstOrDefault(s => s.Index == Player.ReturnSpaceStationIndex);
+                    if (station != null)
+                    {
+                        ChangeState(new States.InteriorState(
+                            States.InteriorOrigin.SpaceStation, starSystem,
+                            spaceStation: station));
+                        return;
+                    }
+                }
+                else if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromPlanet
+                         && Player.ReturnPlanetIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnPlanetIndex);
+                    if (planet != null && Player.ReturnSettlementIndex >= 0)
+                    {
+                        var surfaceData = UniverseGenerator.GeneratePlanetSurface(starSystem, planet);
+                        var settlement = surfaceData.Settlements.FirstOrDefault(s => s.Index == Player.ReturnSettlementIndex);
+                        if (settlement != null)
+                        {
+                            ChangeState(new States.InteriorState(
+                                States.InteriorOrigin.Settlement, starSystem,
+                                planet: planet, settlement: settlement));
+                            return;
+                        }
+                    }
+                    // Fallback: land on the planet surface
+                    if (planet != null)
+                    {
+                        ChangeState(new States.PlanetSurfaceState(starSystem, planet));
+                        return;
+                    }
+                }
+                else if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon
+                         && Player.ReturnMoonPlanetIndex >= 0 && Player.ReturnMoonIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnMoonPlanetIndex);
+                    var moon = planet?.Moons.FirstOrDefault(m => m.Index == Player.ReturnMoonIndex);
+                    if (moon != null && Player.ReturnSettlementIndex >= 0)
+                    {
+                        var moonAsPlanet = moon.ToPlanetData(planet!.Index);
+                        var surfaceData = UniverseGenerator.GeneratePlanetSurface(starSystem, moonAsPlanet);
+                        var settlement = surfaceData.Settlements.FirstOrDefault(s => s.Index == Player.ReturnSettlementIndex);
+                        if (settlement != null)
+                        {
+                            ChangeState(new States.InteriorState(
+                                States.InteriorOrigin.Settlement, starSystem,
+                                planet: moonAsPlanet, settlement: settlement));
+                            return;
+                        }
+                    }
+                    // Fallback: land on the moon surface
+                    if (moon != null)
+                    {
+                        var moonAsPlanet = moon.ToPlanetData(planet!.Index);
+                        ChangeState(new States.PlanetSurfaceState(starSystem, moonAsPlanet));
+                        return;
+                    }
+                }
+                break; // fallthrough to default solar system
+            }
+
+            // ── Planet / Moon surface ───────────────────────────────────────────────
+            case GameStateType.PlanetSurface:
+            {
+                var solarData = UniverseGenerator.GenerateSolarSystem(starSystem);
+
+                if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromPlanet
+                    && Player.ReturnPlanetIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnPlanetIndex);
+                    if (planet != null)
+                    {
+                        ChangeState(new States.PlanetSurfaceState(starSystem, planet));
+                        return;
+                    }
+                }
+                else if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon
+                         && Player.ReturnMoonPlanetIndex >= 0 && Player.ReturnMoonIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnMoonPlanetIndex);
+                    var moon = planet?.Moons.FirstOrDefault(m => m.Index == Player.ReturnMoonIndex);
+                    if (moon != null)
+                    {
+                        ChangeState(new States.PlanetSurfaceState(starSystem, moon.ToPlanetData(planet!.Index)));
+                        return;
+                    }
+                }
+                break; // fallthrough to default solar system
+            }
+
+            // ── Solar system ────────────────────────────────────────────────────────
+            case GameStateType.SolarSystem:
+            {
+                var solarData = UniverseGenerator.GenerateSolarSystem(starSystem);
+
+                if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromSpaceStation
+                    && Player.ReturnSpaceStationIndex >= 0)
+                {
+                    var station = solarData.SpaceStations.FirstOrDefault(s => s.Index == Player.ReturnSpaceStationIndex);
+                    if (station != null)
+                    {
+                        ChangeState(new States.SolarSystemState(starSystem, station));
+                        return;
+                    }
+                }
+                else if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromPlanet
+                         && Player.ReturnPlanetIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnPlanetIndex);
+                    if (planet != null)
+                    {
+                        ChangeState(new States.SolarSystemState(starSystem, autoOpenPlanet: planet));
+                        return;
+                    }
+                }
+                else if (Player.SolarSystemReturnContext == PlayerData.ReturnContext.FromMoon
+                         && Player.ReturnMoonPlanetIndex >= 0 && Player.ReturnMoonIndex >= 0)
+                {
+                    var planet = solarData.Planets.FirstOrDefault(p => p.Index == Player.ReturnMoonPlanetIndex);
+                    var moon = planet?.Moons.FirstOrDefault(m => m.Index == Player.ReturnMoonIndex);
+                    if (moon != null)
+                    {
+                        ChangeState(new States.SolarSystemState(starSystem, autoOpenPlanet: moon.ToPlanetData(planet!.Index)));
+                        return;
+                    }
+                }
+
+                // No specific return context — use saved ship position via DeterminePlayerStartPosition fallback
+                Player.ClearReturnContext();
+                ChangeState(new States.SolarSystemState(starSystem));
+                return;
+            }
+        }
+
+        // Ultimate fallback: just open the solar system at ship position
+        Player.ClearReturnContext();
+        ChangeState(new States.SolarSystemState(starSystem));
+    }
+
+    private string BuildLocationDescription()
+    {
+        if (_currentState == null) return "Unknown";
+
+        var systemIdx = Player.CurrentStarSystemIndex;
+        var systemName = systemIdx >= 0 && systemIdx < GalaxyData.Count
+            ? GalaxyData[systemIdx].Name : "Unknown System";
+
+        return _currentState.GetLocationDescription(systemName);
     }
 
     public override void Dispose()

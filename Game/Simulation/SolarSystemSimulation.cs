@@ -252,6 +252,10 @@ public class SolarSystemSimulation : CombatSimulationBase
             return EcsWorld.Get<Transform>(MoonEntities[player.ReturnMoonPlanetIndex][player.ReturnMoonIndex]).Position;
         }
 
+        // Use saved ship world position when no specific return context
+        if (player.ShipWorldPosition != System.Numerics.Vector2.Zero)
+            return player.ShipWorldPosition;
+
         return Content.StartingPosition;
     }
 

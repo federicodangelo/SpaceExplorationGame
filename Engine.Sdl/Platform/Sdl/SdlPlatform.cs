@@ -50,6 +50,7 @@ public class SdlPlatform : BasePlatform
         );
         AudioManager.Initialize();
         Settings = new SdlSettings();
+        SaveGame = new SdlSaveGame();
     }
 
     public override void Dispose()

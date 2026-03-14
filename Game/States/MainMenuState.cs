@@ -117,6 +117,7 @@ public class MainMenuState : GameState
         }
 
         _menuOverlay.Open();
+        _menuOverlay.DetectSaveGame(game);
         UpdateStartingShipOverrideLabel();
         UpdateLocationPreview(game);
 
@@ -222,6 +223,25 @@ public class MainMenuState : GameState
             game.Audio.PlaySfx(AudioSfx.MenuSelect);
             _menuOverlay.StartRequested = false;
             LaunchGame(game, _menuOverlay.LocationType, _menuOverlay.DangerFilter);
+        }
+
+        // Handle continue saved game (from save game list overlay)
+        if (_menuOverlay.ContinuePlayerId != null)
+        {
+            var playerId = _menuOverlay.ContinuePlayerId;
+            _menuOverlay.ClearSaveGameActions();
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
+            game.LoadSavedGame(playerId);
+        }
+
+        // Handle delete save (from save game list overlay)
+        if (_menuOverlay.DeleteSavePlayerId != null)
+        {
+            var playerId = _menuOverlay.DeleteSavePlayerId;
+            _menuOverlay.ClearSaveGameActions();
+            game.Audio.PlaySfx(AudioSfx.MenuSelect);
+            game.SaveGame.Delete(playerId);
+            _menuOverlay.DetectSaveGame(game);
         }
 
         // Handle join server
