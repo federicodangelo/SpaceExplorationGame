@@ -139,6 +139,12 @@ public abstract class CombatSimulationBase : SimulationBase
             }
 
             OnProjectileDamageEvent(evt);
+
+            // Track damage stats
+            if (ownerPlayer != null)
+                ownerPlayer.Data.Stats.TotalDamageDealt += evt.Damage;
+            if (targetPlayer != null)
+                targetPlayer.Data.Stats.TotalDamageReceived += evt.Damage;
         }
 
         // Process destroyed entities
@@ -207,6 +213,14 @@ public abstract class CombatSimulationBase : SimulationBase
                         killerState.CombatMessageTimer = 3f;
                     }
                 }
+
+                // Track kill stats
+                if (destroyed.KillerFaction == Faction.Player)
+                {
+                    var killerPlayer = FindPlayerByEntity(destroyed.KillerEntity);
+                    killerPlayer?.Data.Stats.RecordKill(destroyed.Faction);
+                }
+
                 OnEnemyDestroyed(destroyed);
             }
         }
@@ -267,6 +281,9 @@ public abstract class CombatSimulationBase : SimulationBase
         state.Dead = true;
         state.RespawnTimer = RespawnDelay;
 
+        // Track death stat
+        player.Data.Stats.Deaths++;
+
         if (EcsWorld.IsAlive(player.Entity))
         {
             EcsWorld.Destroy(player.Entity);
@@ -287,6 +304,7 @@ public abstract class CombatSimulationBase : SimulationBase
         if (added > 0)
         {
             playerData.Missions.NotifyResourceMined(resource, added);
+            playerData.Stats.RecordResourceMined(resource, added);
             return $"+{added} {resInfo.Name.ToUpper()}";
         }
         return "CARGO FULL!";

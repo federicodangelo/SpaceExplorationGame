@@ -75,16 +75,16 @@ public class ShipCustomizationOverlay : CustomizationOverlayBase
         var o = ((ShipPart)currentPart).Stats;
 
         var diffs = new List<StatDiff>();
-        if (n.Acceleration - o.Acceleration != 0) diffs.Add(new StatDiff("ACC", n.Acceleration - o.Acceleration));
-        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", n.MaxSpeed - o.MaxSpeed));
-        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", n.RotationSpeed - o.RotationSpeed));
-        if (n.MaxHull - o.MaxHull != 0) diffs.Add(new StatDiff("HULL", n.MaxHull - o.MaxHull));
-        if (n.MaxFuel - o.MaxFuel != 0) diffs.Add(new StatDiff("FUEL", n.MaxFuel - o.MaxFuel));
-        if (n.FtlRange - o.FtlRange != 0) diffs.Add(new StatDiff("FTL", n.FtlRange - o.FtlRange));
-        if (n.ShieldStrength - o.ShieldStrength != 0) diffs.Add(new StatDiff("SHD", n.ShieldStrength - o.ShieldStrength));
-        if (n.WeaponDamage - o.WeaponDamage != 0) diffs.Add(new StatDiff("DMG", n.WeaponDamage - o.WeaponDamage));
-        if (n.FuelEfficiency - o.FuelEfficiency != 0) diffs.Add(new StatDiff("EFF", (n.FuelEfficiency - o.FuelEfficiency) * 100));
-        if (n.CargoCapacity - o.CargoCapacity != 0) diffs.Add(new StatDiff("CARGO", n.CargoCapacity - o.CargoCapacity));
+        if (n.Acceleration != 0 || o.Acceleration != 0) diffs.Add(new StatDiff("ACC", o.Acceleration, n.Acceleration));
+        if (n.MaxSpeed != 0 || o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", o.MaxSpeed, n.MaxSpeed));
+        if (n.RotationSpeed != 0 || o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", o.RotationSpeed, n.RotationSpeed));
+        if (n.MaxHull != 0 || o.MaxHull != 0) diffs.Add(new StatDiff("HULL", o.MaxHull, n.MaxHull));
+        if (n.MaxFuel != 0 || o.MaxFuel != 0) diffs.Add(new StatDiff("FUEL", o.MaxFuel, n.MaxFuel));
+        if (n.FtlRange != 0 || o.FtlRange != 0) diffs.Add(new StatDiff("FTL", o.FtlRange, n.FtlRange));
+        if (n.ShieldStrength != 0 || o.ShieldStrength != 0) diffs.Add(new StatDiff("SHD", o.ShieldStrength, n.ShieldStrength));
+        if (n.WeaponDamage != 0 || o.WeaponDamage != 0) diffs.Add(new StatDiff("DMG", o.WeaponDamage, n.WeaponDamage));
+        if (n.FuelEfficiency != 0 || o.FuelEfficiency != 0) diffs.Add(new StatDiff("EFF", o.FuelEfficiency * 100, n.FuelEfficiency * 100));
+        if (n.CargoCapacity != 0 || o.CargoCapacity != 0) diffs.Add(new StatDiff("CARGO", o.CargoCapacity, n.CargoCapacity));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

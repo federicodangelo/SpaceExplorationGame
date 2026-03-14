@@ -55,7 +55,10 @@ public readonly record struct NebulaCloud(float X, float Y, float Radius, Color3
 // ── Stat comparison ──────────────────────────────────────────────
 
 /// <summary>A labeled stat difference for equipment comparison UI.</summary>
-public readonly record struct StatDiff(string Label, float Diff);
+public readonly record struct StatDiff(string Label, float OldValue, float NewValue)
+{
+    public float Diff => NewValue - OldValue;
+}
 
 // ── Solar system generation ──────────────────────────────────────
 

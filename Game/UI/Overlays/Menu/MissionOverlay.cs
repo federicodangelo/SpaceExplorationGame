@@ -130,7 +130,7 @@ public class MissionOverlay : ListPanelOverlay
                 if (_currentSystem != null && mission.TurnIn.IsSystem(_currentSystem.Index))
                 {
                     int reward = game.Player.Missions.TurnIn(mission);
-                    game.Player.Credits += reward;
+                    game.Player.EarnCredits(reward);
                     ClampSelection();
                     SetStatus($"MISSION COMPLETE! +{reward} CREDITS", 2.5f);
                 }

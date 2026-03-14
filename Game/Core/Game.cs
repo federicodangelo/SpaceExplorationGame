@@ -215,6 +215,10 @@ public class Game : GameBase
 
         DeltaTime = (float)elapsed;
 
+        // Track play time (only during gameplay, not main menu)
+        if (_currentState != null && _currentState.Type != GameStateType.MainMenu)
+            Player.Stats.PlayTimeSeconds += elapsed;
+
         // Process events
         Input.BeginFrame();
         Input.ProcessEvents();

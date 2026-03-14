@@ -74,6 +74,22 @@ public class SaveGameData
     public List<int> ClaimedMissionIds { get; set; } = [];
     public int CompletedMissions { get; set; }
 
+    // ── Stats ──
+    public int StatTotalKills { get; set; }
+    public int StatDeaths { get; set; }
+    public float StatTotalDamageDealt { get; set; }
+    public float StatTotalDamageReceived { get; set; }
+    public Dictionary<string, int> StatKillsByFaction { get; set; } = new();
+    public int StatTotalCreditsEarned { get; set; }
+    public int StatTotalCreditsSpent { get; set; }
+    public int StatTotalResourcesMined { get; set; }
+    public Dictionary<string, int> StatResourcesMinedByType { get; set; } = new();
+    public int StatPartsFound { get; set; }
+    public List<int> StatSystemsVisited { get; set; } = [];
+    public int StatPlanetsLanded { get; set; }
+    public int StatSpaceStationsVisited { get; set; }
+    public double StatPlayTimeSeconds { get; set; }
+
     /// <summary>Create a SaveGameData snapshot from live PlayerData.</summary>
     public static SaveGameData FromPlayerData(PlayerData player, string playerName, ulong galaxySeed, string locationDescription)
     {
@@ -153,6 +169,23 @@ public class SaveGameData
         foreach (var m in player.Missions.Active)
             data.ActiveMissions.Add(SavedMission.FromMission(m));
         data.ClaimedMissionIds = [.. player.Missions.ClaimedIds];
+
+        // Stats
+        var stats = player.Stats;
+        data.StatTotalKills = stats.TotalKills;
+        data.StatDeaths = stats.Deaths;
+        data.StatTotalDamageDealt = stats.TotalDamageDealt;
+        data.StatTotalDamageReceived = stats.TotalDamageReceived;
+        data.StatKillsByFaction = new Dictionary<string, int>(stats.KillsByFaction);
+        data.StatTotalCreditsEarned = stats.TotalCreditsEarned;
+        data.StatTotalCreditsSpent = stats.TotalCreditsSpent;
+        data.StatTotalResourcesMined = stats.TotalResourcesMined;
+        data.StatResourcesMinedByType = new Dictionary<string, int>(stats.ResourcesMinedByType);
+        data.StatPartsFound = stats.PartsFound;
+        data.StatSystemsVisited = [.. stats.SystemsVisited];
+        data.StatPlanetsLanded = stats.PlanetsLanded;
+        data.StatSpaceStationsVisited = stats.SpaceStationsVisited;
+        data.StatPlayTimeSeconds = stats.PlayTimeSeconds;
 
         return data;
     }
@@ -295,6 +328,23 @@ public class SaveGameData
         // Navigation — clear on load (targets are world-position dependent)
         player.Navigation.Clear();
         player.InVehicle = false;
+
+        // Stats
+        var stats = player.Stats;
+        stats.TotalKills = StatTotalKills;
+        stats.Deaths = StatDeaths;
+        stats.TotalDamageDealt = StatTotalDamageDealt;
+        stats.TotalDamageReceived = StatTotalDamageReceived;
+        stats.KillsByFaction = new Dictionary<string, int>(StatKillsByFaction);
+        stats.TotalCreditsEarned = StatTotalCreditsEarned;
+        stats.TotalCreditsSpent = StatTotalCreditsSpent;
+        stats.TotalResourcesMined = StatTotalResourcesMined;
+        stats.ResourcesMinedByType = new Dictionary<string, int>(StatResourcesMinedByType);
+        stats.PartsFound = StatPartsFound;
+        stats.SystemsVisited = new HashSet<int>(StatSystemsVisited);
+        stats.PlanetsLanded = StatPlanetsLanded;
+        stats.SpaceStationsVisited = StatSpaceStationsVisited;
+        stats.PlayTimeSeconds = StatPlayTimeSeconds;
     }
 }
 

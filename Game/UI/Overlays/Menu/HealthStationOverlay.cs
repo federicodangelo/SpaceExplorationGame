@@ -32,7 +32,7 @@ public class HealthStationOverlay : PanelOverlayBase
         int cost = (int)(damage * HealCostPerPoint);
         if (cost > 0 && game.Player.Credits >= cost)
         {
-            game.Player.Credits -= cost;
+            game.Player.SpendCredits(cost);
             game.Player.AvatarHealth = game.Player.AvatarMaxHealth;
         }
     }

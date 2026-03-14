@@ -27,7 +27,7 @@ public static class ShipRepairService
         if (cost <= 0 || player.Credits < cost)
             return false;
 
-        player.Credits -= cost;
+        player.SpendCredits(cost);
         player.ShipHealth = player.ShipMaxHealth;
         return true;
     }

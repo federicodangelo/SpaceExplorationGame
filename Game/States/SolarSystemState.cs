@@ -90,6 +90,9 @@ public class SolarSystemState : GameState
         // Music
         game.Audio.SetMusicTheme(AudioThemes.SolarSystem);
 
+        // Track system visit
+        game.Player.Stats.SystemsVisited.Add(_starSystem.Index);
+
         // Get or create the simulation
         _sim = game.Coordinator.FindOrCreate<SolarSystemSimulation>(
             s => s.StarSystem.Index == _starSystem.Index,

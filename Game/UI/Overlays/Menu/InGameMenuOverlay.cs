@@ -17,6 +17,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         Map,
         Missions,
         Cargo,
+        Stats,
         Controls,
         SaveGame,
         MainMenu
@@ -28,6 +29,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         new(InGameMenuOption.Map, "MAP"),
         new(InGameMenuOption.Missions, "MISSIONS"),
         new(InGameMenuOption.Cargo, "CARGO"),
+        new(InGameMenuOption.Stats, "STATS"),
         new(InGameMenuOption.Controls, "CONTROLS"),
         new(InGameMenuOption.SaveGame, "SAVE GAME"),
         new(InGameMenuOption.MainMenu, "MAIN MENU")
@@ -45,6 +47,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     private readonly MissionsListOverlay _missionsOverlay = new();
     private readonly CargoListOverlay _cargoOverlay = new();
+    private readonly StatsOverlay _statsOverlay = new();
     private readonly ControlsOverlay _controlsOverlay = new();
 
     // ── Panel configuration ──
@@ -72,6 +75,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
         RegisterSubOverlay(_missionsOverlay);
         RegisterSubOverlay(_cargoOverlay);
+        RegisterSubOverlay(_statsOverlay);
         RegisterSubOverlay(_controlsOverlay);
     }
 
@@ -113,6 +117,9 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
                 break;
             case InGameMenuOption.Cargo:
                 _cargoOverlay.Open();
+                break;
+            case InGameMenuOption.Stats:
+                _statsOverlay.Open();
                 break;
             case InGameMenuOption.Controls:
                 _controlsOverlay.Open();

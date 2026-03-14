@@ -34,6 +34,9 @@ public class PlayerData
     /// <summary>Navigation target state (orbital and surface waypoints).</summary>
     public NavigationTarget Navigation { get; } = new();
 
+    /// <summary>Lifetime statistics (combat, economy, exploration). Persisted across saves.</summary>
+    public PlayerStats Stats { get; } = new();
+
     // Current ship
     public ShipType CurrentShipType { get; private set; } = ShipTypeCatalog.StarterShip;
     public float ShipHealth { get; set; } = ShipTypeCatalog.StarterShip.BaseHull;
@@ -105,6 +108,9 @@ public class PlayerData
 
         // Navigation target
         Navigation.Clear();
+
+        // Stats
+        Stats.Reset();
     }
 
     /// <summary>Recalculate derived stats from equipped parts and ship type. Call after changing parts or ship.</summary>
@@ -247,6 +253,20 @@ public class PlayerData
     // Credits
     public int Credits { get; set; } = 10000;
 
+    /// <summary>Add credits and record them as earned in lifetime stats.</summary>
+    public void EarnCredits(int amount)
+    {
+        Credits += amount;
+        Stats.TotalCreditsEarned += amount;
+    }
+
+    /// <summary>Deduct credits and record them as spent in lifetime stats.</summary>
+    public void SpendCredits(int amount)
+    {
+        Credits -= amount;
+        Stats.TotalCreditsSpent += amount;
+    }
+
     // Cargo hold
     public Dictionary<ResourceType, int> Cargo { get; set; } = new();
 
@@ -287,7 +307,7 @@ public class PlayerData
         {
             total += amount * ResourceCatalog.Get(resource).ValuePerUnit;
         }
-        Credits += total;
+        EarnCredits(total);
         Cargo.Clear();
         return total;
     }
@@ -297,7 +317,7 @@ public class PlayerData
     {
         if (!Cargo.TryGetValue(resource, out int amount) || amount <= 0) return 0;
         int earned = amount * ResourceCatalog.Get(resource).ValuePerUnit;
-        Credits += earned;
+        EarnCredits(earned);
         Cargo.Remove(resource);
         return earned;
     }

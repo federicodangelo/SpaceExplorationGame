@@ -230,7 +230,7 @@ public class ShipDealerOverlay : ListPanelOverlay
             return;
         }
 
-        player.Credits -= netCost;
+        player.SpendCredits(netCost);
         player.SwitchShipType(target);
         SetStatus($"PURCHASED {target.Name.ToUpper()}! NET -{netCost} CR");
     }

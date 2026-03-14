@@ -64,7 +64,7 @@ public static class CombatHelper
         int credits = rng.NextInt(loot.MinCredits, loot.MaxCredits + 1);
         if (credits > 0)
         {
-            killer.Credits += credits;
+            killer.EarnCredits(credits);
             game.Audio.PlaySfx(AudioSfx.PickupCredits, 0.6f);
         }
         string message = credits > 0 ? $"+{credits} CREDITS" : "";
@@ -96,6 +96,7 @@ public static class CombatHelper
                     !killer.EquippedParts.ContainsValue(droppedPart))
                 {
                     killer.OwnedParts.Add(droppedPart);
+                    killer.Stats.PartsFound++;
                     message += $"  +{droppedPart.Name.ToUpper()}!";
                 }
             }

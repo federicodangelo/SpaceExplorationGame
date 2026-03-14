@@ -66,9 +66,11 @@ public class AvatarCustomizationOverlay : CustomizationOverlayBase
         var o = ((AvatarPart)currentPart).Stats;
 
         var diffs = new List<StatDiff>();
-        if (n.WalkSpeed - o.WalkSpeed != 0) diffs.Add(new StatDiff("SPD", n.WalkSpeed - o.WalkSpeed));
-        if (n.OxygenCapacity - o.OxygenCapacity != 0) diffs.Add(new StatDiff("O2", n.OxygenCapacity - o.OxygenCapacity));
-        if (n.TerrainPenalty - o.TerrainPenalty != 0) diffs.Add(new StatDiff("TRN", (n.TerrainPenalty - o.TerrainPenalty) * 100));
+        if (n.WalkSpeed != 0 || o.WalkSpeed != 0) diffs.Add(new StatDiff("SPD", o.WalkSpeed, n.WalkSpeed));
+        if (n.OxygenCapacity != 0 || o.OxygenCapacity != 0) diffs.Add(new StatDiff("O2", o.OxygenCapacity, n.OxygenCapacity));
+        if (n.TerrainPenalty != 0 || o.TerrainPenalty != 0) diffs.Add(new StatDiff("TRN", o.TerrainPenalty * 100, n.TerrainPenalty * 100));
+        if (n.WeaponDamage != 0 || o.WeaponDamage != 0) diffs.Add(new StatDiff("DMG", o.WeaponDamage, n.WeaponDamage));
+        if (n.Armor != 0 || o.Armor != 0) diffs.Add(new StatDiff("ARM", o.Armor, n.Armor));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }

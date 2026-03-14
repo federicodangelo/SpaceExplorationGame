@@ -103,6 +103,9 @@ public class PlanetSurfaceState : GameState
 
     public override void Enter(Game game)
     {
+        // Track planet landing
+        game.Player.Stats.PlanetsLanded++;
+
         _surfaceMapOverlay = new PlanetSurfaceMapOverlay(game.Textures);
         _inGameMenuOverlay.OnMapRequested = g =>
         {

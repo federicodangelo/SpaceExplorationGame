@@ -343,7 +343,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
                 return;
             }
 
-            player.Credits -= newPart.BuyCost;
+            player.SpendCredits(newPart.BuyCost);
             PerformEquip(player, _selectedSlot, newPart);
             SetStatus($"PURCHASED & EQUIPPED! -{newPart.BuyCost} CR");
         }
@@ -371,7 +371,7 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
         }
 
         RemoveFromInventory(player, part);
-        player.Credits += part.SellValue;
+        player.EarnCredits(part.SellValue);
         SetStatus($"SOLD {part.Name}! +{part.SellValue} CR");
     }
 
@@ -381,20 +381,44 @@ public abstract class CustomizationOverlayBase : PanelOverlayBase
         _selectedPart = 0;
     }
 
-    /// <summary>Helper for subclass stat comparison rendering.</summary>
+    /// <summary>Helper for subclass stat comparison rendering. Shows "LABEL Old→New" with color coding.</summary>
     protected static void RenderStatDiffs(ISpriteRenderer renderer, float x, float y,
         List<StatDiff> diffs)
     {
         float cx = x;
-        foreach (var (label, diff) in diffs)
+        int better = 0, worse = 0;
+
+        foreach (var stat in diffs)
         {
-            string text = $"{label}{(diff > 0 ? "+" : "")}{diff:F0} ";
-            renderer.DrawTextScreen(cx, y, text,
-                new Color3(
-                    diff > 0 ? (byte)80 : (byte)255,
-                    diff > 0 ? (byte)255 : (byte)80,
-                    (byte)80), 1.2f);
+            var diff = stat.Diff;
+            if (diff > 0) better++;
+            else if (diff < 0) worse++;
+
+            // Color: green = better, red = worse, dim gray = unchanged
+            Color3 color;
+            if (diff > 0) color = new Color3(80, 255, 80);
+            else if (diff < 0) color = new Color3(255, 80, 80);
+            else color = new Color3(90, 90, 110);
+
+            string text = diff != 0
+                ? $"{stat.Label} {stat.OldValue:G3}\u2192{stat.NewValue:G3} "
+                : $"{stat.Label} {stat.OldValue:G3} ";
+
+            renderer.DrawTextScreen(cx, y, text, color, 1.2f);
             cx += text.Length * 7;
+        }
+
+        // Summary
+        if (better > 0 || worse > 0)
+        {
+            string summary = "";
+            if (better > 0) summary += $"+{better}";
+            if (worse > 0) summary += (summary.Length > 0 ? " " : "") + $"-{worse}";
+
+            var summaryColor = worse == 0 ? new Color3(80, 255, 80) :
+                               better == 0 ? new Color3(255, 80, 80) :
+                               new Color3(255, 220, 80);
+            renderer.DrawTextScreen(cx, y, $"[{summary}]", summaryColor, 1.2f);
         }
     }
 }

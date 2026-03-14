@@ -66,11 +66,11 @@ public class VehicleCustomizationOverlay : CustomizationOverlayBase
         var o = ((VehiclePart)currentPart).Stats;
 
         var diffs = new List<StatDiff>();
-        if (n.Acceleration - o.Acceleration != 0) diffs.Add(new StatDiff("ACC", n.Acceleration - o.Acceleration));
-        if (n.MaxSpeed - o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", n.MaxSpeed - o.MaxSpeed));
-        if (n.RotationSpeed - o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", n.RotationSpeed - o.RotationSpeed));
-        if (n.Friction - o.Friction != 0) diffs.Add(new StatDiff("GRP", (n.Friction - o.Friction) * 1000));
-        if (n.Visibility - o.Visibility != 0) diffs.Add(new StatDiff("VIS", n.Visibility - o.Visibility));
+        if (n.Acceleration != 0 || o.Acceleration != 0) diffs.Add(new StatDiff("ACC", o.Acceleration, n.Acceleration));
+        if (n.MaxSpeed != 0 || o.MaxSpeed != 0) diffs.Add(new StatDiff("SPD", o.MaxSpeed, n.MaxSpeed));
+        if (n.RotationSpeed != 0 || o.RotationSpeed != 0) diffs.Add(new StatDiff("ROT", o.RotationSpeed, n.RotationSpeed));
+        if (n.Friction != 0 || o.Friction != 0) diffs.Add(new StatDiff("GRP", o.Friction * 1000, n.Friction * 1000));
+        if (n.Visibility != 0 || o.Visibility != 0) diffs.Add(new StatDiff("VIS", o.Visibility, n.Visibility));
 
         RenderStatDiffs(renderer, x, y, diffs);
     }
