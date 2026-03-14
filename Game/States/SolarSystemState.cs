@@ -165,6 +165,7 @@ public class SolarSystemState : GameState
         _damagePopups.Clear();
         _explosions.Clear();
         _planetLandingOverlay.Cleanup();
+        game.Player.Missions.OnBountyCompleted = null;
 
         // Remove player from simulation (simulation stays alive in coordinator)
         if (_sim != null && _simPlayer != null)
