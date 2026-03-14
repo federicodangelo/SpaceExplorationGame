@@ -38,16 +38,26 @@ public static class MissionGenerator
             int missionId = (int)(boardSeed ^ (ulong)(i * 7919 + 31)) & 0x7FFFFFFF;
 
             var missionType = PickMissionType(rng);
-            var mission = missionType switch
+
+            // 20% chance to generate a chained mission instead of a standalone one
+            Mission mission;
+            if (rng.NextFloat() < 0.2f)
             {
-                MissionType.Delivery => GenerateDeliveryMission(rng, missionId, currentSystem, otherSystems),
-                MissionType.Mining => GenerateMiningMission(rng, missionId, currentSystem),
-                MissionType.BountyHunt => GenerateBountyMission(rng, missionId, currentSystem),
-                MissionType.Exploration => GenerateExplorationMission(rng, seeds, missionId, currentSystem, otherSystems),
-                MissionType.Patrol => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems),
-                MissionType.SettlementDelivery => GenerateSettlementDeliveryMission(rng, seeds, missionId, currentSystem, otherSystems),
-                _ => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems)
-            };
+                mission = GenerateChainedMission(rng, missionId, currentSystem, otherSystems);
+            }
+            else
+            {
+                mission = missionType switch
+                {
+                    MissionType.Delivery => GenerateDeliveryMission(rng, missionId, currentSystem, otherSystems),
+                    MissionType.Mining => GenerateMiningMission(rng, missionId, currentSystem, otherSystems),
+                    MissionType.BountyHunt => GenerateBountyMission(rng, missionId, currentSystem, otherSystems),
+                    MissionType.Exploration => GenerateExplorationMission(rng, seeds, missionId, currentSystem, otherSystems),
+                    MissionType.Patrol => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems),
+                    MissionType.SettlementDelivery => GenerateSettlementDeliveryMission(rng, seeds, missionId, currentSystem, otherSystems),
+                    _ => GeneratePatrolMission(rng, missionId, currentSystem, otherSystems)
+                };
+            }
 
             missions.Add(mission);
         }
@@ -69,16 +79,133 @@ public static class MissionGenerator
         return surfaceRng.DeriveChildSeed(5000 + settlementX * 100 + settlementY);
     }
 
+    private static Mission GenerateChainedMission(SeededRandom rng, int baseId, StarSystemData currentSystem, List<StarSystemData> otherSystems)
+    {
+        // Chain patterns: Delivery→Bounty (2 steps) or Delivery→Mining→Return (3 steps)
+        int chainId = baseId;
+        bool threeStep = rng.NextFloat() < 0.4f;
+        int totalSteps = threeStep ? 3 : 2;
+
+        var targetSystem = rng.Pick(otherSystems);
+        int baseReward = 200 + currentSystem.DangerLevel * 80;
+
+        if (threeStep)
+        {
+            // Step 3: Return delivery to origin (final step, no NextChainMission)
+            int step3Id = baseId ^ 0x30000;
+            int step3Reward = (int)(baseReward * 2.0f) + rng.NextInt(200, 500);
+            var step3 = new Mission
+            {
+                Id = step3Id,
+                Title = "Chain: Return Report",
+                Description = $"Return to {currentSystem.Name} to deliver your report and collect the full reward.",
+                Type = MissionType.Delivery,
+                Target = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                CreditReward = step3Reward,
+                RequiredAmount = 1,
+                ChainId = chainId,
+                ChainStep = 2,
+                ChainTotal = totalSteps,
+            };
+
+            // Step 2: Mine resources in the target system
+            var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
+            var resInfo = ResourceCatalog.Get(resource);
+            int amount = rng.NextInt(5, 10);
+            int step2Id = baseId ^ 0x20000;
+            int step2Reward = baseReward + rng.NextInt(100, 300);
+            var step2 = new Mission
+            {
+                Id = step2Id,
+                Title = $"Chain: Mine {resInfo.Name}",
+                Description = $"Mine {amount} units of {resInfo.Name} in the {targetSystem.Name} system.",
+                Type = MissionType.Mining,
+                Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+                TurnIn = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+                Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                TargetResource = resource,
+                RequiredAmount = amount,
+                CreditReward = step2Reward,
+                ChainId = chainId,
+                ChainStep = 1,
+                ChainTotal = totalSteps,
+                NextChainMission = step3,
+            };
+
+            // Step 1: Deliver to target system
+            int step1Reward = baseReward + rng.NextInt(50, 200);
+            return new Mission
+            {
+                Id = baseId,
+                Title = $"Contract: {targetSystem.Name} Operation",
+                Description = $"Travel to {targetSystem.Name} to begin a multi-part contract. Dock at any station there.",
+                Type = MissionType.Delivery,
+                Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+                TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                CreditReward = step1Reward,
+                RequiredAmount = 1,
+                ChainId = chainId,
+                ChainStep = 0,
+                ChainTotal = totalSteps,
+                NextChainMission = step2,
+            };
+        }
+        else
+        {
+            // 2-step: Delivery→Bounty
+            int killCount = rng.NextInt(2, 4 + currentSystem.DangerLevel);
+            int step2Id = baseId ^ 0x20000;
+            int step2Reward = killCount * 250 + rng.NextInt(200, 500);
+            var step2 = new Mission
+            {
+                Id = step2Id,
+                Title = $"Chain: Hunt {killCount} Pirates",
+                Description = $"Destroy {killCount} pirates in the {targetSystem.Name} system to complete the contract.",
+                Type = MissionType.BountyHunt,
+                Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+                TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                RequiredAmount = killCount,
+                CreditReward = step2Reward,
+                ChainId = chainId,
+                ChainStep = 1,
+                ChainTotal = totalSteps,
+            };
+
+            // Step 1: Travel to target
+            int step1Reward = baseReward + rng.NextInt(50, 200);
+            return new Mission
+            {
+                Id = baseId,
+                Title = $"Contract: {targetSystem.Name} Bounty",
+                Description = $"Travel to {targetSystem.Name} to begin a bounty contract. Dock at any station there.",
+                Type = MissionType.Delivery,
+                Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
+                TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
+                CreditReward = step1Reward,
+                RequiredAmount = 1,
+                ChainId = chainId,
+                ChainStep = 0,
+                ChainTotal = totalSteps,
+                NextChainMission = step2,
+            };
+        }
+    }
+
     private static MissionType PickMissionType(SeededRandom rng)
     {
         float roll = rng.NextFloat();
         return roll switch
         {
-            < 0.20f => MissionType.Delivery,
-            < 0.35f => MissionType.Mining,
-            < 0.50f => MissionType.BountyHunt,
-            < 0.65f => MissionType.Exploration,
-            < 0.80f => MissionType.Patrol,
+            < 0.15f => MissionType.Delivery,
+            < 0.28f => MissionType.Mining,
+            < 0.42f => MissionType.BountyHunt,
+            < 0.55f => MissionType.Exploration,
+            < 0.68f => MissionType.Patrol,
             _ => MissionType.SettlementDelivery
         };
     }
@@ -89,34 +216,64 @@ public static class MissionGenerator
         int baseReward = 300 + currentSystem.DangerLevel * 100;
         int reward = rng.NextInt(baseReward, baseReward + 400);
 
+        // 40% chance to be timed
+        float deadline = 0;
+        string description = $"Deliver supplies to a station in the {targetSystem.Name} system. Dock at any station there to complete.";
+        if (rng.NextFloat() < 0.4f)
+        {
+            deadline = 600f; // 10 minutes base
+            reward = (int)(reward * 1.35f);
+            description += " TIME LIMIT!";
+        }
+
         return new Mission
         {
             Id = id,
             Title = $"Supply Run to {targetSystem.Name}",
-            Description = $"Deliver supplies to a station in the {targetSystem.Name} system. Dock at any station there to complete.",
+            Description = description,
             Type = MissionType.Delivery,
             Target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name),
             TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             CreditReward = reward,
-            RequiredAmount = 1
+            RequiredAmount = 1,
+            DeadlineSeconds = deadline,
         };
     }
 
-    private static Mission GenerateMiningMission(SeededRandom rng, int id, StarSystemData currentSystem)
+    private static Mission GenerateMiningMission(SeededRandom rng, int id, StarSystemData currentSystem,
+        List<StarSystemData> otherSystems)
     {
         var resource = (ResourceType)rng.NextInt(0, Enum.GetValues<ResourceType>().Length);
         var resInfo = ResourceCatalog.Get(resource);
         int amount = rng.NextInt(5, 15 + currentSystem.DangerLevel * 3);
         int reward = amount * resInfo.ValuePerUnit + rng.NextInt(100, 300);
 
+        // 50% chance to be location-specific (mine in a target system)
+        bool locationSpecific = otherSystems.Count > 0 && rng.NextFloat() < 0.5f;
+        GalaxyLocation target;
+        string description;
+
+        if (locationSpecific)
+        {
+            var targetSystem = rng.Pick(otherSystems);
+            target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name);
+            description = $"Mine {amount} units of {resInfo.Name} in the {targetSystem.Name} system.";
+            reward = (int)(reward * 1.3f); // bonus for location constraint
+        }
+        else
+        {
+            target = GalaxyLocation.None;
+            description = $"Mine {amount} units of {resInfo.Name}. Mine asteroids or surface rocks anywhere.";
+        }
+
         return new Mission
         {
             Id = id,
             Title = $"Mining Contract: {resInfo.Name}",
-            Description = $"Mine {amount} units of {resInfo.Name}. Mine asteroids or surface rocks anywhere.",
+            Description = description,
             Type = MissionType.Mining,
-            Target = GalaxyLocation.None,
+            Target = target,
             TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             TargetResource = resource,
@@ -125,22 +282,51 @@ public static class MissionGenerator
         };
     }
 
-    private static Mission GenerateBountyMission(SeededRandom rng, int id, StarSystemData currentSystem)
+    private static Mission GenerateBountyMission(SeededRandom rng, int id, StarSystemData currentSystem,
+        List<StarSystemData> otherSystems)
     {
         int killCount = rng.NextInt(2, 4 + currentSystem.DangerLevel);
         int reward = killCount * 200 + currentSystem.DangerLevel * 150 + rng.NextInt(0, 300);
 
+        // 60% chance to be location-specific (hunt in a target system)
+        bool locationSpecific = otherSystems.Count > 0 && rng.NextFloat() < 0.6f;
+        GalaxyLocation target;
+        string description;
+
+        if (locationSpecific)
+        {
+            var targetSystem = rng.Pick(otherSystems);
+            target = GalaxyLocation.ForSystem(targetSystem.Index, targetSystem.Name);
+            description = $"Destroy {killCount} pirate ships in the {targetSystem.Name} system.";
+            reward = (int)(reward * 1.25f); // bonus for location constraint
+        }
+        else
+        {
+            target = GalaxyLocation.None;
+            description = $"Destroy {killCount} pirate ships anywhere in the galaxy.";
+        }
+
+        // 30% chance to be timed (delivery-style urgency)
+        float deadline = 0;
+        if (rng.NextFloat() < 0.3f)
+        {
+            deadline = 300f + killCount * 60f; // 5+ minutes base, +1 min per kill
+            reward = (int)(reward * 1.4f); // time pressure bonus
+            description += " TIME LIMIT!";
+        }
+
         return new Mission
         {
             Id = id,
-            Title = $"Pirate Bounty: {killCount} Ships",
-            Description = $"Destroy {killCount} pirate ships anywhere in the galaxy.",
+            Title = locationSpecific ? $"Bounty: {killCount} Pirates" : $"Pirate Bounty: {killCount} Ships",
+            Description = description,
             Type = MissionType.BountyHunt,
-            Target = GalaxyLocation.None,
+            Target = target,
             TurnIn = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             Origin = GalaxyLocation.ForSystem(currentSystem.Index, currentSystem.Name),
             RequiredAmount = killCount,
-            CreditReward = reward
+            CreditReward = reward,
+            DeadlineSeconds = deadline,
         };
     }
 

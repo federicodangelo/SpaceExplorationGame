@@ -360,6 +360,9 @@ public class PlanetSurfaceState : GameState
         // Process simulation events
         t.Time("SimEvents", () => ProcessSimulationEvents(game));
 
+        // Tick mission deadlines
+        game.Player.Missions.Update(dt);
+
         // Visual effects
         t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
 
@@ -677,6 +680,10 @@ public class PlanetSurfaceState : GameState
         // Combat message
         if (_sim.LocalCombatMessage != null)
             HudRenderer.RenderCenteredMessage(renderer, _sim.LocalCombatMessage, -40, new Color3(255, 220, 80), 2f);
+
+        // Expired mission message
+        if (game.Player.Missions.ExpiredMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, game.Player.Missions.ExpiredMessage, -10, new Color3(255, 80, 80), 2f);
 
         // Death message
         if (_sim.LocalPlayerDead)

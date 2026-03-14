@@ -65,6 +65,9 @@ public class SolarSystemSimulation : CombatSimulationBase
     private WarpEffectSystem _warpEffectSystem = null!;
     private NpcShipSpawnManager _npcSpawnManager = null!;
 
+    /// <summary>Apply bounty mission world impact — temporarily reduces pirate spawn budget.</summary>
+    public void ApplyBountyImpact() => _npcSpawnManager.ApplyBountyImpact();
+
     private const float InteractionRadius = 20f;
 
 
@@ -462,7 +465,7 @@ public class SolarSystemSimulation : CombatSimulationBase
         if (destroyed.KillerFaction == Faction.Player && destroyed.Faction == Faction.Pirate
             && FindLocalPlayerByEntity(destroyed.KillerEntity) is { } pirateStopper)
         {
-            pirateStopper.Data.Missions.NotifyPirateKilled();
+            pirateStopper.Data.Missions.NotifyPirateKilled(StarSystem.Index);
         }
 
         // Notify spawn manager so it can schedule a replacement

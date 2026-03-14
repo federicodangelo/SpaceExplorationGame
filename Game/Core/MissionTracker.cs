@@ -21,6 +21,18 @@ public class MissionTracker
     /// <summary>Index into <see cref="Active"/> for the player's preferred tracked mission (-1 = auto).</summary>
     public int TrackedIndex { get; set; } = -1;
 
+    /// <summary>Callback invoked when a bounty mission completes, providing the target system index for world impact.</summary>
+    public Action<int>? OnBountyCompleted { get; set; }
+
+    /// <summary>Missions that expired due to deadline. Cleared each frame after being read.</summary>
+    public List<Mission> ExpiredLastFrame { get; } = new();
+
+    /// <summary>Message to display when a mission expires. Auto-cleared after timer runs out.</summary>
+    public string? ExpiredMessage { get; private set; }
+
+    /// <summary>Timer for the expired message display.</summary>
+    public float ExpiredMessageTimer { get; private set; }
+
     // ── Commands ──
 
     /// <summary>Accept a mission from the board. Returns false if at max capacity.</summary>
@@ -28,6 +40,8 @@ public class MissionTracker
     {
         if (Active.Count >= MaxActive) return false;
         mission.Status = MissionStatus.Active;
+        if (mission.IsTimed)
+            mission.TimeRemaining = mission.DeadlineSeconds;
         Active.Add(mission);
         ClaimedIds.Add(mission.Id);
         return true;
@@ -40,15 +54,61 @@ public class MissionTracker
         ClampTrackedIndex();
     }
 
-    /// <summary>Turn in a completed mission. Returns credits earned (0 if not completed).</summary>
+    /// <summary>Turn in a completed mission. Returns credits earned (0 if not completed).
+    /// If the mission is chained, the next step is activated automatically.</summary>
     public int TurnIn(Mission mission)
     {
         if (mission.Status != MissionStatus.Completed) return 0;
         int reward = mission.CreditReward;
         Active.Remove(mission);
         Completed++;
+
+        // Activate the next chain step
+        if (mission.NextChainMission != null && Active.Count < MaxActive)
+        {
+            Accept(mission.NextChainMission);
+        }
+
         ClampTrackedIndex();
         return reward;
+    }
+
+    // ── Timer ──
+
+    /// <summary>Tick mission deadlines. Call each frame with delta time.</summary>
+    public void Update(float dt)
+    {
+        ExpiredLastFrame.Clear();
+
+        // Tick expired message timer
+        if (ExpiredMessageTimer > 0)
+        {
+            ExpiredMessageTimer -= dt;
+            if (ExpiredMessageTimer <= 0)
+                ExpiredMessage = null;
+        }
+
+        for (int i = Active.Count - 1; i >= 0; i--)
+        {
+            var m = Active[i];
+            if (m.IsTimed && m.Status == MissionStatus.Active)
+            {
+                m.TimeRemaining -= dt;
+                if (m.TimeRemaining <= 0)
+                {
+                    m.TimeRemaining = 0;
+                    ExpiredLastFrame.Add(m);
+                    Active.RemoveAt(i);
+                }
+            }
+        }
+
+        if (ExpiredLastFrame.Count > 0)
+        {
+            ClampTrackedIndex();
+            ExpiredMessage = $"MISSION EXPIRED: {ExpiredLastFrame[0].Title.ToUpper()}";
+            ExpiredMessageTimer = 3.5f;
+        }
     }
 
     // ── Notifications ──
@@ -113,28 +173,41 @@ public class MissionTracker
         }
     }
 
-    /// <summary>Notify: a pirate was killed by the player. Checks bounty missions.</summary>
-    public void NotifyPirateKilled()
+    /// <summary>Notify: a pirate was killed by the player in the given system. Checks bounty missions.</summary>
+    public void NotifyPirateKilled(int systemIndex)
     {
         foreach (var m in Active)
         {
             if (m.Status == MissionStatus.Active && m.Type == MissionType.BountyHunt)
             {
+                // Location-restricted bounties only count kills in the target system
+                if (m.Target.HasSystem && !m.Target.IsSystem(systemIndex))
+                    continue;
+
                 m.CurrentAmount++;
                 if (m.CurrentAmount >= m.RequiredAmount)
+                {
                     m.Status = MissionStatus.Completed;
+                    // Notify world impact: bounty completed in this system
+                    if (m.Target.HasSystem)
+                        OnBountyCompleted?.Invoke(m.Target.SystemIndex);
+                }
             }
         }
     }
 
-    /// <summary>Notify: resources were mined. Checks mining missions.</summary>
-    public void NotifyResourceMined(ResourceType resource, int amount)
+    /// <summary>Notify: resources were mined in the given system. Checks mining missions.</summary>
+    public void NotifyResourceMined(ResourceType resource, int amount, int systemIndex)
     {
         foreach (var m in Active)
         {
             if (m.Status == MissionStatus.Active && m.Type == MissionType.Mining
                 && m.TargetResource == resource)
             {
+                // Location-restricted mining only counts in the target system
+                if (m.Target.HasSystem && !m.Target.IsSystem(systemIndex))
+                    continue;
+
                 m.CurrentAmount += amount;
                 if (m.CurrentAmount >= m.RequiredAmount)
                     m.Status = MissionStatus.Completed;

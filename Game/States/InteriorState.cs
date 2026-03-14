@@ -316,6 +316,9 @@ public class InteriorState : GameState
 
         // Camera
         t.Time("CameraFollow", () => _cameraFollowSystem.Update(in dt));
+
+        // Tick mission deadlines
+        game.Player.Missions.Update(dt);
     }
 
     private void ZeroPlayerMovementAcceleration()
@@ -555,6 +558,10 @@ public class InteriorState : GameState
 
         // HUD
         HudRenderer.RenderInteriorHud(renderer, game.Player, _sim.Interior, _starSystem);
+
+        // Expired mission message
+        if (game.Player.Missions.ExpiredMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, game.Player.Missions.ExpiredMessage, -50, new Color3(255, 80, 80), 2f);
 
         if (!AnyOverlayOpen)
         {

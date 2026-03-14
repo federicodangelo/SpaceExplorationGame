@@ -28,6 +28,10 @@ public class NpcShipSpawnManager
     private float _traderRespawnTimer;
     private float _patrolRespawnTimer;
 
+    // World impact: temporary pirate budget reduction from completed bounty missions
+    private int _pirateBudgetReduction;
+    private float _pirateBudgetReductionTimer;
+
     // Periodic spawn check
     private float _spawnCheckTimer;
 
@@ -92,6 +96,16 @@ public class NpcShipSpawnManager
     }
 
     /// <summary>
+    /// Reduce the pirate spawn budget temporarily (world impact from bounty completion).
+    /// Lasts for 120 seconds, reducing max pirate count by 2 (stacks with existing reduction).
+    /// </summary>
+    public void ApplyBountyImpact()
+    {
+        _pirateBudgetReduction = Math.Min(_pirateBudgetReduction + 2, _config.TargetPirates);
+        _pirateBudgetReductionTimer = 120f;
+    }
+
+    /// <summary>
     /// Called every frame. Ticks respawn timers and periodically spawns ships
     /// that warp into the system to maintain the target population.
     /// </summary>
@@ -101,6 +115,14 @@ public class NpcShipSpawnManager
         if (_pirateRespawnTimer > 0) _pirateRespawnTimer -= dt;
         if (_traderRespawnTimer > 0) _traderRespawnTimer -= dt;
         if (_patrolRespawnTimer > 0) _patrolRespawnTimer -= dt;
+
+        // Decay bounty impact
+        if (_pirateBudgetReductionTimer > 0)
+        {
+            _pirateBudgetReductionTimer -= dt;
+            if (_pirateBudgetReductionTimer <= 0)
+                _pirateBudgetReduction = 0;
+        }
 
         // Periodic spawn check
         _spawnCheckTimer -= dt;
@@ -129,7 +151,8 @@ public class NpcShipSpawnManager
         }
 
         // Spawn one ship per faction per check cycle (to stagger arrivals)
-        if (pirates < _config.TargetPirates && _pirateRespawnTimer <= 0)
+        int effectivePirateTarget = Math.Max(0, _config.TargetPirates - _pirateBudgetReduction);
+        if (pirates < effectivePirateTarget && _pirateRespawnTimer <= 0)
             SpawnShip(Faction.Pirate, useInitialRadius: false, withWarpEffect: true);
 
         if (traders < _config.TargetTraders && _traderRespawnTimer <= 0)

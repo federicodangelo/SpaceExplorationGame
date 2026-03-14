@@ -113,6 +113,13 @@ public class SolarSystemState : GameState
         // Add player to simulation
         _simPlayer = _sim.AddPlayer(game.Player);
 
+        // Wire up bounty mission world impact: completing a bounty reduces pirate spawns
+        game.Player.Missions.OnBountyCompleted = systemIndex =>
+        {
+            if (systemIndex == _starSystem.Index)
+                _sim.ApplyBountyImpact();
+        };
+
         // Particle system lives in the state — only updated when this state is active
         _particleSystem = new ParticleSystem(_sim.EcsWorld);
         _particleSystem.Initialize();
@@ -298,6 +305,9 @@ public class SolarSystemState : GameState
 
         // Process simulation events for audio/visual effects
         t.Time("SimEvents", () => ProcessSimulationEvents(game));
+
+        // Tick mission deadlines
+        game.Player.Missions.Update(dt);
 
         // Update visual effects
         t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
@@ -652,6 +662,10 @@ public class SolarSystemState : GameState
         // Combat message
         if (_sim.LocalCombatMessage != null)
             HudRenderer.RenderCenteredMessage(renderer, _sim.LocalCombatMessage, 30, new Color3(255, 200, 80), 2f);
+
+        // Expired mission message
+        if (game.Player.Missions.ExpiredMessage != null)
+            HudRenderer.RenderCenteredMessage(renderer, game.Player.Missions.ExpiredMessage, 60, new Color3(255, 80, 80), 2f);
 
         // Interaction prompts
         HudRenderer.RenderSolarSystemPrompt(renderer,

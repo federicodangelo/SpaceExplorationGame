@@ -134,6 +134,23 @@ public class MissionsListOverlay : ListPanelOverlay
             float afterStatus = labelX + renderer.MeasureText(statusTag, 1.5f) + 8;
             renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
+            float afterType = afterStatus + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 6;
+            if (m.IsTimed && !completed)
+            {
+                var ts = TimeSpan.FromSeconds(m.TimeRemaining);
+                string timeStr = ts.TotalMinutes >= 1
+                    ? $"[{(int)ts.TotalMinutes}:{ts.Seconds:D2}]"
+                    : $"[{ts.Seconds}s]";
+                var timerColor = m.TimeRemaining < 60 ? new Color3(255, 80, 80) : new Color3(255, 160, 80);
+                renderer.DrawTextScreen(afterType, y + 5, timeStr, timerColor, 1.5f);
+                afterType += renderer.MeasureText(timeStr, 1.5f) + 6;
+            }
+            if (m.IsChained)
+            {
+                string chainTag = $"[CHAIN {m.ChainStep + 1}/{m.ChainTotal}]";
+                renderer.DrawTextScreen(afterType, y + 5, chainTag, new Color3(180, 120, 255), 1.5f);
+            }
+
             renderer.DrawTextScreen(labelX, y + 24, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 255f);
 

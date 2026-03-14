@@ -163,7 +163,8 @@ public abstract class CombatSimulationBase : SimulationBase
                 {
                     miner = FindPlayerByEntity(destroyed.KillerEntity);
                     if (miner != null)
-                        resourceMsg = CollectResource(miner.Data, asteroid.Resource, asteroid.ResourceAmount);
+                        resourceMsg = CollectResource(miner.Data, asteroid.Resource, asteroid.ResourceAmount,
+                            miner.Data.CurrentStarSystemIndex);
                 }
                 OnAsteroidDestroyed(destroyed, miner, resourceMsg);
             }
@@ -304,13 +305,13 @@ public abstract class CombatSimulationBase : SimulationBase
     // ── Resource collection helper ──────────────────────────────────
 
     /// <summary>Collect resources into player cargo, returning a HUD message string.</summary>
-    protected static string CollectResource(PlayerData playerData, ResourceType resource, int amount)
+    protected static string CollectResource(PlayerData playerData, ResourceType resource, int amount, int systemIndex = -1)
     {
         int added = playerData.AddCargo(resource, amount);
         var resInfo = ResourceCatalog.Get(resource);
         if (added > 0)
         {
-            playerData.Missions.NotifyResourceMined(resource, added);
+            playerData.Missions.NotifyResourceMined(resource, added, systemIndex);
             playerData.Stats.RecordResourceMined(resource, added);
             return $"+{added} {resInfo.Name.ToUpper()}";
         }

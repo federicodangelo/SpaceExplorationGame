@@ -228,19 +228,31 @@ public class MissionOverlay : ListPanelOverlay
             // Type badge
             renderer.DrawTextScreen(panelX + 15, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
 
+            // Timed / chained badges
+            float badgeX = panelX + 15 + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 6;
+            if (m.IsTimed)
+            {
+                renderer.DrawTextScreen(badgeX, y + 5, "[TIMED]", new Color3(255, 120, 80), 1.5f);
+                badgeX += renderer.MeasureText("[TIMED]", 1.5f) + 6;
+            }
+            if (m.IsChained)
+            {
+                renderer.DrawTextScreen(badgeX, y + 5, $"[CHAIN {m.ChainStep + 1}/{m.ChainTotal}]", new Color3(180, 120, 255), 1.5f);
+                badgeX += renderer.MeasureText($"[CHAIN {m.ChainStep + 1}/{m.ChainTotal}]", 1.5f) + 6;
+            }
+
             // Title
-            float titleX = panelX + 15 + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 10;
-            renderer.DrawTextScreen(titleX, y + 5, m.Title,
+            renderer.DrawTextScreen(panelX + 15, y + 20, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 100f);
 
             // Description
-            renderer.DrawTextScreen(panelX + 25, y + 28, m.Description,
+            renderer.DrawTextScreen(panelX + 25, y + 38, m.Description,
                 new Color3(140, 140, 160), 1.5f, panelW - 40f);
 
             // Reward and turn-in location
-            renderer.DrawTextScreen(panelX + 25, y + 48,
+            renderer.DrawTextScreen(panelX + 25, y + 53,
                 $"REWARD: {m.CreditReward} CREDITS", new Color3(255, 220, 80), 1.5f, panelW - 265f);
-            renderer.DrawTextScreen(panelX + panelW - 250, y + 48,
+            renderer.DrawTextScreen(panelX + panelW - 250, y + 53,
                 $"TURN IN: {m.TurnIn.SystemName.ToUpper()}", new Color3(160, 140, 200), 1.2f, 235f);
 
             // Target info
@@ -249,7 +261,7 @@ public class MissionOverlay : ListPanelOverlay
                 string targetInfo = m.Target.HasPlanet
                     ? $"TARGET: {m.Target.PlanetName?.ToUpper()} IN {m.Target.SystemName.ToUpper()}"
                     : $"TARGET: {m.Target.SystemName.ToUpper()}";
-                renderer.DrawTextScreen(panelX + 25, y + 63, targetInfo,
+                renderer.DrawTextScreen(panelX + 25, y + 67, targetInfo,
                     new Color3(120, 160, 200), 1.2f, panelW - 40f);
             }
         }
@@ -287,6 +299,17 @@ public class MissionOverlay : ListPanelOverlay
 
             float afterStatus = panelX + 15 + renderer.MeasureText(statusTag, 1.5f) + 8;
             renderer.DrawTextScreen(afterStatus, y + 5, $"[{m.TypeLabel}]", m.TypeColor, 1.5f);
+
+            float afterType = afterStatus + renderer.MeasureText($"[{m.TypeLabel}]", 1.5f) + 6;
+            if (m.IsTimed && !completed)
+            {
+                var ts = TimeSpan.FromSeconds(m.TimeRemaining);
+                string timeStr = ts.TotalMinutes >= 1
+                    ? $"[{(int)ts.TotalMinutes}:{ts.Seconds:D2}]"
+                    : $"[{ts.Seconds}s]";
+                var timerColor = m.TimeRemaining < 60 ? new Color3(255, 80, 80) : new Color3(255, 160, 80);
+                renderer.DrawTextScreen(afterType, y + 5, timeStr, timerColor, 1.5f);
+            }
 
             renderer.DrawTextScreen(panelX + 15, y + 24, m.Title,
                 selected ? new Color3(255, 255, 220) : new Color3(200, 200, 200), 2f, panelW - 215f);

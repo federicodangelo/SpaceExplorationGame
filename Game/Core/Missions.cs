@@ -87,6 +87,37 @@ public class Mission
     /// <summary>Credits awarded on turn-in.</summary>
     public int CreditReward { get; init; }
 
+    // ── Timed missions ──
+
+    /// <summary>Time limit in seconds. 0 means no deadline.</summary>
+    public float DeadlineSeconds { get; init; }
+
+    /// <summary>Remaining time in seconds. Counts down when active.</summary>
+    public float TimeRemaining { get; set; }
+
+    /// <summary>Whether this mission has a deadline.</summary>
+    public bool IsTimed => DeadlineSeconds > 0;
+
+    // ── Chain missions ──
+
+    /// <summary>Chain ID shared by all missions in the same chain. 0 = standalone.</summary>
+    public int ChainId { get; init; }
+
+    /// <summary>Step index within the chain (0-based). Only meaningful when ChainId > 0.</summary>
+    public int ChainStep { get; init; }
+
+    /// <summary>Total steps in the chain. Only meaningful when ChainId > 0.</summary>
+    public int ChainTotal { get; init; }
+
+    /// <summary>
+    /// The next mission in the chain (activated when this step completes).
+    /// Null for the final step or standalone missions.
+    /// </summary>
+    public Mission? NextChainMission { get; init; }
+
+    /// <summary>Whether this mission is part of a chain.</summary>
+    public bool IsChained => ChainId > 0;
+
     // ── Helpers ──
 
     /// <summary>Formatted progress string for display.</summary>
@@ -97,7 +128,7 @@ public class Mission
             if (Status == MissionStatus.Completed)
                 return $"TURN IN AT {TurnIn.SystemName.ToUpper()}";
 
-            return Type switch
+            string progress = Type switch
             {
                 MissionType.Mining => $"{CurrentAmount}/{RequiredAmount} {ResourceCatalog.Get(TargetResource).Name.ToUpper()}",
                 MissionType.BountyHunt => $"{CurrentAmount}/{RequiredAmount} PIRATES",
@@ -107,6 +138,26 @@ public class Mission
                 MissionType.SettlementDelivery => $"VISIT SETTLEMENT ON {Target.PlanetName?.ToUpper() ?? "?"}",
                 _ => ""
             };
+
+            // Append location restriction for bounty/mining
+            if ((Type is MissionType.BountyHunt or MissionType.Mining) && Target.HasSystem)
+                progress += $" IN {Target.SystemName.ToUpper()}";
+
+            // Append time remaining
+            if (IsTimed && TimeRemaining > 0)
+            {
+                var ts = TimeSpan.FromSeconds(TimeRemaining);
+                string timeStr = ts.TotalMinutes >= 1
+                    ? $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}"
+                    : $"{ts.Seconds}s";
+                progress += $"  [{timeStr}]";
+            }
+
+            // Append chain progress
+            if (IsChained)
+                progress += $"  STEP {ChainStep + 1}/{ChainTotal}";
+
+            return progress;
         }
     }
 

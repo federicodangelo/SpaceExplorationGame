@@ -391,6 +391,16 @@ public class SavedMission
     public int CurrentAmount { get; set; }
     public int CreditReward { get; set; }
 
+    // Timed missions
+    public float DeadlineSeconds { get; set; }
+    public float TimeRemaining { get; set; }
+
+    // Chain missions
+    public int ChainId { get; set; }
+    public int ChainStep { get; set; }
+    public int ChainTotal { get; set; }
+    public SavedMission? NextChainMission { get; set; }
+
     public static SavedMission FromMission(Mission m) => new()
     {
         Id = m.Id,
@@ -417,6 +427,14 @@ public class SavedMission
         RequiredAmount = m.RequiredAmount,
         CurrentAmount = m.CurrentAmount,
         CreditReward = m.CreditReward,
+
+        DeadlineSeconds = m.DeadlineSeconds,
+        TimeRemaining = m.TimeRemaining,
+
+        ChainId = m.ChainId,
+        ChainStep = m.ChainStep,
+        ChainTotal = m.ChainTotal,
+        NextChainMission = m.NextChainMission != null ? FromMission(m.NextChainMission) : null,
     };
 
     public Mission? ToMission()
@@ -459,6 +477,12 @@ public class SavedMission
             RequiredAmount = RequiredAmount,
             CurrentAmount = CurrentAmount,
             CreditReward = CreditReward,
+            DeadlineSeconds = DeadlineSeconds,
+            TimeRemaining = TimeRemaining,
+            ChainId = ChainId,
+            ChainStep = ChainStep,
+            ChainTotal = ChainTotal,
+            NextChainMission = NextChainMission?.ToMission(),
         };
     }
 }
