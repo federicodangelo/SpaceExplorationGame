@@ -37,7 +37,6 @@ internal static class Program
         int latencyMs = 0;
         int jitterMs = 0;
         string? location = null;
-        string? subLocation = null;
         int dangerLevel = 0;
 
         for (int i = 0; i < args.Length; i++)
@@ -81,13 +80,6 @@ internal static class Program
                 location = args[i + 1];
                 i++;
             }
-            else if (arg is "--sublocation" or "-sl")
-            {
-                if (i + 1 >= args.Length)
-                    throw new ArgumentException("Missing value for --sublocation. Example: --sublocation inside");
-                subLocation = args[i + 1];
-                i++;
-            }
             else if (arg is "--danger-level" or "-d")
             {
                 if (i + 1 >= args.Length || !int.TryParse(args[i + 1], out dangerLevel) || dangerLevel < 0)
@@ -100,6 +92,13 @@ internal static class Program
             }
         }
 
+        if (location == null && dangerLevel == 0)
+        {
+            // No location-related arguments provided, use default starting location with danger level 1
+            location = "system";
+            dangerLevel = 1;
+        }
+
         using var platform = new NullPlatform("Dedicated Server",
             WindowConfig.DefaultWindowWidth, WindowConfig.DefaultWindowHeight);
 
@@ -109,7 +108,7 @@ internal static class Program
         Console.WriteLine($"Galaxy Seed: {game.Seeds.GalaxySeed}");
 
         // Resolve starting spawn location (default: first danger-1 system in solar system space)
-        var startingLocation = ResolveStartingLocation(location, subLocation, dangerLevel, game);
+        var startingLocation = ResolveStartingLocation(location, dangerLevel, game);
         Console.WriteLine($"Player spawn location: {startingLocation}");
 
         // Start WebSocket server.
@@ -130,7 +129,7 @@ internal static class Program
         game.RunAtTargetFps(ServerState.TargetFps);
     }
 
-    private static NetPlayerLocation ResolveStartingLocation(string? location, string? subLocation, int dangerLevel, Game game)
+    private static NetPlayerLocation ResolveStartingLocation(string? location, int dangerLevel, Game game)
     {
         // Default starting star system: first danger-1 system, or system 0 as fallback
         var starSystems = game.GalaxyData.FindAll(s => dangerLevel <= 0 || s.DangerLevel == dangerLevel).ToList();
@@ -142,14 +141,13 @@ internal static class Program
         }
 
         string loc = Normalize(location ?? "system");
-        string? sub = string.IsNullOrWhiteSpace(subLocation) ? null : Normalize(subLocation);
 
         return loc switch
         {
-            "system" or "solar-system" => ResolveSolarSystem(sub, starSystems),
-            "station" or "space-station" => ResolveStation(sub, starSystems, game.UniverseGenerator),
-            "planet" => ResolvePlanet(sub, starSystems, game.UniverseGenerator),
-            "settlement" => ResolveSettlement(sub, starSystems, game.UniverseGenerator),
+            "system" or "solar-system" => ResolveSolarSystem(starSystems),
+            "station" or "space-station" => ResolveStation(starSystems, game.UniverseGenerator),
+            "planet" => ResolvePlanet(starSystems, game.UniverseGenerator),
+            "settlement" => ResolveSettlement(starSystems, game.UniverseGenerator),
             "derelict" or "derelict-ship" => ResolveDerelict(starSystems, game.UniverseGenerator),
             "distress" or "distress-beacon" => ResolveDistressBeacon(starSystems, game.UniverseGenerator, ambushOnly: false),
             "distress-ambush" or "ambush" => ResolveDistressBeacon(starSystems, game.UniverseGenerator, ambushOnly: true),
@@ -157,16 +155,15 @@ internal static class Program
         };
     }
 
-    private static NetPlayerLocation ResolveSolarSystem(string? sub, List<StarSystemData> starSystems)
+    private static NetPlayerLocation ResolveSolarSystem(List<StarSystemData> starSystems)
     {
         if (starSystems.Count == 0)
             throw new ArgumentException("No star systems found in the galaxy to spawn at. Adjust the galaxy generation settings.");
 
-        if (sub is null or "-" or "none") return NetPlayerLocation.ForSolarSystem(starSystems[0].Index);
-        throw new ArgumentException("Invalid --sublocation for system. Valid values: none (or omit)");
+        return NetPlayerLocation.ForSolarSystem(starSystems[0].Index);
     }
 
-    private static NetPlayerLocation ResolveStation(string? sub, List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
+    private static NetPlayerLocation ResolveStation(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
     {
         if (starSystems.Count == 0)
             throw new ArgumentException("No star systems found in the galaxy to spawn at. Adjust the galaxy generation settings.");
@@ -183,14 +180,10 @@ internal static class Program
 
         var spaceStation = solarSystem.SpaceStations[0];
 
-        return sub switch
-        {
-            null or "orbit" or "inside" => NetPlayerLocation.ForSpaceStation(starSystemWithStation.Index, spaceStation.Index),
-            _ => throw new ArgumentException("Invalid --sublocation for station. Valid values: orbit | inside")
-        };
+        return NetPlayerLocation.ForSpaceStation(starSystemWithStation.Index, spaceStation.Index);
     }
 
-    private static NetPlayerLocation ResolvePlanet(string? sub, List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
+    private static NetPlayerLocation ResolvePlanet(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
     {
         if (starSystems.Count == 0)
             throw new ArgumentException("No star systems found in the galaxy to spawn at. Adjust the galaxy generation settings.");
@@ -206,15 +199,10 @@ internal static class Program
         if (planet == null)
             throw new ArgumentException("No suitable planets with solid surface in the starting star system to spawn at. Choose a different --location or adjust the galaxy generation settings.");
 
-        return sub switch
-        {
-            null or "orbit" or "landed" or "on-foot" or "foot" or "on-vehicle" or "vehicle"
-                => NetPlayerLocation.ForPlanet(starSystemWithPlanet.Index, planet.Index),
-            _ => throw new ArgumentException("Invalid --sublocation for planet. Valid values: orbit | landed | on-foot | on-vehicle")
-        };
+        return NetPlayerLocation.ForPlanet(starSystemWithPlanet.Index, planet.Index);
     }
 
-    private static NetPlayerLocation ResolveSettlement(string? sub, List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
+    private static NetPlayerLocation ResolveSettlement(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
     {
         if (starSystems.Count == 0)
             throw new ArgumentException("No star systems found in the galaxy to spawn at. Adjust the galaxy generation settings.");
@@ -239,12 +227,7 @@ internal static class Program
 
         var settlement = planetSurface.Settlements[0];
 
-        return sub switch
-        {
-            null or "above" or "inside" or "on-foot" or "foot" or "on-vehicle" or "vehicle"
-                => NetPlayerLocation.ForPlanetSettlement(starSystem.Index, planet.Index, settlement.Index),
-            _ => throw new ArgumentException("Invalid --sublocation for settlement. Valid values: above | inside | on-foot | on-vehicle")
-        };
+        return NetPlayerLocation.ForPlanetSettlement(starSystem.Index, planet.Index, settlement.Index);
     }
 
     private static NetPlayerLocation ResolveDerelict(List<StarSystemData> starSystems, IUniverseGenerator universeGenerator)
