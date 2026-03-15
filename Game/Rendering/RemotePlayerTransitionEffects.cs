@@ -43,15 +43,33 @@ public sealed class RemotePlayerTransitionEffects
         SpaceStationToSolarSystem,
     }
 
+    private enum TransitionAnchorType
+    {
+        Static,
+        Entity,
+    }
+
+    private sealed class TransitionAnchor
+    {
+        public TransitionAnchorType AnchorType;
+        public Entity Entity;
+        public Vector2 Position;
+        public float Rotation;
+    }
+
     private sealed class TransitionEffect
     {
         public byte PlayerId;
-        public Vector2 Position;
-        public float Rotation;
         public string ShipTypeId = "";
         public TransitionType TransitionType;
         public float Elapsed;
         public float Duration;
+        public TransitionAnchor Start = new();
+        public TransitionAnchor End = new();
+        public Vector2 ResolvedStartPosition;
+        public float ResolvedStartRotation;
+        public Vector2 ResolvedEndPosition;
+        public float ResolvedEndRotation;
         public NetPlayerLocation WaitingForLocation; // The transition ends once the player reaches this location, used to handle late-arriving transition messages where we receive the transition after the player has already changed location in the simulation
     }
 
@@ -103,8 +121,8 @@ public sealed class RemotePlayerTransitionEffects
                                 ? TransitionType.SpaceStationToSolarSystem
                                 : TransitionType.None;
 
-            var (position, rotation) = FindRemotePlayerPositionAndRotation(sim, remote.PlayerId, transType, from);
             var shipTypeId = remote.Info.ShipTypeId;
+            var (startAnchor, endAnchor) = CreateTransitionAnchors(sim, remote.PlayerId, transType, from, to);
 
             float duration = transType switch
             {
@@ -119,29 +137,35 @@ public sealed class RemotePlayerTransitionEffects
 
             duration = Math.Max((float)(duration - elapsedTime), 0.1f); // In case we receive the transition late, at least show some of the effect instead of skipping it entirely
 
-            _effects.Add(new TransitionEffect
+            var effect = new TransitionEffect
             {
                 PlayerId = remote.PlayerId,
-                Position = position,
-                Rotation = rotation,
                 ShipTypeId = shipTypeId,
                 TransitionType = transType,
                 Elapsed = 0f,
                 Duration = duration,
+                Start = startAnchor,
+                End = endAnchor,
                 WaitingForLocation = to
-            });
+            };
+
+            RefreshResolvedTransforms(sim, effect);
+            _effects.Add(effect);
         }
 
-        TickEffects(dt, net);
+        TickEffects(dt, sim, net);
     }
 
-    private void TickEffects(float dt, ClientNetworkManager net)
+    private void TickEffects(float dt, SolarSystemSimulation sim, ClientNetworkManager net)
     {
         for (var i = _effects.Count - 1; i >= 0; i--)
         {
-            _effects[i].Elapsed += dt;
-            var remaining = _effects[i].Duration - _effects[i].Elapsed;
-            var atTargetLocation = net.RemotePlayers.TryGetValue(_effects[i].PlayerId, out var remote) && remote.Location == _effects[i].WaitingForLocation;
+            var effect = _effects[i];
+            effect.Elapsed += dt;
+            RefreshResolvedTransforms(sim, effect);
+
+            var remaining = effect.Duration - effect.Elapsed;
+            var atTargetLocation = net.RemotePlayers.TryGetValue(effect.PlayerId, out var remote) && remote.Location == effect.WaitingForLocation;
 
             // We wait until the player actually changes to the new location in the simulation before removing the effect, 
             // to avoid cutting off the effect early in case of late-arriving transition messages. However, if we are 
@@ -192,9 +216,11 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderFTLJumpDeparture(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
-        float rad = fx.Rotation * MathF.PI / 180f;
-        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+        var startPos = fx.ResolvedStartPosition;
+        var endPos = fx.ResolvedEndPosition;
+        var pos = Vector2.Lerp(startPos, endPos, EaseInOut01(t));
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
+        var forward = GetDirection(startPos, endPos, rotation);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var warpColor = new Color4(120, 180, 255, 255);
 
@@ -202,7 +228,7 @@ public sealed class RemotePlayerTransitionEffects
         {
             // Phase 1: Ship visible but starting to stretch forward
             float p = t / 0.3f;
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, shipSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, shipSize);
 
             // Growing forward streak
             float streakLen = shipSize * (1f + p * 3f);
@@ -262,7 +288,9 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderSolarSystemToPlanet(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
+        var pos = Vector2.Lerp(fx.ResolvedStartPosition, fx.ResolvedEndPosition, EaseInOut01(t));
+        var landingPos = fx.ResolvedEndPosition;
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var landingColor = new Color4(200, 180, 100, 255);
 
@@ -272,7 +300,7 @@ public sealed class RemotePlayerTransitionEffects
             float p = t / 0.6f;
             float scale = 1f - p * 0.8f;
             int scaledSize = Math.Max((int)(shipSize * scale), 4);
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, scaledSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, scaledSize);
 
             // Atmospheric glow around the landing ship
             float glowRadius = shipSize * 0.5f * (1f - p * 0.5f);
@@ -286,12 +314,12 @@ public sealed class RemotePlayerTransitionEffects
             float ringRadius = shipSize * (0.3f + p * 1.2f);
             byte ringAlpha = (byte)(100 * (1f - p));
             if (ringAlpha > 3)
-                renderer.DrawCircle(camera, pos, ringRadius, landingColor.WithAlpha(ringAlpha));
+                renderer.DrawCircle(camera, landingPos, ringRadius, landingColor.WithAlpha(ringAlpha));
 
             // Small glow at center
             byte centerAlpha = (byte)(40 * (1f - p));
             if (centerAlpha > 3)
-                renderer.DrawFilledCircle(camera, pos, shipSize * 0.15f * (1f - p),
+                renderer.DrawFilledCircle(camera, landingPos, shipSize * 0.15f * (1f - p),
                     landingColor.WithAlpha(centerAlpha));
         }
     }
@@ -299,7 +327,8 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderSolarSystemToSpaceStation(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
+        var pos = Vector2.Lerp(fx.ResolvedStartPosition, fx.ResolvedEndPosition, EaseInOut01(t));
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var dockingColor = new Color4(100, 200, 255, 255);
 
@@ -308,7 +337,7 @@ public sealed class RemotePlayerTransitionEffects
             // Phase 1: Ship fading with a shrinking glow
             float p = t / 0.5f;
             int scaledSize = Math.Max((int)(shipSize * (1f - p * 0.6f)), 4);
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, scaledSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, scaledSize);
 
             // Docking energy effect
             renderer.DrawFilledCircle(camera, pos, shipSize * 0.4f * (1f - p * 0.3f),
@@ -330,9 +359,11 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderFTLJumpArrival(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
-        float rad = fx.Rotation * MathF.PI / 180f;
-        var forward = new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+        var startPos = fx.ResolvedStartPosition;
+        var endPos = fx.ResolvedEndPosition;
+        var pos = Vector2.Lerp(startPos, endPos, EaseInOut01(t));
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
+        var forward = GetDirection(startPos, endPos, rotation);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var warpColor = new Color4(120, 180, 255, 255);
 
@@ -340,14 +371,13 @@ public sealed class RemotePlayerTransitionEffects
         {
             // Phase 1: Streak converging to arrival point
             float p = t / 0.3f;
-            float streakLen = shipSize * (8f * (1f - p));
-            var streakStart = pos - forward * streakLen;
+            var streakStart = Vector2.Lerp(startPos, endPos - forward * shipSize, p);
             int steps = 8;
             byte streakAlpha = (byte)(180 * p);
             for (int i = 0; i <= steps; i++)
             {
                 float st = i / (float)steps;
-                var sp = Vector2.Lerp(streakStart, pos, st);
+                var sp = Vector2.Lerp(streakStart, endPos, st);
                 float radius = st * shipSize * 0.2f * p;
                 byte a = (byte)(streakAlpha * st);
                 renderer.DrawFilledCircle(camera, sp, Math.Max(radius, 1f), warpColor.WithAlpha(a));
@@ -368,12 +398,12 @@ public sealed class RemotePlayerTransitionEffects
             }
 
             // Ship fading in
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, shipSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, shipSize);
         }
         else
         {
             // Phase 3: Ship fully visible, residual glow fading
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, shipSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, shipSize);
 
             float p = (t - 0.6f) / 0.4f;
             byte glowAlpha = (byte)(60 * (1f - p));
@@ -386,7 +416,9 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderPlanetToSolarSystem(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
+        var launchPos = fx.ResolvedStartPosition;
+        var pos = Vector2.Lerp(fx.ResolvedStartPosition, fx.ResolvedEndPosition, EaseInOut01(t));
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var liftoffColor = new Color4(200, 180, 100, 255);
 
@@ -397,21 +429,21 @@ public sealed class RemotePlayerTransitionEffects
             float ringRadius = shipSize * (0.2f + p * 1.0f);
             byte ringAlpha = (byte)(100 * (1f - p));
             if (ringAlpha > 3)
-                renderer.DrawCircle(camera, pos, ringRadius, liftoffColor.WithAlpha(ringAlpha));
+                renderer.DrawCircle(camera, launchPos, ringRadius, liftoffColor.WithAlpha(ringAlpha));
 
             // Ship growing from small
             float scale = 0.2f + p * 0.8f;
             int scaledSize = Math.Max((int)(shipSize * scale), 4);
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, scaledSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, scaledSize);
 
             // Atmospheric glow
-            renderer.DrawFilledCircle(camera, pos, shipSize * 0.4f * p,
+            renderer.DrawFilledCircle(camera, launchPos, shipSize * 0.4f * p,
                 liftoffColor.WithAlpha((byte)(60 * p)));
         }
         else
         {
             // Phase 2: Ship at full size, glow fading
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, shipSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, shipSize);
 
             float p = (t - 0.4f) / 0.6f;
             byte glowAlpha = (byte)(40 * (1f - p));
@@ -424,7 +456,9 @@ public sealed class RemotePlayerTransitionEffects
     private static void RenderSpaceStationToSolarSystem(ISpriteRenderer renderer, Camera camera,
         SpaceshipRenderer spaceshipRenderer, TransitionEffect fx, float t)
     {
-        var pos = fx.Position;
+        var launchPos = fx.ResolvedStartPosition;
+        var pos = Vector2.Lerp(fx.ResolvedStartPosition, fx.ResolvedEndPosition, EaseInOut01(t));
+        float rotation = LerpAngleDegrees(fx.ResolvedStartRotation, fx.ResolvedEndRotation, t);
         int shipSize = ShipTypeCatalog.GetById(fx.ShipTypeId)?.SpriteSize ?? 32;
         var undockColor = new Color4(100, 200, 255, 255);
 
@@ -433,15 +467,15 @@ public sealed class RemotePlayerTransitionEffects
             // Phase 1: Ship fading in with energy glow
             float p = t / 0.4f;
             int scaledSize = Math.Max((int)(shipSize * (0.4f + p * 0.6f)), 4);
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, scaledSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, scaledSize);
 
-            renderer.DrawFilledCircle(camera, pos, shipSize * 0.4f * p,
+            renderer.DrawFilledCircle(camera, launchPos, shipSize * 0.4f * p,
                 undockColor.WithAlpha((byte)(60 * p)));
         }
         else
         {
             // Phase 2: Ship fully visible, residual glow
-            spaceshipRenderer.Render(renderer, camera, pos, fx.Rotation, fx.ShipTypeId, shipSize);
+            spaceshipRenderer.Render(renderer, camera, pos, rotation, fx.ShipTypeId, shipSize);
 
             float p = (t - 0.4f) / 0.6f;
             byte glowAlpha = (byte)(40 * (1f - p));
@@ -453,7 +487,112 @@ public sealed class RemotePlayerTransitionEffects
 
     // ── Helpers ─────────────────────────────────────────────────────
 
-    private static (Vector2 position, float rotation) FindRemotePlayerPositionAndRotation(SolarSystemSimulation sim, byte remotePlayerId, TransitionType transitionType, NetPlayerLocation from)
+    private static void RefreshResolvedTransforms(SolarSystemSimulation sim, TransitionEffect effect)
+    {
+        (effect.ResolvedStartPosition, effect.ResolvedStartRotation) = ResolveAnchor(sim, effect.Start);
+        (effect.ResolvedEndPosition, effect.ResolvedEndRotation) = ResolveAnchor(sim, effect.End);
+    }
+
+    private static (TransitionAnchor start, TransitionAnchor end) CreateTransitionAnchors(
+        SolarSystemSimulation sim,
+        byte remotePlayerId,
+        TransitionType transitionType,
+        NetPlayerLocation from,
+        NetPlayerLocation to)
+    {
+        var remotePlayerEntity = FindRemotePlayerEntity(sim, remotePlayerId);
+        var fromEntity = FindNetPlayerLocation(sim, from);
+        var toEntity = FindNetPlayerLocation(sim, to);
+
+        var (fallbackFromPosition, fallbackFromRotation) = FindRemotePlayerPositionAndRotation(sim, remotePlayerId, transitionType, from);
+        var (fallbackToPosition, fallbackToRotation) = FindRemotePlayerPositionAndRotation(sim, remotePlayerId, transitionType, to);
+
+        var remotePlayerAnchor = CreateEntityAnchor(remotePlayerEntity, fallbackFromPosition, fallbackFromRotation);
+        var defaultSolarSystemSpawn = sim.GetDefaultSpawnCoordinates();
+
+        return transitionType switch
+        {
+            TransitionType.SolarSystemToPlanet =>
+            (
+                // Starts at player position in solar system, ends at planet center
+                remotePlayerAnchor,
+                CreateEntityAnchor(toEntity, fallbackToPosition, fallbackToRotation)
+            ),
+            TransitionType.PlanetToSolarSystem =>
+            (
+                // Starts and ends at planet center
+                CreateEntityAnchor(fromEntity, fallbackFromPosition, fallbackFromRotation),
+                CreateEntityAnchor(fromEntity, fallbackFromPosition, fallbackFromRotation)
+            ),
+            TransitionType.SolarSystemToSpaceStation =>
+            (
+                // Starts at player position in solar system, ends at station position
+                remotePlayerAnchor,
+                CreateEntityAnchor(toEntity, fallbackToPosition, fallbackToRotation)
+            ),
+            TransitionType.SpaceStationToSolarSystem =>
+            (
+                // Starts and ends at space station position
+                CreateEntityAnchor(fromEntity, fallbackFromPosition, fallbackFromRotation),
+                CreateEntityAnchor(fromEntity, fallbackFromPosition, fallbackFromRotation)
+            ),
+            TransitionType.FTLJumpDeparture =>
+            (
+                // Starts and ends at player position, 
+                remotePlayerAnchor,
+                remotePlayerAnchor
+            ),
+            TransitionType.FTLJumpArrival =>
+            (
+                // Starts and ends at default solar system spawn point
+                CreateStaticAnchor(defaultSolarSystemSpawn, 0),
+                CreateStaticAnchor(defaultSolarSystemSpawn, 0)
+            ),
+            _ => (remotePlayerAnchor, remotePlayerAnchor),
+        };
+    }
+
+    private static TransitionAnchor CreateStaticAnchor(Vector2 position, float rotation)
+    {
+        return new TransitionAnchor
+        {
+            AnchorType = TransitionAnchorType.Static,
+            Entity = Entity.Null,
+            Position = position,
+            Rotation = rotation,
+        };
+    }
+
+    private static TransitionAnchor CreateEntityAnchor(Entity entity, Vector2 fallbackPosition, float fallbackRotation)
+    {
+        return new TransitionAnchor
+        {
+            AnchorType = entity == Entity.Null ? TransitionAnchorType.Static : TransitionAnchorType.Entity,
+            Entity = entity,
+            Position = fallbackPosition,
+            Rotation = fallbackRotation,
+        };
+    }
+
+    private static (Vector2 position, float rotation) ResolveAnchor(SolarSystemSimulation sim, TransitionAnchor anchor)
+    {
+        switch (anchor.AnchorType)
+        {
+            case TransitionAnchorType.Entity:
+                if (TryGetEntityTransform(sim, anchor.Entity, out var entityPosition, out var entityRotation))
+                    return (entityPosition, entityRotation);
+                break;
+        }
+
+        return (anchor.Position, anchor.Rotation);
+    }
+
+    private static bool TryFindRemotePlayerTransform(
+        SolarSystemSimulation sim,
+        byte remotePlayerId,
+        out Entity entity,
+        out Vector2 position,
+        out float rotation)
     {
         foreach (var p in sim.Players)
         {
@@ -462,10 +601,66 @@ public sealed class RemotePlayerTransitionEffects
                 if (sim.EcsWorld.IsAlive(p.Entity) && sim.EcsWorld.Has<Transform>(p.Entity))
                 {
                     ref var tf = ref sim.EcsWorld.Get<Transform>(p.Entity);
-                    return (tf.Position, tf.Rotation);
+                    entity = p.Entity;
+                    position = tf.Position;
+                    rotation = tf.Rotation;
+                    return true;
                 }
             }
         }
+
+        entity = Entity.Null;
+        position = Vector2.Zero;
+        rotation = 0f;
+        return false;
+    }
+
+    private static bool TryGetEntityTransform(SolarSystemSimulation sim, Entity entity, out Vector2 position, out float rotation)
+    {
+        if (entity != Entity.Null && sim.EcsWorld.IsAlive(entity) && sim.EcsWorld.Has<Transform>(entity))
+        {
+            ref var tf = ref sim.EcsWorld.Get<Transform>(entity);
+            position = tf.Position;
+            rotation = tf.Rotation;
+            return true;
+        }
+
+        position = Vector2.Zero;
+        rotation = 0f;
+        return false;
+    }
+
+    private static Vector2 DirectionFromRotation(float rotation)
+    {
+        float rad = rotation * MathF.PI / 180f;
+        return new Vector2(MathF.Cos(rad), MathF.Sin(rad));
+    }
+
+    private static Vector2 GetDirection(Vector2 start, Vector2 end, float fallbackRotation)
+    {
+        var delta = end - start;
+        if (delta.LengthSquared() > 0.0001f)
+            return Vector2.Normalize(delta);
+
+        return DirectionFromRotation(fallbackRotation);
+    }
+
+    private static float LerpAngleDegrees(float start, float end, float t)
+    {
+        float delta = (end - start + 540f) % 360f - 180f;
+        return start + delta * t;
+    }
+
+    private static float EaseInOut01(float t)
+    {
+        t = Math.Clamp(t, 0f, 1f);
+        return t * t * (3f - 2f * t);
+    }
+
+    private static (Vector2 position, float rotation) FindRemotePlayerPositionAndRotation(SolarSystemSimulation sim, byte remotePlayerId, TransitionType transitionType, NetPlayerLocation from)
+    {
+        if (TryFindRemotePlayerTransform(sim, remotePlayerId, out _, out var position, out var rotation))
+            return (position, rotation);
 
         // Player not found in the simulation, we can only get here is the player is not in the simulation yet, which means it's always an "arrival"
         if (from.IsUnknown)
@@ -513,5 +708,51 @@ public sealed class RemotePlayerTransitionEffects
 
         // Fallback to default spawn point in solar system
         return (sim.GetDefaultSpawnCoordinates(), 0f);
+    }
+
+    private static Entity FindRemotePlayerEntity(SolarSystemSimulation sim, byte remotePlayerId)
+    {
+        foreach (var p in sim.Players)
+        {
+            if (p.Type == PlayerType.Remote && p.RemotePlayerId == remotePlayerId)
+            {
+                return p.Entity;
+            }
+        }
+
+        return Entity.Null;
+    }
+
+    private static Entity FindNetPlayerLocation(SolarSystemSimulation sim, NetPlayerLocation location)
+    {
+        if (location.IsOnSpaceStation)
+        {
+            var spaceStation = sim.SpaceStationEntities.ElementAtOrDefault(location.SpaceStationIndex);
+            if (spaceStation != Entity.Null && sim.EcsWorld.IsAlive(spaceStation) && sim.EcsWorld.Has<Transform>(spaceStation))
+            {
+                return spaceStation;
+            }
+        }
+        else if (location.IsOnPlanet)
+        {
+            var planet = sim.PlanetEntities.ElementAtOrDefault(location.PlanetIndex);
+            if (planet != Entity.Null && sim.EcsWorld.IsAlive(planet) && sim.EcsWorld.Has<Transform>(planet))
+            {
+                if (location.IsOnMoon)
+                {
+                    var moon = sim.MoonEntities[location.PlanetIndex].ElementAtOrDefault(location.MoonIndex);
+                    if (moon != Entity.Null && sim.EcsWorld.IsAlive(moon) && sim.EcsWorld.Has<Transform>(moon))
+                    {
+                        return moon;
+                    }
+                }
+                else
+                {
+                    return planet;
+                }
+            }
+        }
+
+        return Entity.Null;
     }
 }
