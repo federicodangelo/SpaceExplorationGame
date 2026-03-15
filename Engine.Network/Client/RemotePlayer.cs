@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Engine.Network.Client;
 
 /// <summary>
@@ -14,6 +16,13 @@ public class RemotePlayer
 
     /// <summary>True once at least one state update has been received.</summary>
     public bool HasReceivedState;
+
+    /// <summary>Set when a transition-started message is received; consumed by the rendering layer to start departure effects.</summary>
+    public NetPlayerTransition PendingTransition = new NetPlayerTransition
+    {
+        From = NetPlayerLocation.ForUnknown(),
+        To = NetPlayerLocation.ForUnknown()
+    };
 
     public RemotePlayer(byte playerId, string name, NetPlayerLocation location, NetPlayerInfo info, NetPlayerState state)
     {

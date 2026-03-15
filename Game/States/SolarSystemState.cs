@@ -10,6 +10,7 @@ using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
 using SpaceExplorationGame.Simulation;
+using SpaceExplorationGame.Simulation.Base;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Menu;
 using SpaceExplorationGame.UI.Overlays.Map;
@@ -51,6 +52,9 @@ public class SolarSystemState : GameState
     private readonly List<DamagePopup> _damagePopups = [];
     private readonly List<Explosion> _explosions = [];
     private readonly Dictionary<int, PlanetSurfaceData> _planetSurfaceCache = [];
+
+    // ── Remote player transition effects ───────────────────────────
+    private readonly RemotePlayerTransitionEffects _transitionEffects = new();
 
     // ── Combat music ────────────────────────────────────────────────
     private string _activeMusicTheme = AudioThemes.SolarSystem;
@@ -164,6 +168,7 @@ public class SolarSystemState : GameState
     {
         _damagePopups.Clear();
         _explosions.Clear();
+        _transitionEffects.Clear();
         _planetLandingOverlay.Cleanup();
         game.Player.Missions.OnBountyCompleted = null;
 
@@ -322,6 +327,9 @@ public class SolarSystemState : GameState
 
         // Update visual effects
         t.Time("VisualFX", () => CombatHelper.UpdateVisualEffects(_damagePopups, _explosions, dt));
+
+        // Collect remote player departures/arrivals and tick transition effects
+        _transitionEffects.Update(dt, _sim, game.Network);
 
         // Combat music tracking
         if (_sim.CombatMusicTimer > 0)
@@ -551,6 +559,7 @@ public class SolarSystemState : GameState
             if (player.Type != PlayerType.Remote) continue;
             var remoteEntity = player.Entity;
             if (!world.IsAlive(remoteEntity)) continue;
+            if (_transitionEffects.IsRemotePlayerTransitionActive(player.RemotePlayerId)) continue; // Skip rendering if in transition effect
 
             ref var tf = ref world.Get<Transform>(remoteEntity);
             ref var sp = ref world.Get<Sprite>(remoteEntity);
@@ -572,6 +581,9 @@ public class SolarSystemState : GameState
                     tf.Position, hp.HullPercent, globalTime);
             }
         }
+
+        // Remote player transition effects (warp-out/in, landing/takeoff, docking/undocking)
+        _transitionEffects.Render(renderer, camera, game.SpaceshipRenderer);
 
         // Player ship
         if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))

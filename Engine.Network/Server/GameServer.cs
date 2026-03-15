@@ -8,7 +8,7 @@ namespace Engine.Network.Server;
 /// <summary>
 /// Event types queued by background receive threads and dispatched on the main thread.
 /// </summary>
-public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged, NpcHit, PlayerKilledByNpc, InteractDerelict, InteractDistress }
+public enum ServerEventType { ClientJoined, ClientLeft, PlayerState, LocationChanged, NpcHit, PlayerKilledByNpc, InteractDerelict, InteractDistress, TransitionStarted }
 
 /// <summary>
 /// A server-side network event, enqueued from background threads and
@@ -26,6 +26,7 @@ public readonly struct ServerEvent
     public C_PlayerKilledByNpcMessage PlayerKilledByNpc { get; init; }
     public C_InteractDerelictMessage InteractDerelict { get; init; }
     public C_InteractDistressMessage InteractDistress { get; init; }
+    public C_TransitionStartedMessage TransitionStarted { get; init; }
 }
 
 /// <summary>
@@ -325,6 +326,16 @@ public sealed class GameServer : IDisposable
                             Type = ServerEventType.InteractDistress,
                             PlayerId = playerId,
                             InteractDistress = interactDistress,
+                        });
+                        break;
+
+                    case MessageType.C_TransitionStarted:
+                        var transStarted = NetSerializer.ReadTransitionStarted(msg);
+                        _events.Enqueue(new ServerEvent
+                        {
+                            Type = ServerEventType.TransitionStarted,
+                            PlayerId = playerId,
+                            TransitionStarted = transStarted,
                         });
                         break;
 

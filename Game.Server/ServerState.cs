@@ -146,6 +146,9 @@ internal sealed class ServerState : GameState
                 case ServerEventType.InteractDistress:
                     HandleInteractDistress(evt.PlayerId, evt.InteractDistress);
                     break;
+                case ServerEventType.TransitionStarted:
+                    HandleTransitionStarted(evt.PlayerId, evt.TransitionStarted);
+                    break;
             }
         }
     }
@@ -414,7 +417,7 @@ internal sealed class ServerState : GameState
         {
             PlayerId = playerId,
             Location = newLocation,
-            Coordinates = newSimulation.GetDefaultSpawnCoordinates()
+            Coordinates = newSimulation.GetDefaultSpawnCoordinates(),
         };
         _server.BroadcastExcept(NetSerializer.Write(locMsg), playerId);
 
@@ -504,6 +507,21 @@ internal sealed class ServerState : GameState
             IsAmbush = isAmbush,
         };
         _server.Send(playerId, NetSerializer.Write(result));
+    }
+
+    private void HandleTransitionStarted(byte playerId, C_TransitionStartedMessage msg)
+    {
+        if (!_netPlayers.TryGetValue(playerId, out var netPlayer)) return;
+
+        // Broadcast to other players in the same location so they can play departure effects
+        var transMsg = new S_PlayerTransitionStartedMessage
+        {
+            PlayerId = playerId,
+            Transition = msg.Transition,
+        };
+        var data = NetSerializer.Write(transMsg);
+
+        _server.BroadcastExcept(data, playerId);
     }
 
     // ────────────────────────────────────────────────────────────

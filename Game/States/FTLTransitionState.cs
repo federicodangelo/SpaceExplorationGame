@@ -22,7 +22,7 @@ public class FTLTransitionState : GameState
     private const float JumpFlashDuration = 0.15f;   // Phase 2: bright flash as FTL engages
     private const float TravelDuration = 2.5f;       // Phase 3: full-speed star streaks
     private const float ExitDuration = 1.6f;        // Phase 4: decelerate + arrival flash
-    private static float TotalDuration => ChargeDuration + JumpFlashDuration + TravelDuration + ExitDuration;
+    public const float TotalDuration = ChargeDuration + JumpFlashDuration + TravelDuration + ExitDuration;
 
     // ── Horizontal star streaks ──
     private readonly List<StarStreak> _stars = [];
@@ -59,6 +59,13 @@ public class FTLTransitionState : GameState
         ScreenH = game.SpriteRenderer.WindowHeight;
         CX = ScreenW / 2f;
         CY = ScreenH / 2f;
+
+        // Announce the transition so other clients can play departure effects
+        game.Network?.SendTransitionStarted(new Engine.Network.NetPlayerTransition
+        {
+            From = Engine.Network.NetPlayerLocation.ForSolarSystem(_sourceSystem.Index),
+            To = Engine.Network.NetPlayerLocation.ForSolarSystem(_targetSystem.Index)
+        });
 
         // Audio: FTL theme + charge-up SFX
         game.Audio.SetMusicTheme(AudioThemes.FTL, instant: true);

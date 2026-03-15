@@ -22,6 +22,8 @@ public enum MessageType : byte
     C_InteractDerelict = 7,
     /// <summary>Client requests to trigger a distress signal beacon.</summary>
     C_InteractDistress = 8,
+    /// <summary>Client announces it is starting a transition (FTL, landing, docking). Sent before the actual location change.</summary>
+    C_TransitionStarted = 9,
 
     // ── Server → Client ─────────────────────────────────────────
     /// <summary>Server acknowledges join, assigns player ID, sends world info.</summary>
@@ -44,4 +46,6 @@ public enum MessageType : byte
     S_InteractDerelictResult = 136,
     /// <summary>Server responds to a distress signal trigger request (success or already claimed).</summary>
     S_InteractDistressResult = 137,
+    /// <summary>A player announced a transition (FTL, landing, docking). Broadcast to other clients so they can play departure animations.</summary>
+    S_PlayerTransitionStarted = 138,
 }

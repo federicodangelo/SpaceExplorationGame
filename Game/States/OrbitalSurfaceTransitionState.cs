@@ -52,7 +52,7 @@ public class OrbitalSurfaceTransitionState : GameState
     private const float AlignDuration = 0.85f;
     private const float DescentDuration = 2.85f;
     private const float TouchdownDuration = 1.35f;
-    private static float TotalDuration => AlignDuration + DescentDuration + TouchdownDuration;
+    public const float TotalDuration = AlignDuration + DescentDuration + TouchdownDuration;
 
     private float ScreenW;
     private float ScreenH;
@@ -112,6 +112,20 @@ public class OrbitalSurfaceTransitionState : GameState
         ScreenH = game.SpriteRenderer.WindowHeight;
         CX = ScreenW * 0.5f;
         CY = ScreenH * 0.5f;
+
+        // Announce the transition so other clients can play departure/arrival effects
+        game.Network?.SendTransitionStarted(
+            _mode == TransitionMode.Landing ? new Engine.Network.NetPlayerTransition
+            {
+                From = Engine.Network.NetPlayerLocation.ForSolarSystem(_starSystem.Index),
+                To = Engine.Network.NetPlayerLocation.ForMoon(_starSystem.Index, _planetOrMoon.Index, _planetOrMoon.MoonIndex)
+            }
+            : new Engine.Network.NetPlayerTransition
+            {
+                From = Engine.Network.NetPlayerLocation.ForMoon(_starSystem.Index, _planetOrMoon.Index, _planetOrMoon.MoonIndex),
+                To = Engine.Network.NetPlayerLocation.ForSolarSystem(_starSystem.Index)
+            }
+        );
 
         if (_mode == TransitionMode.Landing)
         {

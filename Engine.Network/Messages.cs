@@ -2,6 +2,13 @@ using System.Numerics;
 
 namespace Engine.Network;
 
+public struct NetPlayerTransition
+{
+    public NetPlayerLocation From;
+    public NetPlayerLocation To;
+}
+
+
 /// <summary>
 /// Compact per-tick state of a player entity, sent by each client and relayed by the server.
 /// Contains everything other clients need to render this player.
@@ -69,6 +76,12 @@ public record struct NetPlayerLocation
         else
             return $"star system {SolarSystemIndex}";
     }
+
+    public readonly bool IsUnknown => SolarSystemIndex < 0;
+    public readonly bool IsOnPlanet => PlanetIndex >= 0;
+    public readonly bool IsOnMoon => MoonIndex >= 0;
+    public readonly bool IsOnSettlement => SettlementIndex >= 0;
+    public readonly bool IsOnSpaceStation => SpaceStationIndex >= 0;
 
     static public NetPlayerLocation ForSolarSystem(int solarSystemIndex) => new NetPlayerLocation
     {
@@ -154,6 +167,12 @@ public struct C_LocationChangedMessage
     public NetPlayerLocation NewLocation;
 }
 
+/// <summary>Client announces it is starting a transition. Sent before the actual location change so other clients can play departure effects.</summary>
+public struct C_TransitionStartedMessage
+{
+    public NetPlayerTransition Transition;
+}
+
 // ────────────────────────────────────────────────────────────────
 //  Server → Client messages
 // ────────────────────────────────────────────────────────────────
@@ -197,6 +216,13 @@ public struct S_PlayerLocationChangedMessage
     public byte PlayerId;
     public NetPlayerLocation Location;
     public Vector2 Coordinates;
+}
+
+/// <summary>Notification that a player started a transition (broadcast to other clients for departure effects).</summary>
+public struct S_PlayerTransitionStartedMessage
+{
+    public byte PlayerId;
+    public NetPlayerTransition Transition;
 }
 
 /// <summary>

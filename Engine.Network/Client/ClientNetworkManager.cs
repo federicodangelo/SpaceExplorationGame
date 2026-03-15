@@ -188,6 +188,15 @@ public sealed class ClientNetworkManager : IDisposable
     }
 
     /// <summary>
+    /// Announce a transition to the server so other clients can play departure effects.
+    /// </summary>
+    public void SendTransitionStarted(NetPlayerTransition transition)
+    {
+        if (!IsJoined || !_client.IsConnected) return;
+        _client.Send(NetSerializer.Write(new C_TransitionStartedMessage { Transition = transition }));
+    }
+
+    /// <summary>
     /// Drain all inbound messages from the network receive queue.
     /// Call once per frame from the game loop. After calling, use
     /// <see cref="DrainEvents"/> to get any join/leave events.
@@ -230,6 +239,9 @@ public sealed class ClientNetworkManager : IDisposable
                     break;
                 case MessageType.S_InteractDistressResult:
                     HandleInteractDistressResult(data);
+                    break;
+                case MessageType.S_PlayerTransitionStarted:
+                    HandlePlayerTransitionStarted(data);
                     break;
             }
         }
@@ -373,5 +385,15 @@ public sealed class ClientNetworkManager : IDisposable
     private void HandleInteractDistressResult(byte[] data)
     {
         _pendingDistressResults.Add(NetSerializer.ReadInteractDistressResult(data));
+    }
+
+    private void HandlePlayerTransitionStarted(byte[] data)
+    {
+        var msg = NetSerializer.ReadPlayerTransitionStarted(data);
+        if (msg.PlayerId == LocalPlayerId) return;
+        if (RemotePlayers.TryGetValue(msg.PlayerId, out var remote))
+        {
+            remote.PendingTransition = msg.Transition;
+        }
     }
 }

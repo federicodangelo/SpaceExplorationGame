@@ -49,6 +49,27 @@ public static class NetSerializer
         return ms.ToArray();
     }
 
+    public static byte[] Write(in C_TransitionStartedMessage msg)
+    {
+        using var ms = new MemoryStream(4);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.C_TransitionStarted);
+        WritePlayerLocation(w, msg.Transition.From);
+        WritePlayerLocation(w, msg.Transition.To);
+        return ms.ToArray();
+    }
+
+    public static byte[] Write(in S_PlayerTransitionStartedMessage msg)
+    {
+        using var ms = new MemoryStream(4);
+        using var w = new BinaryWriter(ms);
+        w.Write((byte)MessageType.S_PlayerTransitionStarted);
+        w.Write(msg.PlayerId);
+        WritePlayerLocation(w, msg.Transition.From);
+        WritePlayerLocation(w, msg.Transition.To);
+        return ms.ToArray();
+    }
+
     public static byte[] Write(in S_WelcomeMessage msg)
     {
         using var ms = new MemoryStream(48);
@@ -147,7 +168,41 @@ public static class NetSerializer
         using var ms = new MemoryStream(data.ToArray());
         using var r = new BinaryReader(ms);
         r.ReadByte(); // skip type
-        return new C_LocationChangedMessage { NewLocation = ReadPlayerLocation(r) };
+        return new C_LocationChangedMessage
+        {
+            NewLocation = ReadPlayerLocation(r),
+        };
+    }
+
+    public static C_TransitionStartedMessage ReadTransitionStarted(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new C_TransitionStartedMessage
+        {
+            Transition = new NetPlayerTransition
+            {
+                From = ReadPlayerLocation(r),
+                To = ReadPlayerLocation(r),
+            },
+        };
+    }
+
+    public static S_PlayerTransitionStartedMessage ReadPlayerTransitionStarted(ReadOnlySpan<byte> data)
+    {
+        using var ms = new MemoryStream(data.ToArray());
+        using var r = new BinaryReader(ms);
+        r.ReadByte(); // skip type
+        return new S_PlayerTransitionStartedMessage
+        {
+            PlayerId = r.ReadByte(),
+            Transition = new NetPlayerTransition
+            {
+                From = ReadPlayerLocation(r),
+                To = ReadPlayerLocation(r),
+            },
+        };
     }
 
     public static S_WelcomeMessage ReadWelcome(ReadOnlySpan<byte> data)

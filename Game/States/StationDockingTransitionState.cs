@@ -47,7 +47,7 @@ public class StationDockingTransitionState : GameState
     private const float ApproachDuration = 0.8f;   // stars + station + ship flies in
     private const float EntryDuration = 1.6f;   // portal opens, interior revealed
     private const float TouchdownDuration = 0.8f;   // full interior, ring pulse
-    private static float TotalDuration => ApproachDuration + EntryDuration + TouchdownDuration;
+    public const float TotalDuration = ApproachDuration + EntryDuration + TouchdownDuration;
 
     // ── State ─────────────────────────────────────────────────────────
     private float _elapsed;
@@ -126,6 +126,21 @@ public class StationDockingTransitionState : GameState
         ScreenH = game.SpriteRenderer.WindowHeight;
         CX = ScreenW * 0.5f;
         CY = ScreenH * 0.5f;
+
+        // Announce the transition so other clients can play departure/arrival effects
+        game.Network?.SendTransitionStarted(
+            _mode == TransitionMode.Docking
+            ? new Engine.Network.NetPlayerTransition
+            {
+                From = Engine.Network.NetPlayerLocation.ForSolarSystem(_starSystem.Index),
+                To = Engine.Network.NetPlayerLocation.ForSpaceStation(_starSystem.Index, _spaceStation.Index)
+            }
+            : new Engine.Network.NetPlayerTransition
+            {
+                From = Engine.Network.NetPlayerLocation.ForSpaceStation(_starSystem.Index, _spaceStation.Index),
+                To = Engine.Network.NetPlayerLocation.ForSolarSystem(_starSystem.Index)
+            }
+        );
 
         if (_mode == TransitionMode.Docking)
         {
