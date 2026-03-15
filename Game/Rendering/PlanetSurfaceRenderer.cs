@@ -1,6 +1,7 @@
 using System.Numerics;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Core.Config;
+using SpaceExplorationGame.Rendering.Base;
 
 namespace SpaceExplorationGame.Rendering;
 
@@ -12,6 +13,8 @@ namespace SpaceExplorationGame.Rendering;
 public static class PlanetSurfaceRenderer
 {
     // ── Public rendering API ─────────────────────────────────────────────────
+
+    private static readonly YSortedDrawList _decorDrawList = new();
 
     /// <summary>Renders the terrain tiles with full visual detail.</summary>
     public static void RenderTerrain(ISpriteRenderer renderer, Camera camera,
@@ -76,10 +79,13 @@ public static class PlanetSurfaceRenderer
                         break;
                 }
 
-                // Biome-specific decorative objects (sparse)
-                RenderBiomeDecoration(renderer, camera, worldPos,
+                // Biome-specific decorative objects (sparse) — deferred for Y-sorting
+                RenderBiomeDecoration(_decorDrawList, renderer, camera, worldPos,
                     hash, time, terrain, planetType, ts);
             });
+
+        // Draw all biome decorations sorted by Y (top-to-bottom)
+        _decorDrawList.Flush();
     }
 
     /// <summary>
@@ -403,8 +409,8 @@ public static class PlanetSurfaceRenderer
     /// <summary>
     /// Renders sparse biome-specific decorative objects on the terrain.
     /// </summary>
-    private static void RenderBiomeDecoration(ISpriteRenderer renderer,
-        Camera camera, Vector2 pos, int hash, float time,
+    private static void RenderBiomeDecoration(YSortedDrawList drawList,
+        ISpriteRenderer renderer, Camera camera, Vector2 pos, int hash, float time,
         TerrainType terrain, PlanetType planetType, int ts)
     {
         int decoHash = (hash * 31 + 12345) ^ (hash >> 8);
@@ -414,58 +420,59 @@ public static class PlanetSurfaceRenderer
         float oy = ((decoHash >> 10) & 0xF) - 8;
         int variant = (decoHash >> 14) & 3;
         float sway = MathF.Sin(time * 1.0f + decoHash * 0.01f) * 2f;
+        var decoPos = pos + new Vector2(ox, oy);
 
         switch (planetType)
         {
             case PlanetType.Terrestrial:
                 if (terrain == TerrainType.Grass)
-                    RenderTree(renderer, camera,
-                        pos + new Vector2(ox, oy), sway, variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderTree(renderer, camera, decoPos, sway, variant));
                 else if (terrain == TerrainType.Rock)
-                    RenderBoulder(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderBoulder(renderer, camera, decoPos, variant));
                 break;
 
             case PlanetType.Desert:
                 if (terrain == TerrainType.Sand)
-                    RenderCactus(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderCactus(renderer, camera, decoPos, variant));
                 else if (terrain == TerrainType.Rock)
-                    RenderMesa(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderMesa(renderer, camera, decoPos, variant));
                 break;
 
             case PlanetType.Frozen:
                 if (terrain == TerrainType.Ice)
-                    RenderIceCrystal(renderer, camera,
-                        pos + new Vector2(ox, oy), time, variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderIceCrystal(renderer, camera, decoPos, time, variant));
                 else if (terrain == TerrainType.Rock)
-                    RenderFrozenBoulder(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderFrozenBoulder(renderer, camera, decoPos, variant));
                 break;
 
             case PlanetType.Volcanic:
                 if (terrain == TerrainType.Rock)
-                    RenderVolcanicVent(renderer, camera,
-                        pos + new Vector2(ox, oy), time, variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderVolcanicVent(renderer, camera, decoPos, time, variant));
                 else if (terrain == TerrainType.Metal)
-                    RenderScrapPile(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderScrapPile(renderer, camera, decoPos, variant));
                 break;
 
             case PlanetType.Ocean:
                 if (terrain == TerrainType.Sand)
-                    RenderShell(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderShell(renderer, camera, decoPos, variant));
                 else if (terrain == TerrainType.Grass)
-                    RenderPalmTree(renderer, camera,
-                        pos + new Vector2(ox, oy), sway, variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderPalmTree(renderer, camera, decoPos, sway, variant));
                 break;
 
             case PlanetType.Rocky:
                 if (terrain is TerrainType.Rock or TerrainType.Sand)
-                    RenderBoulder(renderer, camera,
-                        pos + new Vector2(ox, oy), variant);
+                    drawList.Add(decoPos.Y, () =>
+                        RenderBoulder(renderer, camera, decoPos, variant));
                 break;
         }
     }

@@ -14,52 +14,62 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public static class SurfaceEnemyRenderer
 {
-    /// <summary>Render all surface enemies and their health bars.</summary>
-    public static void RenderEnemies(ISpriteRenderer renderer, Camera camera,
+    /// <summary>Collect all surface enemies into a Y-sorted draw list.</summary>
+    public static void RenderEnemies(YSortedDrawList drawList, ISpriteRenderer renderer, Camera camera,
         World world, PlanetType planetType)
     {
         var query = new QueryDescription().WithAll<Transform, SurfaceAI, Health, Sprite>();
         world.Query(in query, (Entity entity, ref Transform transform, ref SurfaceAI ai, ref Health health, ref Sprite sprite) =>
         {
-            if (health.IsDead) return;
-
-            // Skip NPCs that are inside their ship (landing / taking off)
-            if (world.Has<SurfaceNpcState>(entity))
-            {
-                ref var npcState = ref world.Get<SurfaceNpcState>(entity);
-                if (npcState.Phase == SurfaceNpcPhase.Landing || npcState.Phase == SurfaceNpcPhase.TakingOff)
-                    return;
-            }
+            if (!ShouldRenderEnemy(world, entity, health)) return;
 
             var pos = transform.Position;
-
-            switch (ai.Config.Faction)
-            {
-                case Faction.Pirate:
-                    RenderPirateNpc(renderer, camera, pos, ai.State);
-                    break;
-                case Faction.Trader:
-                    RenderTraderNpc(renderer, camera, pos, ai.State);
-                    break;
-                case Faction.Patrol:
-                    RenderPatrolNpc(renderer, camera, pos, ai.State);
-                    break;
-            }
-
-            // Health bar above enemy
-            float barWidth = sprite.Width + 4;
-            float barHeight = 3;
-            float barY = pos.Y - sprite.Height / 2f - 6;
-            float barX = pos.X - barWidth / 2f;
-
-            // Background
-            renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, RenderColors.HealthBarBackground);
-
-            // Health fill
-            float fillWidth = barWidth * health.HullPercent;
-            var fillColor = RenderColors.HullFillColor(health.HullPercent);
-            renderer.DrawRect(camera, new Vector2(barX, barY), (int)fillWidth, (int)barHeight, new Color3(fillColor.R, fillColor.G, fillColor.B));
+            var faction = ai.Config.Faction;
+            var state = ai.State;
+            var spriteCopy = sprite;
+            var healthCopy = health;
+            drawList.Add(pos.Y, () => RenderEnemy(renderer, camera, pos, faction, state, spriteCopy, healthCopy));
         });
+    }
+
+    private static bool ShouldRenderEnemy(World world, Entity entity, Health health)
+    {
+        if (health.IsDead) return false;
+        if (world.Has<SurfaceNpcState>(entity))
+        {
+            ref var npcState = ref world.Get<SurfaceNpcState>(entity);
+            if (npcState.Phase == SurfaceNpcPhase.Landing || npcState.Phase == SurfaceNpcPhase.TakingOff)
+                return false;
+        }
+        return true;
+    }
+
+    private static void RenderEnemy(ISpriteRenderer renderer, Camera camera,
+        Vector2 pos, Faction faction, AIState state, Sprite sprite, Health health)
+    {
+        switch (faction)
+        {
+            case Faction.Pirate:
+                RenderPirateNpc(renderer, camera, pos, state);
+                break;
+            case Faction.Trader:
+                RenderTraderNpc(renderer, camera, pos, state);
+                break;
+            case Faction.Patrol:
+                RenderPatrolNpc(renderer, camera, pos, state);
+                break;
+        }
+
+        // Health bar above enemy
+        float barWidth = sprite.Width + 4;
+        float barHeight = 3;
+        float barY = pos.Y - sprite.Height / 2f - 6;
+        float barX = pos.X - barWidth / 2f;
+
+        renderer.DrawRect(camera, new Vector2(barX, barY), (int)barWidth, (int)barHeight, RenderColors.HealthBarBackground);
+        float fillWidth = barWidth * health.HullPercent;
+        var fillColor = RenderColors.HullFillColor(health.HullPercent);
+        renderer.DrawRect(camera, new Vector2(barX, barY), (int)fillWidth, (int)barHeight, new Color3(fillColor.R, fillColor.G, fillColor.B));
     }
 
     /// <summary>Render a pirate NPC — red/dark outfit with weapon.</summary>

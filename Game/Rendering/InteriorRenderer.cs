@@ -10,19 +10,57 @@ namespace SpaceExplorationGame.Rendering;
 /// </summary>
 public static class InteriorRenderer
 {
+    static private YSortedDrawList _drawList = new();
+
     /// <summary>
     /// Renders the full interior world (background, tiles, NPCs, interactables).
     /// Call <see cref="RenderPlayerAvatar"/> separately if you want to draw the avatar.
     /// </summary>
+    /// <param name="entityDrawList">When provided, NPCs and interactables are collected into this
+    /// list instead of being flushed immediately, allowing the caller to add additional entities
+    /// (ship, players) before flushing for unified Y-sorting.</param>
     public static void RenderWorld(ISpriteRenderer renderer, Camera camera, InteriorData interior,
-        double globalTime, PlanetData? planet)
+        double globalTime, PlanetData? planet, YSortedDrawList? entityDrawList = null)
     {
         RenderExteriorBackground(renderer, camera, interior, planet, globalTime);
         RenderTiles(renderer, camera, interior, globalTime);
         RenderRoomAmbientTint(renderer, camera, interior);
         RenderRoomLabels(renderer, camera, interior);
-        RenderNpcs(renderer, camera, interior, globalTime);
-        RenderInteractableMarkers(renderer, camera, interior, globalTime);
+
+        var drawList = entityDrawList ?? _drawList;
+        CollectNpcs(drawList, renderer, camera, interior, globalTime);
+        CollectInteractableMarkers(drawList, renderer, camera, interior, globalTime);
+        if (entityDrawList == null)
+            _drawList.Flush();
+    }
+
+    /// <summary>Collects all NPCs into a Y-sorted draw list.</summary>
+    public static void CollectNpcs(YSortedDrawList drawList, ISpriteRenderer renderer,
+        Camera camera, InteriorData interior, double globalTime)
+    {
+        float time = (float)globalTime;
+        foreach (var npc in interior.Npcs)
+        {
+            int nameHash = npc.Name.GetHashCode() & 0xFFFF;
+            float phaseOffset = nameHash * 0.01f;
+            float wanderY = MathF.Sin(time * 0.22f + phaseOffset * 1.7f) * 8f;
+            float sortY = npc.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f + wanderY;
+
+            var capturedNpc = npc;
+            drawList.Add(sortY, () => RenderSingleNpc(renderer, camera, capturedNpc, globalTime));
+        }
+    }
+
+    /// <summary>Collects all interactable markers into a Y-sorted draw list.</summary>
+    public static void CollectInteractableMarkers(YSortedDrawList drawList, ISpriteRenderer renderer,
+        Camera camera, InteriorData interior, double globalTime)
+    {
+        foreach (var interactable in interior.Interactables)
+        {
+            float sortY = interactable.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f;
+            var captured = interactable;
+            drawList.Add(sortY, () => RenderSingleInteractable(renderer, camera, captured, globalTime));
+        }
     }
 
     /// <summary>
@@ -628,143 +666,137 @@ public static class InteriorRenderer
         }
     }
 
-    /// <summary>Renders all NPCs with body, head, accessories, nametag, role tag, and idle animation.</summary>
-    private static void RenderNpcs(ISpriteRenderer renderer, Camera camera, InteriorData interior,
-        double globalTime)
+    /// <summary>Renders a single NPC with body, head, accessories, nametag, role tag, and idle animation.</summary>
+    private static void RenderSingleNpc(ISpriteRenderer renderer, Camera camera,
+        InteriorNpc npc, double globalTime)
     {
-        foreach (var npc in interior.Npcs)
+        // Each NPC gets a unique phase offset based on name hash
+        int nameHash = npc.Name.GetHashCode() & 0xFFFF;
+        float phaseOffset = nameHash * 0.01f;
+        float time = (float)globalTime;
+        float scale = npc.BodyScale;
+
+        // NPC wander: slow figure-eight patrol within a small radius
+        float wanderX = MathF.Sin(time * 0.15f + phaseOffset) * 12f;
+        float wanderY = MathF.Sin(time * 0.22f + phaseOffset * 1.7f) * 8f;
+
+        // Idle breathing: body scale pulsing
+        float breathe = MathF.Sin(time * 1.5f + phaseOffset) * 1.5f;
+
+        // Weight shift: subtle horizontal sway
+        float sway = MathF.Sin(time * 0.8f + phaseOffset * 2f) * 1f;
+
+        // Walking leg animation when wandering
+        float wanderSpeed = MathF.Abs(MathF.Cos(time * 0.15f + phaseOffset)) +
+                            MathF.Abs(MathF.Cos(time * 0.22f + phaseOffset * 1.7f));
+        float legAnim = wanderSpeed > 0.3f
+            ? MathF.Sin(time * 4f + phaseOffset) * 2f
+            : 0f;
+
+        var npcPos = new Vector2(
+            npc.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f + sway + wanderX,
+            npc.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f + wanderY
+        );
+
+        // Shadow beneath feet (scaled)
+        var shadowPos = npcPos + new Vector2(0, 8);
+        renderer.DrawRect(camera, shadowPos, (int)(12 * scale), 3, RenderColors.EntityShadow);
+
+        // Legs (animate when wandering)
+        var legColor = new Color3(
+            (byte)(npc.Color.R * 0.6f),
+            (byte)(npc.Color.G * 0.6f),
+            (byte)(npc.Color.B * 0.6f));
+        renderer.DrawRect(camera,
+            npcPos + new Vector2(-3 * scale, 6 + legAnim), (int)(3 * scale), 4,
+            legColor);
+        renderer.DrawRect(camera,
+            npcPos + new Vector2(3 * scale, 6 - legAnim), (int)(3 * scale), 4,
+            legColor);
+
+        // Body (breathing + scale)
+        int bodyW = (int)(10 * scale);
+        int bodyH = (int)(14 + breathe * 0.4f);
+        renderer.DrawRect(camera, npcPos + new Vector2(0, -breathe * 0.3f),
+            bodyW, bodyH, npc.Color);
+
+        // Head
+        float headTurn = MathF.Sin(time * 0.5f + phaseOffset * 3f) * 2f;
+        var headPos = npcPos - new Vector2(-headTurn, 8 + breathe * 0.5f);
+        var headColor = new Color3(
+            (byte)Math.Min(npc.Color.R + 30, 255),
+            (byte)Math.Min(npc.Color.G + 30, 255),
+            (byte)Math.Min(npc.Color.B + 30, 255));
+        renderer.DrawRect(camera, headPos, 8, 8, headColor);
+
+        // Eyes
+        float eyeDir = MathF.Sign(headTurn);
+        renderer.DrawRect(camera, headPos + new Vector2(-2 + eyeDir, -1), 2, 2,
+            new Color3(30, 30, 40));
+        renderer.DrawRect(camera, headPos + new Vector2(2 + eyeDir, -1), 2, 2,
+            new Color3(30, 30, 40));
+
+        // Accessory rendering
+        switch (npc.Accessory)
         {
-            // Each NPC gets a unique phase offset based on name hash
-            int nameHash = npc.Name.GetHashCode() & 0xFFFF;
-            float phaseOffset = nameHash * 0.01f;
-            float time = (float)globalTime;
-            float scale = npc.BodyScale;
-
-            // NPC wander: slow figure-eight patrol within a small radius
-            float wanderX = MathF.Sin(time * 0.15f + phaseOffset) * 12f;
-            float wanderY = MathF.Sin(time * 0.22f + phaseOffset * 1.7f) * 8f;
-
-            // Idle breathing: body scale pulsing
-            float breathe = MathF.Sin(time * 1.5f + phaseOffset) * 1.5f;
-
-            // Weight shift: subtle horizontal sway
-            float sway = MathF.Sin(time * 0.8f + phaseOffset * 2f) * 1f;
-
-            // Walking leg animation when wandering
-            float wanderSpeed = MathF.Abs(MathF.Cos(time * 0.15f + phaseOffset)) +
-                                MathF.Abs(MathF.Cos(time * 0.22f + phaseOffset * 1.7f));
-            float legAnim = wanderSpeed > 0.3f
-                ? MathF.Sin(time * 4f + phaseOffset) * 2f
-                : 0f;
-
-            var npcPos = new Vector2(
-                npc.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f + sway + wanderX,
-                npc.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f + wanderY
-            );
-
-            // Shadow beneath feet (scaled)
-            var shadowPos = npcPos + new Vector2(0, 8);
-            renderer.DrawRect(camera, shadowPos, (int)(12 * scale), 3, RenderColors.EntityShadow);
-
-            // Legs (animate when wandering)
-            var legColor = new Color3(
-                (byte)(npc.Color.R * 0.6f),
-                (byte)(npc.Color.G * 0.6f),
-                (byte)(npc.Color.B * 0.6f));
-            renderer.DrawRect(camera,
-                npcPos + new Vector2(-3 * scale, 6 + legAnim), (int)(3 * scale), 4,
-                legColor);
-            renderer.DrawRect(camera,
-                npcPos + new Vector2(3 * scale, 6 - legAnim), (int)(3 * scale), 4,
-                legColor);
-
-            // Body (breathing + scale)
-            int bodyW = (int)(10 * scale);
-            int bodyH = (int)(14 + breathe * 0.4f);
-            renderer.DrawRect(camera, npcPos + new Vector2(0, -breathe * 0.3f),
-                bodyW, bodyH, npc.Color);
-
-            // Head
-            float headTurn = MathF.Sin(time * 0.5f + phaseOffset * 3f) * 2f;
-            var headPos = npcPos - new Vector2(-headTurn, 8 + breathe * 0.5f);
-            var headColor = new Color3(
-                (byte)Math.Min(npc.Color.R + 30, 255),
-                (byte)Math.Min(npc.Color.G + 30, 255),
-                (byte)Math.Min(npc.Color.B + 30, 255));
-            renderer.DrawRect(camera, headPos, 8, 8, headColor);
-
-            // Eyes
-            float eyeDir = MathF.Sign(headTurn);
-            renderer.DrawRect(camera, headPos + new Vector2(-2 + eyeDir, -1), 2, 2,
-                new Color3(30, 30, 40));
-            renderer.DrawRect(camera, headPos + new Vector2(2 + eyeDir, -1), 2, 2,
-                new Color3(30, 30, 40));
-
-            // Accessory rendering
-            switch (npc.Accessory)
-            {
-                case 1: // Hat — rectangle above head
-                    renderer.DrawRect(camera, headPos - new Vector2(0, 5), 10, 4,
-                        new Color3((byte)(npc.Color.R * 0.7f), (byte)(npc.Color.G * 0.7f), (byte)(npc.Color.B * 0.7f)));
-                    renderer.DrawRect(camera, headPos - new Vector2(0, 7), 6, 3,
-                        new Color3(npc.Color.R, npc.Color.G, npc.Color.B));
-                    break;
-                case 2: // Helmet — wider head cover
-                    renderer.DrawRect(camera, headPos - new Vector2(0, 2), 10, 10,
-                        new Color3(80, 85, 95));
-                    renderer.DrawRect(camera, headPos - new Vector2(0, 0), 8, 3,
-                        new Color3(60, 120, 160));
-                    break;
-                case 3: // Hood — triangular drape
-                    renderer.DrawRect(camera, headPos - new Vector2(0, 4), 10, 6,
-                        new Color3((byte)(npc.Color.R * 0.5f), (byte)(npc.Color.G * 0.5f), (byte)(npc.Color.B * 0.5f)));
-                    renderer.DrawRect(camera, headPos + new Vector2(-5, 0), 2, 4,
-                        new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
-                    renderer.DrawRect(camera, headPos + new Vector2(5, 0), 2, 4,
-                        new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
-                    break;
-            }
-
-            // Nametag (centered)
-            float nameW = renderer.MeasureText(npc.Name, 1.5f) / 2f / camera.Zoom;
-            var namePos = npcPos - new Vector2(nameW, 20 + (npc.Accessory > 0 ? 4 : 0));
-            renderer.DrawText(camera, namePos, npc.Name, new Color3(200, 200, 200), 1.5f);
-
-            // Role tag (centered)
-            float roleW = renderer.MeasureText(npc.Role, 1.5f) / 2f / camera.Zoom;
-            var rolePos = npcPos + new Vector2(-roleW, 12);
-            renderer.DrawText(camera, rolePos, npc.Role, npc.Color, 1.5f);
+            case 1: // Hat — rectangle above head
+                renderer.DrawRect(camera, headPos - new Vector2(0, 5), 10, 4,
+                    new Color3((byte)(npc.Color.R * 0.7f), (byte)(npc.Color.G * 0.7f), (byte)(npc.Color.B * 0.7f)));
+                renderer.DrawRect(camera, headPos - new Vector2(0, 7), 6, 3,
+                    new Color3(npc.Color.R, npc.Color.G, npc.Color.B));
+                break;
+            case 2: // Helmet — wider head cover
+                renderer.DrawRect(camera, headPos - new Vector2(0, 2), 10, 10,
+                    new Color3(80, 85, 95));
+                renderer.DrawRect(camera, headPos - new Vector2(0, 0), 8, 3,
+                    new Color3(60, 120, 160));
+                break;
+            case 3: // Hood — triangular drape
+                renderer.DrawRect(camera, headPos - new Vector2(0, 4), 10, 6,
+                    new Color3((byte)(npc.Color.R * 0.5f), (byte)(npc.Color.G * 0.5f), (byte)(npc.Color.B * 0.5f)));
+                renderer.DrawRect(camera, headPos + new Vector2(-5, 0), 2, 4,
+                    new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
+                renderer.DrawRect(camera, headPos + new Vector2(5, 0), 2, 4,
+                    new Color3((byte)(npc.Color.R * 0.4f), (byte)(npc.Color.G * 0.4f), (byte)(npc.Color.B * 0.4f)));
+                break;
         }
+
+        // Nametag (centered)
+        float nameW = renderer.MeasureText(npc.Name, 1.5f) / 2f / camera.Zoom;
+        var namePos = npcPos - new Vector2(nameW, 20 + (npc.Accessory > 0 ? 4 : 0));
+        renderer.DrawText(camera, namePos, npc.Name, new Color3(200, 200, 200), 1.5f);
+
+        // Role tag (centered)
+        float roleW = renderer.MeasureText(npc.Role, 1.5f) / 2f / camera.Zoom;
+        var rolePos = npcPos + new Vector2(-roleW, 12);
+        renderer.DrawText(camera, rolePos, npc.Role, npc.Color, 1.5f);
     }
 
-    /// <summary>Renders floating indicator markers and recognizable icons above each interactable.</summary>
-    private static void RenderInteractableMarkers(ISpriteRenderer renderer, Camera camera,
-        InteriorData interior, double globalTime)
+    /// <summary>Renders a single interactable's marker and object.</summary>
+    private static void RenderSingleInteractable(ISpriteRenderer renderer, Camera camera,
+        InteriorInteractable interactable, double globalTime)
     {
-        foreach (var interactable in interior.Interactables)
-        {
-            var intPos = new Vector2(
-                interactable.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f,
-                interactable.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f
-            );
+        var intPos = new Vector2(
+            interactable.TilePos.X * WindowConfig.TileSize + WindowConfig.TileSize / 2f,
+            interactable.TilePos.Y * WindowConfig.TileSize + WindowConfig.TileSize / 2f
+        );
 
-            var intColor = GetInteractableColor(interactable.Type);
-            float bob = MathF.Sin((float)globalTime * 2f) * 3f;
+        var intColor = GetInteractableColor(interactable.Type);
+        float bob = MathF.Sin((float)globalTime * 2f) * 3f;
 
-            // Render recognizable base object on the tile
-            RenderInteractableObject(renderer, camera, intPos, interactable.Type, intColor, globalTime);
+        // Render recognizable base object on the tile
+        RenderInteractableObject(renderer, camera, intPos, interactable.Type, intColor, globalTime);
 
-            // Floating indicator above
-            var indicatorPos = intPos - new Vector2(0, 22 + bob);
-            // Indicator diamond shape
-            renderer.DrawRect(camera, indicatorPos, 5, 5, intColor);
-            renderer.DrawRect(camera, indicatorPos, 3, 3, new Color3(255, 255, 255));
+        // Floating indicator above
+        var indicatorPos = intPos - new Vector2(0, 22 + bob);
+        // Indicator diamond shape
+        renderer.DrawRect(camera, indicatorPos, 5, 5, intColor);
+        renderer.DrawRect(camera, indicatorPos, 3, 3, new Color3(255, 255, 255));
 
-            // Label
-            float intLabelW = renderer.MeasureText(interactable.Name, 1.5f) / 2f / camera.Zoom;
-            renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10),
-                interactable.Name, intColor, 1.5f);
-        }
+        // Label
+        float intLabelW = renderer.MeasureText(interactable.Name, 1.5f) / 2f / camera.Zoom;
+        renderer.DrawText(camera, indicatorPos - new Vector2(intLabelW, 10),
+            interactable.Name, intColor, 1.5f);
     }
 
     /// <summary>Renders a recognizable object for each interactable type on the tile.</summary>

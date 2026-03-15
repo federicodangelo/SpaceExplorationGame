@@ -6,6 +6,7 @@ using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Customization;
@@ -502,6 +503,8 @@ public class InteriorState : GameState
         }
     }
 
+    private YSortedDrawList _drawList = new();
+
     public override void RenderGame(Game game)
     {
         _camera.Update(game.SpriteRenderer.WindowWidth, game.SpriteRenderer.WindowHeight);
@@ -510,17 +513,22 @@ public class InteriorState : GameState
         var world = _sim.EcsWorld;
         var avatarTf = world.Get<Transform>(_simPlayer.Entity);
 
-        // Draw world
-        InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, game.GlobalTime, _planet);
+        // Draw world background (tiles, rooms) and collect NPCs/interactables into draw list
+        InteriorRenderer.RenderWorld(renderer, camera, _sim.Interior, game.GlobalTime, _planet, _drawList);
 
         // Draw landed ship on the docking bay landing pad (always visible)
         if (_sim.Interior.LandingPadTilePos.HasValue)
         {
             float shipX = _sim.Interior.LandingPadTilePos.Value.X * WindowConfig.TileSize;
             float shipY = _sim.Interior.LandingPadTilePos.Value.Y * WindowConfig.TileSize;
-            game.SpaceshipRenderer.RenderShadow(renderer, camera, new Vector2(shipX, shipY), game.Player.CurrentShipType.SpriteSize);
-            game.SpaceshipRenderer.RenderWithLabel(renderer, camera, new Vector2(shipX, shipY), 0f,
-                game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+            var shipPos = new Vector2(shipX, shipY);
+            var shipTypeId = game.Player.CurrentShipType.Id;
+            var shipSize = game.Player.CurrentShipType.SpriteSize;
+            _drawList.Add(shipY, () =>
+            {
+                game.SpaceshipRenderer.RenderShadow(renderer, camera, shipPos, shipSize);
+                game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipPos, 0f, shipTypeId, shipSize);
+            });
         }
 
         // Remote player avatars
@@ -530,13 +538,19 @@ public class InteriorState : GameState
             var remoteEntity = player.Entity;
             if (!world.IsAlive(remoteEntity)) continue;
 
-            ref var remoteAvatarTf = ref world.Get<Transform>(remoteEntity);
-            game.AvatarRenderer.Render(renderer, camera, remoteAvatarTf.Position);
+            var remotePos = world.Get<Transform>(remoteEntity).Position;
+            _drawList.Add(remotePos.Y, () => game.AvatarRenderer.Render(renderer, camera, remotePos));
         }
 
         // Draw player avatar only when not inside the ship
         if (!_playerInsideShip)
-            InteriorRenderer.RenderPlayerAvatar(renderer, camera, avatarTf.Position, game.AvatarRenderer);
+        {
+            var playerPos = avatarTf.Position;
+            _drawList.Add(playerPos.Y, () =>
+                InteriorRenderer.RenderPlayerAvatar(renderer, camera, playerPos, game.AvatarRenderer));
+        }
+
+        _drawList.Flush();
 
         int w = renderer.WindowWidth;
         int h = renderer.WindowHeight;

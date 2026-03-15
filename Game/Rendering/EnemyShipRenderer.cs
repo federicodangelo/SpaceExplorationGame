@@ -136,57 +136,62 @@ public class EnemyShipRenderer
         }
     }
 
-    /// <summary>Render all landed NPC ships on a planet surface with landing/takeoff animations.</summary>
-    public void RenderLandedShips(ISpriteRenderer renderer, Camera camera, World world)
+    /// <summary>Collect all landed NPC ships into a Y-sorted draw list.</summary>
+    public void CollectLandedShips(YSortedDrawList drawList, ISpriteRenderer renderer, Camera camera, World world)
     {
         var query = new QueryDescription().WithAll<Transform, LandedNpcShip, Sprite>();
         world.Query(in query, (ref Transform transform, ref LandedNpcShip ship, ref Sprite sprite) =>
         {
             var pos = transform.Position;
             var shipSize = MathF.Max(sprite.Width, sprite.Height);
-
             if (!camera.CircleOverlapsCamera(pos, shipSize))
                 return;
-
-            bool animating = (ship.IsLanding && ship.AnimProgress < 1f) ||
-                             (!ship.IsLanding && ship.AnimProgress < 1f);
-
-            float scale;
-            float shadowOffset;
-
-            if (animating)
-            {
-                float t = ship.IsLanding
-                    ? ship.AnimProgress           // 0→1 = descending → grounded
-                    : 1f - ship.AnimProgress;     // 1→0 = grounded → ascending
-
-                float eased = t * t * (3f - 2f * t);
-                scale = 1f + (1f - eased) * 0.6f;
-                shadowOffset = (1f - eased) * 20f;
-            }
-            else
-            {
-                scale = 1f;
-                shadowOffset = 0f;
-            }
-
-            // Shadow (centered under the ship, offset downward during flight)
-            float shadowW = shipSize * scale * 0.8f;
-            float shadowH = shipSize * scale * 0.25f;
-            float shadowAlpha = 1f - shadowOffset / 20f;
-            if (shadowAlpha > 0.1f)
-            {
-                byte a = (byte)(80 * shadowAlpha);
-                renderer.DrawRect(camera,
-                    pos + new Vector2(0, shadowOffset + shadowH * 0.5f),
-                    (int)shadowW, (int)shadowH,
-                    new Color4(0, 0, 0, a));
-            }
-
-            // Delegate to existing ship rendering with scaled size
-            int scaledSize = (int)(shipSize * scale);
-            Render(renderer, camera, pos, 0f, ship.Faction, scaledSize);
+            var shipCopy = ship;
+            drawList.Add(pos.Y, () => RenderSingleLandedShip(renderer, camera, pos, shipCopy, shipSize));
         });
+    }
+
+    private void RenderSingleLandedShip(ISpriteRenderer renderer, Camera camera,
+        Vector2 pos, LandedNpcShip ship, float shipSize)
+    {
+        bool animating = (ship.IsLanding && ship.AnimProgress < 1f) ||
+                         (!ship.IsLanding && ship.AnimProgress < 1f);
+
+        float scale;
+        float shadowOffset;
+
+        if (animating)
+        {
+            float t = ship.IsLanding
+                ? ship.AnimProgress           // 0→1 = descending → grounded
+                : 1f - ship.AnimProgress;     // 1→0 = grounded → ascending
+
+            float eased = t * t * (3f - 2f * t);
+            scale = 1f + (1f - eased) * 0.6f;
+            shadowOffset = (1f - eased) * 20f;
+        }
+        else
+        {
+            scale = 1f;
+            shadowOffset = 0f;
+        }
+
+        // Shadow (centered under the ship, offset downward during flight)
+        float shadowW = shipSize * scale * 0.8f;
+        float shadowH = shipSize * scale * 0.25f;
+        float shadowAlpha = 1f - shadowOffset / 20f;
+        if (shadowAlpha > 0.1f)
+        {
+            byte a = (byte)(80 * shadowAlpha);
+            renderer.DrawRect(camera,
+                pos + new Vector2(0, shadowOffset + shadowH * 0.5f),
+                (int)shadowW, (int)shadowH,
+                new Color4(0, 0, 0, a));
+        }
+
+        // Delegate to existing ship rendering with scaled size
+        int scaledSize = (int)(shipSize * scale);
+        Render(renderer, camera, pos, 0f, ship.Faction, scaledSize);
     }
 
     private static Vector2 Rotate(Vector2 v, float degrees)

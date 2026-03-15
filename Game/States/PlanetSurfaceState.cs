@@ -6,6 +6,7 @@ using SpaceExplorationGame.ECS.Systems;
 using SpaceExplorationGame.ECS.Systems.Input;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
+using SpaceExplorationGame.Rendering.Base;
 using SpaceExplorationGame.Simulation;
 using SpaceExplorationGame.UI.Hud;
 using SpaceExplorationGame.UI.Overlays.Map;
@@ -544,6 +545,7 @@ public class PlanetSurfaceState : GameState
     }
 
     // ── Render ──────────────────────────────────────────────────────
+    private YSortedDrawList _drawList = new();
 
     public override void RenderGame(Game game)
     {
@@ -581,24 +583,33 @@ public class PlanetSurfaceState : GameState
         }
 
         // NPC ships landed on the surface
-        game.EnemyShipRenderer.RenderLandedShips(renderer, camera, world);
+        // Tire marks (flat on ground, drawn before Y-sorted entities)
+        _tireMarkRenderer.Render(renderer, camera);
+
+        // ── Y-sorted entity rendering ───────────────────────────────
+        game.EnemyShipRenderer.CollectLandedShips(_drawList, renderer, camera, world);
 
         // Ship
         if (world.IsAlive(_sim.LocalShipEntity))
         {
             var shipTf = world.Get<Transform>(_sim.LocalShipEntity);
-            game.SpaceshipRenderer.RenderShadow(renderer, camera, shipTf.Position, game.Player.CurrentShipType.SpriteSize);
-            game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipTf.Position, shipTf.Rotation,
-                game.Player.CurrentShipType.Id, game.Player.CurrentShipType.SpriteSize);
+            var shipPos = shipTf.Position;
+            var shipRot = shipTf.Rotation;
+            var shipTypeId = game.Player.CurrentShipType.Id;
+            var shipSize = game.Player.CurrentShipType.SpriteSize;
+            _drawList.Add(shipPos.Y, () =>
+            {
+                game.SpaceshipRenderer.RenderShadow(renderer, camera, shipPos, shipSize);
+                game.SpaceshipRenderer.RenderWithLabel(renderer, camera, shipPos, shipRot, shipTypeId, shipSize);
+            });
         }
-
-        // Tire marks (drawn above terrain, below vehicle)
-        _tireMarkRenderer.Render(renderer, camera);
 
         // Vehicle
         if (_sim.LocalVehicleDeployed && world.IsAlive(_sim.LocalVehicleEntity))
         {
             var vehicleTf = world.Get<Transform>(_sim.LocalVehicleEntity);
+            var vehiclePos = vehicleTf.Position;
+            var vehicleRot = vehicleTf.Rotation;
             // Derive visual steering angle from current rotation velocity (lives on player entity).
             float steerAngle = 0f;
             if (_inVehicle && world.IsAlive(_simPlayer.Entity) && world.Has<Velocity>(_simPlayer.Entity))
@@ -608,12 +619,14 @@ public class PlanetSurfaceState : GameState
                 float normalised = Math.Clamp(vehicleVel.RotationVelocity / maxRot, -1f, 1f);
                 steerAngle = normalised * 30f;   // ±30° max visual turn
             }
-            game.VehicleRenderer.Render(renderer, camera, vehicleTf.Position,
-                vehicleTf.Rotation, _inVehicle, steerAngle);
+            var capturedSteerAngle = steerAngle;
+            var capturedInVehicle = _inVehicle;
+            _drawList.Add(vehiclePos.Y, () =>
+                game.VehicleRenderer.Render(renderer, camera, vehiclePos, vehicleRot, capturedInVehicle, capturedSteerAngle));
         }
 
         // NPCs on foot
-        SurfaceEnemyRenderer.RenderEnemies(renderer, camera, world, _planetOrMoon.Type);
+        SurfaceEnemyRenderer.RenderEnemies(_drawList, renderer, camera, world, _planetOrMoon.Type);
 
         // Remote player avatars
         foreach (var player in _sim.Players)
@@ -622,21 +635,25 @@ public class PlanetSurfaceState : GameState
             var remoteEntity = player.Entity;
             if (!world.IsAlive(remoteEntity)) continue;
 
-            ref var remoteAvatarTf = ref world.Get<Transform>(remoteEntity);
-            game.AvatarRenderer.Render(renderer, camera, remoteAvatarTf.Position);
+            var remotePos = world.Get<Transform>(remoteEntity).Position;
+            _drawList.Add(remotePos.Y, () => game.AvatarRenderer.Render(renderer, camera, remotePos));
         }
 
         // Player avatar
         if (!_sim.LocalPlayerDead && world.IsAlive(_simPlayer.Entity))
         {
-            ref var avatarTf = ref world.Get<Transform>(_simPlayer.Entity);
+            var avatarPos = world.Get<Transform>(_simPlayer.Entity).Position;
             if (!_inVehicle && !_playerInsideShip)
-                game.AvatarRenderer.Render(renderer, camera, avatarTf.Position);
+                _drawList.Add(avatarPos.Y, () => game.AvatarRenderer.Render(renderer, camera, avatarPos));
         }
 
-        // Rocks, enemies, NPC ships, projectiles
-        SurfaceRockRenderer.RenderRocks(renderer, camera, world);
-        SurfaceRockRenderer.RenderCoverObstacles(renderer, camera, world);
+        // Rocks + cover obstacles
+        SurfaceRockRenderer.RenderRocks(_drawList, renderer, camera, world);
+        SurfaceRockRenderer.CollectCoverObstacles(_drawList, renderer, camera, world);
+
+        _drawList.Flush();
+
+        // Projectiles (fly above everything)
         ProjectileRenderer.RenderProjectiles(renderer, camera, world);
 
         // Damage/explosions
