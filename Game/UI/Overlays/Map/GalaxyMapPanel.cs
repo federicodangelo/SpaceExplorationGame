@@ -1,4 +1,5 @@
 using System.Numerics;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
@@ -209,6 +210,7 @@ public class GalaxyMapPanel : MapPanelBase
     {
         var camera = Camera;
         int currentSys = game.Player.CurrentStarSystemIndex;
+        var remotePlayersBySystem = RemotePlayerMapPresenceHelper.CollectRemotePlayersBySystem(game);
 
         // Background stars
         _starsBackground?.RenderWorldSpace(renderer, camera, (float)game.GlobalTime);
@@ -233,6 +235,7 @@ public class GalaxyMapPanel : MapPanelBase
         for (int i = 0; i < _starSystems.Count; i++)
         {
             var sys = _starSystems[i];
+            remotePlayersBySystem.TryGetValue(sys.Index, out var systemOccupants);
             bool isSelected = i == _selectedSystemIndex;
             bool isHovered = i == _hoveredSystemIndex;
             bool isCurrentSystem = i == currentSys;
@@ -271,6 +274,10 @@ public class GalaxyMapPanel : MapPanelBase
                 renderer.DrawCircle(camera, sys.GalaxyPosition, displayRadius * 1.6f,
                     new Color4(200, 80, 255, aa));
             }
+
+            if (systemOccupants is { Count: > 0 })
+                DrawRemotePlayerSystemPresence(renderer, camera, sys.GalaxyPosition, displayRadius,
+                    systemOccupants, (float)game.GlobalTime, alpha, labelOffset, Math.Max(1f, camera.Zoom * 0.85f));
 
             if (inRange && !reachable && !isCurrentSystem)
                 renderer.DrawFilledCircle(camera, sys.GalaxyPosition, radius * 0.5f, new Color4(255, 40, 40, 60));
@@ -376,6 +383,8 @@ public class GalaxyMapPanel : MapPanelBase
         if (_selectedSystemIndex >= 0)
         {
             var sys = _starSystems[_selectedSystemIndex];
+            var systemRemotePlayers = RemotePlayerMapPresenceHelper.GetRemotePlayersForSystem(
+                RemotePlayerMapPresenceHelper.CollectRemotePlayersBySystem(game), _selectedSystemIndex);
             bool isCurrentSystem = _selectedSystemIndex == game.Player.CurrentStarSystemIndex;
             float distance = isCurrentSystem ? 0 : GetSystemDistance(game.Player.CurrentStarSystemIndex, _selectedSystemIndex);
             float fuelCost = distance * ShipConfig.FuelPerDistanceUnit;
@@ -427,6 +436,10 @@ public class GalaxyMapPanel : MapPanelBase
                 }
                 missionY += 4;
             }
+
+            missionY += RemotePlayerMapPresenceHelper.RenderRemotePlayersInfo(renderer, cx, missionY, InfoPanelW - 24, systemRemotePlayers);
+            if (systemRemotePlayers.Count > 0)
+                missionY += 4;
 
             renderer.DrawRectScreen(cx, missionY, InfoPanelW - 24, 1, new Color4(40, 55, 90, 150));
             missionY += 10;
@@ -494,5 +507,24 @@ public class GalaxyMapPanel : MapPanelBase
                 $"{game.Input.GetActionHelpText(InputAction.ToggleMap)}: SOLAR SYSTEM  {game.Input.GetActionHelpText(InputAction.MenuBack)}: CLOSE",
                 new Color3(255, 150, 150), 1.3f, InfoPanelW - 24);
         }
+    }
+
+    private static void DrawRemotePlayerSystemPresence(ISpriteRenderer renderer, Camera camera,
+        Vector2 worldPosition, float displayRadius, IReadOnlyList<RemotePlayer> occupants,
+        float time, byte alpha, float labelOffset, float labelScale)
+    {
+        float pulse = 0.75f + 0.25f * MathF.Sin(time * 2.2f + worldPosition.X * 0.0004f);
+        byte ringAlpha = (byte)Math.Clamp((int)(alpha * (0.45f + 0.25f * pulse)), 40, 190);
+        byte glowAlpha = (byte)Math.Clamp((int)(alpha * (0.2f + 0.15f * pulse)), 20, 120);
+        float ringRadius = displayRadius + 10f;
+
+        renderer.DrawCircle(camera, worldPosition, ringRadius, new Color4(140, 220, 255, ringAlpha), 40);
+        renderer.DrawCircle(camera, worldPosition, ringRadius + 4f, new Color4(170, 240, 255, glowAlpha), 40);
+
+        renderer.DrawTextCentered(camera,
+            worldPosition + new Vector2(0, displayRadius + labelOffset + 12f / camera.Zoom),
+            RemotePlayerMapPresenceHelper.FormatRemotePlayerNames(occupants),
+            new Color3(170, 220, 255),
+            labelScale);
     }
 }

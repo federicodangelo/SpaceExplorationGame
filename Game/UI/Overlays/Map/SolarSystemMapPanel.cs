@@ -1,4 +1,5 @@
 using System.Numerics;
+using Engine.Network.Client;
 using SpaceExplorationGame.Core;
 using SpaceExplorationGame.Generation;
 using SpaceExplorationGame.Rendering;
@@ -329,6 +330,9 @@ public class SolarSystemMapPanel : MapPanelBase
         float cy = WorldConfig.SolarSystemHeight * WindowConfig.TileSize / 2f;
         var starCenter = new Vector2(cx, cy);
         float starRadius = _currentStarSystem?.StarRadius ?? 20f;
+        var remotePlayersByBody = _currentStarSystem != null
+            ? RemotePlayerMapPresenceHelper.CollectRemotePlayersByBody(game, _currentStarSystem.Index)
+            : new Dictionary<RemotePlayerBodyKey, List<RemotePlayer>>();
 
         // Orbit rings
         foreach (var planet in _planets)
@@ -364,9 +368,12 @@ public class SolarSystemMapPanel : MapPanelBase
         {
             var pPos = GetPlanetWorldPos(planet, time);
             float pRadius = Math.Max(planet.Radius, 4f);
+            remotePlayersByBody.TryGetValue(new RemotePlayerBodyKey(planet.Index), out var planetOccupants);
 
             renderer.DrawFilledCircle(camera, pPos, pRadius, planet.Color.WithAlpha(220));
             DrawPlanetHalo(renderer, camera, pPos, pRadius, planet.Type, planet.Index, time);
+            if (planetOccupants is { Count: > 0 })
+                DrawRemotePlayerPresence(renderer, camera, pPos, pRadius, planet.Color, planetOccupants, time, labelOffset, Math.Max(1f, camera.Zoom * 9f));
 
             bool isPHovered = _hoveredObject.Type == SolarMapObjectType.Planet && _hoveredObject.PlanetIndex == planet.Index;
             bool isPSelected = _selectedObject.Type == SolarMapObjectType.Planet && _selectedObject.PlanetIndex == planet.Index;
@@ -390,8 +397,11 @@ public class SolarSystemMapPanel : MapPanelBase
             {
                 var mPos = GetMoonWorldPos(planet, moon, time);
                 float mRadius = Math.Max(moon.Radius, 2f);
+                remotePlayersByBody.TryGetValue(new RemotePlayerBodyKey(planet.Index, moon.Index), out var moonOccupants);
 
                 renderer.DrawFilledCircle(camera, mPos, mRadius, moon.Color.WithAlpha(180));
+                if (moonOccupants is { Count: > 0 })
+                    DrawRemotePlayerPresence(renderer, camera, mPos, mRadius, moon.Color, moonOccupants, time, labelOffset, Math.Max(1f, camera.Zoom * 8f));
 
                 bool isMHovered = _hoveredObject is { Type: SolarMapObjectType.Moon } && _hoveredObject.PlanetIndex == planet.Index && _hoveredObject.MoonIndex == moon.Index;
                 bool isMSelected = _selectedObject is { Type: SolarMapObjectType.Moon } && _selectedObject.PlanetIndex == planet.Index && _selectedObject.MoonIndex == moon.Index;
@@ -628,6 +638,9 @@ public class SolarSystemMapPanel : MapPanelBase
     private void RenderSelectedObjectInfo(Game game, ISpriteRenderer renderer, float px, float py)
     {
         var sel = _selectedObject;
+        var remotePlayersByBody = _currentStarSystem != null
+            ? RemotePlayerMapPresenceHelper.CollectRemotePlayersByBody(game, _currentStarSystem.Index)
+            : new Dictionary<RemotePlayerBodyKey, List<RemotePlayer>>();
         bool isTarget = IsCurrentNavTarget(game.Player, sel);
         string targetTag = isTarget ? "  [TARGET]" : "";
 
@@ -650,6 +663,7 @@ public class SolarSystemMapPanel : MapPanelBase
 
             case SolarMapObjectType.Planet when sel.PlanetIndex >= 0 && sel.PlanetIndex < _planets.Count:
                 var planet = _planets[sel.PlanetIndex];
+                var planetRemotePlayers = RemotePlayerMapPresenceHelper.GetRemotePlayersForBody(remotePlayersByBody, sel.PlanetIndex);
                 renderer.DrawTextScreen(px, py, "SELECTED: PLANET", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, planet.Name.ToUpper() + targetTag,
@@ -679,6 +693,8 @@ public class SolarSystemMapPanel : MapPanelBase
                         new Color3(255, 80, 80), 1.5f, InfoPanelW - 24);
                 }
                 py += 28;
+                py += RemotePlayerMapPresenceHelper.RenderRemotePlayersInfo(renderer, px, py, InfoPanelW - 24, planetRemotePlayers);
+                py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
 
@@ -686,6 +702,7 @@ public class SolarSystemMapPanel : MapPanelBase
                                           && sel.MoonIndex >= 0 && sel.MoonIndex < _planets[sel.PlanetIndex].Moons.Count:
                 var moonPlanet = _planets[sel.PlanetIndex];
                 var moon = moonPlanet.Moons[sel.MoonIndex];
+                var moonRemotePlayers = RemotePlayerMapPresenceHelper.GetRemotePlayersForBody(remotePlayersByBody, sel.PlanetIndex, sel.MoonIndex);
                 renderer.DrawTextScreen(px, py, "SELECTED: MOON", new Color3(100, 120, 160), 1.3f, InfoPanelW - 24);
                 py += 20;
                 renderer.DrawTextScreen(px, py, moon.Name.ToUpper() + targetTag,
@@ -699,6 +716,8 @@ public class SolarSystemMapPanel : MapPanelBase
                 py += 20;
                 renderer.DrawTextScreen(px, py, "LANDABLE: YES",
                     new Color3(100, 255, 100), 1.5f, InfoPanelW - 24);
+                py += 28;
+                py += RemotePlayerMapPresenceHelper.RenderRemotePlayersInfo(renderer, px, py, InfoPanelW - 24, moonRemotePlayers);
                 py += 28;
                 RenderTargetButton(game, renderer, px, py, isTarget);
                 break;
@@ -777,6 +796,28 @@ public class SolarSystemMapPanel : MapPanelBase
             c.Inner.WithAlpha((byte)Math.Clamp((int)(c.Inner.A * innerScale * pulse), 0, 255)), 36);
         renderer.DrawSolidRing(camera, center, radius * 1.18f, radius * 1.40f,
             c.Outer.WithAlpha((byte)Math.Clamp((int)(c.Outer.A * outerScale * pulse), 0, 255)), 36);
+    }
+
+    private static void DrawRemotePlayerPresence(ISpriteRenderer renderer, Camera camera,
+        Vector2 worldPosition, float radius, Color3 bodyColor, IReadOnlyList<RemotePlayer> occupants,
+        float time, float labelOffset, float labelScale)
+    {
+        float pulse = 0.75f + 0.25f * MathF.Sin(time * 2.4f + radius * 0.15f);
+        byte outerAlpha = (byte)Math.Clamp((int)(190 * pulse), 90, 220);
+        byte innerAlpha = (byte)Math.Clamp((int)(100 * pulse), 50, 140);
+        float ringRadius = radius + 7f;
+
+        renderer.DrawCircle(camera, worldPosition, ringRadius,
+            new Color4(140, 220, 255, outerAlpha), 28);
+        renderer.DrawCircle(camera, worldPosition, ringRadius + 3f,
+            new Color4(bodyColor.R, bodyColor.G, bodyColor.B, innerAlpha), 28);
+
+        string occupantsLabel = RemotePlayerMapPresenceHelper.FormatRemotePlayerNames(occupants);
+        renderer.DrawTextCentered(camera,
+            worldPosition + new Vector2(0, radius + labelOffset + 14f / camera.Zoom),
+            occupantsLabel,
+            new Color3(170, 220, 255),
+            labelScale);
     }
 
     private void RenderTargetButton(Game game, ISpriteRenderer renderer, float px, float py, bool isTarget)
