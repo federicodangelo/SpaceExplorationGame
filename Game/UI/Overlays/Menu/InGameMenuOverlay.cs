@@ -148,14 +148,14 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     private void UpdateMapOption()
     {
         bool hasMap = OnMapRequested != null;
-        Menu.SetOption(1, new(InGameMenuOption.Map, "MAP", Enabled: hasMap, DisabledHint: hasMap ? null : "Not available"));
+        Menu.ReplaceOption(new(InGameMenuOption.Map, "MAP", Enabled: hasMap, DisabledHint: hasMap ? null : "Not available"));
     }
 
     private void UpdateMissionsOption(Game game)
     {
         int missionCount = game.Player.Missions.Active.Count;
         string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
-        Menu.SetOption(2, new(InGameMenuOption.Missions, label));
+        Menu.ReplaceOption(new(InGameMenuOption.Missions, label));
     }
 
     private void UpdateCargoOption(Game game)
@@ -164,6 +164,6 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
         string label = cargoUsed > 0
             ? $"CARGO ({cargoUsed}/{game.Player.MaxCargo})"
             : "CARGO";
-        Menu.SetOption(3, new(InGameMenuOption.Cargo, label));
+        Menu.ReplaceOption(new(InGameMenuOption.Cargo, label));
     }
 }

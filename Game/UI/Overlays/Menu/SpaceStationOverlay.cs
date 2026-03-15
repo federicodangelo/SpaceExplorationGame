@@ -178,11 +178,11 @@ public class SpaceStationOverlay : MenuPanelOverlayBase<StationMenuOption>
             {
                 case StationMenuOption.Repair:
                     bool shipFull = game.Player.ShipHealth >= game.Player.ShipMaxHealth;
-                    Menu.SetOption(i, opt with { Enabled = !shipFull, DisabledHint = shipFull ? "HULL AT FULL INTEGRITY" : null });
+                    Menu.ReplaceOption(opt with { Enabled = !shipFull, DisabledHint = shipFull ? "HULL AT FULL INTEGRITY" : null });
                     break;
                 case StationMenuOption.RestoreHealth:
                     bool healthFull = game.Player.AvatarHealth >= game.Player.AvatarMaxHealth;
-                    Menu.SetOption(i, opt with { Enabled = !healthFull, DisabledHint = healthFull ? "HEALTH IS FULL" : null });
+                    Menu.ReplaceOption(opt with { Enabled = !healthFull, DisabledHint = healthFull ? "HEALTH IS FULL" : null });
                     break;
             }
         }

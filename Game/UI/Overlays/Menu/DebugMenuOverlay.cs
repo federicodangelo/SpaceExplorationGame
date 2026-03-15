@@ -32,10 +32,6 @@ public enum DebugLaunchRequest
 /// </summary>
 public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
 {
-    private const int AutoplayIdx = 0;
-    private const int StarTypeIdx = 1;
-    private const int StartingShipIdx = 2;
-
     private static readonly StarClass[] StarTypes = Enum.GetValues<StarClass>();
     private static readonly ShipType[] ShipTypes = ShipTypeCatalog.AllTypes;
 
@@ -228,13 +224,13 @@ public class DebugMenuOverlay : MenuPanelOverlayBase<DebugMenuAction>
         string right = CurrentInput?.GetActionHelpText(InputAction.MenuRight).ToUpper() ?? "RIGHT";
 
         string autoplayState = _game?.AutoplayBot.Enabled == true ? "ON" : "OFF";
-        Menu.SetOption(AutoplayIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.Autoplay,
+        Menu.ReplaceOption(new MenuOption<DebugMenuAction>(DebugMenuAction.Autoplay,
             $"AUTOPLAY: {autoplayState}",
             $"Press {confirm} to toggle the AI autoplay bot"));
-        Menu.SetOption(StarTypeIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.StarType,
+        Menu.ReplaceOption(new MenuOption<DebugMenuAction>(DebugMenuAction.StarType,
             $"STAR TYPE: < {SelectedStarType} >",
             $"Press {confirm} or {left}/{right} to change star type"));
-        Menu.SetOption(StartingShipIdx, new MenuOption<DebugMenuAction>(DebugMenuAction.StartingShip,
+        Menu.ReplaceOption(new MenuOption<DebugMenuAction>(DebugMenuAction.StartingShip,
             $"STARTING SHIP: < {SelectedStartingShip.Name.ToUpper()} >",
             $"Press {confirm} or {left}/{right} to change starting ship"));
     }

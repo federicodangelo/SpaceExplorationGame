@@ -29,13 +29,38 @@ public class MenuWidget<T> where T : struct, Enum
         set => _selected = _options.Length > 0 ? Math.Clamp(value, 0, _options.Length - 1) : 0;
     }
 
-    public T SelectedValue => _options[_selected].Value;
+    public T SelectedValue
+    {
+        get => _options[_selected].Value;
+        set
+        {
+            int index = Array.FindIndex(_options, o => EqualityComparer<T>.Default.Equals(o.Value, value));
+            if (index < 0)
+                throw new ArgumentException($"Option with value {value} not found in menu");
+            _selected = index;
+        }
+    }
+
     public int ItemCount => _options.Length;
     public IReadOnlyList<MenuOption<T>> Options => _options;
     public bool IsSelected(T value) => EqualityComparer<T>.Default.Equals(_options[_selected].Value, value);
 
-    /// <summary>Replace a menu option at the given index (e.g. to toggle Enabled/DisabledHint).</summary>
-    public void SetOption(int index, MenuOption<T> option) => _options[index] = option;
+    /// <summary>Replace a menu option at the given index.</summary>
+    public void ReplaceOption(MenuOption<T> option)
+    {
+        int index = Array.FindIndex(_options, o => EqualityComparer<T>.Default.Equals(o.Value, option.Value));
+        if (index < 0)
+            throw new ArgumentException($"Option with value {option.Value} not found in menu");
+        _options[index] = option;
+    }
+
+    public int GetOptionIndex(T value)
+    {
+        int index = Array.FindIndex(_options, o => EqualityComparer<T>.Default.Equals(o.Value, value));
+        if (index < 0)
+            throw new ArgumentException($"Option with value {value} not found in menu");
+        return index;
+    }
 
     // ── Styling (set via init properties) ─────────────────────────
     public float ItemHeight { get; init; } = 50f;
