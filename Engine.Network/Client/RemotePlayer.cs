@@ -23,6 +23,7 @@ public class RemotePlayer
         From = NetPlayerLocation.ForUnknown(),
         To = NetPlayerLocation.ForUnknown()
     };
+    public double PendingTransitionReceivedServerTime;
 
     public RemotePlayer(byte playerId, string name, NetPlayerLocation location, NetPlayerInfo info, NetPlayerState state)
     {

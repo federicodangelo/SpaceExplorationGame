@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 
 namespace Engine.Network.Client;
@@ -52,7 +53,14 @@ public sealed class ClientNetworkManager : IDisposable
     public Vector2 PlayerStartingCoordinates { get; private set; }
 
     /// <summary>Server's global time at the moment of the welcome message.</summary>
-    public double ServerGlobalTime { get; private set; }
+    private double _serverlimeWelcomeMessage = 0;
+
+    /// <summary>Current server time, based on welcome message + local stopwatch.</summary>
+    public double ServerTime => _serverlimeWelcomeMessage + _serverTimeDelta.Elapsed.TotalSeconds;
+
+    /// <summary>Stopwatch to track elapsed time since the welcome message, used to calculate current server time.</summary>
+    private readonly Stopwatch _serverTimeDelta = new();
+
 
     /// <summary>Total bytes sent to the server since connect.</summary>
     public long TotalBytesSent => _client.TotalBytesSent;
@@ -274,7 +282,8 @@ public sealed class ClientNetworkManager : IDisposable
         var msg = NetSerializer.ReadWelcome(data);
         LocalPlayerId = msg.PlayerId;
         ServerGalaxySeed = msg.GalaxySeed;
-        ServerGlobalTime = msg.GlobalTime;
+        _serverlimeWelcomeMessage = msg.GlobalTime;
+        _serverTimeDelta.Restart();
         PlayerStartingLocation = msg.PlayerLocation;
         PlayerStartingCoordinates = msg.PlayerCoordinates;
         IsJoined = true;
@@ -394,6 +403,7 @@ public sealed class ClientNetworkManager : IDisposable
         if (RemotePlayers.TryGetValue(msg.PlayerId, out var remote))
         {
             remote.PendingTransition = msg.Transition;
+            remote.PendingTransitionReceivedServerTime = ServerTime;
         }
     }
 }

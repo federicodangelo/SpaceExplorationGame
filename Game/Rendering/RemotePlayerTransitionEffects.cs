@@ -52,6 +52,7 @@ public sealed class RemotePlayerTransitionEffects
         public TransitionType TransitionType;
         public float Elapsed;
         public float Duration;
+        public NetPlayerLocation WaitingForLocation; // The transition ends once the player reaches this location, used to handle late-arriving transition messages where we receive the transition after the player has already changed location in the simulation
     }
 
     public void Clear()
@@ -66,10 +67,7 @@ public sealed class RemotePlayerTransitionEffects
     public void Update(float dt, SolarSystemSimulation sim, ClientNetworkManager? net)
     {
         if (net == null)
-        {
-            TickEffects(dt);
             return;
-        }
 
         var currentLocation = sim.GetNetPlayerLocation();
 
@@ -80,6 +78,7 @@ public sealed class RemotePlayerTransitionEffects
             // Find the player's entity in the simulation to read their current position
             var from = remote.PendingTransition.From;
             var to = remote.PendingTransition.To;
+            var elapsedTime = net.ServerTime - remote.PendingTransitionReceivedServerTime;
 
             remote.PendingTransition = new NetPlayerTransition
             {
@@ -118,6 +117,8 @@ public sealed class RemotePlayerTransitionEffects
                 _ => 1.0f,
             };
 
+            duration = Math.Max((float)(duration - elapsedTime), 0.1f); // In case we receive the transition late, at least show some of the effect instead of skipping it entirely
+
             _effects.Add(new TransitionEffect
             {
                 PlayerId = remote.PlayerId,
@@ -127,19 +128,29 @@ public sealed class RemotePlayerTransitionEffects
                 TransitionType = transType,
                 Elapsed = 0f,
                 Duration = duration,
+                WaitingForLocation = to
             });
         }
 
-        TickEffects(dt);
+        TickEffects(dt, net);
     }
 
-    private void TickEffects(float dt)
+    private void TickEffects(float dt, ClientNetworkManager net)
     {
-        for (int i = _effects.Count - 1; i >= 0; i--)
+        for (var i = _effects.Count - 1; i >= 0; i--)
         {
             _effects[i].Elapsed += dt;
-            if (_effects[i].Elapsed >= _effects[i].Duration)
+            var remaining = _effects[i].Duration - _effects[i].Elapsed;
+            var atTargetLocation = net.RemotePlayers.TryGetValue(_effects[i].PlayerId, out var remote) && remote.Location == _effects[i].WaitingForLocation;
+
+            // We wait until the player actually changes to the new location in the simulation before removing the effect, 
+            // to avoid cutting off the effect early in case of late-arriving transition messages. However, if we are 
+            // already past the effect duration and the player is still not in the new location after a reasonable grace period,
+            // we remove the effect anyway to avoid it lingering indefinitely due to some desync issue.
+            if (remaining <= 0f && (atTargetLocation || remaining < -2f))
+            {
                 _effects.RemoveAt(i);
+            }
         }
     }
 
