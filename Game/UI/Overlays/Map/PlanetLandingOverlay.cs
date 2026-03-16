@@ -13,7 +13,7 @@ public class PlanetLandingOverlay : MapOverlayBase
 {
     private readonly PlanetLandingPanel _panel;
 
-    public Action<Game, LandingSelectionRequest>? OnLandingConfirmed
+    public Action<LandingSelectionRequest>? OnLandingConfirmed
     {
         get => _panel.OnLandingConfirmed;
         set => _panel.OnLandingConfirmed = value;

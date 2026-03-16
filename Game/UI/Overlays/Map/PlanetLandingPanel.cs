@@ -46,9 +46,9 @@ public class PlanetLandingPanel : PlanetMapPanelBase
 
     /// <summary>
     /// Called when landing is confirmed. Allows parent state to run a custom transition.
-    /// Parameters: game, landing selection payload.
+    /// Parameters: landing selection payload.
     /// </summary>
-    public Action<Game, LandingSelectionRequest>? OnLandingConfirmed { get; set; }
+    public Action<LandingSelectionRequest>? OnLandingConfirmed { get; set; }
 
     public PlanetLandingPanel(ITextureManager textures) : base(textures)
     {
@@ -238,7 +238,7 @@ public class PlanetLandingPanel : PlanetMapPanelBase
                 IsMoon: _isMoon,
                 MoonPlanetIndex: _moonPlanetIndex,
                 MoonIndex: _moonIndex);
-            OnLandingConfirmed(game, landing);
+            OnLandingConfirmed(landing);
         }
         else
         {

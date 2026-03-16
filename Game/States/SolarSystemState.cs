@@ -66,7 +66,7 @@ public class SolarSystemState : GameState
     private readonly bool _autoOpenGalaxyMap;
     private PlanetLandingOverlay _planetLandingOverlay = null!;
     private readonly PlanetData? _autoOpenPlanet;
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.SolarSystem };
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new([InGameMenuOverlay.MapType.SolarSystem, InGameMenuOverlay.MapType.Galaxy]) { StateType = GameStateType.SolarSystem };
 
     // ── Anchor (keeps ship at fixed offset from target while overlays open) ──
     private Entity _anchorEntity;
@@ -86,10 +86,12 @@ public class SolarSystemState : GameState
 
     public override void Enter(Game game)
     {
-        _planetLandingOverlay = new PlanetLandingOverlay(game.Textures);
-        _planetLandingOverlay.OnLandingConfirmed = (g, landing) => BeginSeamlessLanding(g, landing);
+        _planetLandingOverlay = new PlanetLandingOverlay(game.Textures)
+        {
+            OnLandingConfirmed = (landing) => BeginSeamlessLanding(game, landing)
+        };
         _spaceStationOverlay.OnDisembarkRequested = BeginDocking;
-        _inGameMenuOverlay.OnMapRequested = g => _galaxyMapOverlay.Open(g);
+        _inGameMenuOverlay.OnMapRequested = mapType => _galaxyMapOverlay.Open(game, mapType == InGameMenuOverlay.MapType.Galaxy ? MapViewMode.Galaxy : MapViewMode.SolarSystem);
 
         // Music
         game.Audio.SetMusicTheme(AudioThemes.SolarSystem);

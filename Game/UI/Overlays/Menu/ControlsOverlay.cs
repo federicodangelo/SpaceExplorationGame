@@ -29,9 +29,9 @@ public class ControlsOverlay : PanelOverlayBase
         }
     }
 
-    public override void Open()
+    public void Open(Game game)
     {
-        _controls = [];
+        _controls = GetControlsForState(StateType, game.Input);
         base.Open();
     }
 

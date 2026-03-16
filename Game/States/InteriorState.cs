@@ -66,7 +66,7 @@ public class InteriorState : GameState
     private int _dialogueLine;
 
     // ── Overlays ────────────────────────────────────────────────────
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.Interior };
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new([]) { StateType = GameStateType.Interior };
     private readonly RepairOverlay _repairOverlay = new();
     private readonly MissionOverlay _missionOverlay = new();
     private readonly ShipCustomizationOverlay _shipCustomization = new();

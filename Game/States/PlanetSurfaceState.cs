@@ -71,7 +71,7 @@ public class PlanetSurfaceState : GameState
     private string _activeMusicTheme = AudioThemes.PlanetSurface;
 
     // ── Overlays ────────────────────────────────────────────────────
-    private readonly InGameMenuOverlay _inGameMenuOverlay = new() { StateType = GameStateType.PlanetSurface };
+    private readonly InGameMenuOverlay _inGameMenuOverlay = new([InGameMenuOverlay.MapType.Planet]) { StateType = GameStateType.PlanetSurface };
     private PlanetSurfaceMapOverlay _surfaceMapOverlay = null!;
     private readonly StarshipMenuOverlay _starshipMenuOverlay = new();
     private bool _waitingToOpenStarshipMenuAfterLanding;
@@ -108,14 +108,14 @@ public class PlanetSurfaceState : GameState
         game.Player.Stats.PlanetsLanded++;
 
         _surfaceMapOverlay = new PlanetSurfaceMapOverlay(game.Textures);
-        _inGameMenuOverlay.OnMapRequested = g =>
+        _inGameMenuOverlay.OnMapRequested = _ =>
         {
             var avatarPos = _sim.EcsWorld.Get<Transform>(_simPlayer.Entity).Position;
             var shipPos = _sim.EcsWorld.Get<Transform>(_sim.LocalShipEntity).Position;
             Vector2? vehiclePos = _sim.LocalVehicleDeployed
                 ? _sim.EcsWorld.Get<Transform>(_sim.LocalVehicleEntity).Position
                 : null;
-            _surfaceMapOverlay.Open(g, _starSystem, _planetOrMoon, _sim.SurfaceData,
+            _surfaceMapOverlay.Open(game, _starSystem, _planetOrMoon, _sim.SurfaceData,
                 shipPos, avatarPos, vehiclePos);
         };
 

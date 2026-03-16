@@ -11,10 +11,19 @@ namespace SpaceExplorationGame.UI.Overlays.Menu;
 /// </summary>
 public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMenuOption>
 {
+    public enum MapType
+    {
+        SolarSystem,
+        Galaxy,
+        Planet
+    }
+
     public enum InGameMenuOption
     {
         Resume,
-        Map,
+        SolarSystemMap,
+        GalaxyMap,
+        PlanetMap,
         Missions,
         Cargo,
         Stats,
@@ -26,7 +35,9 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     private static readonly MenuOption<InGameMenuOption>[] DefaultMenuOptions =
     [
         new(InGameMenuOption.Resume, "RESUME"),
-        new(InGameMenuOption.Map, "MAP"),
+        new(InGameMenuOption.SolarSystemMap, "SOLAR SYSTEM MAP"),
+        new(InGameMenuOption.GalaxyMap, "GALAXY MAP"),
+        new(InGameMenuOption.PlanetMap, "PLANET MAP"),
         new(InGameMenuOption.Missions, "MISSIONS"),
         new(InGameMenuOption.Cargo, "CARGO"),
         new(InGameMenuOption.Stats, "STATS"),
@@ -43,7 +54,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     }
 
     /// <summary>Callback invoked when the player selects the Map option. Set by each game state.</summary>
-    public Action<Game>? OnMapRequested { get; set; }
+    public Action<MapType>? OnMapRequested { get; set; }
 
     private readonly MissionsListOverlay _missionsOverlay = new();
     private readonly CargoListOverlay _cargoOverlay = new();
@@ -59,9 +70,14 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     // ── Constructor ──
 
-    public InGameMenuOverlay()
+    public InGameMenuOverlay(MapType[] availableMaps)
     {
-        Menu = new MenuWidget<InGameMenuOption>(DefaultMenuOptions)
+        var menuOptions = new List<MenuOption<InGameMenuOption>>(DefaultMenuOptions);
+        if (!availableMaps.Contains(MapType.SolarSystem)) menuOptions.RemoveAll(o => o.Value == InGameMenuOption.SolarSystemMap);
+        if (!availableMaps.Contains(MapType.Galaxy)) menuOptions.RemoveAll(o => o.Value == InGameMenuOption.GalaxyMap);
+        if (!availableMaps.Contains(MapType.Planet)) menuOptions.RemoveAll(o => o.Value == InGameMenuOption.PlanetMap);
+
+        Menu = new MenuWidget<InGameMenuOption>(menuOptions.ToArray())
         {
             CenterAlign = true,
             ItemHeight = 45f,
@@ -84,7 +100,6 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
     public void Open(Game game)
     {
         Menu.SelectedIndex = 0;
-        UpdateMapOption();
         UpdateMissionsOption(game);
         UpdateCargoOption(game);
         base.Open();
@@ -105,11 +120,25 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
             case InGameMenuOption.Resume:
                 Close();
                 break;
-            case InGameMenuOption.Map:
+            case InGameMenuOption.SolarSystemMap:
                 if (OnMapRequested != null)
                 {
                     Close();
-                    OnMapRequested(game);
+                    OnMapRequested(MapType.SolarSystem);
+                }
+                break;
+            case InGameMenuOption.GalaxyMap:
+                if (OnMapRequested != null)
+                {
+                    Close();
+                    OnMapRequested(MapType.Galaxy);
+                }
+                break;
+            case InGameMenuOption.PlanetMap:
+                if (OnMapRequested != null)
+                {
+                    Close();
+                    OnMapRequested(MapType.Planet);
                 }
                 break;
             case InGameMenuOption.Missions:
@@ -122,7 +151,7 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
                 _statsOverlay.Open();
                 break;
             case InGameMenuOption.Controls:
-                _controlsOverlay.Open();
+                _controlsOverlay.Open(game);
                 break;
             case InGameMenuOption.SaveGame:
                 game.SaveCurrentGame();
@@ -138,32 +167,21 @@ public class InGameMenuOverlay : MenuPanelOverlayBase<InGameMenuOverlay.InGameMe
 
     protected override void OnUpdate(Game game)
     {
-        UpdateMapOption();
         UpdateMissionsOption(game);
         UpdateCargoOption(game);
     }
 
     // ── Helpers ──
 
-    private void UpdateMapOption()
-    {
-        bool hasMap = OnMapRequested != null;
-        Menu.ReplaceOption(new(InGameMenuOption.Map, "MAP", Enabled: hasMap, DisabledHint: hasMap ? null : "Not available"));
-    }
-
     private void UpdateMissionsOption(Game game)
     {
-        int missionCount = game.Player.Missions.Active.Count;
-        string label = missionCount > 0 ? $"MISSIONS ({missionCount})" : "MISSIONS";
+        string label = $"MISSIONS ({game.Player.Missions.Active.Count}/{MissionTracker.MaxActive})";
         Menu.ReplaceOption(new(InGameMenuOption.Missions, label));
     }
 
     private void UpdateCargoOption(Game game)
     {
-        int cargoUsed = game.Player.CargoUsed;
-        string label = cargoUsed > 0
-            ? $"CARGO ({cargoUsed}/{game.Player.MaxCargo})"
-            : "CARGO";
+        string label = $"CARGO ({game.Player.CargoUsed}/{game.Player.MaxCargo})";
         Menu.ReplaceOption(new(InGameMenuOption.Cargo, label));
     }
 }
