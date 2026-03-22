@@ -412,13 +412,21 @@ public abstract class CombatSimulationBase : SimulationBase
         }
 
         // Destroy NPCs no longer present in the server snapshot
+        List<int>? idsToRemove = null;
         foreach (var (npcId, entity) in _netNpcEntities)
         {
             if (!receivedIds.Contains(npcId))
             {
-                _netNpcEntities.Remove(npcId);
+                // Store IDs to remove after the loop to avoid modifying the dictionary while iterating
+                idsToRemove ??= new List<int>();
+                idsToRemove.Add(npcId);
                 DestroyNPCFromNetState(entity);
             }
+        }
+        if (idsToRemove != null)
+        {
+            foreach (var npcId in idsToRemove)
+                _netNpcEntities.Remove(npcId);
         }
     }
 
